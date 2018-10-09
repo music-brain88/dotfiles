@@ -1,0 +1,218 @@
+[[plugins]]
+repo = 'Shougo/dein.vim'
+
+[[plugins]]
+repo = 'Shougo/denite.nvim'
+
+[[plugins]]
+repo = 'ryanoasis/vim-devicons'
+
+[[plugins]]
+repo = 'scrooloose/nerdtree'
+hook_add = '''  
+  noremap <silent> <C-n> :NERDTreeToggle<CR>
+'''
+# vim session save
+[[plugins]]
+repo = 'tpope/vim-obsession'
+hook_add = '''  
+  noremap <silent> <S-C-s> :mksession<CR>
+'''
+
+# indent setting
+[[plugins]]
+repo = 'nathanaelkane/vim-indent-guides'
+hook_add = '''
+  let g:indent_guides_enable_on_vim_startup = 1
+  let g:indent_guides_exclude_filetypes = ['help', 'nerdtree'] "インデント可視化を無効ファイルを指定
+  let g:indentLine_color_term = 111
+  let g:indentLine_color_gui = '#708090'
+  let g:indent_guides_guide_size = 1
+  let g:indent_guides_start_level = 2
+  autocmd VimEnter * :IndentGuidesEnable
+'''
+# 自動括弧閉じ
+[[plugins]]
+repo = 'cohama/lexima.vim'
+hook_add = '''
+  "call lexima#add_rule({'at': '\%#.*[-0-9a-zA-Z_,:]', 'char': '{', 'input': '{'})
+  "call lexima#add_rule({'at': '\%#\n\s*}', 'char': '}', 'input': '}', 'delete': '}'})
+'''
+
+
+# コメント機能強化
+[[plugins]]
+repo = 'tyru/caw.vim'
+
+hook_add = '''
+  " 行の最初の文字の前にコメント文字をトグル
+  "nmap <C-S-/> (caw:hatpos:toggle)
+  "vmap <C-S-/> (caw:hatpos:toggle)
+  " 行頭にコメントをトグル
+  "nmap <C-S-/> (caw:zeropos:toggle)
+  "vmap <C-S-/> (caw:zeropos:toggle)
+
+'''
+# 画面分割機能強化
+[[plugins]]
+repo = 'simeji/winresizer'
+
+# ステータスライン周り
+[[plugins]]
+repo = 'vim-airline/vim-airline'
+depends = ['vim-airline-themes']
+
+hook_add = '''
+  
+  let g:airline_powerline_fonts = 1
+
+  let g:airline#extensions#hunks#enabled=0
+  let g:airline#extensions#branch#enabled=1
+  "-----------------------------------------------------------------------
+  "unicode symbols
+  "-----------------------------------------------------------------------
+  if !exists('g:airline_symbols')
+    let g:airline_symbols = {}
+  endif
+ 
+  let g:airline_left_sep = '»'
+  let g:airline_left_sep = '▶'
+  let g:airline_right_sep = '«'
+  let g:airline_right_sep = '◀'
+  let g:airline_symbols.crypt = '🔒'
+  let g:airline_symbols.linenr = '☰'
+  let g:airline_symbols.linenr = '␊'
+  let g:airline_symbols.linenr = '␤'
+  let g:airline_symbols.linenr = '¶'
+  let g:airline_symbols.maxlinenr = ''
+  let g:airline_symbols.maxlinenr = '㏑'
+  let g:airline_symbols.branch = '⎇'
+  let g:airline_symbols.paste = 'ρ'
+  let g:airline_symbols.paste = 'Þ'
+  let g:airline_symbols.paste = '∥'
+  let g:airline_symbols.spell = 'Ꞩ'
+  let g:airline_symbols.notexists = '∄'
+  let g:airline_symbols.whitespace = 'Ξ'
+
+  " airline symbols
+  let g:airline_left_sep = ''
+  let g:airline_left_alt_sep = ''
+  let g:airline_right_sep = ''
+  let g:airline_right_alt_sep = ''
+  let g:airline_symbols.branch = ''
+  let g:airline_symbols.readonly = ''
+  let g:airline_symbols.linenr = ''
+'''
+
+[[plugins]]
+repo = 'vim-airline/vim-airline-themes'
+# ステータスライン周り 
+
+# アイコン
+[[plugins]]
+repo = 'ryanoasis/nerd-fonts'
+
+# linter実行プラグイン
+[[plugins]]
+repo = 'w0rp/ale'
+hook_add = '''
+  "-----------------------------------------------------------------------
+  " Linter cuctom
+  "-----------------------------------------------------------------------
+
+  " エラー行に表示するマーク
+  let g:ale_sign_error = '⨉'
+  let g:ale_sign_warning = '⚠'
+  " エラー行にカーソルをあわせた際に表示されるメッセージフォーマット
+  let g:ale_echo_msg_format = '[%linter%] %s [%severity%]'
+  " エラー表示の列を常時表示
+  let g:ale_sign_column_always = 1
+
+  " ファイルを開いたときにlint実行
+  let g:ale_lint_on_enter = 1
+  " ファイルを保存したときにlint実行
+  let g:ale_lint_on_save = 1
+  " 編集中のlintはしない
+  let g:ale_lint_on_text_changed = 'never'
+
+  " lint結果をロケーションリストとQuickFixには表示しない
+  " 出てると結構うざいしQuickFixを書き換えられるのは困る
+  let g:ale_set_loclist = 0
+  let g:ale_set_quickfix = 0
+  let g:ale_open_list = 0
+  let g:ale_keep_list_window_open = 0
+
+  " 有効にするlinter
+  let g:ale_linters = {
+  \   'python': ['flake8'],
+  \}
+
+  " ALE用プレフィックス
+  nmap [ale] <Nop>
+  map <C-k> [ale]
+  " エラー行にジャンプ
+  nmap <silent> [ale]<C-P> <Plug>(ale_previous)
+  nmap <silent> [ale]<C-N> <Plug>(ale_next)
+
+'''
+# 自動pep8準拠のインデント
+[[plugins]]
+repo = 'Vimjas/vim-python-pep8-indent'
+
+# カラースキーム
+[[plugins]]
+#repo = 'tomasr/molokai'
+
+repo = 'rakr/vim-one'
+
+hook_add = '''
+  "colorscheme 設定は source 後に行う必要があるので VimEnter で行う。
+  "但し Colorscheme イベントの発生が抑制されないよう nented を付ける。
+
+  "onedark用 設定
+  "let g:onedark_termcol
+  
+  " molokai
+  " one
+
+  autocmd VimEnter * nested colorscheme one
+'''
+
+[[plugins]] # toml syntax
+repo = 'cespare/vim-toml'
+on_ft = 'toml'
+
+[[plugins]] # カーソル位置のコンテキストに合わせてftを切り替える
+repo = 'osyo-manga/vim-precious'
+depends = ['context_filetype.vim']
+
+[[plugins]] # カーソル位置のコンテキストのftを判定するライブラリ
+repo = 'Shougo/context_filetype.vim'
+
+# terminal plugin
+[[plugins]]
+repo = 'kassio/neoterm'
+
+# フロントエンド周り
+[[plugins]]
+repo = 'hail2u/vim-css3-syntax'
+
+[[plugins]]
+repo = 'vim-scripts/vim-javascript'
+
+[[plugins]]
+repo = 'othree/html5.vim'
+
+[[plugins]]
+repo = 'gko/vim-coloresque'
+
+[[plugins]]
+repo = 'cakebaker/scss-syntax.vim'
+
+[[plugins]]
+repo = 'posva/vim-vue'
+# フロントエンド周り
+
+# git関連
+[[plugins]]
+repo = 'tpope/vim-fugitive'
