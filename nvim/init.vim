@@ -92,11 +92,9 @@ call NERDTreeHighlightFile('vue',    'Green', 'none', '#42b883', '#151515')
 "-----------------------------------------------------------------------
 let g:airline_powerline_fonts = 1
 set laststatus=2
-let g:airline_theme='one'
-"let g:airline_theme = 'molokai'
+let g:airline_theme='onedark'
 " タブバーをかっこよく
 let g:airline#extensions#tabline#enabled = 1
-set guifont=Source\ Code\ Pro\ for\ Powerline:h14
 
 "-----------------------------------------------------------------------
 "tab setting
