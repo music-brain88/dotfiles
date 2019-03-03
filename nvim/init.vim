@@ -42,7 +42,9 @@ if dein#load_state('/home/arch/.cache/dein')
   "call dein#add('Shougo/neosnippet.vim')
   "call dein#add('Shougo/neosnippet-snippets')
   let s:toml = '~/dotfiles/nvim/dein.toml'
+  let s:lazy_toml = '~/dotfiles/nvim/dein_lazy.toml'
   call dein#load_toml(s:toml, {'lazy': 0})
+  call dein#load_toml(s:lazy_toml, {'lazy': 1})
 
 
   " Required:
