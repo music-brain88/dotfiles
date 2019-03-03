@@ -20,55 +20,46 @@ set noswapfile
 "clip board
 set clipboard=unnamedplus
 set background=dark
-autocmd VimEnter * execute 'NERDTree'
 
+
+"dein Scripts-----------------------------
 if &compatible
   set nocompatible               " Be iMproved
 endif
- 
+
 " Required:
-set runtimepath+=~/.cache/dein/repos/github.com/Shougo/dein.vim
- 
+set runtimepath+=/home/arch/.cache/dein/repos/github.com/Shougo/dein.vim
+
 " Required:
-if dein#load_state('~/.cache/dein')
-  call dein#begin('~/.cache/dein')
- 
+if dein#load_state('/home/arch/.cache/dein')
+  call dein#begin('/home/arch/.cache/dein')
+
   " Let dein manage dein
   " Required:
-  call dein#add('~/.cache/dein/repos/github.com/Shougo/dein.vim')
- 
-  " Add or remove your plugins here:
-  call dein#add('Shougo/neosnippet.vim')
-  call dein#add('Shougo/neosnippet-snippets')
-  let s:toml = '~/.config/nvim/dein.toml'
+  call dein#add('/home/arch/.cache/dein/repos/github.com/Shougo/dein.vim')
+
+  " Add or remove your plugins here like this:
+  "call dein#add('Shougo/neosnippet.vim')
+  "call dein#add('Shougo/neosnippet-snippets')
+  let s:toml = '~/dotfiles/nvim/dein.toml'
   call dein#load_toml(s:toml, {'lazy': 0})
- 
-  " You can specify revision/branch/tag.
-  call dein#add('Shougo/deol.nvim', { 'rev': 'a1b5108fd' })
- 
+
+
   " Required:
   call dein#end()
   call dein#save_state()
 endif
- 
+
 " Required:
 filetype plugin indent on
 syntax enable
+
 " If you want to install not installed plugins on startup.
 "if dein#check_install()
 "  call dein#install()
 "endif
 
-augroup TransparentBG
-  autocmd!
-  autocmd Colorscheme * highlight Normal ctermbg=none
-  autocmd Colorscheme * highlight NonText ctermbg=none
-  autocmd Colorscheme * highlight LineNr ctermbg=none
-  autocmd Colorscheme * highlight Folded ctermbg=none
-  autocmd Colorscheme * highlight EndOfBuffer ctermbg=none 
-augroup END
-
-
+"End dein Scripts-------------------------
 "-----------------------------------------------------------------------
 "terminal setting
 "-----------------------------------------------------------------------
@@ -105,7 +96,7 @@ let g:airline_theme='one'
 "let g:airline_theme = 'molokai'
 " タブバーをかっこよく
 let g:airline#extensions#tabline#enabled = 1
-"set guifont=RictyDiscordForPowerline\ Nerd\ Font:h14
+set guifont=Source\ Code\ Pro\ for\ Powerline:h14
 
 "-----------------------------------------------------------------------
 "tab setting
