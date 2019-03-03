@@ -4,22 +4,19 @@ if &compatible
 endif
 
 " Required:
-set runtimepath+=/home/tsol-user/.cache/dein/repos/github.com/Shougo/dein.vim
+set runtimepath+=/home/arch/.cache/dein/repos/github.com/Shougo/dein.vim
 
 " Required:
-if dein#load_state('/home/tsol-user/.cache/dein')
-  call dein#begin('/home/tsol-user/.cache/dein')
+if dein#load_state('/home/arch/.cache/dein')
+  call dein#begin('/home/arch/.cache/dein')
 
   " Let dein manage dein
   " Required:
-  call dein#add('/home/tsol-user/.cache/dein/repos/github.com/Shougo/dein.vim')
+  call dein#add('/home/arch/.cache/dein/repos/github.com/Shougo/dein.vim')
 
-  " Add or remove your plugins here:
-  call dein#add('Shougo/neosnippet.vim')
-  call dein#add('Shougo/neosnippet-snippets')
-
-  " You can specify revision/branch/tag.
-  call dein#add('Shougo/deol.nvim', { 'rev': '01203d4c9' })
+  " Add or remove your plugins here like this:
+  "call dein#add('Shougo/neosnippet.vim')
+  "call dein#add('Shougo/neosnippet-snippets')
 
   " Required:
   call dein#end()
