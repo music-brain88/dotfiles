@@ -1,0 +1,53 @@
+[[plugins]]
+repo = 'fatih/vim-go'
+on_ft = ['go']
+
+[[plugins]]
+repo = 'rcmdnk/vim-markdown'
+on_ft = ['md', 'markdown']
+
+[[plugins]]
+repo = "davidhalter/jedi-vim"
+on_ft = ['python']
+hook_add = '''
+function! s:pick_executable(pathspecs) abort
+  for pathspec in filter(a:pathspecs, '!empty(v:val)')
+    for path in reverse(glob(pathspec, 0, 1))
+      if executable(path)
+        return path
+      endif
+    endfor
+  endfor
+  return ''
+endfunction
+if has('nvim')
+  "let g:python_host_prog = s:pick_executable([
+  "      \ '~/Documents/python_env/neovim2python/bin/python2'
+  "      \])
+  let g:python3_host_prog = s:pick_executable([
+        \ 'Documents/envlist/neovim3/bin/python',
+        \ '/usr/bin/python3',
+        \ '/bin/python3',
+        \])
+endif
+	let g:deoplete#sources#jedi#server_timeout=100
+  let g:deoplete#sources#jedi#statement_length=100
+	"let g:jedi#completions_enabled = 1
+  "let g:jedi#completions_command = "<C-N>"
+'''
+
+[[plugins]]
+repo = 'zchee/deoplete-jedi'
+on_ft = 'python'
+hook_add = '''
+  "let g:deoplete#sources#jedi#python_path = 'Documents/envlist/neovim3/bin/python'
+'''
+
+[[plugins]]
+repo = "zchee/deoplete-go"
+build = 'make'
+on_ft = 'go'
+depends = ['deoplete.nvim']
+hook_add = '''
+  let g:deoplete#sources#go#gocode_binary = $GOPATH . '/bin/gocode'  
+'''
