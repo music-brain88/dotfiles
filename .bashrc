@@ -17,3 +17,4 @@ if [[ $TERM != linux && ! $PROMPT_COMMAND =~ _update_ps1 ]]; then
 fi
 
 alias vim='nvim'
+alias py37='source ~/Documents/envlist/py37/bin/activate'

@@ -16,7 +16,6 @@ cd ~/.config/nvim/
 touch init.vim
 touch init.d
 
-#ln -snfv ~/dotfiles/nvim/dein.toml ~/.config/nvim/dein.toml
 ln -snfv ~/dotfiles/.bashrc ~/.bashrc
 ln -snfv ~/dotfiles/nvim/init.d ~/.config/nvim/init.d
 ln -snfv ~/dotfiles/nvim/init.vim ~/.config/nvim/init.vim
