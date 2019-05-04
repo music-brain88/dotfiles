@@ -9,7 +9,7 @@ alias ls='ls --color=auto'
 EDITOR=/usr/bin/vi
 
 function _update_ps1() {
-    PS1="$(~/.local/bin/powerline-shell $?)"
+    PS1=$(powerline-shell $?)
 }
 
 if [[ $TERM != linux && ! $PROMPT_COMMAND =~ _update_ps1 ]]; then
