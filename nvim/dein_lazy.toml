@@ -87,3 +87,6 @@ inoremap <expr> <cr> pumvisible() ? "\<C-y>" : "\<cr>"
 [[plugins]]
 repo = 'prabirshrestha/asyncomplete-lsp.vim'
 merged = 0
+
+[[plugins]]
+repo = 'thinca/vim-quickrun'
