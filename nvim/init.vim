@@ -1,3 +1,24 @@
+"                                           o8o                     .o8                           o8o               .ooooo.    .ooooo.   o8o          
+"                                           `"'                    "888                           `"'              d88'   `8. d88'   `8. `YP          
+"   ooo. .oo.  .oo.   oooo  oooo   .oooo.o oooo   .ooooo.           888oooo.  oooo d8b  .oooo.   oooo  ooo. .oo.   Y88..  .8' Y88..  .8'  '   .oooo.o 
+"   `888P"Y88bP"Y88b  `888  `888  d88(  "8 `888  d88' `"Y8          d88' `88b `888""8P `P  )88b  `888  `888P"Y88b   `88888b.   `88888b.      d88(  "8 
+"    888   888   888   888   888  `"Y88b.   888  888       8888888  888   888  888      .oP"888   888   888   888  .8'  ``88b .8'  ``88b     `"Y88b.  
+"    888   888   888   888   888  o.  )88b  888  888   .o8          888   888  888     d8(  888   888   888   888  `8.   .88P `8.   .88P     o.  )88b 
+"   o888o o888o o888o  `V88V"V8P' 8""888P' o888o `Y8bod8P'          `Y8bod8P' d888b    `Y888""8o o888o o888o o888o  `boood8'   `boood8'      8""888P' 
+"                                                                                                                                                     
+"                                                                                                                                                     
+"                                                                                                                                                     
+"                o8o                                                          .o88o.  o8o                                                             
+"                `"'                                                          888 `"  `"'                                                             
+"   oooo    ooo oooo  ooo. .oo.  .oo.         .ooooo.   .ooooo.  ooo. .oo.   o888oo  oooo   .oooooooo                                                 
+"    `88.  .8'  `888  `888P"Y88bP"Y88b       d88' `"Y8 d88' `88b `888P"Y88b   888    `888  888' `88b                                                  
+"     `88..8'    888   888   888   888       888       888   888  888   888   888     888  888   888                                                  
+"      `888'     888   888   888   888       888   .o8 888   888  888   888   888     888  `88bod8P'                                                  
+"       `8'     o888o o888o o888o o888o      `Y8bod8P' `Y8bod8P' o888o o888o o888o   o888o `8oooooo.                                                  
+"                                                                                          d"     YD                                                  
+"                                                                                          "Y88888P'                                                  
+"
+
 set ttimeoutlen=10
 
 set encoding=utf-8
@@ -17,6 +38,7 @@ set wrapscan
 set spell
 set spelllang=en,cjk
 set noswapfile
+
 "clip board
 set clipboard=unnamedplus
 set background=dark
@@ -37,6 +59,7 @@ if dein#load_state('/home/arch/.cache/dein')
   " Let dein manage dein
   " Required:
   call dein#add('/home/arch/.cache/dein/repos/github.com/Shougo/dein.vim')
+  call dein#add('neoclide/coc.nvim', {'merge':0, 'rev': 'release'})
 
   " Add or remove your plugins here like this:
   "call dein#add('Shougo/neosnippet.vim')
