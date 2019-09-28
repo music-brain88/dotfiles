@@ -2,19 +2,12 @@
 # ~/.bashrc
 #
 
+alias vim='nvim'
+
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
 alias ls='ls --color=auto'
-EDITOR=/usr/bin/vi
+PS1='[\u@\h \W]\$ '
 
-function _update_ps1() {
-    PS1=$(powerline-shell $?)
-}
-
-if [[ $TERM != linux && ! $PROMPT_COMMAND =~ _update_ps1 ]]; then
-    PROMPT_COMMAND="_update_ps1; $PROMPT_COMMAND"
-fi
-
-alias vim='nvim'
-alias py37='source ~/Documents/envlist/py37/bin/activate'
+exec fish
