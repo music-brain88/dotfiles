@@ -19,6 +19,7 @@ touch init.d
 ln -snfv ~/dotfiles/.bashrc ~/.bashrc
 ln -snfv ~/dotfiles/nvim/init.d ~/.config/nvim/init.d
 ln -snfv ~/dotfiles/nvim/init.vim ~/.config/nvim/init.vim
+ln -snfv ~/mac_dotfiles/tmux/.tmux.conf ~/.tmux.conf
 
 echo "finish setup"
 echo "next you call dein script"
