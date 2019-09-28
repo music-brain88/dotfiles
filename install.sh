@@ -2,12 +2,11 @@
 
 set -u
 
-# 実行場所のディレクトリを取得
-#THIS_DIR=$(cd $(dirname $0); pwd)
-
-#cd $THIS_DIR
-
 echo "start setup..."
+
+# For example, we just use `~/.cache/dein` as installation directory
+curl https://raw.githubusercontent.com/Shougo/dein.vim/master/bin/installer.sh > installer.sh
+sh ./installer.sh ~/.cache/dein
 
 mkdir -p ~/.config/nvim/
 

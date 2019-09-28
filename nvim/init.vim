@@ -45,20 +45,30 @@ set background=dark
 
 
 "dein Scripts-----------------------------
+let s:dein_dir = expand('~/.cache/dein')
+let s:dein_repo_dir = s:dein_dir . '/repos/github.com/Shougo/dein.vim'
+
 if &compatible
   set nocompatible               " Be iMproved
 endif
 
 " Required:
-set runtimepath+=/home/arch/.cache/dein/repos/github.com/Shougo/dein.vim
+if &runtimepath !~# '/dein.vim'
+  if !isdirectory(s:dein_repo_dir)
+    execute '!git clone https://github.com/Shougo/dein.vim' s:dein_repo_dir
+  endif
+
+  execute 'set runtimepath^=' . fnamemodify(s:dein_repo_dir, ':p')
+
+endif
 
 " Required:
-if dein#load_state('/home/arch/.cache/dein')
-  call dein#begin('/home/arch/.cache/dein')
+if dein#load_state(s:dein_dir)
+  call dein#begin(s:dein_dir)
 
   " Let dein manage dein
   " Required:
-  call dein#add('/home/arch/.cache/dein/repos/github.com/Shougo/dein.vim')
+  call dein#add('$HOME/.cache/dein/repos/github.com/Shougo/dein.vim')
   call dein#add('neoclide/coc.nvim', {'merge':0, 'rev': 'release'})
 
   " Add or remove your plugins here like this:
