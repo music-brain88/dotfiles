@@ -22,6 +22,7 @@ ln -snfv ~/dotfiles/.bashrc ~/.bashrc
 ln -snfv ~/dotfiles/nvim/init.d ~/.config/nvim/init.d
 ln -snfv ~/dotfiles/nvim/init.vim ~/.config/nvim/init.vim
 ln -snfv ~/dotfiles/tmux/.tmux.conf ~/.tmux.conf
+ln -snfv ~/dotfiles/fish/config.fish ~/.config/fish/config.fish
 
 echo "finish setup"
 echo "next you call dein script"
