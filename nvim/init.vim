@@ -23,8 +23,8 @@ set ttimeoutlen=10
 
 set encoding=utf-8
 scriptencoding utf-8
-set ambiwidth=double
-
+"set ambiwidth=double
+set sh=fish
 set nowrap
 set number
 set title
@@ -42,7 +42,6 @@ set noswapfile
 "clip board
 set clipboard=unnamedplus
 set background=dark
-
 
 "dein Scripts-----------------------------
 let s:dein_dir = expand('~/.cache/dein')

@@ -14,6 +14,9 @@ set __fish_git_prompt_showstashstate 'yes'
 set __fish_git_prompt_showupstream 'yes'
 set __fish_git_prompt_color_branch yellow
 
+export TERM=xterm-256color
+export NVIM_TUI_ENABLE_TRUE_COLOR=1
+export NVIM_TUI_ENABLE_CURSOR_SHAPE=1
 # Status Chars
 # set __fish_git_prompt_char_dirtystate '⚡'
 # set __fish_git_prompt_char_stagedstate '→'
