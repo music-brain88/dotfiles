@@ -31,6 +31,7 @@ hook_add = '''
   let g:indent_guides_start_level = 2
   autocmd VimEnter * :IndentGuidesEnable
 '''
+
 # 自動括弧閉じ
 [[plugins]]
 repo = 'cohama/lexima.vim'
@@ -53,6 +54,7 @@ hook_add = '''
   "vmap <C-S-/> (caw:zeropos:toggle)
 
 '''
+
 # 画面分割機能強化
 [[plugins]]
 repo = 'simeji/winresizer'
@@ -175,10 +177,23 @@ hook_add = '''
       set termguicolors
     endif
   endif
+  let g:onedark_termcolors=256
   autocmd VimEnter * colorscheme onedark
+  "autocmd VimEnter * nested call SetHighlightOptions()
+  " autocmd VimEnter * nested call SetHighlightOptions()
+
+  function SetHighlightOptions()
+    colorscheme onedark  "example
+    highlight Normal ctermbg=NONE guibg=NONE
+    highlight NonText ctermbg=NONE guibg=NONE
+    highlight LineNr ctermbg=NONE guibg=NONE
+    highlight Folded ctermbg=NONE guibg=NONE
+    highlight EndOfBuffer ctermbg=NONE guibg=NONE
+  endfunction
 '''
 
-[[plugins]] # toml syntax
+# toml syntax
+[[plugins]] 
 repo = 'cespare/vim-toml'
 on_ft = 'toml'
 

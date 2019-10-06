@@ -41,7 +41,9 @@ set noswapfile
 
 "clip board
 set clipboard=unnamedplus
-set background=dark
+"set background=dark
+set termguicolors
+let $COLORTERM='truecolor'
 
 "dein Scripts-----------------------------
 let s:dein_dir = expand('~/.cache/dein')
