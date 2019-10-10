@@ -178,13 +178,20 @@ hook_add = '''
     endif
   endif
   let g:onedark_termcolors=256
-  autocmd VimEnter * colorscheme onedark
-  "autocmd VimEnter * nested call SetHighlightOptions()
-  " autocmd VimEnter * nested call SetHighlightOptions()
+  "autocmd VimEnter * colorscheme onedark
+  set pumblend=10
+  autocmd VimEnter * nested call SetHighlightOptions()
+
+  
+  augroup transparent-windows
+    autocmd!
+    autocmd FileType denite set winblend=10  " こちらも 5 〜 30 で試してみてください。
+    autocmd FileType denite-filter set winblend=10
+  augroup END
 
   function SetHighlightOptions()
     colorscheme onedark  "example
-    highlight Normal ctermbg=NONE guibg=NONE
+    "highlight Normal ctermbg=NONE guibg=NONE
     highlight NonText ctermbg=NONE guibg=NONE
     highlight LineNr ctermbg=NONE guibg=NONE
     highlight Folded ctermbg=NONE guibg=NONE
