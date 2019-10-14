@@ -10,4 +10,6 @@ export TERM=xterm-256color
 alias ls='ls --color=auto'
 #PS1='[\u@\h \W]\$ '
 
+xmodmap ~/dotfiles/.xmodmap
+
 exec fish
