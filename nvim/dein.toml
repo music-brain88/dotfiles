@@ -165,7 +165,6 @@ hook_add = '''
   endif
   let g:onedark_termcolors=256
   "autocmd VimEnter * colorscheme onedark
-  set pumblend=10
   autocmd VimEnter * nested call SetHighlightOptions()
 
   
