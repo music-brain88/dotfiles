@@ -10,9 +10,11 @@ if [ "$(uname)" == 'Darwin' ]; then
 elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
   OS='Linux'
   xmodmap ~/dotfiles/.Xmodmap
+  export PATH="$HOME/.poetry/bin:$PATH"
 elif [ "$(expr substr $(uname -s) 1 10)" == 'MINGW32_NT' ]; then
   OS='Cygwin'
 else
   echo "Your platform ($(uname -a)) is not supported."
   exit 1
 fi
+
