@@ -13,10 +13,7 @@ fi
 
 mkdir -p ~/.config/nvim/
 
-cd ~/.config/nvim/
-
-touch init.vim
-touch init.d
+touch ~/.config/nvim/init.vim
 
 ln -snfv ~/dotfiles/.bashrc ~/.bashrc
 ln -snfv ~/dotfiles/.bash_profile ~/.bash_profile
