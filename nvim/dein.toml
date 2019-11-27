@@ -230,3 +230,17 @@ repo = 'posva/vim-vue'
 # git関連
 [[plugins]]
 repo = 'tpope/vim-fugitive'
+
+# コメント機能強化
+[[plugins]]
+repo = 'tyru/caw.vim'
+
+hook_add = '''
+  " 行の最初の文字の前にコメント文字をトグル
+  "nmap <C-S-/> (caw:hatpos:toggle)
+  "vmap <C-S-/> (caw:hatpos:toggle)
+  " 行頭にコメントをトグル
+  "nmap <C-S-/> (caw:zeropos:toggle)
+  "vmap <C-S-/> (caw:zeropos:toggle)
+
+'''
