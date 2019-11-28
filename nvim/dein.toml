@@ -172,7 +172,7 @@ hook_add = '''
     autocmd FileType denite-filter set winblend=10
   augroup END
 
-  function SetHighlightOptions()
+  function! SetHighlightOptions()
     colorscheme onedark  "example
     "highlight Normal ctermbg=NONE guibg=NONE
     highlight NonText ctermbg=NONE guibg=NONE
