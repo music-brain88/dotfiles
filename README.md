@@ -1,6 +1,6 @@
 # dotfiles
 
-![xxxx](https://github.com/music-brain88/dotfiles/.github/workflows/main.yml/badge.svg?branch=feature/add_github_actions)
+![](https://github.com/music-brain88/dotfiles/.github/workflows/Main/badge.svg)
 
 
 

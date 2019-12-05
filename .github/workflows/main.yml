@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build:
-    name: Greeting
+    name: Main
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
