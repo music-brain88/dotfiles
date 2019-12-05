@@ -1,6 +1,6 @@
 # dotfiles
 
-![xxxx](https://github.com/music-brain88/dotfiles/workflows/main/badge.svg)
+![xxxx](https://github.com/music-brain88/dotfiles/workflows/Greeting/badge.svg)
 
 
 
