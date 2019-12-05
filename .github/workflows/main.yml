@@ -11,9 +11,8 @@ jobs:
         os: [ubuntu-16.04, ubuntu-18.04]
     steps:
     - uses: actions/checkout@v1
-    - name: main
-      run: echo Hello, world!
-    - name: main2
+    - name: Install required packages
+      run: apt update && apt install -y git sudo
+    - name: Run setup script
       run: |
-        echo Add other actions to build,
-        echo test, and deploy your project.
+        bash setup.sh
