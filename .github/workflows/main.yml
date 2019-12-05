@@ -15,7 +15,7 @@ jobs:
           - name: Run setup script
             run: bash setup.sh
   archlinux:
-      runs-on: ubuntu-18
+      runs-on: ubuntu-18.04
       container: archlinux/base:latest
       steps:
           - uses: actions/checkout@1
