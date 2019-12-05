@@ -1,0 +1,25 @@
+name: MAIN
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-16.04, ubuntu-18.04]
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install required packages
+        run: sudo apt update && sudo apt install -y git
+      - name: Run setup script
+        run: bash setup.sh
+  archlinux:
+    runs-on: ubuntu-18.04
+    container: archlinux/base:latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install required packages
+        run: pacman -Syu --noconfirm
+      - name: Run setup script
+        run: bash setup.sh
