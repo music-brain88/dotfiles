@@ -1,4 +1,6 @@
-# vim-env
+# dotfiles
+
+![](https://github.com/music-brain88/dotfiles/.github/workflows/MAIN/badge.svg)
 
 
 
@@ -11,6 +13,8 @@
 ## Requirement
 
 - [neovim](https://github.com/neovim/neovim/wiki/Installing-Neovim)
+- [tmux](https://github.com/tmux/tmux)
+- [fish](https://fishshell.com/)
 
 
 
@@ -19,7 +23,7 @@
 これだけ
 
 ```shell
-git clone https://github.com/music-brain88/vim-env.git
+git clone https://github.com/music-brain88/dotfiles.git
 ```
 
 
