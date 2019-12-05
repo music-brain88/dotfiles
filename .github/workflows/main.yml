@@ -1,10 +1,9 @@
-name: CI
+name: MAIN
 
 on: [push]
 
 jobs:
   build:
-    name: Main
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -12,7 +11,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Install required packages
-      run: apt update && apt install -y git sudo
+      run: sudo apt update && apt install -y git
     - name: Run setup script
       run: |
         bash setup.sh
