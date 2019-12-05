@@ -11,9 +11,9 @@ jobs:
         os: [ubuntu-16.04, ubuntu-18.04]
     steps:
     - uses: actions/checkout@v1
-    - name: Run a one-line script
+    - name: main
       run: echo Hello, world!
-    - name: Run a multi-line script
+    - name: main2
       run: |
         echo Add other actions to build,
         echo test, and deploy your project.
