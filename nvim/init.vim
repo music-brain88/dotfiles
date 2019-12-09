@@ -186,3 +186,7 @@ map <silent> [Tag]p :tabprevious<CR>
 " tp 前のタブ
 
 vmap <S-C-k> <Plug>(caw:hatpos:toggle)
+
+" buffer
+nnoremap <silent> <C-j> :bprev<CR>
+nnoremap <silent> <C-k> :bnext<CR>
