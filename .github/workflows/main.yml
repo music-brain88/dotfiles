@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v1
       - name: Install required packages
         run: |
-          pacman -Syu
+          pacman -Syu --noconfirm
           pacman -S git --noconfirm
       - name: Run setup script
         run: bash setup.sh
