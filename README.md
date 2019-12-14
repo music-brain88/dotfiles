@@ -1,10 +1,8 @@
 # dotfiles
 
-![](https://github.com/music-brain88/dotfiles/workflows/MAIN/badge.svg)
+![](https://github.com/music-brain88/dotfiles/workflows/build/badge.svg)
 
-
-
-まぁ、自分用
+自分用作りました。
 
 ## Description
 
