@@ -3,7 +3,7 @@ name: MAIN
 on: [push]
 
 jobs:
-  build:
+  build_ubuntu:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -11,15 +11,17 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: Install required packages
-        run: sudo apt update && sudo apt install -y git
+        run: sudo apt update && \
+        sudo apt install -y git neovim fish tmux
       - name: Run setup script
         run: bash setup.sh
-  archlinux:
+      
+  build_archlinux:
     runs-on: ubuntu-18.04
     container: archlinux/base:latest
     steps:
       - uses: actions/checkout@v1
       - name: Install required packages
-        run: pacman -Syu --noconfirm
+        run: pacman -S git neovim fish tmux --noconfirm
       - name: Run setup script
         run: bash setup.sh
