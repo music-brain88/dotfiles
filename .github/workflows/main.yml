@@ -23,8 +23,8 @@ jobs:
     - uses: actions/checkout@v1
     - name: Install required packages
       run: |
-        brew update
-        brew install -y git 
+        brew upgrade -f
+        brew install -f git 
     - name: Run setup script
       run: bash setup.sh
    
