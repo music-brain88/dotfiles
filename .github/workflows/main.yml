@@ -3,7 +3,7 @@ name: build
 on: [push]
 
 jobs:
-  build_ubuntu:
+  ubuntu:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -17,7 +17,7 @@ jobs:
       - name: Run setup script
         run: bash setup.sh
 
-  build_mac:
+  macos:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v1
@@ -28,7 +28,7 @@ jobs:
     - name: Run setup script
       run: bash setup.sh
    
-  build_archlinux:
+  archlinux:
     runs-on: ubuntu-18.04
     container: archlinux/base:latest
     steps:
