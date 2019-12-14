@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: Install required packages
-        run: sudo apt update && \
+        run: sudo apt update && |
         sudo apt install -y git neovim fish tmux
       - name: Run setup script
         run: bash setup.sh
