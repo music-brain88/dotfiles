@@ -1,8 +1,6 @@
 # dotfiles
 
-![](https://github.com/music-brain88/dotfiles/workflows/build_ubuntu/badge.svg)
-
-![](https://github.com/music-brain88/dotfiles/workflows/build_archlinux/badge.svg)
+![](https://github.com/music-brain88/dotfiles/workflows/build/badge.svg)
 
 まぁ、自分用
 

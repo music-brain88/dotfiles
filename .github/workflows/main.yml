@@ -1,4 +1,4 @@
-name: MAIN
+name: build
 
 on: [push]
 
@@ -12,17 +12,30 @@ jobs:
       - uses: actions/checkout@v1
       - name: Install required packages
         run: |
-          sudo apt update &&
-          sudo apt install -y git neovim fish tmux
+          sudo apt update
+          sudo apt install -y git 
       - name: Run setup script
         run: bash setup.sh
-      
+
+ build_mac:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install required packages
+      run: |
+        brew update
+        brew install -y git 
+    - name: Run setup script
+      run: bash setup.sh
+   
   build_archlinux:
     runs-on: ubuntu-18.04
     container: archlinux/base:latest
     steps:
       - uses: actions/checkout@v1
       - name: Install required packages
-        run: pacman -S git neovim fish tmux --noconfirm
+        run: |
+          pacman -Syu
+          pacman -S git --noconfirm
       - name: Run setup script
         run: bash setup.sh
