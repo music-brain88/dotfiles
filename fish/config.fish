@@ -1,14 +1,18 @@
 set -U FZF_LEGACY_KEYBINDINGS 0
 
 alias vim='nvim'
-
+set PATH $TO_FISH_PATH $PATH
 
 # set pyenv path
-set PATH $HOME/.pyenv/shims $PATH
-eval (pyenv init - | source)
+# set -x PATH $HOME/.pyenv/shims $PATH
+# eval (pyenv init - | source)
 
 # set poetry path
-set PATH $HOME/.poetry/env $PATH
+# set -U PATH $HOME/.poetry/env $PATH
+
+# if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
+# export PATH="$HOME/.rbenv/bin:$PATH"
+# eval $(rbenv init - | source)
 
 # bobthefish setting
 set -g theme_powerline_fonts no
