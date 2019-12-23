@@ -12,6 +12,7 @@ alias ls='ls --color=auto'
 
 if [ "$(uname)" == 'Darwin' ]; then
   OS='Mac'
+  exec fish
 elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
   OS='Linux'
   exec fish
