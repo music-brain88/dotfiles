@@ -63,7 +63,7 @@ if empty(glob(g:python_host_prog))
     let g:python_host_prog = '/usr/bin/python'
 endif
 
-let g:python3_host_prog = '~/dotfiles/poetry/neovim3/bin/python'
+let g:python3_host_prog = $PYENV_ROOT.'/versions/neovim3/bin/python'
 
 "dein Scripts-----------------------------
 let s:dein_dir = expand('~/.cache/dein')
