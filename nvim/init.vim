@@ -45,6 +45,19 @@ set clipboard=unnamedplus
 set termguicolors
 let $COLORTERM='truecolor'
 
+if has('mac')
+
+function! init#launch()
+    " Launch Typora
+    call system("open -a Typora \"" . expand("%") . "\"")
+    setlocal autoread
+endfunction
+
+command! Typora call init#launch()
+
+endif
+
+
 "dein Scripts-----------------------------
 let s:dein_dir = expand('~/.cache/dein')
 let s:dein_repo_dir = s:dein_dir . '/repos/github.com/Shougo/dein.vim'
@@ -75,6 +88,7 @@ if dein#load_state(s:dein_dir)
   " Add or remove your plugins here like this:
   "call dein#add('Shougo/neosnippet.vim')
   "call dein#add('Shougo/neosnippet-snippets')
+  call dein#add('~/dotfiles/nvim/typora.vim')
   let s:toml = '~/dotfiles/nvim/dein.toml'
   let s:lazy_toml = '~/dotfiles/nvim/dein_lazy.toml'
   call dein#load_toml(s:toml, {'lazy': 0})
@@ -190,3 +204,5 @@ vmap <S-C-k> <Plug>(caw:hatpos:toggle)
 " buffer
 nnoremap <silent> <C-j> :bprev<CR>
 nnoremap <silent> <C-k> :bnext<CR>
+
+
