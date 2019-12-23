@@ -17,6 +17,7 @@ touch ~/.config/nvim/init.vim
 
 ln -snfv ~/dotfiles/.bashrc ~/.bashrc
 
+# bash_profileが整理されてないので一旦退避
 if [ "$(uname)" == 'Darwin' ]; then
   ln -snfv ~/dotfiles/darwin/.bash_profile ~/.bash_profile
 elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
