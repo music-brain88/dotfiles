@@ -5,13 +5,13 @@
 alias vim='nvim'
 export TERM=xterm-256color
 # If not running interactively, don't do anything
-[[ $- != *i* ]] && return
 
 alias ls='ls --color=auto'
 #PS1='[\u@\h \W]\$ '
 
 if [ "$(uname)" == 'Darwin' ]; then
   OS='Mac'
+  exec fish
 elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
   OS='Linux'
   exec fish
