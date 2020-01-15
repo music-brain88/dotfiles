@@ -4,7 +4,7 @@
 
 [[ -f ~/.bashrc ]] && . ~/.bashrc
 export LC_CTYPE='en_US.UTF-8'
-
+# export LC_CTYPE='ja_JP.UTF-8'
 if [ "$(uname)" == 'Darwin' ]; then
   OS='Mac'
   export TO_FISH_PATH=$PATH
