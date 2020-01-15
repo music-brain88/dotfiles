@@ -45,6 +45,11 @@ set clipboard=unnamedplus
 set termguicolors
 let $COLORTERM='truecolor'
 
+"command line mode keybind setting
+:cnoremap <C-A> <Home>
+:cnoremap <C-F> <Right>
+:cnoremap <C-B> <Left>
+
 if has('mac')
 
 function! init#launch()
