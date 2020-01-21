@@ -36,7 +36,10 @@ call denite#custom#option('default', {
     \ 'winrow': float2nr((&lines - (&lines * s:denite_win_height_percent)) / 2),
     \ })
 
-noremap <silent> <C-n> :Denite file/rec<CR>
+noremap <silent> ,f :Denite file/rec<CR>
+noremap <silent> ,g :Denite grep<CR>
+noremap <silent> ,b :Denite buffer<CR>
+noremap <silent> ,l :Denite line<CR>
 '''
 
 [[plugins]]
