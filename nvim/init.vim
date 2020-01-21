@@ -50,18 +50,6 @@ let $COLORTERM='truecolor'
 :cnoremap <C-F> <Right>
 :cnoremap <C-B> <Left>
 
-if has('mac')
-
-function! init#launch()
-    " Launch Typora
-    call system("open -a Typora \"" . expand("%") . "\"")
-    setlocal autoread
-endfunction
-
-command! Typora call init#launch()
-
-endif
-
 let g:python_host_prog  = '/usr/local/bin/python'
 if empty(glob(g:python_host_prog))
     " Fallback if not exists
@@ -100,6 +88,11 @@ if dein#load_state(s:dein_dir)
   " Add or remove your plugins here like this:
   "call dein#add('Shougo/neosnippet.vim')
   "call dein#add('Shougo/neosnippet-snippets')
+  call dein#add('Shougo/denite.nvim')
+  if !has('nvim')
+    call dein#add('roxma/nvim-yarp')
+    call dein#add('roxma/vim-hug-neovim-rpc')
+  endif
   call dein#add('~/dotfiles/nvim/typora.vim')
   let s:toml = '~/dotfiles/nvim/dein.toml'
   let s:lazy_toml = '~/dotfiles/nvim/dein_lazy.toml'
