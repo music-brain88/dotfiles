@@ -42,6 +42,7 @@ call denite#custom#option('default', {
 
 noremap <silent> ,f :Denite file/rec<CR>
 noremap <silent> ,t :Denite file/type<CR>
+noremap <silent> ,r :Denite file<CR>
 noremap <silent> ,g :Denite grep<CR>
 noremap <silent> ,b :Denite buffer<CR>
 noremap <silent> ,l :Denite line<CR>
