@@ -57,18 +57,27 @@ call defx#custom#option('_', {
 \ })
 autocmd FileType defx call s:defx_my_settings()
   function! s:defx_my_settings() abort
+    " open
     nnoremap <silent><buffer><expr> <CR>
     \ defx#do_action('open')
+    " open file oriental
     nnoremap <silent><buffer><expr> -
     \ defx#do_action('open', 'split')
+    " open file vertical
     nnoremap <silent><buffer><expr> <bar>
     \ defx#do_action('open', 'vsplit')
+    " quit filer
     nnoremap <silent><buffer><expr> <C-n>
     \ defx#do_action('quit')
+    " toggle hide ignored files
     nnoremap <silent><buffer><expr> .
     \ defx#do_action('toggle_ignored_files')
+    " change directory in vim path
     nnoremap <silent><buffer><expr> cd
     \ defx#do_action('change_vim_cwd')
+    " yank path
+    nnoremap <silent><buffer><expr> yy
+    \ defx#do_action('yank_path')
   endfunction
 '''
 
