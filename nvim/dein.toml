@@ -70,14 +70,17 @@ autocmd FileType defx call s:defx_my_settings()
     nnoremap <silent><buffer><expr> <C-n>
     \ defx#do_action('quit')
     " toggle hide ignored files
-    nnoremap <silent><buffer><expr> .
+    nnoremap <silent><buffer><expr> <C-i>
     \ defx#do_action('toggle_ignored_files')
-    " change directory in vim path
-    nnoremap <silent><buffer><expr> cd
-    \ defx#do_action('change_vim_cwd')
     " yank path
     nnoremap <silent><buffer><expr> yy
     \ defx#do_action('yank_path')
+    " go up directory
+    nnoremap <silent><buffer><expr> ..
+    \ defx#do_action('cd', ['..'])
+    " change directory in vim path
+    nnoremap <silent><buffer><expr> cd
+    \ defx#do_action('change_vim_cwd')
   endfunction
 '''
 
