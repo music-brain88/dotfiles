@@ -21,9 +21,9 @@ function! s:denite_my_settings() abort
   \ denite#do_map('open_filter_buffer')
   nnoremap <silent><buffer><expr> <Space>
   \ denite#do_map('toggle_select').'j'
-  nnoremap <silent><buffer><expr> v
+  nnoremap <silent><buffer><expr> <bar>
   \ denite#do_map('do_action', 'vsplit')
-  nnoremap <silent><buffer><expr> s
+  nnoremap <silent><buffer><expr> -
   \ denite#do_map('do_action', 'split')
 
 endfunction
@@ -42,10 +42,29 @@ call denite#custom#option('default', {
 
 noremap <silent> ,f :Denite file/rec<CR>
 noremap <silent> ,t :Denite file/type<CR>
-noremap <silent> ,r :Denite file<CR>
 noremap <silent> ,g :Denite grep<CR>
 noremap <silent> ,b :Denite buffer<CR>
 noremap <silent> ,l :Denite line<CR>
+'''
+
+
+[[plugins]]
+repo = 'Shougo/defx.nvim'
+hook_add = '''
+nnoremap <silent><C-n> :<C-u>Defx<CR>
+call defx#custom#option('_', {
+\ 'columns': 'indent:git:icons:filename',
+\ 'show_ignored_files': 1,
+\ })
+autocmd FileType defx call s:defx_my_settings()
+  function! s:defx_my_settings() abort
+  nnoremap <silent><buffer><expr> <CR>
+  \ defx#do_action('open')
+  nnoremap <silent><buffer><expr> -
+  \ defx#do_action('open', 'split')
+  nnoremap <silent><buffer><expr> <bar>
+  \ defx#do_action('open', 'vsplit')
+  endfunction
 '''
 
 [[plugins]]
