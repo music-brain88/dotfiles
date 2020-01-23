@@ -25,7 +25,6 @@ function! s:denite_my_settings() abort
   \ denite#do_map('do_action', 'vsplit')
   nnoremap <silent><buffer><expr> -
   \ denite#do_map('do_action', 'split')
-
 endfunction
 
 let s:denite_win_width_percent = 0.85
@@ -58,12 +57,18 @@ call defx#custom#option('_', {
 \ })
 autocmd FileType defx call s:defx_my_settings()
   function! s:defx_my_settings() abort
-  nnoremap <silent><buffer><expr> <CR>
-  \ defx#do_action('open')
-  nnoremap <silent><buffer><expr> -
-  \ defx#do_action('open', 'split')
-  nnoremap <silent><buffer><expr> <bar>
-  \ defx#do_action('open', 'vsplit')
+    nnoremap <silent><buffer><expr> <CR>
+    \ defx#do_action('open')
+    nnoremap <silent><buffer><expr> -
+    \ defx#do_action('open', 'split')
+    nnoremap <silent><buffer><expr> <bar>
+    \ defx#do_action('open', 'vsplit')
+    nnoremap <silent><buffer><expr> <C-n>
+    \ defx#do_action('quit')
+    nnoremap <silent><buffer><expr> .
+    \ defx#do_action('toggle_ignored_files')
+    nnoremap <silent><buffer><expr> cd
+    \ defx#do_action('change_vim_cwd')
   endfunction
 '''
 
