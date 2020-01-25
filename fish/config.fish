@@ -4,8 +4,8 @@ alias vim='nvim'
 set PATH $TO_FISH_PATH $PATH
 
 # set pyenv path
-# set -x PATH $HOME/.pyenv/shims $PATH
-# eval (pyenv init - | source)
+set -x PATH $HOME/.pyenv/shims $PATH
+eval (pyenv init - | source)
 
 # set poetry path
 # set -U PATH $HOME/.poetry/env $PATH
