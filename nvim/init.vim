@@ -50,11 +50,15 @@ let $COLORTERM='truecolor'
 :cnoremap <C-F> <Right>
 :cnoremap <C-B> <Left>
 
-" let g:python_host_prog  = '/usr/local/bin/python'
-" if empty(glob(g:python_host_prog))
-"     " Fallback if not exists
-"     let g:python_host_prog = '/usr/bin/python'
-" endif
+let OSTYPE = system('uname')
+if OSTYPE == 'Darwin\n'
+  let g:python_host_prog  = '/usr/local/bin/python'
+  if empty(glob(g:python_host_prog))
+      " Fallback if not exists
+      let g:python_host_prog = '/usr/bin/python'
+  endif
+endif
+
 let g:loaded_python_provider = 1
 let g:python3_host_prog = $PYENV_ROOT.'/versions/neovim3/bin/python'
 
