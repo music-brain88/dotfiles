@@ -4,6 +4,7 @@
 
 alias vim='nvim'
 export TERM=xterm-256color
+export LANG=en_US.UTF-8
 # If not running interactively, don't do anything
 
 alias ls='ls --color=auto'
