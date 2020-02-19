@@ -171,10 +171,6 @@ hook_add = '''
 repo = 'vim-airline/vim-airline-themes'
 # ステータスライン周り 
 
-# アイコン
-[[plugins]]
-repo = 'ryanoasis/nerd-fonts'
-
 # linter実行プラグイン
 [[plugins]]
 repo = 'w0rp/ale'
