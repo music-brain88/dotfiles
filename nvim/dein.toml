@@ -49,8 +49,10 @@ noremap <silent> ,l :Denite line<CR>
 
 [[plugins]]
 repo = 'Shougo/defx.nvim'
+depends = ['defx-git', 'defx-icons']
 hook_add = '''
-nnoremap <silent><C-n> :<C-u>Defx<CR>
+nnoremap <silent><C-n> :<C-u>Defx -resume<CR>
+nnoremap <silent>,m :<C-u>Defx -new `expand('%:p:h')` -search=`expand('%:p')`<CR>
 call defx#custom#option('_', {
 \ 'columns': 'indent:git:icons:filename',
 \ 'show_ignored_files': 1,
@@ -66,6 +68,9 @@ autocmd FileType defx call s:defx_my_settings()
     " open file vertical
     nnoremap <silent><buffer><expr> <bar>
     \ defx#do_action('open', 'vsplit')
+    " delete file
+    nnoremap <silent><buffer><expr> D
+    \ defx#do_action('remove')
     " quit filer
     nnoremap <silent><buffer><expr> <C-n>
     \ defx#do_action('quit')
@@ -83,6 +88,24 @@ autocmd FileType defx call s:defx_my_settings()
     \ defx#do_action('change_vim_cwd')
   endfunction
 '''
+
+[[plugins]]
+repo ="kristijanhusak/defx-git"
+hook_add = '''
+call defx#custom#column('git', 'indicators', {
+  \ 'Modified'  : '✹',
+  \ 'Staged'    : '✚',
+  \ 'Untracked' : '✭',
+  \ 'Renamed'   : '➜',
+  \ 'Unmerged'  : '═',
+  \ 'Ignored'   : '☒',
+  \ 'Deleted'   : '✖',
+  \ 'Unknown'   : '?'
+  \ })
+'''
+
+[[plugins]]
+repo ="kristijanhusak/defx-icons"
 
 [[plugins]]
 repo = 'ryanoasis/vim-devicons'
