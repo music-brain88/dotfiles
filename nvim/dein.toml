@@ -52,7 +52,7 @@ repo = 'Shougo/defx.nvim'
 depends = ['defx-git', 'defx-icons']
 hook_add = '''
 nnoremap <silent>,m :<C-u>Defx -resume<CR>
-nnoremap <silent>,p :<C-u>Defx -new `expand('%:p:h')` -search=`expand('%:p')`<CR>
+nnoremap <silent>,v :<C-u>Defx -new `expand('%:p:h')` -search=`expand('%:p')`<CR>
 call defx#custom#option('_', {
 \ 'columns': 'indent:git:icons:filename',
 \ 'show_ignored_files': 1,
@@ -72,7 +72,7 @@ autocmd FileType defx call s:defx_my_settings()
     nnoremap <silent><buffer><expr> D
     \ defx#do_action('remove')
     " quit filer
-    nnoremap <silent><buffer><expr> <C-n>
+    nnoremap <silent><buffer><expr> ,m
     \ defx#do_action('quit')
     " toggle hide ignored files
     nnoremap <silent><buffer><expr> <C-i>
