@@ -102,8 +102,6 @@ if dein#load_state(s:dein_dir)
   call dein#add('neoclide/coc.nvim', {'merge':0, 'rev': 'release'})
 
   " Add or remove your plugins here like this:
-  "call dein#add('Shougo/neosnippet.vim')
-  "call dein#add('Shougo/neosnippet-snippets')
   call dein#add('Shougo/denite.nvim')
   if !has('nvim')
     call dein#add('roxma/nvim-yarp')
