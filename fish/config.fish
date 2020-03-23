@@ -7,6 +7,9 @@ set PATH $TO_FISH_PATH $PATH
 set PATH $HOME/.pyenv/shims $PATH
 eval (pyenv init - | source)
 
+# set cargo path
+set PATH $HOME/.cargo/bin $PATH
+
 # set exa path
 set PATH /home/archie/.cargo/bin $PATH
 alias ls='exa --icons'
