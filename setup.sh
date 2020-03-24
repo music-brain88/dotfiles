@@ -16,6 +16,7 @@ mkdir -p ~/.config/nvim/
 touch ~/.config/nvim/init.vim
 
 ln -snfv ~/dotfiles/.bashrc ~/.bashrc
+ln -snfv ~/dotfiles/nvim/coc-settings.json ~/.config/nvim/coc-settings.json
 
 # bash_profileが整理されてないので一旦退避
 if [ "$(uname)" == 'Darwin' ]; then
