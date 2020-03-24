@@ -10,7 +10,6 @@ if [ "$(uname)" == 'Darwin' ]; then
   export PYENV_ROOT="$HOME/.pyenv"
   export PATH="$PYENV_ROOT/bin:$PATH"
   eval "$(pyenv init -)"
-  exec fish
 elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
   #OS='Linux'
   if [ -n "$DISPLAY" ]; then
@@ -26,7 +25,6 @@ elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
     eval "$(pyenv init -)"
     eval "$(pyenv virtualenv-init -)"
   fi
-  exec fish
 elif [ "$(expr substr $(uname -s) 1 10)" == 'MINGW32_NT' ]; then
   OS='Cygwin'
 else
