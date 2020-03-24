@@ -11,7 +11,7 @@ eval (pyenv init - | source)
 set PATH $HOME/.cargo/bin $PATH
 
 # set exa path
-set PATH /home/archie/.cargo/bin $PATH
+set PATH $HOME/.cargo/bin $PATH
 alias ls='exa --icons'
 
 # set poetry path
