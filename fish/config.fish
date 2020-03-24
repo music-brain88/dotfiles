@@ -4,8 +4,15 @@ alias vim='nvim'
 set PATH $TO_FISH_PATH $PATH
 
 # set pyenv path
-set -x PATH $HOME/.pyenv/shims $PATH
+set PATH $HOME/.pyenv/bin $PATH
 eval (pyenv init - | source)
+
+# set cargo path
+set PATH $HOME/.cargo/bin $PATH
+
+# set exa path
+set PATH $HOME/.cargo/bin $PATH
+alias ls='exa --icons'
 
 # set poetry path
 # set -U PATH $HOME/.poetry/env $PATH

@@ -65,14 +65,9 @@ if OSTYPE == 'Linux\n'
   let g:python_host_prog  = $PYENV_ROOT.'/versions/neovim2/bin/python'
 endif
 
-
-"let g:python3_host_prog = glob($PYENV_ROOT.'/versions/neovim3/bin/python')
-"if empty(glob(g:python3_host_prog))
-let g:python3_host_prog = $PYENV_ROOT.'/versions/neovim3/bin/python'
-"endif
-" if has('nvim') && isdirectory( $PYENV_ROOT.'/versions/neovim3' )
-"   let g:python3_host_prog = '/home/archie/.pyenv/versions/neovim3'
-" endif
+if has('nvim') && isdirectory( $PYENV_ROOT.'/versions/neovim3' )
+  let g:python3_host_prog = '/home/archie/.pyenv/versions/neovim3'
+endif
 
 "dein Scripts-----------------------------
 let s:dein_dir = expand('~/.cache/dein')
@@ -102,8 +97,6 @@ if dein#load_state(s:dein_dir)
   call dein#add('neoclide/coc.nvim', {'merge':0, 'rev': 'release'})
 
   " Add or remove your plugins here like this:
-  "call dein#add('Shougo/neosnippet.vim')
-  "call dein#add('Shougo/neosnippet-snippets')
   call dein#add('Shougo/denite.nvim')
   if !has('nvim')
     call dein#add('roxma/nvim-yarp')
