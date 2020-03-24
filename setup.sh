@@ -28,6 +28,9 @@ fi
 ln -snfv ~/dotfiles/nvim/init.vim ~/.config/nvim/init.vim
 ln -snfv ~/dotfiles/tmux/.tmux.conf ~/.tmux.conf
 
+echo "install Rust compiler"
+curl https://sh.rustup.rs -sSf | sh
+
 # fish settings
 ln -snfv ~/dotfiles/fish/config.fish ~/.config/fish/config.fish
 ln -snfv ~/dotfiles/fish/completions/fisher.fish ~/.config/fish/completions/fisher.fish
