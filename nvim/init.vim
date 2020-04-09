@@ -94,7 +94,6 @@ if dein#load_state(s:dein_dir)
   " Let dein manage dein
   " Required:
   call dein#add('$HOME/.cache/dein/repos/github.com/Shougo/dein.vim')
-  call dein#add('neoclide/coc.nvim', {'merge':0, 'rev': 'release'})
 
   " Add or remove your plugins here like this:
   call dein#add('Shougo/denite.nvim')

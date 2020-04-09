@@ -10,7 +10,11 @@
       "python": {
         "command": "python",
         "filetypes": ["python"]
+      },
+      "rust": {
+        "command": "rls",
+        "filetypes": ["rust"],
+        "rootPatterns": ["Cargo.toml"]
       }
-  },
-  "python.jediEnabled": false
+  }
 }
