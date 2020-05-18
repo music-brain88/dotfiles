@@ -12,3 +12,6 @@ help:
 	@echo "install => Run update, deploy, init"
 	@echo "clean   => remove the dotfiles"
 	@echo "destroy => remove the dotfiles and this repo"
+
+init:
+	@DOTPAH=$(DOTPATH) bash $(DOTPATH)/etc/init/init.sh
