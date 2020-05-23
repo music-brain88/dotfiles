@@ -1,0 +1,28 @@
+[[plugins]]
+repo = 'rcmdnk/vim-markdown'
+on_ft = ['md', 'markdown']
+
+
+[[plugins]]
+repo = 'prabirshrestha/async.vim'
+
+
+[[plugins]]
+repo = 'prabirshrestha/asyncomplete.vim'
+hook_add = '''
+let g:asyncomplete_log_file = expand('~/asyncomplete.log')
+let g:asyncomplete_auto_popup = 1
+imap <c-space> <Plug>(asyncomplete_force_refresh)
+inoremap <expr> <Tab> pumvisible() ? "\<C-n>" : "\<Tab>"
+inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
+inoremap <expr> <cr> pumvisible() ? "\<C-y>" : "\<cr>"
+'''
+
+# 非同期
+[[plugins]]
+repo = 'prabirshrestha/asyncomplete-lsp.vim'
+merged = 0
+
+[[plugins]]
+repo = 'thinca/vim-quickrun'
+

@@ -1,0 +1,26 @@
+{
+  "suggest.noselect": true,
+  "suggest.preferCompleteThanJumpPlaceholder": true,
+  "languageserver": {
+      "dockerfile": {
+        "command": "docker-languageserver",
+        "filetypes": ["dockerfile"],
+        "args": ["--stdio"]
+      },
+      "python": {
+        "command": "python",
+        "filetypes": ["python"]
+      },
+      "rust": {
+        "command": "rls",
+        "filetypes": ["rust"],
+        "rootPatterns": ["Cargo.toml"]
+      },
+      "bash": {
+        "command": "bash-language-server",
+        "args": ["start"],
+        "filetypes": ["sh"],
+        "ignoredRootPaths": ["~"]
+      }
+  }
+}
