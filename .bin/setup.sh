@@ -52,6 +52,7 @@ if type fisher > /dev/null 2>&1; then
   echo "Finish install fisher"
 else
   echo "fisher is installed"
+  fisher
 fi
 
 if [ ! -d ~/.cache/fish ]; then
