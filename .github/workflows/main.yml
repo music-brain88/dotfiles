@@ -15,7 +15,7 @@ jobs:
           sudo apt update
           sudo apt install -y git 
       - name: Run setup script
-        run: bash setup.sh
+        run: make deploy
 
   macos:
     runs-on: macos-latest
@@ -26,7 +26,7 @@ jobs:
         brew upgrade -f
         brew install -f git 
     - name: Run setup script
-      run: bash setup.sh
+      run: make deploy
    
   archlinux:
     runs-on: ubuntu-18.04
@@ -38,4 +38,4 @@ jobs:
           pacman -Syu --noconfirm
           pacman -S git --noconfirm
       - name: Run setup script
-        run: bash setup.sh
+        run: make deploy
