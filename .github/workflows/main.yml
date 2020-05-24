@@ -39,6 +39,6 @@ jobs:
           pacman -Syu --noconfirm
           pacman -S git --noconfirm
           pacman -S make --noconfirm
-          pacman -S fish
+          pacman -S fish --noconfirm
       - name: Run setup script
         run: make deploy
