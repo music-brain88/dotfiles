@@ -46,7 +46,6 @@ else
 fi
 
 if type fisher > /dev/null 2>&1; then
-  echo "Fisher is not exists"
   echo "Install Fisher"
   curl https://git.io/fisher --create-dirs -sLo ~/.config/fish/functions/fisher.fish
   echo "Finish install fisher"
