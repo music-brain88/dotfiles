@@ -40,6 +40,7 @@ ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
 if type rustup > /dev/null 2>&1; then
   echo "install Rust compiler"
   curl https://sh.rustup.rs -sSf | sh -s -- -y
+  source $HOME/.cargo/env
 else
   echo "Rust is installed"
 fi
