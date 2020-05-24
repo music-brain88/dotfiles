@@ -44,6 +44,13 @@ else
   echo "Rust is Installed"
 fi
 
+if type fisher > /dev/null 2>&1; then
+  echo "Fisher is not exists"
+  echo "Install Fisher"
+  curl https://git.io/fisher --create-dirs -sLo ~/.config/fish/functions/fisher.fish
+  echo "Finish install fisher"
+fi
+
 # fish settings
 ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
 ln -snfv ~/dotfiles/.config/fish/completions/fisher.fish ~/.config/fish/completions/fisher.fish
