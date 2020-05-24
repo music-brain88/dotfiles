@@ -54,7 +54,7 @@ else
   echo "fisher is installed"
 fi
 
-if [ ! -d ~/.cache/nvim ]; then
+if [ ! -d ~/.cache/fish ]; then
   mkdir -p ~/.config/fish/
   touch ~/.config/fish/config.fish
 fi
