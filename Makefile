@@ -19,7 +19,7 @@ init:
 deploy:
 	@echo '==> Start to deploy dotfiles to home directory.'
 	@echo ''
-	# @$(foreach val, $(DOTFILES), ln -sfnv $(abspath $(val)) $(HOME)/$(val);)
+	bash .bin/setup.sh
 
 update:
 	git pull origin master
