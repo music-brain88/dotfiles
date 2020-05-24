@@ -12,8 +12,9 @@ jobs:
       - uses: actions/checkout@v1
       - name: Install required packages
         run: |
+          sudo apt-add-repository ppa:fish-shell/release-3
           sudo apt update
-          sudo apt install -y git 
+          sudo apt install -y git fish
       - name: Run setup script
         run: make deploy
 
@@ -24,7 +25,7 @@ jobs:
     - name: Install required packages
       run: |
         brew upgrade -f
-        brew install -f git 
+        brew install -f git fish 
     - name: Run setup script
       run: make deploy
    
@@ -38,5 +39,6 @@ jobs:
           pacman -Syu --noconfirm
           pacman -S git --noconfirm
           pacman -S make --noconfirm
+          pacman -S fish
       - name: Run setup script
         run: make deploy
