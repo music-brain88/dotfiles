@@ -39,7 +39,7 @@ ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
 
 if type rustup > /dev/null 2>&1; then
   echo "install Rust compiler"
-  curl https://sh.rustup.rs -sSf | sh -y
+  curl https://sh.rustup.rs -sSf | sh -s -- -y
 else
   echo "Rust is installed"
 fi
@@ -51,6 +51,11 @@ if type fisher > /dev/null 2>&1; then
   echo "Finish install fisher"
 else
   echo "fisher is installed"
+fi
+
+if [ ! -d ~/.cache/nvim ]; then
+  mkdir -p ~/.config/fish/
+  touch ~/.config/fish/config.fish
 fi
 
 # fish settings
