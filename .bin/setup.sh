@@ -15,12 +15,16 @@ else
   echo "Dein is exists, Skip Download"
 fi
 
-mkdir -p ~/.config/nvim/
+if [ ! -d ~/.cache/nvim ]; then
+  echo "neovim settings is not exists"
+  mkdir -p ~/.config/nvim/
+  touch ~/.config/nvim/init.vim
+else
+  echo "neovim settings file is exists"
+fi
 
-touch ~/.config/nvim/init.vim
-
+# bash_file
 ln -snfv ~/dotfiles/.bashrc ~/.bashrc
-ln -snfv ~/dotfiles/.config/nvim/coc-settings.json ~/.config/nvim/coc-settings.json
 
 # bash_profileが整理されてないので一旦退避
 if [ "$(uname)" == 'Darwin' ]; then
@@ -30,6 +34,7 @@ elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
 fi
 
 ln -snfv ~/dotfiles/.config/nvim/init.vim ~/.config/nvim/init.vim
+ln -snfv ~/dotfiles/.config/nvim/coc-settings.json ~/.config/nvim/coc-settings.json
 ln -snfv ~/dotfiles/tmux/.tmux.conf ~/.tmux.conf
 
 if !(type rustup > /dev/null 2>&1); then
