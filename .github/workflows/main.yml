@@ -37,7 +37,6 @@ jobs:
       - name: Install required packages
         run: |
           pacman -Syu --noconfirm
-          pacman -S git make fish awk --noconfirm
       - name: Run setup script
         run: make deploy
       - name: Run initial script
