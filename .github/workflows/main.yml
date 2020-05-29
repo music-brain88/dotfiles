@@ -37,6 +37,7 @@ jobs:
       - name: Install required packages
         run: |
           pacman -Syu --noconfirm
+          pacman -S make --noconfirm
       - name: Run initial script
         run: make init
       - name: Run setup script
