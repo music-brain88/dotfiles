@@ -4,51 +4,98 @@ set -u
 
 echo "Start Initialization"
 
+command_list=("rustup" "fish" "fisher" "nvim" "npm")
 
+OS=''
+command_exists_flag=''
 
-if !(type rustup > /dev/null 2>&1); then
-  echo "install Rust compiler"
-  curl https://sh.rustup.rs -sSf | sh -s -- -y
-  source $HOME/.cargo/env
-else
-  echo "Rust is installed"
-fi
-
-if !(type fisher > /dev/null 2>&1); then
-  echo "Install Fisher"
-  curl https://git.io/fisher --create-dirs -sLo ~/.config/fish/functions/fisher.fish
-  echo "Finish install fisher"
-else
-  echo "fisher is installed"
-  fisher
-fi
-
-
-function check_CurrentOS() {
-  ## Android
-  if [ $(uname -o) = "Android" ]; then
-    
-    echo "Android OS"
-
-  elif [[ $(uname) = "Linux" ]]; then
-
-    ## Arch Linux
-    if [ -f /etc/arch-release ]; then
-      echo "CurrentOS is Arch Linux"  
-    ## Ubuntu / Debian
-    elif [ -f /etc/debian_version ] || [ -f /etc/debian_release ]; then
-      echo "CurrentOS is Debian/Ubuntu"  
-
+install() {
+  if [ $OS = 'Arch' ];then
+    if [ "`whoami`" != "root" ]; then
+      echo "Require root privilege"
     fi
-
-  ## MacOS
-  elif [[ $(uname) = "Darwin" ]]; then
-
-    echo "CurrentOS is MacOS"
-      
-  else
-    # F0ck wind0ws. G0 t0 he11!
-    error "Your platform ($(uname -a)) is not supported."
-    exit 1
+    echo "root!"
+  elif [ $OS = 'Ubuntu' ];then
+   echo "sample" 
+  elif [ $OS = 'Darwin' ];then
+    echo "sample"
   fi
 }
+
+check_command_list() {
+  for i in ${command_list[@]};
+  do
+    echo is_exists $i
+  done
+}
+
+# check command
+is_exists() {
+  if !(type $1 > /dev/null 2>&1); then
+    echo "install `$1`"
+    install
+  else
+    echo "`$1` is exists"
+    install
+  fi
+}
+
+install_rust() {
+  curl https://sh.rustup.rs -sSf | sh -s -- -y
+  source $HOME/.cargo/env
+}
+
+install_fisher() {
+  curl https://git.io/fisher --create-dirs -sLo ~/.config/fish/functions/fisher.fish
+}
+if [ $(uname -o) = "Android" ]; then
+
+  echo "Android OS"
+
+elif [[ $(uname) = "Linux" ]]; then
+
+  ## Arch Linux
+  if [ -f /etc/arch-release ]; then
+    echo "CurrentOS is Arch Linux"  
+    OS=`echo "Arch"`
+    check_command_list
+  ## Ubuntu / Debian
+  elif [ -f /etc/debian_version ] || [ -f /etc/debian_release ]; then
+    echo "CurrentOS is Debian/Ubuntu"  
+    OS=`echo "Ubuntu"`
+    check_command_list
+  fi
+## MacOS
+elif [[ $(uname) = "Darwin" ]]; then
+  echo "CurrentOS is MacOS"
+    OS=`echo "Darwin"`
+    check_command_list
+else
+  # F0ck wind0ws. G0 t0 he11!
+  error "Your platform ($(uname -a)) is not supported."
+  exit 1
+fi
+
+
+
+
+
+
+# if !(type rustup > /dev/null 2>&1); then
+#   echo "install Rust compiler"
+#   curl https://sh.rustup.rs -sSf | sh -s -- -y
+#   source $HOME/.cargo/env
+# else
+#   echo "Rust is installed"
+# fi
+# 
+# if !(type fisher > /dev/null 2>&1); then
+#   echo "Install Fisher"
+#   curl https://git.io/fisher --create-dirs -sLo ~/.config/fish/functions/fisher.fish
+#   echo "Finish install fisher"
+# else
+#   echo "fisher is installed"
+#   fisher
+# fi
+
+
