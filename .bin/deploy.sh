@@ -62,10 +62,10 @@ fi
 
 # fish settings
 ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
-ln -snfv ~/dotfiles/.config/fish/completions/fisher.fish ~/.config/fish/completions/fisher.fish
-ln -snfv ~/dotfiles/.config/fish/completions/git.fish ~/.config/fish/completions/git.fish
-ln -snfv ~/dotfiles/.config/fish/completions/pyenv.fish ~/.config/fish/completions/pyenv.fish
-ln -snfv ~/dotfiles/.config/fish/completions/poetry.fish ~/.config/fish/completions/poetry.fish
+# ln -snfv ~/dotfiles/.config/fish/completions/fisher.fish ~/.config/fish/completions/fisher.fish
+# ln -snfv ~/dotfiles/.config/fish/completions/git.fish ~/.config/fish/completions/git.fish
+# ln -snfv ~/dotfiles/.config/fish/completions/pyenv.fish ~/.config/fish/completions/pyenv.fish
+# ln -snfv ~/dotfiles/.config/fish/completions/poetry.fish ~/.config/fish/completions/poetry.fish
 
 echo "finish setup"
 echo "next you call dein script"
