@@ -19,7 +19,7 @@ init:
 deploy:
 	@echo '==> Start to deploy dotfiles to home directory.'
 	@echo ''
-	bash .bin/setup.sh
+	bash .bin/deploy.sh
 
 update:
 	git pull origin master
