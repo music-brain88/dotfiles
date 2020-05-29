@@ -4,7 +4,7 @@ set -u
 
 echo "Start Initialization"
 
-command_list=("rustup" "fish" "fisher" "nvim" "npm", "awk")
+command_list=("rustup" "fish" "fisher" "nvim" "npm" "awk")
 
 OS=''
 command_exists_flag=''
