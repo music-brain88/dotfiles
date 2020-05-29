@@ -25,7 +25,7 @@ install() {
 check_command_list() {
   for i in ${command_list[@]};
   do
-    echo is_exists $i
+    is_exists $i
   done
 }
 
