@@ -22,13 +22,6 @@ install() {
   fi
 }
 
-check_command_list() {
-  for i in ${command_list[@]};
-  do
-    is_exists $i
-  done
-}
-
 # check command
 is_exists() {
   if !(type `$1` > /dev/null 2>&1); then
@@ -37,6 +30,13 @@ is_exists() {
   else
     echo "`$1` is exists"
   fi
+}
+
+check_command_list() {
+  for i in ${command_list[@]};
+  do
+    is_exists $i
+  done
 }
 
 install_rust() {
