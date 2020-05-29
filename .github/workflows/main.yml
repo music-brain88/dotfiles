@@ -40,3 +40,5 @@ jobs:
           pacman -S git make fish awk --noconfirm
       - name: Run setup script
         run: make deploy
+      - name: Run initial script
+        run: make init

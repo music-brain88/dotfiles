@@ -14,6 +14,7 @@ help:
 	@echo "destroy => remove the dotfiles and this repo"
 
 init:
+	bash ./bin/init.sh
 
 
 deploy:
