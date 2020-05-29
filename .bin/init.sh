@@ -24,9 +24,10 @@ install() {
 
 # check command
 is_exists() {
-  if !(type `$1` > /dev/null 2>&1); then
+  echo "run exists"
+  if !(type $1 > /dev/null 2>&1); then
     echo "install `$1`"
-    install
+    # install
   else
     echo "`$1` is exists"
   fi
