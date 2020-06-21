@@ -16,7 +16,6 @@ help:
 init:
 	bash .bin/init.sh
 
-
 deploy:
 	@echo '==> Start to deploy dotfiles to home directory.'
 	@echo ''
