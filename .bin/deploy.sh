@@ -88,3 +88,9 @@ if [ ! -d ~/.config/alacritty ]; then
 fi
 
 ln -snfv ~/dotfiles/.config/alacritty/alacritty.yml ~/.config/alacritty/alacritty.yml
+
+echo "i3 setting"
+if [ ! -d ~/.config/i3 ]; then
+  mkdir -p ~/.config/i3/
+fi
+ln -snfv ~/dotfiles/.config/i3/config ~/.config/i3/config
