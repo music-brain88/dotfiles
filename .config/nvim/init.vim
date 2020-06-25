@@ -19,6 +19,7 @@
 "                                                                                          "Y88888P'                                                  
 "
 
+set t_Co=256
 set ttimeoutlen=10
 
 set encoding=utf-8
@@ -38,6 +39,7 @@ set wrapscan
 set spell
 set spelllang=en,cjk
 set noswapfile
+set relativenumber
 
 "clip board
 set clipboard=unnamedplus
