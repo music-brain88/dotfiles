@@ -70,9 +70,14 @@ ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
 echo "finish setup"
 echo "next you call dein script"
 
-ln -snfv ~/dotfiles/.config/ranger/rifle.conf ~/.config/ranger/rifle.conf
-ln -snfv ~/dotfiles/.config/ranger/commands.py ~/.config/ranger/commands.py
-ln -snfv ~/dotfiles/.config/ranger/commands_full.py ~/.config/ranger/commands_full.py
+
+echo "ranger setting"
+if !(type ranger > /dev/null 2>&1); then
+  git clone git@github.com:ranger/ranger.git
+  cd ranger
+  make install
+  mkdir -p ~/.config/ranger/
+fi
 ln -snfv ~/dotfiles/.config/ranger/rc.conf ~/.config/ranger/rc.conf
 ln -snfv ~/dotfiles/.config/ranger/scope.sh ~/.config/ranger/scope.sh
 
