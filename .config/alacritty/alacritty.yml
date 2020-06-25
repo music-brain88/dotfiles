@@ -75,6 +75,12 @@ font:
   # Point size
   size: 14.0
 
+  offset:
+    x: -1
+    y: -1
+
+live_config_reload: true
+
 colors:
   # Default colors
   primary:
@@ -119,8 +125,11 @@ colors:
     white:   '0x828791'
 
 background_opacity: 0.8
+
 key_bindings:
-  - { key: R, mods: Control, command: { program: "ranger" } }
-  - { key: Key0,     mods: Control,                 action: ResetFontSize    }
-  - { key: Equals,   mods: Control,                 action: IncreaseFontSize }
-  - { key: Minus,    mods: Control,                 action: DecreaseFontSize }
+  - { key: V, mods: Control|Shift, action: Paste }
+  - { key: C, mods: Control|Shift, action: Copy }
+  - { key: R, mods: Control, command: { program: ranger } }
+  - { key: Key0, mods: Control, action: ResetFontSize }
+  - { key: Equals, mods: Control, action: IncreaseFontSize }
+  - { key: Minus, mods: Control, action: DecreaseFontSize }
