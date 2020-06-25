@@ -81,3 +81,10 @@ fi
 ln -snfv ~/dotfiles/.config/ranger/rc.conf ~/.config/ranger/rc.conf
 ln -snfv ~/dotfiles/.config/ranger/scope.sh ~/.config/ranger/scope.sh
 
+
+echo "alacritty setting"
+if [ ! -d ~/.config/alacritty ]; then
+  mkdir -p ~/.config/alacritty
+fi
+
+ln -snfv ~/dotfiles/.config/alacritty/alacritty.yml ~/.config/alacritty/alacritty.yml
