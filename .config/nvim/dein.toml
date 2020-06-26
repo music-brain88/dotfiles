@@ -53,6 +53,9 @@ call denite#custom#var('grep', 'recursive_opts', [])
 call denite#custom#var('grep', 'pattern_opt', ['--regexp'])
 call denite#custom#var('grep', 'separator', ['--'])
 call denite#custom#var('grep', 'final_opts', [])
+" Change file/rec command.
+call denite#custom#var('file/rec', 'command',
+\ ['rg', '--files', '--glob', '!.git'])
 '''
 
 
