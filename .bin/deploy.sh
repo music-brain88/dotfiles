@@ -37,28 +37,60 @@ ln -snfv ~/dotfiles/.config/nvim/init.vim ~/.config/nvim/init.vim
 ln -snfv ~/dotfiles/.config/nvim/coc-settings.json ~/.config/nvim/coc-settings.json
 ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
 
-if type rustup > /dev/null 2>&1; then
+if !(type rustup > /dev/null 2>&1); then
   echo "install Rust compiler"
-  curl https://sh.rustup.rs -sSf | sh -y
+  curl https://sh.rustup.rs -sSf | sh -s -- -y
+  source $HOME/.cargo/env
 else
   echo "Rust is installed"
 fi
 
-if type fisher > /dev/null 2>&1; then
-  echo "Fisher is not exists"
+if !(type fisher > /dev/null 2>&1); then
   echo "Install Fisher"
   curl https://git.io/fisher --create-dirs -sLo ~/.config/fish/functions/fisher.fish
   echo "Finish install fisher"
 else
   echo "fisher is installed"
+  fisher
+fi
+
+if [ ! -d ~/.cache/fish ]; then
+  mkdir -p ~/.config/fish/
+  touch ~/.config/fish/config.fish
+  fish fish_plugin_setup.fish
 fi
 
 # fish settings
 ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
-ln -snfv ~/dotfiles/.config/fish/completions/fisher.fish ~/.config/fish/completions/fisher.fish
-ln -snfv ~/dotfiles/.config/fish/completions/git.fish ~/.config/fish/completions/git.fish
-ln -snfv ~/dotfiles/.config/fish/completions/pyenv.fish ~/.config/fish/completions/pyenv.fish
-ln -snfv ~/dotfiles/.config/fish/completions/poetry.fish ~/.config/fish/completions/poetry.fish
+# ln -snfv ~/dotfiles/.config/fish/completions/fisher.fish ~/.config/fish/completions/fisher.fish
+# ln -snfv ~/dotfiles/.config/fish/completions/git.fish ~/.config/fish/completions/git.fish
+# ln -snfv ~/dotfiles/.config/fish/completions/pyenv.fish ~/.config/fish/completions/pyenv.fish
+# ln -snfv ~/dotfiles/.config/fish/completions/poetry.fish ~/.config/fish/completions/poetry.fish
 
 echo "finish setup"
 echo "next you call dein script"
+
+
+echo "ranger setting"
+if !(type ranger > /dev/null 2>&1); then
+  git clone git@github.com:ranger/ranger.git
+  cd ranger
+  make install
+  mkdir -p ~/.config/ranger/
+fi
+ln -snfv ~/dotfiles/.config/ranger/rc.conf ~/.config/ranger/rc.conf
+ln -snfv ~/dotfiles/.config/ranger/scope.sh ~/.config/ranger/scope.sh
+
+
+echo "alacritty setting"
+if [ ! -d ~/.config/alacritty ]; then
+  mkdir -p ~/.config/alacritty
+fi
+
+ln -snfv ~/dotfiles/.config/alacritty/alacritty.yml ~/.config/alacritty/alacritty.yml
+
+echo "i3 setting"
+if [ ! -d ~/.config/i3 ]; then
+  mkdir -p ~/.config/i3/
+fi
+ln -snfv ~/dotfiles/.config/i3/config ~/.config/i3/config

@@ -14,12 +14,12 @@ help:
 	@echo "destroy => remove the dotfiles and this repo"
 
 init:
-	@DOTPAH=$(DOTPATH) bash $(DOTPATH)/etc/init/init.sh
+	bash .bin/init.sh
 
 deploy:
 	@echo '==> Start to deploy dotfiles to home directory.'
 	@echo ''
-	bash .bin/setup.sh
+	bash .bin/deploy.sh
 
 update:
 	git pull origin master

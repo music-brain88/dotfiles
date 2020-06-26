@@ -62,6 +62,12 @@ autocmd FileType defx call s:defx_my_settings()
     " open
     nnoremap <silent><buffer><expr> <CR>
     \ defx#do_action('open')
+    " create new file
+    nnoremap <silent><buffer><expr> n
+    \ defx#do_action('new_file')
+    " create new directory
+    nnoremap <silent><buffer><expr> N
+    \ defx#do_action('new_directory')
     " open file oriental
     nnoremap <silent><buffer><expr> -
     \ defx#do_action('open', 'split')
