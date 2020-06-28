@@ -68,7 +68,7 @@ if OSTYPE == 'Linux\n'
 endif
 
 if has('nvim') && isdirectory( $PYENV_ROOT.'/versions/neovim3' )
-  let g:python3_host_prog = '/home/archie/.pyenv/versions/neovim3/bin/python'
+  let g:python3_host_prog = $PYENV_ROOT.'/versions/neovim3/bin/python'
 endif
 
 "dein Scripts-----------------------------
