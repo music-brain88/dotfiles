@@ -65,13 +65,7 @@ fi
 
 # fish settings
 ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
-# ln -snfv ~/dotfiles/.config/fish/completions/fisher.fish ~/.config/fish/completions/fisher.fish
-# ln -snfv ~/dotfiles/.config/fish/completions/git.fish ~/.config/fish/completions/git.fish
-# ln -snfv ~/dotfiles/.config/fish/completions/pyenv.fish ~/.config/fish/completions/pyenv.fish
-# ln -snfv ~/dotfiles/.config/fish/completions/poetry.fish ~/.config/fish/completions/poetry.fish
 
-echo "finish setup"
-echo "next you call dein script"
 
 
 echo "ranger setting"
@@ -89,6 +83,7 @@ echo "alacritty setting"
 if [ ! -d ~/.config/alacritty ]; then
   mkdir -p ~/.config/alacritty
 fi
+echo "alacritty setting finish"
 
 ln -snfv ~/dotfiles/.config/alacritty/alacritty.yml ~/.config/alacritty/alacritty.yml
 
@@ -97,3 +92,8 @@ if [ ! -d ~/.config/i3 ]; then
   mkdir -p ~/.config/i3/
 fi
 ln -snfv ~/dotfiles/.config/i3/config ~/.config/i3/config
+echo "i3 setting finish"
+
+echo "finish setup"
+echo "next you call dein script"
+
