@@ -16,7 +16,6 @@ coreutils
 cryptsetup
 cuda
 cudnn
-deepin-community-wallpapers
 device-mapper
 dhcpcd
 diffutils
@@ -79,6 +78,7 @@ man-db
 man-pages
 mdadm
 nano
+neofetch
 neovim
 netctl
 node-gyp
