@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -u
+set -ue
 
 echo "start setup..."
 
@@ -25,6 +25,12 @@ fi
 
 # bash_file
 ln -snfv ~/dotfiles/.bashrc ~/.bashrc
+
+# pyenv install
+if !(type pyenv > /dev/null 2>&1); then
+  git clone https://github.com/pyenv/pyenv.git ~/.pyenv
+  git clone https://github.com/pyenv/pyenv-virtualenv.git $(pyenv root)/plugins/pyenv-virtualenv
+fi
 
 # bash_profileが整理されてないので一旦退避
 if [ "$(uname)" == 'Darwin' ]; then
@@ -70,10 +76,11 @@ ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
 
 echo "ranger setting"
 if !(type ranger > /dev/null 2>&1); then
-  git clone git@github.com:ranger/ranger.git
+  git clone git@github.com:ranger/ranger.git ~/ranger
   cd ranger
   make install
   mkdir -p ~/.config/ranger/
+  cd
 fi
 ln -snfv ~/dotfiles/.config/ranger/rc.conf ~/.config/ranger/rc.conf
 ln -snfv ~/dotfiles/.config/ranger/scope.sh ~/.config/ranger/scope.sh
