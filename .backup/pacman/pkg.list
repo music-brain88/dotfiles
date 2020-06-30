@@ -133,7 +133,6 @@ xfce4-terminal
 xfsprogs
 xorg-bdftopcf
 xorg-font-util
-xorg-font-utils
 xorg-mkfontscale
 xorg-server
 xorg-xinit
