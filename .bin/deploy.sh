@@ -29,7 +29,7 @@ ln -snfv ~/dotfiles/.bashrc ~/.bashrc
 # pyenv install
 if !(type pyenv > /dev/null 2>&1); then
   git clone https://github.com/pyenv/pyenv.git ~/.pyenv
-  git clone https://github.com/pyenv/pyenv-virtualenv.git $(pyenv root)/plugins/pyenv-virtualenv
+  git clone https://github.com/pyenv/pyenv-virtualenv.git ~/.pyenv/plugins/pyenv-virtualenv
 fi
 
 # bash_profileが整理されてないので一旦退避
