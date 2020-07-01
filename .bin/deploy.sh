@@ -46,6 +46,7 @@ ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
 if !(type rustup > /dev/null 2>&1); then
   echo "install Rust compiler"
   curl https://sh.rustup.rs -sSf | sh -s -- -y
+  echo "finish install rust"
   source $HOME/.cargo/env
   cargo install fd-find
   cargo install ripgrep
