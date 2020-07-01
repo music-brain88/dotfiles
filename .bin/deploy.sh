@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -u
+set -ue
 
 echo "start setup..."
 
@@ -26,6 +26,12 @@ fi
 # bash_file
 ln -snfv ~/dotfiles/.bashrc ~/.bashrc
 
+# pyenv install
+if !(type pyenv > /dev/null 2>&1); then
+  git clone https://github.com/pyenv/pyenv.git ~/.pyenv
+  git clone https://github.com/pyenv/pyenv-virtualenv.git ~/.pyenv/plugins/pyenv-virtualenv
+fi
+
 # bash_profileが整理されてないので一旦退避
 if [ "$(uname)" == 'Darwin' ]; then
   ln -snfv ~/dotfiles/darwin/.bash_profile ~/.bash_profile
@@ -40,6 +46,7 @@ ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
 if !(type rustup > /dev/null 2>&1); then
   echo "install Rust compiler"
   curl https://sh.rustup.rs -sSf | sh -s -- -y
+  echo "finish install rust"
   source $HOME/.cargo/env
   cargo install fd-find
   cargo install ripgrep
@@ -68,15 +75,16 @@ ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
 
 
 
-echo "ranger setting"
-if !(type ranger > /dev/null 2>&1); then
-  git clone git@github.com:ranger/ranger.git
-  cd ranger
-  make install
-  mkdir -p ~/.config/ranger/
-fi
-ln -snfv ~/dotfiles/.config/ranger/rc.conf ~/.config/ranger/rc.conf
-ln -snfv ~/dotfiles/.config/ranger/scope.sh ~/.config/ranger/scope.sh
+# echo "ranger setting"
+# if !(type ranger > /dev/null 2>&1); then
+#   git clone git@github.com:ranger/ranger.git ~/ranger
+#   cd ranger
+#   make install
+#   mkdir -p ~/.config/ranger/
+#   cd
+# fi
+# ln -snfv ~/dotfiles/.config/ranger/rc.conf ~/.config/ranger/rc.conf
+# ln -snfv ~/dotfiles/.config/ranger/scope.sh ~/.config/ranger/scope.sh
 
 
 echo "alacritty setting"

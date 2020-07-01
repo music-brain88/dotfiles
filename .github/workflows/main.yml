@@ -37,7 +37,7 @@ jobs:
       - name: Install required packages
         run: |
           pacman -Syu --noconfirm
-          pacman -S make --noconfirm
+          pacman -S make git gcc awk fish --noconfirm
       - name: Run initial script
         run: make init
       - name: Run setup script
