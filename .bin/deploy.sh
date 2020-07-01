@@ -82,8 +82,8 @@ ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
 #   mkdir -p ~/.config/ranger/
 #   cd
 # fi
-ln -snfv ~/dotfiles/.config/ranger/rc.conf ~/.config/ranger/rc.conf
-ln -snfv ~/dotfiles/.config/ranger/scope.sh ~/.config/ranger/scope.sh
+# ln -snfv ~/dotfiles/.config/ranger/rc.conf ~/.config/ranger/rc.conf
+# ln -snfv ~/dotfiles/.config/ranger/scope.sh ~/.config/ranger/scope.sh
 
 
 echo "alacritty setting"
