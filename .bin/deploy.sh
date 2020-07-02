@@ -15,6 +15,9 @@ else
   echo "Dein is exists, Skip Download"
 fi
 
+# Install NodeJs
+curl -sL install-node.now.sh/lts | bash
+
 if [ ! -d ~/.cache/nvim ]; then
   echo "neovim settings is not exists"
   mkdir -p ~/.config/nvim/
