@@ -33,7 +33,7 @@ build:
 	@docker build . -t arch
 
 run:
-	@docker run -d -v $$PWD:/home --name arch arch:latest
+	@docker run -itd -v $$PWD:/root --name arch arch:latest
 
 start:
 	@docker start arch

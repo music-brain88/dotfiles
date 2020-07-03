@@ -1,4 +1,6 @@
 FROM archlinux:latest
 
 RUN pacman -Syu --noconfirm
-RUN pacman -S make awk git gcc fish --noconfirm
+RUN pacman -S neovim make awk git gcc fish --noconfirm
+
+WORKDIR /root
