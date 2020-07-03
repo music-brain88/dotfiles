@@ -7,7 +7,7 @@ set -o nounset    # error when referencing undefined variable
 
 # Install latest nodejs
 if [ ! -x "$(command -v node)" ]; then
-    curl --fail -LSs https://install-node.now.sh/latest | sh
+    curl --fail -LSs install-node.now.sh/lts | bash -s -- --yes
     export PATH="/usr/local/bin/:$PATH"
     # Or use apt-get
     # sudo apt-get install nodejs
