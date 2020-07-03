@@ -2,6 +2,16 @@
 
 set -ue
 
+set -o errexit    # exit when command fails
+set -o nounset    # error when referencing undefined variable
+
+# Install latest nodejs
+if [ ! -x "$(command -v node)" ]; then
+    curl --fail -LSs https://install-node.now.sh/latest | sh
+    export PATH="/usr/local/bin/:$PATH"
+    # Or use apt-get
+    # sudo apt-get install nodejs
+fi
 echo "start setup..."
 
 # For example, we just use `~/.cache/dein` as installation directory
@@ -14,9 +24,6 @@ if [ ! -d ~/.cache/dein ]; then
 else
   echo "Dein is exists, Skip Download"
 fi
-
-# Install NodeJs
-curl -sL install-node.now.sh/lts | bash
 
 if [ ! -d ~/.cache/nvim ]; then
   echo "neovim settings is not exists"
