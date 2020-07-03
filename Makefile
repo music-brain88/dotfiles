@@ -30,10 +30,10 @@ update:
 # Use for Docker test
 
 build:
-	@docker build . -t arch
+	@docker build -f ../dotfiles/Dockerfile -t arch ..
 
 run:
-	@docker run -itd -v $$PWD:/root --name arch arch:latest
+	@docker run -itd --cpu-shares=4096 -m 16G --name arch arch:latest
 
 start:
 	@docker start arch
