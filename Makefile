@@ -26,3 +26,24 @@ update:
 	git submodule init
 	git submodule update
 	git submodule foreach git pull origin master
+
+# Use for Docker test
+
+build:
+	@docker build . -t arch
+
+run:
+	@docker run -d -v $$PWD:/home --name arch arch:latest
+
+start:
+	@docker start arch
+
+exec:
+	@docker exec -it arch bash 
+
+stop:
+	docker stop arch
+
+remove:
+	make stop
+	@docker rm arch
