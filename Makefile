@@ -30,7 +30,7 @@ update:
 # Use for Docker test
 
 build:
-	@docker build -f ../dotfiles/Dockerfile -t arch ..
+	@docker build -t arch .
 
 run:
 	@docker run -itd --cpu-shares=4096 -m 16G --name arch arch:latest

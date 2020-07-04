@@ -5,4 +5,4 @@ RUN pacman -S neovim make awk git gcc fish --noconfirm
 
 WORKDIR /root
 
-COPY dotfiles .
+RUN git clone git@github.com:music-brain88/dotfiles.git
