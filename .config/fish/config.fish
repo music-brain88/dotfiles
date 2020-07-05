@@ -4,8 +4,8 @@ alias vim='nvim'
 set PATH $TO_FISH_PATH $PATH
 
 # set pyenv path
-set PATH $HOME/.pyenv/bin $PATH
-eval (pyenv init - | source)
+set -Ux PYENV_ROOT $HOME/.pyenv
+set -Ux fish_user_paths $PYENV_ROOT/bin $fish_user_paths
 
 # set cargo path
 set PATH $HOME/.cargo/bin $PATH
