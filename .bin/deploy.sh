@@ -40,9 +40,6 @@ ln -snfv ~/dotfiles/.bashrc ~/.bashrc
 if !(type pyenv > /dev/null 2>&1); then
   git clone https://github.com/pyenv/pyenv.git ~/.pyenv
   git clone https://github.com/pyenv/pyenv-virtualenv.git ~/.pyenv/plugins/pyenv-virtualenv
-  pyenv install 3.7.7
-  pyenv virtualenv 3.7.7 neovim3
-  source ~/.pyenv/versions/neovim3/bin/activate.fish
 fi
 
 # bash_profileが整理されてないので一旦退避
@@ -100,6 +97,11 @@ if [ ! -d ~/.config/i3 ]; then
 fi
 ln -snfv ~/dotfiles/.config/i3/config ~/.config/i3/config
 echo "i3 setting finish"
+
+
+pyenv install 3.7.7
+pyenv virtualenv 3.7.7 neovim3
+source ~/.pyenv/versions/neovim3/bin/activate.fish
 
 echo "finish setup"
 echo "next you call dein script"
