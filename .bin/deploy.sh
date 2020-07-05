@@ -40,6 +40,9 @@ ln -snfv ~/dotfiles/.bashrc ~/.bashrc
 if !(type pyenv > /dev/null 2>&1); then
   git clone https://github.com/pyenv/pyenv.git ~/.pyenv
   git clone https://github.com/pyenv/pyenv-virtualenv.git ~/.pyenv/plugins/pyenv-virtualenv
+  pyenv install 3.7.7
+  pyenv virtualenv 3.7.7 neovim3
+  source ~/.pyenv/versions/neovim3/bin/activate.fish
 fi
 
 # bash_profileが整理されてないので一旦退避
@@ -83,20 +86,6 @@ fi
 # fish settings
 ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
 
-
-
-# echo "ranger setting"
-# if !(type ranger > /dev/null 2>&1); then
-#   git clone git@github.com:ranger/ranger.git ~/ranger
-#   cd ranger
-#   make install
-#   mkdir -p ~/.config/ranger/
-#   cd
-# fi
-# ln -snfv ~/dotfiles/.config/ranger/rc.conf ~/.config/ranger/rc.conf
-# ln -snfv ~/dotfiles/.config/ranger/scope.sh ~/.config/ranger/scope.sh
-
-
 echo "alacritty setting"
 if [ ! -d ~/.config/alacritty ]; then
   mkdir -p ~/.config/alacritty
@@ -114,4 +103,3 @@ echo "i3 setting finish"
 
 echo "finish setup"
 echo "next you call dein script"
-
