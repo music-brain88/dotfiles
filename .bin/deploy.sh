@@ -2,6 +2,16 @@
 
 set -ue
 
+set -o errexit    # exit when command fails
+set -o nounset    # error when referencing undefined variable
+
+# Install latest nodejs
+if [ ! -x "$(command -v node)" ]; then
+    curl --fail -LSs install-node.now.sh/lts | bash -s -- --yes
+    export PATH="/usr/local/bin/:$PATH"
+    # Or use apt-get
+    # sudo apt-get install nodejs
+fi
 echo "start setup..."
 
 # For example, we just use `~/.cache/dein` as installation directory
@@ -73,20 +83,6 @@ fi
 # fish settings
 ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
 
-
-
-# echo "ranger setting"
-# if !(type ranger > /dev/null 2>&1); then
-#   git clone git@github.com:ranger/ranger.git ~/ranger
-#   cd ranger
-#   make install
-#   mkdir -p ~/.config/ranger/
-#   cd
-# fi
-# ln -snfv ~/dotfiles/.config/ranger/rc.conf ~/.config/ranger/rc.conf
-# ln -snfv ~/dotfiles/.config/ranger/scope.sh ~/.config/ranger/scope.sh
-
-
 echo "alacritty setting"
 if [ ! -d ~/.config/alacritty ]; then
   mkdir -p ~/.config/alacritty
@@ -104,4 +100,3 @@ echo "i3 setting finish"
 
 echo "finish setup"
 echo "next you call dein script"
-
