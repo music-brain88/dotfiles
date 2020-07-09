@@ -65,6 +65,13 @@ else
   echo "Rust is installed"
 fi
 
+
+# install fzf
+if !(type fzf > /dev/null 2>&1); then
+  git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+  ~/.fzf/install --bin
+fi
+
 if !(type fisher > /dev/null 2>&1); then
   echo "Install Fisher"
   curl https://git.io/fisher --create-dirs -sLo ~/.config/fish/functions/fisher.fish
