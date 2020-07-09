@@ -2,7 +2,7 @@
 
 ![](https://github.com/music-brain88/dotfiles/workflows/build/badge.svg)
 
-自分用作りました。
+自分用に作りました。
 
 ## Description
 
@@ -16,13 +16,33 @@
 
 
 
-## Install
+## How to Use
 
-これだけ
+1. clone
 
-```shell
-git clone https://github.com/music-brain88/dotfiles.git
-```
+   ```shell
+   git clone https://github.com/music-brain88/dotfiles.git ~/dotfiles
+   ```
+
+   
+
+2. move to dotfiles repo
+
+   ```shell
+   cd ~/dotfiles
+   ```
+
+   
+
+3. run deploy command
+
+   ```shell
+   make deploy
+   ```
+
+   
+
+
 
 
 
