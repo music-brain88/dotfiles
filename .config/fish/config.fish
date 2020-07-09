@@ -33,6 +33,12 @@ set __fish_git_prompt_showstashstate 'yes'
 set __fish_git_prompt_showupstream 'yes'
 set __fish_git_prompt_color_branch yellow
 
+
+# set fzf setting
+set -U fish_user_paths ~/.fzf/bin $fish_user_paths
+set -U FZF_LEGACY_KEYBINDINGS 0
+set -U FZF_REVERSE_ISEARCH_OPTS "--reverse --height=100%"
+
 export TERM=xterm-256color
 
 function reload
