@@ -1,6 +1,6 @@
 # dotfiles
 
-![](https://github.com/music-brain88/dotfiles/workflows/build/badge.svg)
+![Actions Status](https://github.com/music-brain88/dotfiles/workflows/build/badge.svg)
 
 自分用に作りました。
 
@@ -65,7 +65,7 @@
    
 
 
-6. open neovim then call script
+6. open neovim then call script and restart neovim
 
    ```vimcommand
    :call dein#install()
