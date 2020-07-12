@@ -84,7 +84,7 @@ fi
 if [ ! -d ~/.cache/fish ]; then
   mkdir -p ~/.config/fish/
   touch ~/.config/fish/config.fish
-  bash fish_plugin_setup.sh
+  fish fish_plugin_setup.fish
 fi
 
 # fish settings
