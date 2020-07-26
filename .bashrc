@@ -3,6 +3,7 @@
 #
 
 alias vim='nvim'
+alias rm='rm -i'
 export TERM=xterm-256color
 # If not running interactively, don't do anything
 
