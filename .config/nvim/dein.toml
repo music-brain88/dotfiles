@@ -79,6 +79,9 @@ autocmd FileType defx call s:defx_my_settings()
     " create new directory
     nnoremap <silent><buffer><expr> N
     \ defx#do_action('new_directory')
+    " copy file
+    nnoremap <silent><buffer><expr> c
+    \ defx#do_action('copy')
     " open file oriental
     nnoremap <silent><buffer><expr> -
     \ defx#do_action('open', 'split')
