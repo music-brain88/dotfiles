@@ -32,6 +32,3 @@ else
   exit 1
 fi
 
-
-
-export PATH="$HOME/.cargo/bin:$PATH"
