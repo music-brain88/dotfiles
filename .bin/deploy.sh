@@ -25,7 +25,7 @@ else
   echo "Dein is exists, Skip Download"
 fi
 
-if [ ! -d ~/.cache/nvim ]; then
+if [ ! -d ~/.config/nvim ]; then
   echo "neovim settings is not exists"
   mkdir -p ~/.config/nvim/
   touch ~/.config/nvim/init.vim
@@ -38,8 +38,11 @@ ln -snfv ~/dotfiles/.bashrc ~/.bashrc
 
 # pyenv install
 if !(type pyenv > /dev/null 2>&1); then
-  git clone https://github.com/pyenv/pyenv.git ~/.pyenv
-  git clone https://github.com/pyenv/pyenv-virtualenv.git ~/.pyenv/plugins/pyenv-virtualenv
+  if [ ! -d ~/.pyenv ]; then
+    git clone https://github.com/pyenv/pyenv.git ~/.pyenv
+    git clone https://github.com/pyenv/pyenv-virtualenv.git ~/.pyenv/plugins/pyenv-virtualenv
+  fi
+  echo "Please set the pyenv path"
 fi
 
 # bash_profileが整理されてないので一旦退避
@@ -68,8 +71,10 @@ fi
 
 # install fzf
 if !(type fzf > /dev/null 2>&1); then
-  git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-  ~/.fzf/install --bin
+  if [ ! -d ~/.fzf ]; then
+    git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+    ~/.fzf/install --bin
+  fi
 fi
 
 if !(type fisher > /dev/null 2>&1); then
@@ -81,7 +86,7 @@ else
   fisher
 fi
 
-if [ ! -d ~/.cache/fish ]; then
+if [ ! -d ~/.config/fish ]; then
   mkdir -p ~/.config/fish/
   touch ~/.config/fish/config.fish
   fish fish_plugin_setup.fish
