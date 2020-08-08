@@ -39,6 +39,10 @@ set -U fish_user_paths ~/.fzf/bin $fish_user_paths
 set -U FZF_LEGACY_KEYBINDINGS 0
 set -U FZF_REVERSE_ISEARCH_OPTS "--height=50%"
 
+# set GO PATH
+set -x GOPATH $HOME/go
+set -x PATH $PATH $GOPATH/bin
+
 export TERM=xterm-256color
 
 function reload
