@@ -6,11 +6,6 @@ set -o errexit    # exit when command fails
 set -o nounset    # error when referencing undefined variable
 
 
-
-if !(type sudo > /dev/null 2>&1); then
-  echo "hi"
-fi
-
 # Install latest nodejs
 if [ ! -x "$(command -v node)" ]; then
 
