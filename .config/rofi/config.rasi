@@ -1,6 +1,10 @@
 configuration {
- modi: "window,drun,ssh,combi";
- theme: "solarized";
- font: "hack 10";
- combi-modi: "window,drun,ssh";
- }
+  modi: "window,drun,ssh,combi";
+  sidebar-mode:  true;
+  kb-cancel: "Escape,Control+bracketleft";
+  kb-mode-previous: "Alt+p";
+  kb-mode-next: "Alt+n";
+  show-icons: true;
+  theme: "Adapta-Nokto";
+  font: "SauceCodePro 18";
+}
