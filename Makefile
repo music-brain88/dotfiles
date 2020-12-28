@@ -49,4 +49,4 @@ remove:
 	@docker rm arch
 
 backup:
-	sudo pacman -Qqe > .backup/pacman/pkglist.txt
+	sudo pacman -Qne > .backup/pacman/pkglist.txt
