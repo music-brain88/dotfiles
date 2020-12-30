@@ -1,17 +1,16 @@
 set -U FZF_LEGACY_KEYBINDINGS 0
 
 alias vim='nvim'
-set PATH $TO_FISH_PATH $PATH
+# set PATH $TO_FISH_PATH $PATH
 
 # set pyenv path
-set -Ux PYENV_ROOT $HOME/.pyenv
-set -Ux fish_user_paths $PYENV_ROOT/bin $fish_user_paths
+set -x PYENV_ROOT $HOME/.pyenv
+set -x PATH $PYENV_ROOT/bin $PATH
 
 # set cargo path
-set PATH $HOME/.cargo/bin $PATH
+set -x PATH $HOME/.cargo/bin $PATH
 
 # set exa path
-set PATH $HOME/.cargo/bin $PATH
 alias ls='exa --icons'
 
 # set poetry path
@@ -25,19 +24,18 @@ alias ls='exa --icons'
 set -g theme_powerline_fonts no
 set -g theme_nerd_fonts yes
 set -g theme_display_user ssh
-set -g theme_display_date no
+set -g theme_display_date yes
 
 # fish git prompt
 set __fish_git_prompt_showdirtystate 'yes'
-set __fish_git_prompt_showstashstate 'yes'
-set __fish_git_prompt_showupstream 'yes'
+set __fish_git_prompt_showstashstate 'yes' set __fish_git_prompt_showupstream 'yes'
 set __fish_git_prompt_color_branch yellow
 
 
 # set fzf setting
-set -U fish_user_paths ~/.fzf/bin $fish_user_paths
-set -U FZF_LEGACY_KEYBINDINGS 0
-set -U FZF_REVERSE_ISEARCH_OPTS "--height=50%"
+set -x PATH ~/.fzf/bin $PATH
+set -x FZF_LEGACY_KEYBINDINGS 0
+set -x FZF_REVERSE_ISEARCH_OPTS "--height=50%"
 
 # set GO PATH
 set -x GOPATH $HOME/go

@@ -1,0 +1,10 @@
+configuration {
+  modi: "window,drun,ssh,combi,System:~/dotfiles/.config/rofi/system.sh";
+  sidebar-mode:  true;
+  kb-cancel: "Escape,Control+bracketleft";
+  kb-mode-previous: "Alt+p";
+  kb-mode-next: "Alt+n";
+  show-icons: true;
+  font: "SauceCodePro 18";
+}
+@import "/usr/share/rofi/themes/fancy.rasi"

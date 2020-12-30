@@ -47,3 +47,6 @@ stop:
 remove:
 	make stop
 	@docker rm arch
+
+backup:
+	sudo pacman -Qne > .backup/pacman/pkglist.txt
