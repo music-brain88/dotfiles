@@ -5,6 +5,6 @@ configuration {
   kb-mode-previous: "Alt+p";
   kb-mode-next: "Alt+n";
   show-icons: true;
-  theme: "solarized_alternate";
   font: "SauceCodePro 18";
 }
+@import "/usr/share/rofi/themes/fancy.rasi"
