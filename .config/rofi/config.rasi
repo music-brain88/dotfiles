@@ -1,5 +1,5 @@
 configuration {
-  modi: "window,drun,ssh,combi";
+  modi: "window,drun,ssh,combi,System:~/dotfiles/.config/rofi/system.sh";
   sidebar-mode:  true;
   kb-cancel: "Escape,Control+bracketleft";
   kb-mode-previous: "Alt+p";
