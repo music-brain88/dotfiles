@@ -12,6 +12,13 @@ env:
   # available, otherwise `xterm-256color` is used.
   TERM: alacritty
 
+shell:
+  program: /usr/bin/fish
+  args:
+    - --login
+    - --command
+    - "tmux attach || tmux"
+
 window:
 
   # Window title
