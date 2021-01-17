@@ -83,7 +83,7 @@ man-db 2.9.3-1
 man-pages 5.10-1
 mariadb 10.5.8-1
 mdadm 4.1-2
-nano 5.4-1
+nano 5.5-1
 neofetch 7.1.0-2
 neovim 0.4.4-1
 netctl 1.24-1
