@@ -13,7 +13,7 @@ set $mod Mod4
 set $Alt Mod1
 # Font for window titles. Will also be used by the bar unless a different font
 # is used in the bar {} block below.
-font pango:monospace 8
+font pango:monospace 12
 
 # This font is widely installed, provides lots of unicode glyphs, right-to-left
 # text rendering and scalability on retina/hidpi displays (thanks to pango).
@@ -44,10 +44,10 @@ floating_modifier $mod
 # bindsym $mod+Return exec i3-sensible-terminal alacritty
 bindsym $mod+Return exec alacritty
 # kill focused window
-bindsym $mod+Shift+q kill
+# bindsym $mod+Shift+q kill
 
 # start dmenu (a program launcher)
-bindsym $mod+d exec "rofi -show drun -font 'snap 10' -fg '#505050' -bg '#000000' -hlfg '#ffb964' -hlbg '#000000' -o 85"
+bindsym $mod+d exec "rofi -show drun"
 # There also is the (new) i3-dmenu-desktop which only displays applications
 # shipping a .desktop file. It is a wrapper around dmenu, so you need that
 # installed.
@@ -187,12 +187,8 @@ exec --no-startup-id fcitx
 bindsym $mod+Prior workspace prev
 bindsym $mod+Next workspace next
 
-# Mod+Shift+Eを押したときの終了コマンドを豪華にする
-bindsym $mod+Shift+e exec --no-startup-id \
-"i3-nagbar -t warning -m 'Do you really want to exit i3?' -b 'Shutdown' 'systemctl poweroff' -b 'Reboot' 'systemctl reboot' -b 'Logout' 'i3-msg exit'"
-
 # 透過設定
-exec --no-startup-id compton -cbm 0.75
+# exec --no-startup-id compton -cbm 0.75
 
 # 壁紙を設定する
 exec --no-startup-id "feh --bg-scale ~/Pictures/wallpaper/archlinux_crack_win10.png"
@@ -212,19 +208,19 @@ bindsym $Alt+F4 kill
 # bindsym XF86MonBrightnessDown $execi /usr/local/sbin/xbacklight -dec
 
 # 終了コマンド
-set $mode_system System (l) lock, (e) logout, (s) suspend, (h) hibernate, (r) reboot, (Shift+s) shutdown
-mode "$mode_system" {
-    bindsym l exec --no-startup-id $Locker, mode "default"
-    bindsym e exec --no-startup-id i3-msg exit, mode "default"
-    bindsym s exec --no-startup-id $Locker && systemctl suspend, mode "default"
-    bindsym h exec --no-startup-id $Locker && systemctl hibernate, mode "default"
-    bindsym r exec --no-startup-id systemctl reboot, mode "default"
-    bindsym Shift+s exec --no-startup-id systemctl poweroff -i, mode "default"  
-
-    # back to normal: Enter or Escape
-    bindsym Return mode "default"
-    bindsym Escape mode "default"
-}
+# set $mode_system System (l) lock, (e) logout, (s) suspend, (h) hibernate, (r) reboot, (Shift+s) shutdown
+# mode "$mode_system" {
+#     bindsym l exec --no-startup-id $Locker, mode "default"
+#     bindsym e exec --no-startup-id i3-msg exit, mode "default"
+#     bindsym s exec --no-startup-id $Locker && systemctl suspend, mode "default"
+#     bindsym h exec --no-startup-id $Locker && systemctl hibernate, mode "default"
+#     bindsym r exec --no-startup-id systemctl reboot, mode "default"
+#     bindsym Shift+s exec --no-startup-id systemctl poweroff -i, mode "default"  
+# 
+#     # back to normal: Enter or Escape
+#     bindsym Return mode "default"
+#     bindsym Escape mode "default"
+# }
 
 bindsym $mod+Shift+Escape mode "$mode_system"
 
@@ -237,7 +233,8 @@ bindsym --release Print exec scrot 'screenshot_%Y%m%d_%H%M%S.png' -e \
 bindsym --release $mod+Shift+S exec scrot -s 'screenshot_%Y%m%d_%H%M%S.png' -e 'mkdir -p ~/Pictures/screenshots && mv $f ~/Pictures/screenshots && xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # Area selection
 
 
-set $i3t_alt_tab python ~/dotfiles/.config/i3/i3-alt-tab.py n all
-set $i3t_alt_shift_tab python ~/dotfiles/.config/i3/i3-alt-tab.py p all
-bindsym $Alt+Tab exec   exec $i3t_alt_tab
-bindsym $Alt+Shift+Tab  exec $i3t_alt_shift_tab
+# set $i3t_alt_tab python ~/dotfiles/.config/i3/i3-alt-tab.py n all
+# set $i3t_alt_shift_tab python ~/dotfiles/.config/i3/i3-alt-tab.py p all
+# bindsym $Alt+Tab exec   exec $i3t_alt_tab
+# bindsym $Alt+Shift+Tab  exec $i3t_alt_shift_tab
+bindsym $Alt+Tab exec "rofi -show window -kb-accept-entry !Alt-Tab,Return -kb-row-down Alt+Tab,Alt+Down  -kb-row-up Alt+Shift+Tab,Alt+Up"

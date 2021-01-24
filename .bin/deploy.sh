@@ -114,5 +114,12 @@ fi
 ln -snfv ~/dotfiles/.config/i3/config ~/.config/i3/config
 echo "i3 setting finish"
 
+echo "rofi setting"
+if [ ! -d ~/.config/rofi ]; then
+  mkdir -p ~/.config/rofi/
+fi
+ln -snfv ~/dotfiles/.config/rofi/config.rasi ~/.config/rofi/config.rasi
+echo "rofi setting finish"
+
 echo "finish setup"
 echo "next you call dein script"
