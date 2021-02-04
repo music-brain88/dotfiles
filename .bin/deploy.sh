@@ -5,10 +5,16 @@ set -ue
 set -o errexit    # exit when command fails
 set -o nounset    # error when referencing undefined variable
 
+
 # Install latest nodejs
 if [ ! -x "$(command -v node)" ]; then
+
+  if !(type sudo > /dev/null 2>&1); then
     curl --fail -LSs install-node.now.sh/lts | bash -s -- --yes
-    export PATH="/usr/local/bin/:$PATH"
+  else
+    curl --fail -LSs install-node.now.sh/lts | sudo bash -s -- --yes
+  fi
+  export PATH="/usr/local/bin/:$PATH"
 fi
 echo "start setup..."
 
