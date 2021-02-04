@@ -13,6 +13,7 @@
 - [neovim](https://github.com/neovim/neovim/wiki/Installing-Neovim)
 - [tmux](https://github.com/tmux/tmux)
 - [fish](https://fishshell.com/)
+- make
 
 
 
