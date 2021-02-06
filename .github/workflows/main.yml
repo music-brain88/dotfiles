@@ -33,10 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-    - uses: actions/checkout@v2
+      uses: actions/checkout@v2
     - name: Use Container
-    - run: make build
+      run: make build
     - name: Run initial script
-    - run: make init
+      run: make init
     - name: Run setup script
-    - run: make exec
+      run: make exec
