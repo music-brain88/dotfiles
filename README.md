@@ -14,6 +14,7 @@
 - [tmux](https://github.com/tmux/tmux)
 - [fish](https://fishshell.com/)
 - make
+- gcc
 
 
 
