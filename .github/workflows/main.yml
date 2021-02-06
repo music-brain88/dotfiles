@@ -35,8 +35,8 @@ jobs:
       - name: Checkout
       - uses: actions/checkout@v2
       - name: Use Container
-      - uses: ./
+      - run: make build
       - name: Run initial script
-        run: make build
+        run: make init
       - name: Run setup script
-        run: make deploy
+        run: make exec
