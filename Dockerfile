@@ -1,5 +1,6 @@
 FROM archlinux:latest
 
+RUN pacman-db-upgrade
 RUN pacman -Syu --noconfirm
 RUN pacman -S neovim make awk git gcc fish --noconfirm
 
