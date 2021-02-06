@@ -37,6 +37,6 @@ jobs:
       - name: Use Container
       - run: make build
       - name: Run initial script
-        run: make init
+      - run: make init
       - name: Run setup script
-        run: make exec
+      - run: make exec
