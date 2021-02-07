@@ -10,6 +10,8 @@ help:
 	@echo "deploy  => Create symlinks to home directory."
 	@echo "update  => Fetch all changes from remote repo."
 	@echo "install => Run update, deploy, init"
+	@echo "build   => Build docker image."
+	@echo "exec   => execute docker enviroment."
 	@echo "clean   => remove the dotfiles"
 	@echo "destroy => remove the dotfiles and this repo"
 

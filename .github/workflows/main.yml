@@ -7,7 +7,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-16.04, ubuntu-18.04]
+        os: [ubuntu-18.04, ubuntu-20.04]
     steps:
       - uses: actions/checkout@v1
       - name: Install required packages
@@ -28,17 +28,3 @@ jobs:
         brew install -f git fish 
     - name: Run setup script
       run: make deploy
-   
-  archlinux:
-    runs-on: ubuntu-18.04
-    container: archlinux/base:latest
-    steps:
-      - uses: actions/checkout@v1
-      - name: Install required packages
-        run: |
-          pacman -Syu --noconfirm
-          pacman -S make git gcc awk fish --noconfirm
-      - name: Run initial script
-        run: make init
-      - name: Run setup script
-        run: make deploy
