@@ -1,4 +1,4 @@
-FROM archlinux:latest
+FROM archlinux/archlinux:latest
 
 RUN pacman-db-upgrade
 RUN pacman -Syu --noconfirm
