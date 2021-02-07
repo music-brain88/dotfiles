@@ -28,15 +28,3 @@ jobs:
         brew install -f git fish 
     - name: Run setup script
       run: make deploy
-   
-  archlinux:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Use Container
-      run: make build
-    - name: Run initial script
-      run: make init
-    - name: Run setup script
-      run: make exec
