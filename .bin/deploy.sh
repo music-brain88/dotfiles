@@ -68,6 +68,8 @@ if !(type rustup > /dev/null 2>&1); then
   cargo install fd-find
   cargo install ripgrep
   cargo install exa
+  cargo install procs
+  cargo install gitui
 else
   echo "Rust is installed"
 fi
