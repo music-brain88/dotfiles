@@ -83,6 +83,18 @@ Warning: If you want to give these dotfiles a try, you should first fork this re
 
 
 
+## Include
+
+- rust commands tools
+  - bat
+  - exa
+  - procs
+  - fd-find
+  - gitui
+  - git-delta
+  - ripgrep
+  -  cargo-update
+
 
 
 
