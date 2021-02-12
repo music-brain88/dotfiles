@@ -4,6 +4,8 @@
 [core]
   pager = delta
   editor = nvim
+  autocrlf = false
+  safecrlf = true
 
 [merge]
   ff = false
@@ -23,3 +25,5 @@
   file-style = bold yellow ul
   file-decoration-style = none
 
+[push]
+  default = simple
