@@ -11,9 +11,12 @@ help:
 	@echo "update  => Fetch all changes from remote repo."
 	@echo "install => Run update, deploy, init"
 	@echo "build   => Build docker image."
+	@echo "run   => run docker container"
+	@echo "start   => start docker container."
+	@echo "stop   => stop docker container."
+	@echo "remove   => remove docker container."
 	@echo "exec   => execute docker enviroment."
-	@echo "clean   => remove the dotfiles"
-	@echo "destroy => remove the dotfiles and this repo"
+	@echo "backup   => export installed arch linux packages,this command for arch linux user"
 
 init:
 	bash .bin/init.sh
@@ -22,6 +25,7 @@ deploy:
 	@echo '==> Start to deploy dotfiles to home directory.'
 	@echo ''
 	bash .bin/deploy.sh
+	@echo '==> finish to deploy dotfiles'
 
 update:
 	git pull origin master
@@ -51,5 +55,6 @@ remove:
 	make stop
 	@docker rm arch
 
+# for arch linux user
 backup:
 	sudo pacman -Qne > .backup/pacman/pkglist.txt
