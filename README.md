@@ -86,16 +86,14 @@ Warning: If you want to give these dotfiles a try, you should first fork this re
 ## Include
 
 - rust commands tools
-  - bat
-  - exa
-  - procs
-  - fd-find
-  - gitui
-  - git-delta
-  - ripgrep
-  -  cargo-update
-
-
+  - [bat](https://github.com/sharkdp/bat)
+  - [exa](https://github.com/ogham/exa)
+  - [procs](https://github.com/dalance/procs)
+  - [fd-find](https://github.com/sharkdp/fd#installation)
+  - [gitui](https://github.com/extrawurst/gitui)
+  - [git-delta](https://github.com/dandavison/delta)
+  - [ripgrep](https://github.com/BurntSushi/ripgrep)
+  - [cargo-update](https://github.com/nabijaczleweli/cargo-update)
 
 
 
