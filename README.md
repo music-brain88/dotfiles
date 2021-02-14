@@ -2,11 +2,19 @@
 
 ![Actions Status](https://github.com/music-brain88/dotfiles/workflows/build/badge.svg)
 
-自分用に作りました。
+
 
 ## Description
 
-いつでもどこでも自分の環境構築
+ .files / dotfiles,  sensible hacker defaults
+
+
+
+## Installation
+
+Warning: If you want to give these dotfiles a try, you should first fork this repository, review the code, and remove things you don’t want or need. Don’t blindly use my settings unless you know what that entails. Use at your own risk!
+
+
 
 ## Requirement
 
@@ -74,6 +82,41 @@
    ```
 
 
+
+## Include
+
+- rust commands tools
+  - [bat](https://github.com/sharkdp/bat)
+  - [exa](https://github.com/ogham/exa)
+  - [procs](https://github.com/dalance/procs)
+  - [fd-find](https://github.com/sharkdp/fd#installation)
+  - [gitui](https://github.com/extrawurst/gitui)
+  - [git-delta](https://github.com/dandavison/delta)
+  - [ripgrep](https://github.com/BurntSushi/ripgrep)
+  - [cargo-update](https://github.com/nabijaczleweli/cargo-update)
+
+
+
+## HELP
+
+type `make` in dotfiles directory
+
+
+
+```shell
+~/dotfiles make
+init    => Initialize enviroment settings.
+deploy  => Create symlinks to home directory.
+update  => Fetch all changes from remote repo.
+install => Run update, deploy, init
+build   => Build docker image.
+run   => run docker container
+start   => start docker container.
+stop   => stop docker container.
+remove   => remove docker container.
+exec   => execute docker enviroment.
+backup   => export installed arch linux packages,this command for arch linux user
+```
 
 
 
