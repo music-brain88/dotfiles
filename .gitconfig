@@ -17,6 +17,8 @@
   diffFilter = delta --color-only
 
 [delta]
+  line-numbers = true
+  side-by-side = true
   features = side-by-side line-numbers decorations
   whitespace-error-style = 22 reverse
 
@@ -24,6 +26,12 @@
   commit-decoration-style = bold yellow box ul
   file-style = bold yellow ul
   file-decoration-style = none
+
+[delta "line-numbers"]
+    line-numbers-left-style = cyan
+    line-numbers-right-style = cyan
+    line-numbers-minus-style = 124
+    line-numbers-plus-style = 28
 
 [push]
   default = simple
