@@ -59,6 +59,7 @@ fi
 ln -snfv ~/dotfiles/.config/nvim/init.vim ~/.config/nvim/init.vim
 ln -snfv ~/dotfiles/.config/nvim/coc-settings.json ~/.config/nvim/coc-settings.json
 ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
+ln -snfv ~/dotfiles/.gitconfig ~/.gitconfig
 
 if !(type rustup > /dev/null 2>&1); then
   echo "install Rust compiler"
