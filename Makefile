@@ -11,12 +11,12 @@ help:
 	@echo "update  => Fetch all changes from remote repo."
 	@echo "install => Run update, deploy, init"
 	@echo "build   => Build docker image."
-	@echo "run   => run docker container"
+	@echo "run     => run docker container"
 	@echo "start   => start docker container."
-	@echo "stop   => stop docker container."
-	@echo "remove   => remove docker container."
-	@echo "exec   => execute docker enviroment."
-	@echo "backup   => export installed arch linux packages,this command for arch linux user"
+	@echo "stop    => stop docker container."
+	@echo "remove  => remove docker container."
+	@echo "exec    => execute docker enviroment."
+	@echo "backup  => export installed arch linux packages,this command for arch linux user"
 
 init:
 	bash .bin/init.sh

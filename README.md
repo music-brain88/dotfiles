@@ -110,12 +110,12 @@ deploy  => Create symlinks to home directory.
 update  => Fetch all changes from remote repo.
 install => Run update, deploy, init
 build   => Build docker image.
-run   => run docker container
+run     => run docker container
 start   => start docker container.
-stop   => stop docker container.
-remove   => remove docker container.
-exec   => execute docker enviroment.
-backup   => export installed arch linux packages,this command for arch linux user
+stop    => stop docker container.
+remove  => remove docker container.
+exec    => execute docker enviroment.
+backup  => export installed arch linux packages,this command for arch linux user
 ```
 
 
