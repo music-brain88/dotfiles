@@ -10,9 +10,12 @@ set -x PATH $PYENV_ROOT/bin $PATH
 # set cargo path
 set -x PATH $HOME/.cargo/bin $PATH
 
-# set exa path
+# set exa alias
 alias ls='exa --icons'
 
+# set bat alias
+alias cat='bat'
+alias ps='procs'
 # set poetry path
 # set -U PATH $HOME/.poetry/env $PATH
 
