@@ -74,10 +74,10 @@ autocmd FileType defx call s:defx_my_settings()
     nnoremap <silent><buffer><expr> <CR>
     \ defx#do_action('open')
     " create new file
-    nnoremap <silent><buffer><expr> n
+    nnoremap <silent><buffer><expr> ,n
     \ defx#do_action('new_file')
     " create new directory
-    nnoremap <silent><buffer><expr> N
+    nnoremap <silent><buffer><expr> ,N
     \ defx#do_action('new_directory')
     " copy file
     nnoremap <silent><buffer><expr> c
