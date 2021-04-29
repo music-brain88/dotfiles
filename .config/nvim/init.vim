@@ -103,7 +103,6 @@ if dein#load_state(s:dein_dir)
     call dein#add('roxma/nvim-yarp')
     call dein#add('roxma/vim-hug-neovim-rpc')
   endif
-  call dein#add('~/dotfiles/nvim/typora.vim')
   let s:toml = '~/dotfiles/.config/nvim/dein.toml'
   let s:lazy_toml = '~/dotfiles/.config/nvim/dein_lazy.toml'
   call dein#load_toml(s:toml, {'lazy': 0})
@@ -130,26 +129,6 @@ syntax enable
 "-----------------------------------------------------------------------
 tnoremap <silent> <ESC> <C-\><C-n>
 nnoremap @t :tabe<CR>:terminal<CR>
-" NERDtree setting
-"
-" NERDTress File highlighting
-function! NERDTreeHighlightFile(extension, fg, bg, guifg, guibg)
- exec 'autocmd filetype nerdtree highlight ' . a:extension .' ctermbg='. a:bg .' ctermfg='. a:fg .' guibg='. a:guibg .' guifg='. a:guifg
- exec 'autocmd filetype nerdtree syn match ' . a:extension .' #^\s\+.*'. a:extension .'$#'
-endfunction
-call NERDTreeHighlightFile('py',     'yellow',  'none', 'yellow',  'none')
-call NERDTreeHighlightFile('md',     'blue',    'none', '#3366FF', 'none')
-call NERDTreeHighlightFile('yml',    'yellow',  'none', 'yellow',  'none')
-call NERDTreeHighlightFile('config', 'yellow',  'none', 'yellow',  'none')
-call NERDTreeHighlightFile('conf',   'yellow',  'none', 'yellow',  'none')
-call NERDTreeHighlightFile('json',   'yellow',  'none', 'yellow',  'none')
-call NERDTreeHighlightFile('html',   'yellow',  'none', 'yellow',  'none')
-call NERDTreeHighlightFile('styl',   'cyan',    'none', 'cyan',    'none')
-call NERDTreeHighlightFile('css',    'cyan',    'none', 'cyan',    'none')
-call NERDTreeHighlightFile('rb',     'Red',     'none', 'red',     'none')
-call NERDTreeHighlightFile('js',     'Red',     'none', '#ffa500', 'none')
-call NERDTreeHighlightFile('php',    'Magenta', 'none', '#ff00ff', 'none')
-call NERDTreeHighlightFile('vue',    'Green', 'none', '#42b883', 'none')
 
 
 "-----------------------------------------------------------------------
