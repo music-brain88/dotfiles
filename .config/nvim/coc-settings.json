@@ -21,7 +21,14 @@
         "args": ["start"],
         "filetypes": ["sh"],
         "ignoredRootPaths": ["~"]
-      },
-      "eslint.filetypes": ["javascript", "vue"]
-  }
+      } 
+  },
+  "eslint.autoFixOnSave": true,
+  "eslint.probe": [
+    "javascript",
+    "typescript",
+    "javascriptreact",
+    "typescriptreact",
+    "vue"
+  ]
 }
