@@ -98,7 +98,6 @@ if dein#load_state(s:dein_dir)
   call dein#add('$HOME/.cache/dein/repos/github.com/Shougo/dein.vim')
 
   " Add or remove your plugins here like this:
-  call dein#add('Shougo/denite.nvim')
   if !has('nvim')
     call dein#add('roxma/nvim-yarp')
     call dein#add('roxma/vim-hug-neovim-rpc')
