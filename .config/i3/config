@@ -191,7 +191,7 @@ bindsym $mod+Next workspace next
 # exec --no-startup-id compton -cbm 0.75
 
 # 壁紙を設定する
-exec --no-startup-id "feh --bg-scale ~/Pictures/wallpaper/archlinux_crack_win10.png"
+exec --no-startup-id "feh --bg-scale ~/Pictures/wallpaper/archlinux_01.jpg"
 
 
 set $Locker i3lock && sleep 1
