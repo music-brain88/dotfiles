@@ -31,6 +31,8 @@ set number
 set title
 set autoindent
 set tabstop=2
+set listchars=tab:»-,trail:-,eol:↲,extends:»,precedes:«,nbsp:%,space:_
+set list
 set shiftwidth=2
 set expandtab
 set ignorecase
@@ -197,5 +199,3 @@ vmap <S-C-k> <Plug>(caw:hatpos:toggle)
 " buffer
 nnoremap <silent> <C-j> :bprev<CR>
 nnoremap <silent> <C-k> :bnext<CR>
-
-
