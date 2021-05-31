@@ -19,7 +19,6 @@ elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
 
     export GPG_TTY=$(tty)
       if [[ "$(uname -r)" == *microsoft* ]]; then
-        echo "windows"
         export GPG_TTY=$(tty)
   fi
   exec fish
