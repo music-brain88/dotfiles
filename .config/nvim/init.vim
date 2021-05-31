@@ -53,10 +53,6 @@ let $COLORTERM='truecolor'
 :cnoremap <C-F> <Right>
 :cnoremap <C-B> <Left>
 
-autocmd Colorscheme * highlight FullWidthSpace ctermbg=red
-autocmd VimEnter * match FullWidthSpace /　/
-colorscheme desert
-
 let OSTYPE = system('uname')
 if OSTYPE == 'Darwin\n'
   let g:python_host_prog  = '/usr/local/bin/python'
