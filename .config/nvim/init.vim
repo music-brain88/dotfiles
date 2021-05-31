@@ -21,7 +21,6 @@
 
 set t_Co=256
 set ttimeoutlen=10
-
 set encoding=utf-8
 scriptencoding utf-8
 "set ambiwidth=double
@@ -31,7 +30,7 @@ set number
 set title
 set autoindent
 set tabstop=2
-set listchars=tab:»-,trail:-,eol:↲,extends:»,precedes:«,nbsp:%,space:_
+set listchars=tab:»-, trail:-, eol:↲, extends:», precedes:«, nbsp:%, space:␣
 set list
 set shiftwidth=2
 set expandtab
@@ -53,6 +52,10 @@ let $COLORTERM='truecolor'
 :cnoremap <C-A> <Home>
 :cnoremap <C-F> <Right>
 :cnoremap <C-B> <Left>
+
+autocmd Colorscheme * highlight FullWidthSpace ctermbg=red
+autocmd VimEnter * match FullWidthSpace /　/
+colorscheme desert
 
 let OSTYPE = system('uname')
 if OSTYPE == 'Darwin\n'
