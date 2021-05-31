@@ -16,8 +16,11 @@ if [ "$(uname)" == 'Darwin' ]; then
 elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
   OS='Linux'
   # if using wsl
-  if [ "$(uname -r)" == *microsoft* ]; then
+
     export GPG_TTY=$(tty)
+      if [[ "$(uname -r)" == *microsoft* ]]; then
+        echo "windows"
+        export GPG_TTY=$(tty)
   fi
   exec fish
 elif [ "$(expr substr $(uname -s) 1 10)" == 'MINGW32_NT' ]; then
