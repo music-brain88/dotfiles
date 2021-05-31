@@ -30,7 +30,7 @@ set number
 set title
 set autoindent
 set tabstop=2
-set listchars=tab:»-, trail:-, eol:↲, extends:», precedes:«, nbsp:%, space:␣
+set listchars=tab:»-,trail:-,eol:↲,extends:»,precedes:«,nbsp:%,space:␣
 set list
 set shiftwidth=2
 set expandtab
