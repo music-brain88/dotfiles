@@ -21,7 +21,6 @@
 
 set t_Co=256
 set ttimeoutlen=10
-
 set encoding=utf-8
 scriptencoding utf-8
 "set ambiwidth=double
@@ -31,6 +30,8 @@ set number
 set title
 set autoindent
 set tabstop=2
+set listchars=tab:»-,trail:-,eol:↲,extends:»,precedes:«,nbsp:%,space:␣
+set list
 set shiftwidth=2
 set expandtab
 set ignorecase
@@ -197,5 +198,3 @@ vmap <S-C-k> <Plug>(caw:hatpos:toggle)
 " buffer
 nnoremap <silent> <C-j> :bprev<CR>
 nnoremap <silent> <C-k> :bnext<CR>
-
-
