@@ -10,6 +10,11 @@ export TERM=xterm-256color
 alias ls='ls --color=auto'
 #PS1='[\u@\h \W]\$ '
 
+# aliases file check
+if [ -f ~/.bash_aliases ]; then
+. ~/.bash_aliases
+fi
+
 if [ "$(uname)" == 'Darwin' ]; then
   OS='Mac'
   exec fish
