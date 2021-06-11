@@ -71,7 +71,7 @@ if !(type rustup > /dev/null 2>&1); then
   # cargo install exa
   # cargo install procs
   # cargo install gitui
-  bash ./manage_cargo_tools.sh
+  bash manage_cargo_tools.sh
 else
   echo "Rust is installed"
 fi
