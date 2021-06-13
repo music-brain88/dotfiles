@@ -3,7 +3,7 @@
   "suggest.preferCompleteThanJumpPlaceholder": true,
   "languageserver": {
       "dockerfile": {
-        "command": "docker-languageserver",
+        "command": "docker-langserver",
         "filetypes": ["dockerfile"],
         "args": ["--stdio"]
       },
