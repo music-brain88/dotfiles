@@ -25,4 +25,3 @@ merged = 0
 
 [[plugins]]
 repo = 'thinca/vim-quickrun'
-
