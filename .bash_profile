@@ -33,3 +33,4 @@ else
   exit 1
 fi
 
+. "$HOME/.cargo/env"

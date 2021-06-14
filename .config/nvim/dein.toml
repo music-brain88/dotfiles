@@ -125,6 +125,14 @@ call defx#custom#column('git', 'indicators', {
 repo = "kristijanhusak/defx-icons"
 
 [[plugins]]
+repo = 'wakatime/vim-wakatime'
+hook_add = '''
+if has('nvim') && isdirectory( $PYENV_ROOT.'/versions/neovim3' )
+  let g:wakatime_PythonBinary = $PYENV_ROOT.'/versions/neovim3/bin/python'
+endif
+'''
+
+[[plugins]]
 repo = 'neoclide/coc.nvim'
 merge = 0
 rev = 'release'

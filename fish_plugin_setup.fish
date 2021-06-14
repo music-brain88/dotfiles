@@ -1,7 +1,8 @@
 #!/usr/bin/env
 
-fisher add oh-my-fish/theme-bobthefish
-fisher add jethrokuan/fzf
-fisher add oh-my-fish/plugin-extract
-fisher add jorgebucaran/fish-bax
-fisher add jethrokuan/z
+fisher install oh-my-fish/theme-bobthefish
+fisher install jethrokuan/fzf
+fisher install oh-my-fish/plugin-extract
+fisher install jorgebucaran/fish-bax
+fisher install jethrokuan/z
+fisher install edc/bass

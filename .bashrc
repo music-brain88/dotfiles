@@ -16,7 +16,9 @@ if [ "$(uname)" == 'Darwin' ]; then
 elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
   OS='Linux'
   # if using wsl
-
+    export GPG_AGENT_INFO
+    export SSH_AUTH_SOCK
+    export SSH_AGENT_PID
     export GPG_TTY=$(tty)
       if [[ "$(uname -r)" == *microsoft* ]]; then
         export GPG_TTY=$(tty)
@@ -28,3 +30,13 @@ else
   echo "Your platform ($(uname -a)) is not supported."
   exit 1
 fi
+
+. "$HOME/.cargo/env"
+# aliases file check
+if [ -f ~/.bash_aliases ]; then
+. ~/.bash_aliases
+fi
+
+# if [ -f ~/.dotfiles/submodules/bash-wakatime ]; then
+# . ~/.dotfiles/submodules/bash-wakatime/bash-wakatime.sh
+# fi
