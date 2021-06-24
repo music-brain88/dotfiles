@@ -36,7 +36,3 @@ fi
 if [ -f ~/.bash_aliases ]; then
 . ~/.bash_aliases
 fi
-
-# if [ -f ~/.dotfiles/submodules/bash-wakatime ]; then
-# . ~/.dotfiles/submodules/bash-wakatime/bash-wakatime.sh
-# fi
