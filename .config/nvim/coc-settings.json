@@ -1,6 +1,7 @@
 {
   "suggest.noselect": true,
   "suggest.preferCompleteThanJumpPlaceholder": true,
+  "coc.preferences.formatOnSaveFiletypes": ["rust", "typescript"],
   "languageserver": {
       "dockerfile": {
         "command": "docker-langserver",
