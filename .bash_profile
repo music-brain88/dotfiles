@@ -34,3 +34,5 @@ else
 fi
 
 . "$HOME/.cargo/env"
+
+source /home/archie/.config/broot/launcher/bash/br

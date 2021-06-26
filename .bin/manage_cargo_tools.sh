@@ -12,3 +12,9 @@ cargo install exa
 cargo install procs
 cargo install gitui
 cargo install git-delta
+cargo install cargo-update
+cargo install tealdeer
+cargo install broot
+cargo install hyperfine
+cargo install du-dust
+cargo install tokei

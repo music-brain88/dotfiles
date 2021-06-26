@@ -36,3 +36,5 @@ fi
 if [ -f ~/.bash_aliases ]; then
 . ~/.bash_aliases
 fi
+
+source /home/archie/.config/broot/launcher/bash/br
