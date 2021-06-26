@@ -1,6 +1,10 @@
 name: build
 
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
 
 jobs:
   ubuntu:
