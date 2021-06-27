@@ -61,6 +61,15 @@ backup() {
             warning "$filename does not exist at this location or is a symlink"
         fi
     done
+
+    for filename in "$HOME/.config"; do
+        if [ ! -L "$filename" ]; then
+            echo "backing up $filename"
+            cp -rf "$filename" "$BACKUP_DIR"
+        else
+            warning "$filename does not exist at this location or is a symlink"
+        fi
+    done
 }
 
 case "$1" in
