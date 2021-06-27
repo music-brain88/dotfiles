@@ -72,6 +72,47 @@ backup() {
     done
 }
 
+
+setup_vim() {
+  echo "start setup vim/neovim"
+  # Install latest nodejs
+  if [ ! -x "$(command -v node)" ]; then
+    if !(type sudo > /dev/null 2>&1); then
+      curl --fail -LSs install-node.now.sh/lts | bash -s -- --yes
+    else
+      curl --fail -LSs install-node.now.sh/lts | sudo bash -s -- --yes
+    fi
+    export PATH="/usr/local/bin/:$PATH"
+  fi
+
+  echo "Check Dein"
+  # For example, we just use `~/.cache/dein` as installation directory
+  if [ ! -d ~/.cache/dein ]; then
+    echo "Dein is not exists"
+    echo "Download Dein scripts"
+    curl https://raw.githubusercontent.com/Shougo/dein.vim/master/bin/installer.sh > installer.sh
+    sh ./installer.sh ~/.cache/dein
+    rm installer.sh
+  else
+    echo "Dein is exists, Skip Download"
+  fi
+
+  if !(type rustup > /dev/null 2>&1); then
+    echo "install Rust compiler"
+    curl https://sh.rustup.rs -sSf | sh -s -- -y
+    echo "finish install rust"
+    source $HOME/.cargo/env
+    # cargo install fd-find
+    # cargo install ripgrep
+    # cargo install exa
+    # cargo install procs
+    # cargo install gitui
+    bash manage_cargo_tools.sh
+  else
+    echo "Rust is installed"
+  fi
+}
+
 case "$1" in
     backup)
         backup
@@ -84,6 +125,9 @@ case "$1" in
         ;;
     homebrew)
         setup_homebrew
+        ;;
+    vim)
+        setup_vim
         ;;
     shell)
         setup_shell
