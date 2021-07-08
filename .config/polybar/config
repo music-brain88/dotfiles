@@ -16,48 +16,40 @@
 ;
 ;==========================================================
 
+
+
 [colors]
-;background = ${xrdb:color0:#222}
-background = #222
-background-alt = #444
-;foreground = ${xrdb:color7:#222}
-foreground = #dfdfdf
-foreground-alt = #555
-primary = #ffb52a
-secondary = #e60053
+bg = #222D32
+fg = #CFD8DC
+adapta-cyan = #00BCD4
+adapta-red = #FF5252
+adapta-yellow = #C9BC0E
+adapta-lightgreen = #4DB6AC
+adapta-green = #009688
+adapta-grey = #475359
 alert = #bd2c40
 
-[bar/mybar]
-;monitor = ${env:MONITOR:HDMI-1}
+[margin]
+for-modules = 10
+
+[bar/main]
 width = 100%
 height = 27
-;offset-x = 1%
-;offset-y = 1%
-radius = 6.0
-fixed-center = false
+radius = 5.0
+fixed-center = true
 
-background = ${colors.background}
-foreground = ${colors.foreground}
+background = ${colors.bg}
+foreground = ${colors.fg}
 
 line-size = 3
-line-color = #f00
 
-border-size = 4
-border-color = #00000000
+font-0 = "Saucecode Pro:pixelsize=10;3"
+font-1 = "Saucecode Pro Nerd Font:pixelsize=14;3"
 
-padding-left = 0
-padding-right = 2
 
-module-margin-left = 1
-module-margin-right = 2
-
-font-0 = fixed:pixelsize=10;1
-font-1 = unifont:fontformat=truetype:size=8:antialias=false;0
-font-2 = siji:pixelsize=10;1
-
-modules-left = bspwm i3
-modules-center = mpd
-modules-right = filesystem xbacklight alsa pulseaudio xkeyboard memory cpu wlan eth battery temperature date powermenu
+;modules-left = bspwm i3
+;modules-center = mpd
+;modules-right = filesystem xbacklight alsa pulseaudio xkeyboard memory cpu wlan eth battery temperature date powermenu
 
 tray-position = right
 tray-padding = 2
@@ -76,6 +68,95 @@ tray-padding = 2
 
 cursor-click = pointer
 cursor-scroll = ns-resize
+
+;==========================================================
+
+
+;====Module settings+======================================
+modules-left = arch explorer google amazon github reddit facebook youtube workspaces-xmonad
+modules-center = date
+modules-right = mpd pkg alsa eth cpu-graph cpu memory powermenu
+;==========================================================
+
+[module/arch]
+type = custom/text
+content = 
+content-padding = 1
+content-foreground = ${colors.fg}
+content-underline = ${colors.adapta-cyan}
+;click-left = rmenu_1
+;click-right = rmenu_wi_1
+
+[module/apple]
+type = custom/text
+content = 
+content-padding = 1
+content-foreground = ${colors.fg}
+content-underline = ${colors.adapta-cyan}
+;click-left = rmenu_1
+;click-right = rmenu_wi_1
+
+[module/windows]
+type = custom/text
+content = 
+content-padding = 1
+content-foreground = ${colors.fg}
+content-underline = ${colors.adapta-cyan}
+;click-left = rmenu_1
+;click-right = rmenu_wi_1
+
+[module/explorer]
+type = custom/text
+content = 
+;content = 
+content-padding = 1
+content-foreground = ${colors.fg}
+click-left = nautilus
+
+[module/google]
+type = custom/text
+content = 
+content-padding = 1
+content-foreground = ${colors.fg}
+click-left = xdg-open https://www.google.com/
+
+[module/amazon]
+type = custom/text
+content = 
+content-padding = 1
+content-foreground = ${colors.fg}
+click-left = xdg-open https://www.amazon.co.jp/
+;click-left = xdg-open https://www.amazon.com/
+
+[module/github]
+type = custom/text
+content = 
+content-padding = 1
+content-foreground = ${colors.fg}
+click-left = xdg-open https://www.github.com/
+
+[module/reddit]
+type = custom/text
+content = 
+;content = 
+content-padding = 1
+content-foreground = ${colors.fg}
+click-left = xdg-open https://www.reddit.com/
+
+[module/facebook]
+type = custom/text
+content = 
+content-padding = 1
+content-foreground = ${colors.fg}
+click-left = xdg-open https://www.facebook.com/
+
+[module/youtube]
+type = custom/text
+content = 
+;content = 
+content-padding = 1
+content-foreground = ${colors.fg}
+click-left = xdg-open https://www.youtube.com/
 
 [module/xwindow]
 type = internal/xwindow
@@ -180,28 +261,6 @@ icon-next = 
 label-song-maxlen = 25
 label-song-ellipsis = true
 
-[module/xbacklight]
-type = internal/xbacklight
-
-format = <label> <bar>
-label = BL
-
-bar-width = 10
-bar-indicator = |
-bar-indicator-foreground = #fff
-bar-indicator-font = 2
-bar-fill = ─
-bar-fill-font = 2
-bar-fill-foreground = #9f78e1
-bar-empty = ─
-bar-empty-font = 2
-bar-empty-foreground = ${colors.foreground-alt}
-
-[module/backlight-acpi]
-inherit = module/xbacklight
-type = internal/backlight
-card = intel_backlight
-
 [module/cpu]
 type = internal/cpu
 interval = 2
@@ -220,35 +279,32 @@ label = %percentage_used%%
 
 [module/wlan]
 type = internal/network
-interface = net1
-interval = 3.0
-
-format-connected = <ramp-signal> <label-connected>
-format-connected-underline = #9f78e1
-label-connected = %essid%
-
-format-disconnected =
-;format-disconnected = <label-disconnected>
-;format-disconnected-underline = ${self.format-connected-underline}
-;label-disconnected = %ifname% disconnected
-;label-disconnected-foreground = ${colors.foreground-alt}
-
-ramp-signal-0 = 
-ramp-signal-1 = 
-ramp-signal-2 = 
-ramp-signal-3 = 
-ramp-signal-4 = 
-ramp-signal-foreground = ${colors.foreground-alt}
+interface = wlp2s0
+interval = 0.1
+format-connected = <label-connected>
+;format-connected-background = ${colors.shade2}
+format-connected-underline = ${colors.adapta-cyan}
+format-connected-padding = 1
+label-connected =  %upspeed:9%  %downspeed:9%
+;label-connected =  %upspeed:9%  %downspeed:9%
+format-disconnected = <label-disconnected>
+format-disconnected-padding = 1
+format-disconnected-underline = ${colors.adapta-cyan}
+label-disconnected = 睊
+;format-connected-margin = ${margin.for-modules}
+;format-disconnected-margin = ${margin.for-modules}
 
 [module/eth]
 type = internal/network
 interface = enp3s0
-interval = 3.0
-
-format-connected-underline = #55aa55
-format-connected-prefix = " "
+interval = 0.1
+format-connected = <label-connected>
+format-connected-underline = ${colors.adapta-cyan}
+format-connected-padding = 1
+format-connected-prefix = "eth"
 format-connected-prefix-foreground = ${colors.foreground-alt}
-label-connected = %local_ip%
+label-connected =  %upspeed:9%  %downspeed:9%
+;label-connected = %local_ip%
 
 format-disconnected =
 ;format-disconnected = <label-disconnected>
@@ -258,74 +314,70 @@ format-disconnected =
 
 [module/date]
 type = internal/date
-interval = 5
-
-date =
-date-alt = " %Y-%m-%d"
-
-time = %H:%M
-time-alt = %H:%M:%S
-
-format-prefix = 
-format-prefix-foreground = ${colors.foreground-alt}
-format-underline = #0a6cf5
-
-label = %date% %time%
+interval = 1
+label =  %time%
+label-padding = 1
+;label-background = ${colors.shade1}
+label-underline = ${colors.adapta-cyan}
+time =   %a %d %b %Y %T
+label-margin = ${margin.for-modules}
 
 [module/pulseaudio]
 type = internal/pulseaudio
 
 format-volume = <label-volume> <bar-volume>
-label-volume = VOL %percentage%%
-label-volume-foreground = ${root.foreground}
-
+label-volume = pulseaudio VOL %percentage%%
+label-volume-foreground = ${colors.adapta-cyan}
 label-muted = 🔇 muted
 label-muted-foreground = #666
 
-bar-volume-width = 10
-bar-volume-foreground-0 = #55aa55
-bar-volume-foreground-1 = #55aa55
-bar-volume-foreground-2 = #55aa55
-bar-volume-foreground-3 = #55aa55
-bar-volume-foreground-4 = #55aa55
-bar-volume-foreground-5 = #f5a70a
-bar-volume-foreground-6 = #ff5555
+bar-volume-width = 8
+bar-volume-foreground-0 = ${colors.adapta-lightgreen}
+bar-volume-foreground-1 = ${colors.adapta-lightgreen}
+bar-volume-foreground-2 = ${colors.adapta-lightgreen}
+bar-volume-foreground-3 = ${colors.adapta-lightgreen}
+bar-volume-foreground-4 = ${colors.adapta-lightgreen}
+bar-volume-foreground-5 = ${colors.adapta-yellow}
+bar-volume-foreground-6 = ${colors.adapta-yellow}
+bar-volume-foreground-7 = ${colors.adapta-red}
 bar-volume-gradient = false
-bar-volume-indicator = |
+bar-volume-indicator = 
 bar-volume-indicator-font = 2
 bar-volume-fill = ─
 bar-volume-fill-font = 2
 bar-volume-empty = ─
 bar-volume-empty-font = 2
 bar-volume-empty-foreground = ${colors.foreground-alt}
+label-margin = ${margin.for-modules}
 
 [module/alsa]
 type = internal/alsa
 
 format-volume = <label-volume> <bar-volume>
-label-volume = VOL
-label-volume-foreground = ${root.foreground}
-
-format-muted-prefix = " "
-format-muted-foreground = ${colors.foreground-alt}
-label-muted = sound muted
-
-bar-volume-width = 10
-bar-volume-foreground-0 = #55aa55
-bar-volume-foreground-1 = #55aa55
-bar-volume-foreground-2 = #55aa55
-bar-volume-foreground-3 = #55aa55
-bar-volume-foreground-4 = #55aa55
-bar-volume-foreground-5 = #f5a70a
-bar-volume-foreground-6 = #ff5555
+label-volume-foreground = ${colors.adapta-cyan}
+label-volume = 墳
+label-muted = 婢
+format-muted-prefix = "🔇 "
+label-muted-padding = 1
+bar-volume-width = 8
+bar-volume-foreground-0 = ${colors.adapta-lightgreen}
+bar-volume-foreground-1 = ${colors.adapta-lightgreen}
+bar-volume-foreground-2 = ${colors.adapta-lightgreen}
+bar-volume-foreground-3 = ${colors.adapta-lightgreen}
+bar-volume-foreground-4 = ${colors.adapta-lightgreen}
+bar-volume-foreground-5 = ${colors.adapta-yellow}
+bar-volume-foreground-6 = ${colors.adapta-yellow}
+bar-volume-foreground-7 = ${colors.adapta-red}
 bar-volume-gradient = false
-bar-volume-indicator = |
+bar-volume-indicator = 
 bar-volume-indicator-font = 2
 bar-volume-fill = ─
 bar-volume-fill-font = 2
 bar-volume-empty = ─
 bar-volume-empty-font = 2
-bar-volume-empty-foreground = ${colors.foreground-alt}
+bar-volume-empty-foreground = ${colors.adapta-grey}
+format-muted-margin = ${margin.for-modules}
+format-volume-margin = ${margin.for-modules}
 
 [module/battery]
 type = internal/battery
@@ -415,6 +467,17 @@ screenchange-reload = true
 ;compositing-foreground = source
 ;compositing-border = over
 ;pseudo-transparency = false
+
+[module/pkg]
+type = custom/script
+exec = bash ~/.config/polybar/update.sh
+;format-background = ${colors.shade2}
+format-underline = ${colors.adapta-cyan}
+format-padding = 1
+tail = true
+format-margin = ${margin.for-modules}
+
+
 
 [global/wm]
 margin-top = 5
