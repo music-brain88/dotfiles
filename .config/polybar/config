@@ -27,10 +27,9 @@ adapta-yellow = #C9BC0E
 adapta-lightgreen = #4DB6AC
 adapta-green = #009688
 adapta-grey = #475359
-alert = #bd2c40
 
 [margin]
-for-modules = 10
+for-modules = 1
 
 [bar/main]
 width = 100%
@@ -75,7 +74,7 @@ cursor-scroll = ns-resize
 ;====Module settings+======================================
 modules-left = arch explorer google amazon github reddit youtube
 modules-center = i3
-modules-right = mpd pkg alsa eth cpu-graph cpu memory date powermenu
+modules-right = mpd pkg alsa eth cpu-graph cpu memory date xkeyboard powermenu
 ;==========================================================
 
 [module/arch]
@@ -267,7 +266,7 @@ interval = 0.1
 format-prefix = " "
 format-prefix-foreground = ${colors.fg}
 format-underline = ${colors.adapta-cyan}
-;format-margin = ${margin.for-modules}
+format-margin = ${margin.for-modules}
 format-padding = 1
 label = %percentage:2%%
 
@@ -277,7 +276,7 @@ interval = 0.1
 format-prefix = " "
 format-prefix-foreground = ${colors.fg}
 format-underline = ${colors.adapta-cyan}
-;format-margin = ${margin.for-modules}
+format-margin = ${margin.for-modules}
 format-padding = 1
 label = %percentage_used:2%%
 
@@ -287,10 +286,11 @@ interface = enp3s0
 interval = 0.1
 format-connected = <label-connected>
 format-connected-underline = ${colors.adapta-cyan}
-format-connected-padding = 1
-format-connected-prefix = "eth"
-format-connected-prefix-foreground = ${colors.foreground-alt}
-label-connected =  %upspeed:9%  %downspeed:9%
+format-connected-padding = 2
+format-connected-prefix = "  "
+label-margin = ${margin.for-modules}
+format-connected-prefix-foreground = ${colors.adapta-grey}
+label-connected =   %upspeed:9%  %downspeed:9%
 ;label-connected = %local_ip%
 
 format-disconnected =
