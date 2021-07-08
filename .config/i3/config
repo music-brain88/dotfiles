@@ -43,8 +43,22 @@ floating_modifier $mod
 # start a terminal
 # bindsym $mod+Return exec i3-sensible-terminal alacritty
 bindsym $mod+Return exec alacritty
+bindsym $mod+i exec vivaldi-stable
 # kill focused window
 # bindsym $mod+Shift+q kill
+
+# Configure border style <normal|1pixel|pixel xx|none|pixel>
+default_border pixel 10
+default_floating_border normal
+
+# Hide borders
+hide_edge_borders none
+
+### Gaps ###
+set $default_gaps_inner 12
+set $default_gaps_outer 0
+gaps inner $default_gaps_inner
+gaps outer $default_gaps_outer
 
 # start dmenu (a program launcher)
 bindsym $mod+d exec "rofi -show drun"
@@ -78,18 +92,18 @@ bindsym $mod+Shift+Up move up
 bindsym $mod+Shift+Right move right
 
 # split in horizontal orientation
-bindsym $mod+i split h
+# bindsym $mod+i split h
 
 # split in vertical orientation
-bindsym $mod+s split v
+# bindsym $mod+s split v
 
 # enter fullscreen mode for the focused container
-bindsym $mod+f fullscreen toggle
+bindsym $mod++Shift+f fullscreen toggle
 
 # change container layout (stacked, tabbed, toggle split)
 bindsym $mod+Shift+s layout stacking
 
-bindsym $mod+e layout toggle split
+bindsym $mod+t layout toggle split
 
 # toggle tiling / floating
 bindsym $mod+Shift+space floating toggle
@@ -191,7 +205,7 @@ bindsym $mod+Next workspace next
 # exec --no-startup-id compton -cbm 0.75
 
 # 壁紙を設定する
-exec --no-startup-id "feh --bg-scale ~/Pictures/wallpaper/archlinux_01.jpg"
+exec --no-startup-id "feh --bg-scale ~/Pictures/Fate/alter-jeanne-darc-fate-grand-order-uhdpaper.com-4K-6.2305.jpg"
 
 
 set $Locker i3lock && sleep 1
