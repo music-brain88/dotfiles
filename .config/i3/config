@@ -13,11 +13,32 @@ set $mod Mod4
 set $Alt Mod1
 # Font for window titles. Will also be used by the bar unless a different font
 # is used in the bar {} block below.
-font pango:monospace 12
+font pango:Saucecode Nerd Font 12
 
 # This font is widely installed, provides lots of unicode glyphs, right-to-left
 # text rendering and scalability on retina/hidpi displays (thanks to pango).
 #font pango:DejaVu Sans Mono 8
+
+
+
+
+### THEME ###
+
+set $FOCUS #989898
+set $UNFOCUS #3c3b37
+
+# Layout colors 	    bord 	bg 		text    indicator (split)
+client.focused 			$FOCUS $FOCUS $FOCUS $FOCUS
+client.focused_inactive $UNFOCUS $UNFOCUS $UNFOCUS $UNFOCUS
+client.unfocused 		$UNFOCUS $UNFOCUS $UNFOCUS $UNFOCUS
+client.urgent 			$FOCUS $FOCUS $FOCUS $FOCUS
+client.background 		$UNFOCUS
+
+
+### Borders ###
+new_window pixel 4
+new_float pixel 4
+
 
 # The combination of xss-lock, nm-applet and pactl is a popular choice, so
 # they are included here as an example. Modify as you see fit.
