@@ -64,7 +64,7 @@ floating_modifier $mod
 
 # start a terminal
 # bindsym $mod+Return exec i3-sensible-terminal alacritty
-bindsym $mod+Return exec alacritty; workspace 
+bindsym $mod+Return exec alacritty;
 bindsym $mod+i exec vivaldi-stable
 # kill focused window
 # bindsym $mod+Shift+q kill
@@ -83,7 +83,10 @@ gaps inner $default_gaps_inner
 gaps outer $default_gaps_outer
 
 # start dmenu (a program launcher)
-bindsym $mod+d exec "rofi -show drun"
+bindsym $mod+space exec "rofi -show drun"
+
+bindsym $Alt+space move scratchpad
+bindsym $mod+d scratchpad show
 # There also is the (new) i3-dmenu-desktop which only displays applications
 # shipping a .desktop file. It is a wrapper around dmenu, so you need that
 # installed.
@@ -131,7 +134,7 @@ bindsym $mod+t layout toggle split
 bindsym $mod+Shift+space floating toggle
 
 # change focus between tiling / floating windows
-bindsym $mod+space focus mode_toggle
+#bindsym $mod+space focus mode_toggle
 
 # focus the parent container
 bindsym $mod+a focus parent
