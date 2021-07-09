@@ -118,6 +118,13 @@ fi
 ln -snfv ~/dotfiles/.config/i3/config ~/.config/i3/config
 echo "i3 setting finish"
 
+echo "polybar setting"
+if [ ! -d ~/.config/polybar ]; then
+  mkdir -p ~/.config/polybar/
+fi
+ln -snfv ~/dotfiles/.config/polybar/config ~/.config/polybar/config
+echo "polybar setting finish"
+
 echo "rofi setting"
 if [ ! -d ~/.config/rofi ]; then
   mkdir -p ~/.config/rofi/
