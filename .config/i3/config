@@ -263,13 +263,13 @@ bindsym $Alt+F4 kill
 
 bindsym $mod+Shift+Escape mode "$mode_system"
 
-bindsym --release Print exec scrot 'screenshot_%Y%m%d_%H%M%S.png' -e \
+bindsym --release Print exec --no-startup-id scrot 'screenshot_%Y%m%d_%H%M%S.png' -e \
         'mkdir -p ~/Pictures/screenshots && \
         mv $f ~/Pictures/screenshots && \
         xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # All screens
 
 # OSX-like area selection screenshots
-bindsym --release $mod+Shift+S exec scrot -s 'screenshot_%Y%m%d_%H%M%S.png' -e 'mkdir -p ~/Pictures/screenshots && mv $f ~/Pictures/screenshots && xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # Area selection
+bindsym --release $mod+Shift+S exec --no-startup-id scrot -s 'screenshot_%Y%m%d_%H%M%S.png' -e 'mkdir -p ~/Pictures/screenshots && mv $f ~/Pictures/screenshots && xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # Area selection
 
 
 # set $i3t_alt_tab python ~/dotfiles/.config/i3/i3-alt-tab.py n all
