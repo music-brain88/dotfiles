@@ -3,7 +3,7 @@
 echo
 echo 'updates.sh: "paru -Syu"'
 echo
-yay -Syu
+paru -Syu
 
 echo
 bash ~/.config/polybar/checkupdates.sh
