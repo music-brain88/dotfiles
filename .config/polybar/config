@@ -30,6 +30,7 @@ adapta-grey = #475359
 
 [margin]
 for-modules = 1
+for-prefix = 4
 
 ;====Main Bar settings+======================================
 [bar/main]
@@ -53,9 +54,9 @@ cursor-click = pointer
 
 
 ;==========================================================
-modules-left = arch left1 title left2
-modules-center = i3
-modules-right = alsa right6 cpu right5  memory right4  date right3 xkeyboard  right2 powermenu
+modules-left = left1 i3
+modules-center = left1 title right1
+modules-right = alsa right6 cpu right5  memory right4  date right3 xkeyboard  right2 powermenu2
 ;==========================================================
 
 ;====Bottom Bar settings+======================================
@@ -74,18 +75,13 @@ font-0 = "Saucecode Pro:pixelsize=10;2"
 font-1 = "Saucecode Pro Nerd Font:pixelsize=18;4"
 font-2 = "Saucecode Pro Nerd Font:pixelsize=13;2"
 font-3 = "Saucecode Pro Nerd Font:pixelsize=12;4"
-tray-position = right
-tray-detached = false
-tray-maxsize = 10
-tray-offset-x = 0
-tray-offset-y = 0
-tray-padding = 4
-tray-scale = 1.0
 
+tray-position = right
+enable-ipc = true
 cursor-click = pointer
 ;==========================================================
 modules-right = ip upspeed downspeed
-modules-left = kernel
+modules-center = kernel
 ;==========================================================
 
 
@@ -97,48 +93,13 @@ content-padding = 2
 content-foreground = ${colors.fg}
 content-underline = ${colors.adapta-cyan}
 content-margin = ${colors.modules}
-;menu-0-0 = Vivaldi
-;menu-0-0-exec = vivaldi-stable
-;menu-0-1 = Firefox
-;menu-0-1-exec = firefox
-;
-;menu-1-0 = Vivaldi
-;menu-1-0-exec = vivaldi-stable
-;menu-1-1 = Firefox
-;menu-1-1-exec = firefox
-
-[module/apple]
-type = custom/text
-content = 
-content-padding = 1
-content-foreground = ${colors.fg}
-content-underline = ${colors.adapta-cyan}
-;click-left = rmenu_1
-;click-right = rmenu_wi_1
-
-[module/windows]
-type = custom/text
-content = 
-content-padding = 1
-content-foreground = ${colors.fg}
-content-underline = ${colors.adapta-cyan}
-;click-left = rmenu_1
-;click-right = rmenu_wi_1
 
 [module/explorer]
 type = custom/text
-content = 
-;content = 
+content = 
 content-padding = 1
 content-foreground = ${colors.fg}
 click-left = nautilus
-
-[module/google]
-type = custom/text
-content = 
-content-padding = 1
-content-foreground = ${colors.fg}
-click-left = xdg-open https://www.google.com/
 
 [module/amazon]
 type = custom/text
@@ -163,12 +124,6 @@ content-padding = 1
 content-foreground = ${colors.fg}
 click-left = xdg-open https://www.reddit.com/
 
-[module/facebook]
-type = custom/text
-content = 
-content-padding = 1
-content-foreground = ${colors.fg}
-click-left = xdg-open https://www.facebook.com/
 
 [module/youtube]
 type = custom/text
@@ -189,7 +144,8 @@ format-padding = 2
 type = internal/xkeyboard
 blacklist-0 = num lock
 
-format-prefix = " "
+;format-prefix = " "
+format-prefix = "# "
 format-prefix-foreground = ${colors.fg}
 format-prefix-background = ${colors.bg}
 format-prefix-underline = ${color.adapta-cyan}
@@ -197,12 +153,13 @@ format-foreground = ${colors.fg}
 format-background = ${colors.bg}
 
 label-layout = %layout%
+label-indicator = %layout%
 label-layout-underline = ${color.adapta-cyan}
 label-indicator-padding = 2
 label-indicator-margin = 1
 label-indicator-background = ${colors.bg}
 label-indicator-underline = ${colors.fg}
-
+format = <label-layout> <label-indicator>
 
 
 [module/filesystem]
@@ -214,28 +171,6 @@ mount-0 = /
 label-mounted = %{F#0a81f5}%mountpoint%%{F-}: %percentage_used%%
 label-unmounted = %mountpoint% not mounted
 label-unmounted-foreground = ${colors.foreground-alt}
-
-[module/bspwm]
-type = internal/bspwm
-
-label-focused = %index%
-label-focused-background = ${colors.background-alt}
-label-focused-underline= ${colors.primary}
-label-focused-padding = 2
-
-label-occupied = %index%
-label-occupied-padding = 2
-
-label-urgent = %index%!
-label-urgent-background = ${colors.alert}
-label-urgent-padding = 2
-
-label-empty = %index%
-label-empty-foreground = ${colors.foreground-alt}
-label-empty-padding = 2
-
-; Separator in between workspaces
-; label-separator = |
 
 [module/i3]
 type = internal/i3
@@ -276,15 +211,15 @@ label-urgent-padding = 2
 
 [module/kernel]
 type = custom/script
-format-prefix = " "
-format-padding = 1
-content-padding = 1
+format-prefix = ""
+;content-padding = 1
 exec = uname -r
 tail = false
 format-foreground = ${colors.fg}
 format-background = ${colors.bg}
+format-prefix-margin = ${margin.for-prefix}
 format-prefix-foreground = ${colors.fg}
-format-underline = ${colors.adapta-cyan}
+;format-underline = ${colors.adapta-cyan}
 
 [module/mpd]
 type = internal/mpd
@@ -324,10 +259,11 @@ label = %percentage_used:2%%
 type = internal/network
 interface = enp3s0
 format-connected = <label-connected>
-format-connected-underline = ${colors.adapta-cyan}
+;format-connected-underline = ${colors.adapta-cyan}
 format-connected-padding = 1
 label-connected = IP:%local_ip% 
 format-connected-prefix = "  "
+format-connected-prefix-margin = ${margin.for-prefix}
 format-connected-prefix-foreground = ${colors.adapta-gray}
 label-disconnected = 睊
 format-disconnected = <label-disconnected>
@@ -374,33 +310,33 @@ label-underline = ${colors.adapta-cyan}
 time =   %a %d %b %Y %T
 label-margin = ${margin.for-modules}
 
-[module/pulseaudio]
-type = internal/pulseaudio
-
-format-volume = <label-volume> <bar-volume>
-label-volume = pulseaudio VOL %percentage%%
-label-volume-foreground = ${colors.adapta-cyan}
-label-muted = 🔇 muted
-label-muted-foreground = #666
-
-bar-volume-width = 8
-bar-volume-foreground-0 = ${colors.adapta-lightgreen}
-bar-volume-foreground-1 = ${colors.adapta-lightgreen}
-bar-volume-foreground-2 = ${colors.adapta-lightgreen}
-bar-volume-foreground-3 = ${colors.adapta-lightgreen}
-bar-volume-foreground-4 = ${colors.adapta-lightgreen}
-bar-volume-foreground-5 = ${colors.adapta-yellow}
-bar-volume-foreground-6 = ${colors.adapta-yellow}
-bar-volume-foreground-7 = ${colors.adapta-red}
-bar-volume-gradient = false
-bar-volume-indicator = 
-bar-volume-indicator-font = 2
-bar-volume-fill = ─
-bar-volume-fill-font = 2
-bar-volume-empty = ─
-bar-volume-empty-font = 2
-bar-volume-empty-foreground = ${colors.foreground-alt}
-label-margin = ${margin.for-modules}
+;[module/pulseaudio]
+;type = internal/pulseaudio
+;
+;format-volume = <label-volume> <bar-volume>
+;label-volume = pulseaudio VOL %percentage%%
+;label-volume-foreground = ${colors.adapta-cyan}
+;label-muted = 🔇 muted
+;label-muted-foreground = #666
+;
+;bar-volume-width = 8
+;bar-volume-foreground-0 = ${colors.adapta-lightgreen}
+;bar-volume-foreground-1 = ${colors.adapta-lightgreen}
+;bar-volume-foreground-2 = ${colors.adapta-lightgreen}
+;bar-volume-foreground-3 = ${colors.adapta-lightgreen}
+;bar-volume-foreground-4 = ${colors.adapta-lightgreen}
+;bar-volume-foreground-5 = ${colors.adapta-yellow}
+;bar-volume-foreground-6 = ${colors.adapta-yellow}
+;bar-volume-foreground-7 = ${colors.adapta-red}
+;bar-volume-gradient = false
+;bar-volume-indicator = 
+;bar-volume-indicator-font = 2
+;bar-volume-fill = ─
+;bar-volume-fill-font = 2
+;bar-volume-empty = ─
+;bar-volume-empty-font = 2
+;bar-volume-empty-foreground = ${colors.foreground-alt}
+;label-margin = ${margin.for-modules}
 
 [module/alsa]
 type = internal/alsa
@@ -474,6 +410,30 @@ menu-2-0-exec = systemctl poweroff
 menu-2-1 = back
 menu-2-1-exec = menu-open-0
 
+[module/powermenu2]
+type = custom/menu
+content-padding = 1
+content-underline = ${colors.adapta-cyan}
+content-foreground = ${colors.fg}
+expand-right = true
+
+label-open = "  "
+label-close = "x"
+label-separator = |
+menu-0-0 = reboot
+menu-0-0-exec = menu-open-1
+menu-0-1 = shutdown
+menu-0-1-exec = menu-open-2
+
+menu-1-0 = back
+menu-1-0-exec = menu-open-0
+menu-1-1 = reboot
+menu-1-1-exec = systemctl reboot
+
+menu-2-0 = shutdown
+menu-2-0-exec = systemctl poweroff
+menu-2-1 = back
+menu-2-1-exec = menu-open-0
 
 [settings]
 screenchange-reload = true
@@ -501,8 +461,8 @@ type = custom/script
 interval = 1800
 
 [global/wm]
-margin-top = 5
-margin-bottom = 5
+;margin-top = 5
+;margin-bottom = 5
 
 ; vim:ft=dosini
 
