@@ -231,6 +231,7 @@ bindsym $mod+Next workspace next
 
 # 壁紙を設定する
 exec --no-startup-id "feh --bg-scale ~/Pictures/Fate/alter-jeanne-darc-fate-grand-order-uhdpaper.com-4K-6.2305.jpg"
+exec --no-startup-id "picom -b --experimental-backends --backend glx --xrender-sync-fence"
 
 
 set $Locker i3lock && sleep 1
