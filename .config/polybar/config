@@ -80,6 +80,7 @@ tray-position = right
 enable-ipc = true
 cursor-click = pointer
 ;==========================================================
+modules-left = arch
 modules-right = ip upspeed downspeed
 modules-center = kernel
 ;==========================================================
@@ -93,6 +94,7 @@ content-padding = 2
 content-foreground = ${colors.fg}
 content-underline = ${colors.adapta-cyan}
 content-margin = ${colors.modules}
+click-left = rofi -show drun
 
 [module/explorer]
 type = custom/text
