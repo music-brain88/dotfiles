@@ -125,6 +125,21 @@ fi
 ln -snfv ~/dotfiles/.config/polybar/config ~/.config/polybar/config
 echo "polybar setting finish"
 
+
+echo "mpd setting"
+if [ ! -d ~/.config/mpd ]; then
+  mkdir -p ~/.config/mpd
+fi
+ln -snfv ~/dotfiles/.config/mpd/mpd.conf ~/.config/mpd/mpd.conf
+echo "mpd setting finish"
+
+echo "ncmpcpp setting"
+if [ ! -d ~/.config/ncmpcpp ]; then
+  mkdir -p ~/.config/ncmpcpp
+fi
+ln -snfv ~/dotfiles/.config/mpd/mpd.conf ~/.config/mpd/mpd.conf
+echo "ncmpcpp setting finish"
+
 echo "rofi setting"
 if [ ! -d ~/.config/rofi ]; then
   mkdir -p ~/.config/rofi/
