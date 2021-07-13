@@ -43,10 +43,10 @@ foreground = ${colors.fg}
 
 line-size = 3
 
-font-0 = "Saucecode Pro:pixelsize=10;2"
-font-1 = "Saucecode Pro Nerd Font:pixelsize=18;4"
-font-2 = "Saucecode Pro Nerd Font:pixelsize=13;2"
-font-3 = "Saucecode Pro Nerd Font:pixelsize=12;4"
+font-0 = "Saucecode Pro Nerd Font Mono:pixelsize=12;2"
+font-1 = "Saucecode Pro Nerd Font Mono:pixelsize=18;4"
+font-2 = "Saucecode Pro Nerd Font Mono:pixelsize=13;2"
+font-3 = "Saucecode Pro Nerd Font Mono:pixelsize=12;4"
 
 
 cursor-click = pointer
@@ -71,17 +71,17 @@ foreground = ${colors.fg}
 
 line-size = 3
 
-font-0 = "Saucecode Pro:pixelsize=10;2"
-font-1 = "Saucecode Pro Nerd Font:pixelsize=18;4"
-font-2 = "Saucecode Pro Nerd Font:pixelsize=13;2"
-font-3 = "Saucecode Pro Nerd Font:pixelsize=12;4"
+font-0 = "Saucecode Pro Nerd Font Mono:pixelsize=12;2"
+font-1 = "Saucecode Pro Nerd Font Mono:pixelsize=18;4"
+font-2 = "Saucecode Pro Nerd Font Mono:pixelsize=13;2"
+font-3 = "Saucecode Pro Nerd Font Mono:pixelsize=12;4"
 
 tray-position = right
 enable-ipc = true
 cursor-click = pointer
 ;==========================================================
 modules-left = arch
-modules-right = ip upspeed downspeed
+modules-right = wired-network
 modules-center = kernel
 ;==========================================================
 
@@ -189,8 +189,8 @@ label-mode-background = ${colors.bg}
 
 ; focused = Active workspace on focused monitor
 label-focused = %index%
-label-focused-background = ${colors.background-alt}
-label-focused-underline= ${colors.primary}
+label-focused-background = ${colors.bg}
+label-focused-underline= ${colors.adapta-cyan}
 label-focused-padding = 2
 
 ; unfocused = Inactive workspace on any monitor
@@ -205,15 +205,22 @@ label-visible-padding = ${self.label-focused-padding}
 
 ; urgent = Workspace with urgency hint set
 label-urgent = %index%
-label-urgent-background = ${colors.alert}
+label-urgent-background = ${colors.adapta-red}
 label-urgent-padding = 2
 
 ; Separator in between workspaces
 ; label-separator = |
 
+
+ws-icon-0 = 1;%{T2}ᛖᚾen
+ws-icon-1 = 2;%{T2}ᛏᛟto
+ws-icon-2 = 3;%{T2}ᛏᚱᛖtre
+ws-icon-3 = 4;%{T2}ᚠᛁᚱᛖfire
+ws-icon-4 = 5;%{T2}ᚠᛖᛗfem
+
 [module/kernel]
 type = custom/script
-format-prefix = ""
+format-prefix = " "
 ;content-padding = 1
 exec = uname -r
 tail = false
@@ -256,51 +263,20 @@ format-margin = ${margin.for-modules}
 format-padding = 1
 label = %percentage_used:2%%
 
-
-[module/ip]
-type = internal/network
-interface = enp3s0
-format-connected = <label-connected>
-;format-connected-underline = ${colors.adapta-cyan}
-format-connected-padding = 1
-label-connected = IP:%local_ip% 
-format-connected-prefix = "  "
-format-connected-prefix-margin = ${margin.for-prefix}
-format-connected-prefix-foreground = ${colors.adapta-gray}
-label-disconnected = 睊
-format-disconnected = <label-disconnected>
-format-disconnected-padding = 1
-format-disconnected-underline = ${colors.adapta-cyan}
-
-[module/upspeed]
+[module/wired-network]
 type = internal/network
 interface = enp3s0
 format-connected = <label-connected>
 format-connected-underline = ${colors.adapta-cyan}
 format-connected-padding = 1
-format-connected-prefix = "  "
-label-connected = %upspeed:9%
-label-maxlen = 20
-udspeed-minwidth = 9
-label-disconnected = 睊
+format-connected-prefix = " "
+label-connected =  %local_ip%  %upspeed:6%  %downspeed:6%
+udspeed-minwidth = 5
+;label-disconnected = 睊
 format-disconnected = <label-disconnected>
 format-disconnected-padding = 1
 format-disconnected-underline = ${colors.adapta-cyan}
-
-[module/downspeed]
-type = internal/network
-interface = enp3s0
-format-connected = <label-connected>
-format-connected-underline = ${colors.adapta-cyan}
-format-connected-padding = 1
-format-connected-prefix = "  "
-label-connected = %downspeed:9%
-label-maxlen = 20
-udspeed-minwidth = 9
-label-disconnected = 睊
-format-disconnected = <label-disconnected>
-format-disconnected-padding = 1
-format-disconnected-underline = ${colors.adapta-cyan}
+use-ui-max = false
 
 [module/date]
 type = internal/date
@@ -312,6 +288,9 @@ label-underline = ${colors.adapta-cyan}
 time =   %a %d %b %Y %T
 label-margin = ${margin.for-modules}
 
+
+
+;----------------------------------------------------------
 ;[module/pulseaudio]
 ;type = internal/pulseaudio
 ;
@@ -339,15 +318,16 @@ label-margin = ${margin.for-modules}
 ;bar-volume-empty-font = 2
 ;bar-volume-empty-foreground = ${colors.foreground-alt}
 ;label-margin = ${margin.for-modules}
+;----------------------------------------------------------
 
 [module/alsa]
 type = internal/alsa
 
 format-volume = <label-volume> <bar-volume>
 label-volume-foreground = ${colors.adapta-cyan}
-label-volume = 墳
-label-muted = 婢
-format-muted-prefix = "🔇 "
+label-volume = 
+label-muted = 
+;format-muted-prefix = "🔇"
 label-muted-padding = 1
 bar-volume-width = 8
 bar-volume-foreground-0 = ${colors.adapta-lightgreen}
@@ -368,6 +348,7 @@ bar-volume-empty-font = 2
 bar-volume-empty-foreground = ${colors.adapta-grey}
 format-muted-margin = ${margin.for-modules}
 format-volume-margin = ${margin.for-modules}
+click-right = exec alsamixer
 
 [module/temperature]
 type = internal/temperature
