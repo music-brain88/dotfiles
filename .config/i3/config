@@ -179,6 +179,12 @@ bindsym $mod+Shift+8 move container to workspace number $ws8
 bindsym $mod+Shift+9 move container to workspace number $ws9
 bindsym $mod+Shift+0 move container to workspace number $ws10
 
+for_window [class="Alacritty"] move --no-auto-back-and-forth to workspace $ws1
+for_window [class="Vivaldi"] move --no-auto-back-and-forth to workspace $ws2
+for_window [class="Steam"] move --no-auto-back-and-forth to workspace $ws3
+for_window [class="Bitwarden"] move to workspace $ws6
+for_window [class="Slack"] move to workspace $ws10
+
 # reload the configuration file
 bindsym $mod+Shift+c reload
 # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
