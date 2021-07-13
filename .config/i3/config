@@ -247,23 +247,6 @@ bindsym $Alt+F4 kill
 # bindsym XF86MonBrightnessUp $execi /usr/local/sbin/xbacklight -inc
 # bindsym XF86MonBrightnessDown $execi /usr/local/sbin/xbacklight -dec
 
-# 終了コマンド
-# set $mode_system System (l) lock, (e) logout, (s) suspend, (h) hibernate, (r) reboot, (Shift+s) shutdown
-# mode "$mode_system" {
-#     bindsym l exec --no-startup-id $Locker, mode "default"
-#     bindsym e exec --no-startup-id i3-msg exit, mode "default"
-#     bindsym s exec --no-startup-id $Locker && systemctl suspend, mode "default"
-#     bindsym h exec --no-startup-id $Locker && systemctl hibernate, mode "default"
-#     bindsym r exec --no-startup-id systemctl reboot, mode "default"
-#     bindsym Shift+s exec --no-startup-id systemctl poweroff -i, mode "default"  
-# 
-#     # back to normal: Enter or Escape
-#     bindsym Return mode "default"
-#     bindsym Escape mode "default"
-# }
-
-bindsym $mod+Shift+Escape mode "$mode_system"
-
 bindsym --release Print exec --no-startup-id scrot 'screenshot_%Y%m%d_%H%M%S.png' -e \
         'mkdir -p ~/Pictures/screenshots && \
         mv $f ~/Pictures/screenshots && \
@@ -273,8 +256,4 @@ bindsym --release Print exec --no-startup-id scrot 'screenshot_%Y%m%d_%H%M%S.png
 bindsym --release $mod+Shift+S exec --no-startup-id scrot -s 'screenshot_%Y%m%d_%H%M%S.png' -e 'mkdir -p ~/Pictures/screenshots && mv $f ~/Pictures/screenshots && xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # Area selection
 
 
-# set $i3t_alt_tab python ~/dotfiles/.config/i3/i3-alt-tab.py n all
-# set $i3t_alt_shift_tab python ~/dotfiles/.config/i3/i3-alt-tab.py p all
-# bindsym $Alt+Tab exec   exec $i3t_alt_tab
-# bindsym $Alt+Shift+Tab  exec $i3t_alt_shift_tab
 bindsym $Alt+Tab exec "rofi -show window -kb-accept-entry !Alt-Tab,Return -kb-row-down Alt+Tab,Alt+Down  -kb-row-up Alt+Shift+Tab,Alt+Up"
