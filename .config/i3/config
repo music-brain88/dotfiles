@@ -126,7 +126,7 @@ bindsym $mod+Shift+Right move right
 bindsym $mod+Shift+f fullscreen toggle
 
 # change container layout (stacked, tabbed, toggle split)
-bindsym $mod+Shift+s layout stacking
+bindsym $mod+s layout stacking
 
 bindsym $mod+t layout toggle split
 
@@ -255,13 +255,24 @@ bindsym $Alt+F4 kill
 # bindsym XF86MonBrightnessUp $execi /usr/local/sbin/xbacklight -inc
 # bindsym XF86MonBrightnessDown $execi /usr/local/sbin/xbacklight -dec
 
-bindsym --release Print exec --no-startup-id scrot 'screenshot_%Y%m%d_%H%M%S.png' -e \
-        'mkdir -p ~/Pictures/screenshots && \
-        mv $f ~/Pictures/screenshots && \
-        xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # All screens
+#bindsym --release Print exec --no-startup-id scrot 'screenshot_%Y%m%d_%H%M%S.png' -e \
+#        'mkdir -p ~/Pictures/screenshots && \
+#        mv $f ~/Pictures/screenshots && \
+#        xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # All screens
 
 # OSX-like area selection screenshots
-bindsym --release $mod+Shift+S exec --no-startup-id scrot -s 'screenshot_%Y%m%d_%H%M%S.png' -e 'mkdir -p ~/Pictures/screenshots && mv $f ~/Pictures/screenshots && xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # Area selection
+# bindsym  $mod+Shift+S --release exec --no-startup-id scrot -s 'screenshot_%Y%m%d_%H%M%S.png' -e 'mkdir -p ~/Pictures/screenshots && mv $f ~/Pictures/screenshots && xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # Area selection
+#bindsym  $mod+Shift+S --release exec --no-startup-id maim -s ~/Pictures/screenshots/$(date%s).png
+
+# Screenshots
+bindsym Print exec --no-startup-id maim "/home/$USER/Pictures/screenshots/$(date).png"
+bindsym $mod+Print exec --no-startup-id maim --window $(xdotool getactivewindow) "/home/$USER/Pictures/screenshots/$(date).png"
+bindsym $mod+Shift+s exec --no-startup-id maim --select "/home/$USER/Pictures/screenshots/$(date).png"
+
+## Clipboard Screenshots
+bindsym Ctrl+Print exec --no-startup-id maim | xclip -selection clipboard -t image/png
+bindsym Ctrl+$mod+Print exec --no-startup-id maim --window $(xdotool getactivewindow) | xclip -selection clipboard -t image/png
+bindsym Ctrl+Shift+Print exec --no-startup-id maim --select | xclip -selection clipboard -t image/png
 
 
 bindsym $Alt+Tab exec "rofi -show window -kb-accept-entry !Alt-Tab,Return -kb-row-down Alt+Tab,Alt+Down  -kb-row-up Alt+Shift+Tab,Alt+Up"
