@@ -20,8 +20,8 @@ elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
     export SSH_AUTH_SOCK
     export SSH_AGENT_PID
     export GPG_TTY=$(tty)
-      if [[ "$(uname -r)" == *microsoft* ]]; then
-        export GPG_TTY=$(tty)
+  if [[ "$(uname -r)" == *microsoft* ]]; then
+    export GPG_TTY=$(tty)
   fi
   exec fish
 elif [ "$(expr substr $(uname -s) 1 10)" == 'MINGW32_NT' ]; then

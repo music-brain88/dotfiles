@@ -228,7 +228,7 @@ bindsym $mod+r mode "resize"
 # }
 
 # auto start fcitx setting
-exec --no-startup-id fcitx
+exec --no-startup-id fcitx-autostart
 
 # Mod+PageUp/Mod+PageDownで前の/次のワークスペースへ
 bindsym $mod+Prior workspace prev
