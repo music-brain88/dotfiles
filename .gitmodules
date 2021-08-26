@@ -1,0 +1,3 @@
+[submodule "polybar-themes"]
+	path = polybar-themes
+	url = https://github.com/adi1090x/polybar-themes.git

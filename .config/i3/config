@@ -46,6 +46,7 @@ new_float pixel 4
 # xss-lock grabs a logind suspend inhibit lock and will use i3lock to lock the
 # screen before suspend. Use loginctl lock-session to lock your screen.
 exec --no-startup-id xss-lock --transfer-sleep-lock -- i3lock --nofork
+exec_always --no-startup-id $HOME/.config/polybar/launch.sh --forest
 
 # NetworkManager is the most popular way to manage wireless networks on Linux,
 # and nm-applet is a desktop environment-independent system tray GUI for it.
@@ -63,7 +64,7 @@ floating_modifier $mod
 
 # start a terminal
 # bindsym $mod+Return exec i3-sensible-terminal alacritty
-bindsym $mod+Return exec alacritty
+bindsym $mod+Return exec alacritty;
 bindsym $mod+i exec vivaldi-stable
 # kill focused window
 # bindsym $mod+Shift+q kill
@@ -82,7 +83,10 @@ gaps inner $default_gaps_inner
 gaps outer $default_gaps_outer
 
 # start dmenu (a program launcher)
-bindsym $mod+d exec "rofi -show drun"
+bindsym $mod+space exec "rofi -show drun"
+
+bindsym $Alt+space move scratchpad
+bindsym $mod+d scratchpad show
 # There also is the (new) i3-dmenu-desktop which only displays applications
 # shipping a .desktop file. It is a wrapper around dmenu, so you need that
 # installed.
@@ -119,10 +123,10 @@ bindsym $mod+Shift+Right move right
 # bindsym $mod+s split v
 
 # enter fullscreen mode for the focused container
-bindsym $mod++Shift+f fullscreen toggle
+bindsym $mod+Shift+f fullscreen toggle
 
 # change container layout (stacked, tabbed, toggle split)
-bindsym $mod+Shift+s layout stacking
+bindsym $mod+s layout stacking
 
 bindsym $mod+t layout toggle split
 
@@ -130,10 +134,12 @@ bindsym $mod+t layout toggle split
 bindsym $mod+Shift+space floating toggle
 
 # change focus between tiling / floating windows
-bindsym $mod+space focus mode_toggle
+#bindsym $mod+space focus mode_toggle
 
 # focus the parent container
 bindsym $mod+a focus parent
+
+bindsym $mod+x [urgent=latest] focus
 
 # focus the child container
 #bindsym $mod+d focus child
@@ -175,6 +181,12 @@ bindsym $mod+Shift+8 move container to workspace number $ws8
 bindsym $mod+Shift+9 move container to workspace number $ws9
 bindsym $mod+Shift+0 move container to workspace number $ws10
 
+for_window [class="Alacritty"] move --no-auto-back-and-forth to workspace $ws1
+for_window [class="Vivaldi"] move --no-auto-back-and-forth to workspace $ws2
+for_window [class="Steam"] move --no-auto-back-and-forth to workspace $ws3
+for_window [class="Bitwarden"] move to workspace $ws6
+for_window [class="Slack"] move to workspace $ws10
+
 # reload the configuration file
 bindsym $mod+Shift+c reload
 # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
@@ -211,12 +223,12 @@ bindsym $mod+r mode "resize"
 
 # Start i3bar to display a workspace bar (plus the system information i3status
 # finds out, if available)
-bar {    
-    status_command i3status
-}
+# bar {    
+#     status_command i3status
+# }
 
 # auto start fcitx setting
-exec --no-startup-id fcitx
+exec --no-startup-id fcitx-autostart
 
 # Mod+PageUp/Mod+PageDownで前の/次のワークスペースへ
 bindsym $mod+Prior workspace prev
@@ -227,6 +239,7 @@ bindsym $mod+Next workspace next
 
 # 壁紙を設定する
 exec --no-startup-id "feh --bg-scale ~/Pictures/Fate/alter-jeanne-darc-fate-grand-order-uhdpaper.com-4K-6.2305.jpg"
+exec --no-startup-id "picom -b --experimental-backends --backend glx --xrender-sync-fence"
 
 
 set $Locker i3lock && sleep 1
@@ -242,34 +255,24 @@ bindsym $Alt+F4 kill
 # bindsym XF86MonBrightnessUp $execi /usr/local/sbin/xbacklight -inc
 # bindsym XF86MonBrightnessDown $execi /usr/local/sbin/xbacklight -dec
 
-# 終了コマンド
-# set $mode_system System (l) lock, (e) logout, (s) suspend, (h) hibernate, (r) reboot, (Shift+s) shutdown
-# mode "$mode_system" {
-#     bindsym l exec --no-startup-id $Locker, mode "default"
-#     bindsym e exec --no-startup-id i3-msg exit, mode "default"
-#     bindsym s exec --no-startup-id $Locker && systemctl suspend, mode "default"
-#     bindsym h exec --no-startup-id $Locker && systemctl hibernate, mode "default"
-#     bindsym r exec --no-startup-id systemctl reboot, mode "default"
-#     bindsym Shift+s exec --no-startup-id systemctl poweroff -i, mode "default"  
-# 
-#     # back to normal: Enter or Escape
-#     bindsym Return mode "default"
-#     bindsym Escape mode "default"
-# }
-
-bindsym $mod+Shift+Escape mode "$mode_system"
-
-bindsym --release Print exec scrot 'screenshot_%Y%m%d_%H%M%S.png' -e \
-        'mkdir -p ~/Pictures/screenshots && \
-        mv $f ~/Pictures/screenshots && \
-        xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # All screens
+#bindsym --release Print exec --no-startup-id scrot 'screenshot_%Y%m%d_%H%M%S.png' -e \
+#        'mkdir -p ~/Pictures/screenshots && \
+#        mv $f ~/Pictures/screenshots && \
+#        xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # All screens
 
 # OSX-like area selection screenshots
-bindsym --release $mod+Shift+S exec scrot -s 'screenshot_%Y%m%d_%H%M%S.png' -e 'mkdir -p ~/Pictures/screenshots && mv $f ~/Pictures/screenshots && xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # Area selection
+# bindsym  $mod+Shift+S --release exec --no-startup-id scrot -s 'screenshot_%Y%m%d_%H%M%S.png' -e 'mkdir -p ~/Pictures/screenshots && mv $f ~/Pictures/screenshots && xclip -selection clipboard -t image/png -i ~/Pictures/screenshots/`ls -1 -t ~/Pictures/screenshots | head -1`' # Area selection
+#bindsym  $mod+Shift+S --release exec --no-startup-id maim -s ~/Pictures/screenshots/$(date%s).png
+
+# Screenshots
+bindsym Print exec --no-startup-id maim "/home/$USER/Pictures/screenshots/$(date).png"
+bindsym $mod+Print exec --no-startup-id maim --window $(xdotool getactivewindow) "/home/$USER/Pictures/screenshots/$(date).png"
+bindsym $mod+Shift+s exec --no-startup-id maim --select "/home/$USER/Pictures/screenshots/$(date).png"
+
+## Clipboard Screenshots
+bindsym Ctrl+Print exec --no-startup-id maim | xclip -selection clipboard -t image/png
+bindsym Ctrl+$mod+Print exec --no-startup-id maim --window $(xdotool getactivewindow) | xclip -selection clipboard -t image/png
+bindsym Ctrl+Shift+Print exec --no-startup-id maim --select | xclip -selection clipboard -t image/png
 
 
-# set $i3t_alt_tab python ~/dotfiles/.config/i3/i3-alt-tab.py n all
-# set $i3t_alt_shift_tab python ~/dotfiles/.config/i3/i3-alt-tab.py p all
-# bindsym $Alt+Tab exec   exec $i3t_alt_tab
-# bindsym $Alt+Shift+Tab  exec $i3t_alt_shift_tab
 bindsym $Alt+Tab exec "rofi -show window -kb-accept-entry !Alt-Tab,Return -kb-row-down Alt+Tab,Alt+Down  -kb-row-up Alt+Shift+Tab,Alt+Up"
