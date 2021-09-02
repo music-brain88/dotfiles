@@ -37,8 +37,8 @@ jobs:
     runs-on: ubuntu-18.04
     environment:
       name: dev
-    container: archlinux/base:latest
     steps:
+      container: archlinux/base:latest
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
