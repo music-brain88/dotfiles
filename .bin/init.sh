@@ -4,6 +4,8 @@ set -ue
 
 echo "Start Initialization"
 
+mkdir -p /tmp/source-code-pro
+
 command_list=("rustup" "fish" "fisher" "nvim" "npm" "awk")
 
 OS=''

@@ -55,6 +55,7 @@ ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
 ln -snfv ~/dotfiles/.gitconfig ~/.gitconfig
 ln -snfv ~/dotfiles/.config/starship.toml ~/.config/starship.toml
 
+# Setup Rust
 if !(type rustup > /dev/null 2>&1); then
   echo "install Rust compiler"
   curl https://sh.rustup.rs -sSf | sh -s -- -y
@@ -78,6 +79,16 @@ else
   echo "Rust is installed"
 fi
 
+# Setup Golang
+# if !(type go > /dev/null 2>&1); then
+#   echo "install Golang compiler"
+#   wget https://dl.google.com/go/go1.17.linux-amd64.tar.gz
+#   sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.17.linux-amd64.tar.gz
+#   export PATH=$PATH:/usr/local/go/bin
+#   echo "finish install Golang"
+# else
+#   echo "Go is installed"
+# fi
 
 # install fzf
 if !(type fzf > /dev/null 2>&1); then

@@ -35,9 +35,16 @@ jobs:
 
   archlinux:
     runs-on: ubuntu-18.04
+    environment:
+      name: dev
     container: archlinux/base:latest
     steps:
-      - uses: actions/checkout@v1
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: actions/checkout@v2
       - name: Install required packages
         run: |
           pacman -Syu --noconfirm
