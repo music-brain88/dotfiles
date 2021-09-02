@@ -32,3 +32,17 @@ jobs:
         brew install -f git fish 
     - name: Run setup script
       run: make deploy
+
+  archlinux:
+    runs-on: ubuntu-18.04
+    container: archlinux/base:latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install required packages
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S make git gcc awk fish pkg-config --noconfirm
+      - name: Run initial script
+        run: make init
+      - name: Run setup script
+        run: make deploy
