@@ -49,29 +49,31 @@ if !(type pyenv > /dev/null 2>&1); then
   echo "Please set the pyenv path"
 fi
 
-# bash_profileが整理されてないので一旦退避
-if [ "$(uname)" == 'Darwin' ]; then
-  ln -snfv ~/dotfiles/darwin/.bash_profile ~/.bash_profile
-elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
-  ln -snfv ~/dotfiles/.bash_profile ~/.bash_profile
-fi
-
 ln -snfv ~/dotfiles/.config/nvim/init.vim ~/.config/nvim/init.vim
 ln -snfv ~/dotfiles/.config/nvim/coc-settings.json ~/.config/nvim/coc-settings.json
 ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
 ln -snfv ~/dotfiles/.gitconfig ~/.gitconfig
+ln -snfv ~/dotfiles/.config/starship.toml ~/.config/starship.toml
 
 if !(type rustup > /dev/null 2>&1); then
   echo "install Rust compiler"
   curl https://sh.rustup.rs -sSf | sh -s -- -y
   echo "finish install rust"
   source $HOME/.cargo/env
-  # cargo install fd-find
-  # cargo install ripgrep
-  # cargo install exa
-  # cargo install procs
-  # cargo install gitui
-  bash manage_cargo_tools.sh
+  cargo install exa
+  cargo install fd-find
+  cargo install ripgrep
+  cargo install exa
+  cargo install procs
+  cargo install gitui
+  cargo install git-delta
+  cargo install cargo-update
+  cargo install tealdeer
+  cargo install broot
+  cargo install hyperfine
+  cargo install du-dust
+  cargo install tokei
+  cargo install starship
 else
   echo "Rust is installed"
 fi
@@ -146,6 +148,7 @@ if [ ! -d ~/.config/rofi ]; then
 fi
 ln -snfv ~/dotfiles/.config/rofi/config.rasi ~/.config/rofi/config.rasi
 echo "rofi setting finish"
+
 
 echo "finish setup"
 echo "next you call dein script"

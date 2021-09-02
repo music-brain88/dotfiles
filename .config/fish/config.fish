@@ -46,6 +46,9 @@ set -x PATH $PATH $GOPATH/bin
 
 export TERM=xterm-256color
 
+# set startship
+#starship init fish | source
+
 function reload
   exec fish
 end
