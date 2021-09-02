@@ -23,6 +23,7 @@ Warning: If you want to give these dotfiles a try, you should first fork this re
 - [fish](https://fishshell.com/)
 - make
 - gcc
+- pkg-config
 
 
 
