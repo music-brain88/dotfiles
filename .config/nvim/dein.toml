@@ -494,3 +494,12 @@ hook_add = '''
   "vmap <C-S-/> (caw:zeropos:toggle)
 
 '''
+
+[[plugins]]
+repo = 'vim-denops/denops.vim'
+
+[[plugins]]
+repo = 'kat0h/bufpreview.vim'
+
+[[plugins]]
+repo = 'vim-denops/denops-helloworld.vim'
