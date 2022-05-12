@@ -114,6 +114,8 @@ if dein#load_state(s:dein_dir)
   call dein#save_state()
 endif
 
+let g:dein#auto_recache = 1
+
 " Required:
 filetype plugin indent on
 syntax enable
