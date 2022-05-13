@@ -154,63 +154,6 @@ repo = 'Shougo/ddu-filter-matcher_substring'
 [[plugins]]
 repo = 'Shougo/ddu-kind-file'
 
-
-# [[plugins]]
-# repo = 'Shougo/denite.nvim'
-# hook_add = '''
-# "-----------------------------------------------------------------------
-# " Define denite mappings
-# "-----------------------------------------------------------------------
-# autocmd FileType denite call s:denite_my_settings()
-# function! s:denite_my_settings() abort
-#   nnoremap <silent><buffer><expr> <CR>
-#   \ denite#do_map('do_action')
-#   nnoremap <silent><buffer><expr> d
-#   \ denite#do_map('do_action', 'delete')
-#   nnoremap <silent><buffer><expr> p
-#   \ denite#do_map('do_action', 'preview')
-#   nnoremap <silent><buffer><expr> q
-#   \ denite#do_map('quit')
-#   nnoremap <silent><buffer><expr> i
-#   \ denite#do_map('open_filter_buffer')
-#   nnoremap <silent><buffer><expr> <Space>
-#   \ denite#do_map('toggle_select').'j'
-#   nnoremap <silent><buffer><expr> <bar>
-#   \ denite#do_map('do_action', 'vsplit')
-#   nnoremap <silent><buffer><expr> -
-#   \ denite#do_map('do_action', 'split')
-# endfunction
-# 
-# let s:denite_win_width_percent = 0.85
-# let s:denite_win_height_percent = 0.7
-# 
-# " Change denite default options
-# call denite#custom#option('default', {
-#     \ 'split': 'floating',
-#     \ 'winwidth': float2nr(&columns * s:denite_win_width_percent),
-#     \ 'wincol': float2nr((&columns - (&columns * s:denite_win_width_percent)) / 2),
-#     \ 'winheight': float2nr(&lines * s:denite_win_height_percent),
-#     \ 'winrow': float2nr((&lines - (&lines * s:denite_win_height_percent)) / 2),
-#     \ })
-# 
-# noremap <silent> ,f :Denite file/rec<CR>
-# noremap <silent> ,t :Denite file/type<CR>
-# noremap <silent> ,g :Denite grep<CR>
-# noremap <silent> ,b :Denite buffer<CR>
-# noremap <silent> ,l :Denite line<CR>
-# 
-# " Ripgrep command on grep source
-# call denite#custom#var('grep', 'command', ['rg'])
-# call denite#custom#var('grep', 'default_opts',
-#     \ ['--hidden', '--vimgrep', '--smart-case'])
-# call denite#custom#var('grep', 'recursive_opts', [])
-# call denite#custom#var('grep', 'pattern_opt', ['--regexp'])
-# call denite#custom#var('grep', 'separator', ['--'])
-# call denite#custom#var('grep', 'final_opts', [])
-# " Change file/rec command.
-# call denite#custom#var('file/rec', 'command', ['fd', '-H', '--full-path'])
-# '''
-
 [[plugins]]
 repo = 'wakatime/vim-wakatime'
 hook_add = '''
