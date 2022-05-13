@@ -13,12 +13,22 @@ nnoremap <silent>,m :<C-u>Fern . -reveal=% -drawer -toggle<CR>
 [[plugins]]
 repo = 'lambdalisue/fern-git-status.vim'
 
-
 [[plugins]]
 repo = 'lambdalisue/nerdfont.vim'
 
 [[plugins]]
 repo = 'lambdalisue/fern-renderer-nerdfont.vim'
+
+### Coloring icon glyph
+[[plugins]]
+repo = 'lambdalisue/glyph-palette.vim'
+hook_add = '''
+augroup my-glyph-palette
+  autocmd! *
+  autocmd FileType fern call glyph_palette#apply()
+  autocmd FileType nerdtree,startify call glyph_palette#apply()
+augroup END
+'''
 
 ### fern settings
 [[plugins]]
@@ -145,58 +155,6 @@ repo = 'Shougo/ddu-kind-file'
 # " Change file/rec command.
 # call denite#custom#var('file/rec', 'command', ['fd', '-H', '--full-path'])
 # '''
-
-
-# [[plugins]]
-# repo = 'Shougo/defx.nvim'
-# hook_add = '''
-# nnoremap <silent>,m :<C-u>Defx -resume<CR>
-# nnoremap <silent>,v :<C-u>Defx -new `expand('%:p:h')` -search=`expand('%:p')`<CR>
-# call defx#custom#option('_', {
-# \ 'columns': 'indent:git:icons:filename',
-# \ 'show_ignored_files': 1,
-# \ })
-# autocmd FileType defx call s:defx_my_settings()
-#   function! s:defx_my_settings() abort
-#     " open
-#     nnoremap <silent><buffer><expr> <CR>
-#     \ defx#do_action('open')
-#     " create new file
-#     nnoremap <silent><buffer><expr> ,n
-#     \ defx#do_action('new_file')
-#     " create new directory
-#     nnoremap <silent><buffer><expr> ,N
-#     \ defx#do_action('new_directory')
-#     " copy file
-#     nnoremap <silent><buffer><expr> c
-#     \ defx#do_action('copy')
-#     " open file oriental
-#     nnoremap <silent><buffer><expr> -
-#     \ defx#do_action('open', 'split')
-#     " open file vertical
-#     nnoremap <silent><buffer><expr> <bar>
-#     \ defx#do_action('open', 'vsplit')
-#     " delete file
-#     nnoremap <silent><buffer><expr> D
-#     \ defx#do_action('remove')
-#     " quit filer
-#     nnoremap <silent><buffer><expr> ,m
-#     \ defx#do_action('quit')
-#     " toggle hide ignored files
-#     nnoremap <silent><buffer><expr> <C-i>
-#     \ defx#do_action('toggle_ignored_files')
-#     " yank path
-#     nnoremap <silent><buffer><expr> yy
-#     \ defx#do_action('yank_path')
-#     " go up directory
-#     nnoremap <silent><buffer><expr> ..
-#     \ defx#do_action('cd', ['..'])
-#     " change directory in vim path
-#     nnoremap <silent><buffer><expr> cd
-#     \ defx#do_action('change_vim_cwd')
-#   endfunction
-# '''
-
 
 [[plugins]]
 repo = 'wakatime/vim-wakatime'
