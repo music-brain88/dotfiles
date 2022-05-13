@@ -2,7 +2,7 @@
 repo = 'vim-denops/denops.vim'
 
 
-## fern settings
+### fern settings
 [[plugins]]
 repo = 'lambdalisue/fern.vim'
 hook_add = '''
@@ -31,36 +31,86 @@ augroup END
 '''
 
 ### fern settings
+
+### ddu settings
 [[plugins]]
 repo = 'Shougo/ddu.vim'
 hook_add = '''
+
+" fuzzy find filename
+nmap <silent> ,f <Cmd>call ddu#start({ 'name' : 'file' })<CR>
+
+" fuzzy finder 
 nmap <silent> ,g <Cmd>call ddu#start({
-\   'name': 'grep',
+        \   'name': 'text',
+        \   'volatile': v:true,
+        \   'sources': [{
+        \     'name': 'rg',
+        \     'options': {'matchers': []},
+        \   }],
+        \   'uiParams': {'ff': {
+        \     'ignoreEmpty': v:false,
+        \     'autoResize': v:false,
+        \   }},
+        \ })<CR>
+
+" fuzzy finder grep cursor word
+nmap <silent> ,w <Cmd>call ddu#start({
+\   'name': 'word',
 \   'sources':[
-\     {'name': 'rg'}
+\     {'name': 'rg', 'params': { 'input': expand('<cword>')}}
 \   ],
 \ })<CR>
 
 call ddu#custom#patch_global({
-    \   'ui': 'ff',
-    \   'sources': [{'name': 'file_rec', 'params': {}}],
-    \   'sourceOptions': {
-    \     '_': {
-    \       'matchers': ['matcher_substring'],
-    \     },
-    \   },
-    \   'kindOptions': {
-    \     'file': {
-    \       'defaultAction': 'open',
-    \     },
-    \   },
-    \   'uiParams': {
-    \     'ff': {
-    \     'prompt': '> ',
-    \     'split': 'floating',
-    \   },
-    \  },
-    \ })
+\   'ui': 'ff',
+\   'sourceOptions': {
+\     '_': {
+\       'matchers': ['matcher_substring'],
+\     },
+\   },
+\   'kindOptions': {
+\     'file': {
+\       'defaultAction': 'open',
+\     },
+\   },
+\   'uiParams': {
+\     'ff': {
+\     'prompt': '> ',
+\     'split': 'floating',
+\   },
+\  },
+\ })
+
+call ddu#custom#patch_local('file', {
+\   'sources': [{'name': 'file_rec', 'params': {}}],
+\ })
+
+call ddu#custom#patch_local('text', {
+\   'sourceParams' : {
+\     'rg' : {
+\       'args': ['--column', '--no-heading', '--color', 'never'],
+\     },
+\   },
+\   'uiParams': {
+\     'ff': {
+\       'startFilter': v:true,
+\     }
+\   },
+\ })
+
+call ddu#custom#patch_local('word', {
+\   'sourceParams' : {
+\     'rg' : {
+\       'args': ['--column', '--no-heading', '--color', 'never'],
+\     },
+\   },
+\   'uiParams': {
+\     'ff': {
+\       'startFilter': v:true,
+\     }
+\   },
+\ })
 
 autocmd FileType ddu-ff call s:ddu_my_settings()
 function! s:ddu_my_settings() abort
@@ -88,6 +138,10 @@ endfunction
 [[plugins]]
 repo = 'Shougo/ddu-ui-ff'
 
+
+[[plugins]]
+repo = 'Shougo/ddu-commands.vim'
+
 [[plugins]]
 repo = 'Shougo/ddu-source-file_rec'
 
@@ -99,6 +153,7 @@ repo = 'Shougo/ddu-filter-matcher_substring'
 
 [[plugins]]
 repo = 'Shougo/ddu-kind-file'
+
 
 # [[plugins]]
 # repo = 'Shougo/denite.nvim'
