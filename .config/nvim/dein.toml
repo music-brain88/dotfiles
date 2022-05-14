@@ -58,6 +58,10 @@ nmap <silent> ,g <Cmd>call ddu#start({
 \   }},
 \ })<CR>
 
+
+" fuzzy find buffer
+nmap <silent> ,b <Cmd>call ddu#start({ 'name' : 'buffer' })<CR>
+
 " fuzzy find grep cursor word
 nmap <silent> ,w <Cmd>call ddu#start({
 \   'name': 'word',
@@ -94,6 +98,21 @@ call ddu#custom#patch_local('file', {
 
 " fuzzy find full text search setting
 call ddu#custom#patch_local('text', {
+\   'sourceParams' : {
+\     'rg' : {
+\       'args': ['--column', '--no-heading', '--color', 'never', '--sort-files', '--hidden'],
+\     },
+\   },
+\   'uiParams': {
+\     'ff': {
+\       'startFilter': v:true,
+\     }
+\   },
+\ })
+
+" fuzzy find buffer
+call ddu#custom#patch_local('buffer', {
+\   'sources': [{'name': 'buffer', 'params': {}}],
 \   'sourceParams' : {
 \     'rg' : {
 \       'args': ['--column', '--no-heading', '--color', 'never'],
@@ -156,6 +175,9 @@ repo = 'Shougo/ddu-source-file_rec'
 
 [[plugins]]
 repo = 'shun/ddu-source-rg'
+
+[[plugins]]
+repo = 'shun/ddu-source-buffer'
 
 [[plugins]]
 repo = 'Shougo/ddu-filter-matcher_substring'
@@ -481,9 +503,3 @@ repo = 'kat0h/bufpreview.vim'
 
 [[plugins]]
 repo = 'vim-denops/denops-helloworld.vim'
-
-[[plugins]]
-repo = 'neovim/nvim-lspconfig'
-
-[[plugins]]
-repo = 'williamboman/nvim-lsp-installer'

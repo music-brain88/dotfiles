@@ -4,6 +4,9 @@
 [[plugins]]
 repo = 'Shougo/ddc.vim'
 depends = ['denops.vim']
+hook_source = '''
+call ddc#custom#patch_global('sources', ['around'])
+'''
 
 [[plugins]]
  repo = 'Shougo/ddc-around'
@@ -25,6 +28,12 @@ depends = ['denops.vim']
  repo = 'Shougo/ddc-nvim-lsp'
  on_source = 'ddc.vim'
 
+[[plugins]]
+repo = 'neovim/nvim-lspconfig'
+
+[[plugins]]
+repo = 'williamboman/nvim-lsp-installer'
+
 #-----------------------------------------------------------------------
 # end of ddc settings
 #-----------------------------------------------------------------------
@@ -36,7 +45,6 @@ on_ft = ['md', 'markdown']
 
 [[plugins]]
 repo = 'prabirshrestha/async.vim'
-
 
 [[plugins]]
 repo = 'prabirshrestha/asyncomplete.vim'
