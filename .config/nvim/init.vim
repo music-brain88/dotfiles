@@ -125,6 +125,7 @@ syntax enable
 "  call dein#install()
 "endif
 
+" let g:dein#install_github_api_token = 'github token'
 "End dein Scripts-------------------------
 
 "-----------------------------------------------------------------------
