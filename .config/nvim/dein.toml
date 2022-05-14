@@ -476,7 +476,6 @@ hook_add = '''
 
 '''
 
-
 [[plugins]]
 repo = 'kat0h/bufpreview.vim'
 

@@ -1,3 +1,34 @@
+#-----------------------------------------------------------------------
+# ddc settings
+#-----------------------------------------------------------------------
+[[plugins]]
+repo = 'Shougo/ddc.vim'
+depends = ['denops.vim']
+
+[[plugins]]
+ repo = 'Shougo/ddc-around'
+ on_source = 'ddc.vim'
+
+[[plugins]]
+ repo = 'Shougo/ddc-matcher_head'
+ on_source = 'ddc.vim'
+
+[[plugins]]
+ repo = 'Shougo/ddc-sorter_rank'
+ on_source = 'ddc.vim'
+
+[[plugins]]
+ repo = 'Shougo/ddc-converter_remove_overlap'
+ on_source = 'ddc.vim'
+
+[[plugins]]
+ repo = 'Shougo/ddc-nvim-lsp'
+ on_source = 'ddc.vim'
+
+#-----------------------------------------------------------------------
+# end of ddc settings
+#-----------------------------------------------------------------------
+
 [[plugins]]
 repo = 'rcmdnk/vim-markdown'
 on_ft = ['md', 'markdown']
