@@ -42,17 +42,17 @@ nmap <silent> ,f <Cmd>call ddu#start({ 'name' : 'file' })<CR>
 
 " fuzzy finder 
 nmap <silent> ,g <Cmd>call ddu#start({
-        \   'name': 'text',
-        \   'volatile': v:true,
-        \   'sources': [{
-        \     'name': 'rg',
-        \     'options': {'matchers': []},
-        \   }],
-        \   'uiParams': {'ff': {
-        \     'ignoreEmpty': v:false,
-        \     'autoResize': v:false,
-        \   }},
-        \ })<CR>
+\   'name': 'text',
+\   'volatile': v:true,
+\   'sources': [{
+\     'name': 'rg',
+\     'options': {'matchers': []},
+\   }],
+\   'uiParams': {'ff': {
+\     'ignoreEmpty': v:false,
+\     'autoResize': v:false,
+\   }},
+\ })<CR>
 
 " fuzzy finder grep cursor word
 nmap <silent> ,w <Cmd>call ddu#start({
@@ -137,7 +137,6 @@ endfunction
 
 [[plugins]]
 repo = 'Shougo/ddu-ui-ff'
-
 
 [[plugins]]
 repo = 'Shougo/ddu-commands.vim'
