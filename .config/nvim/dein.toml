@@ -1,8 +1,9 @@
 [[plugins]]
 repo = 'vim-denops/denops.vim'
 
-
-### fern settings
+#-----------------------------------------------------------------------
+# fern settings
+#-----------------------------------------------------------------------
 [[plugins]]
 repo = 'lambdalisue/fern.vim'
 hook_add = '''
@@ -29,10 +30,13 @@ augroup my-glyph-palette
   autocmd FileType nerdtree,startify call glyph_palette#apply()
 augroup END
 '''
+#-----------------------------------------------------------------------
+# end of fern settings
+#-----------------------------------------------------------------------
 
-### fern settings
-
-### ddu settings
+#-----------------------------------------------------------------------
+# ddu settings
+#-----------------------------------------------------------------------
 [[plugins]]
 repo = 'Shougo/ddu.vim'
 hook_add = '''
@@ -40,7 +44,7 @@ hook_add = '''
 " fuzzy find filename
 nmap <silent> ,f <Cmd>call ddu#start({ 'name' : 'file' })<CR>
 
-" fuzzy finder 
+" fuzzy find full text search
 nmap <silent> ,g <Cmd>call ddu#start({
 \   'name': 'text',
 \   'volatile': v:true,
@@ -54,7 +58,7 @@ nmap <silent> ,g <Cmd>call ddu#start({
 \   }},
 \ })<CR>
 
-" fuzzy finder grep cursor word
+" fuzzy find grep cursor word
 nmap <silent> ,w <Cmd>call ddu#start({
 \   'name': 'word',
 \   'sources':[
@@ -62,6 +66,7 @@ nmap <silent> ,w <Cmd>call ddu#start({
 \   ],
 \ })<CR>
 
+" ddu Global Setting
 call ddu#custom#patch_global({
 \   'ui': 'ff',
 \   'sourceOptions': {
@@ -82,10 +87,12 @@ call ddu#custom#patch_global({
 \  },
 \ })
 
+" fuzzy find filename setting
 call ddu#custom#patch_local('file', {
 \   'sources': [{'name': 'file_rec', 'params': {}}],
 \ })
 
+" fuzzy find full text search setting
 call ddu#custom#patch_local('text', {
 \   'sourceParams' : {
 \     'rg' : {
@@ -99,6 +106,7 @@ call ddu#custom#patch_local('text', {
 \   },
 \ })
 
+" fuzzy find grep cursor word setting
 call ddu#custom#patch_local('word', {
 \   'sourceParams' : {
 \     'rg' : {
@@ -112,6 +120,7 @@ call ddu#custom#patch_local('word', {
 \   },
 \ })
 
+" from ddu document
 autocmd FileType ddu-ff call s:ddu_my_settings()
 function! s:ddu_my_settings() abort
   nnoremap <buffer><silent> <CR>
@@ -124,6 +133,7 @@ function! s:ddu_my_settings() abort
         \ <Cmd>call ddu#ui#ff#do_action('quit')<CR>
 endfunction
 
+" from ddu document
 autocmd FileType ddu-ff-filter call s:ddu_filter_my_settings()
 function! s:ddu_filter_my_settings() abort
   inoremap <buffer><silent> <CR>
@@ -152,6 +162,10 @@ repo = 'Shougo/ddu-filter-matcher_substring'
 
 [[plugins]]
 repo = 'Shougo/ddu-kind-file'
+
+#-----------------------------------------------------------------------
+# end of ddu settings
+#-----------------------------------------------------------------------
 
 [[plugins]]
 repo = 'wakatime/vim-wakatime'
