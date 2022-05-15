@@ -20,15 +20,6 @@ jobs:
           sudo apt update
           sudo apt install -y git fish
       - name: Run setup script
+        run: make init
+      - name: Run setup script
         run: make deploy
-
-  macos:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v1
-    - name: Install required packages
-      run: |
-        brew upgrade -f
-        brew install -f git fish 
-    - name: Run setup script
-      run: make deploy
