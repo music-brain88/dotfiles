@@ -18,7 +18,7 @@ help:
 	@echo "exec    => execute docker enviroment."
 	@echo "backup  => export installed arch linux packages,this command for arch linux user"
 
-init:
+install:
 	bash .bin/install.sh
 
 deploy:
