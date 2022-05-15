@@ -7,15 +7,15 @@ set -o nounset    # error when referencing undefined variable
 
 
 # Install latest nodejs
-if [ ! -x "$(command -v node)" ]; then
-
-  if !(type sudo > /dev/null 2>&1); then
-    curl --fail -LSs install-node.now.sh/lts | bash -s -- --yes
-  else
-    curl --fail -LSs install-node.now.sh/lts | sudo bash -s -- --yes
-  fi
-  export PATH="/usr/local/bin/:$PATH"
-fi
+# if [ ! -x "$(command -v node)" ]; then
+# 
+#   if !(type sudo > /dev/null 2>&1); then
+#     curl --fail -LSs install-node.now.sh/lts | bash -s -- --yes
+#   else
+#     curl --fail -LSs install-node.now.sh/lts | sudo bash -s -- --yes
+#   fi
+#   export PATH="/usr/local/bin/:$PATH"
+# fi
 echo "start setup..."
 
 # For example, we just use `~/.cache/dein` as installation directory
@@ -40,15 +40,6 @@ fi
 # bash_file
 ln -snfv ~/dotfiles/.bashrc ~/.bashrc
 
-# pyenv install
-if !(type pyenv > /dev/null 2>&1); then
-  if [ ! -d ~/.pyenv ]; then
-    git clone https://github.com/pyenv/pyenv.git ~/.pyenv
-    git clone https://github.com/pyenv/pyenv-virtualenv.git ~/.pyenv/plugins/pyenv-virtualenv
-  fi
-  echo "Please set the pyenv path"
-fi
-
 ln -snfv ~/dotfiles/.config/nvim/init.vim ~/.config/nvim/init.vim
 ln -snfv ~/dotfiles/.config/nvim/coc-settings.json ~/.config/nvim/coc-settings.json
 ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
@@ -61,22 +52,40 @@ if !(type rustup > /dev/null 2>&1); then
   curl https://sh.rustup.rs -sSf | sh -s -- -y
   echo "finish install rust"
   source $HOME/.cargo/env
-  cargo install exa
-  cargo install fd-find
-  cargo install ripgrep
-  cargo install exa
-  cargo install procs
-  cargo install gitui
-  cargo install git-delta
-  cargo install cargo-update
-  cargo install tealdeer
-  cargo install broot
-  cargo install hyperfine
-  cargo install du-dust
-  cargo install tokei
-  cargo install starship
+  if (type rustup > /dev/null 2>&1); then
+    cargo install exa
+    cargo install fd-find
+    cargo install ripgrep
+    cargo install exa
+    cargo install procs
+    cargo install gitui
+    cargo install git-delta
+    # cargo install cargo-update
+    # cargo install tealdeer
+    # cargo install broot
+    # cargo install hyperfine
+    # cargo install du-dust
+    # cargo install tokei
+    # cargo install starship
+  fi
 else
   echo "Rust is installed"
+  if (type rustup > /dev/null 2>&1); then
+    cargo install exa
+    cargo install fd-find
+    cargo install ripgrep
+    cargo install exa
+    cargo install procs
+    cargo install gitui
+    cargo install git-delta
+    # cargo install cargo-update
+    # cargo install tealdeer
+    # cargo install broot
+    # cargo install hyperfine
+    # cargo install du-dust
+    # cargo install tokei
+    # cargo install starship
+  fi
 fi
 
 # Setup Golang

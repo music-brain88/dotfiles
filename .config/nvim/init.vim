@@ -64,13 +64,13 @@ endif
 
 let g:loaded_python_provider = 0
 
-if OSTYPE == 'Linux\n'
-  let g:python_host_prog  = $PYENV_ROOT.'/versions/neovim2/bin/python'
-endif
-
-if has('nvim') && isdirectory( $PYENV_ROOT.'/versions/neovim3' )
-  let g:python3_host_prog = $PYENV_ROOT.'/versions/neovim3/bin/python'
-endif
+# if OSTYPE == 'Linux\n'
+#   let g:python_host_prog  = $PYENV_ROOT.'/versions/neovim2/bin/python'
+# endif
+# 
+# if has('nvim') && isdirectory( $PYENV_ROOT.'/versions/neovim3' )
+#   let g:python3_host_prog = $PYENV_ROOT.'/versions/neovim3/bin/python'
+# endif
 
 "dein Scripts-----------------------------
 let s:dein_dir = expand('~/.cache/dein')

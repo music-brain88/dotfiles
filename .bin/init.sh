@@ -4,51 +4,37 @@ set -ue
 
 echo "Start Initialization"
 
-command_list=("rustup" "fish" "fisher" "nvim" "npm" "awk")
 
-OS=''
-command_exists_flag=''
-
-# check command
-is_exists() {
-  echo "run exists"
-  if !(type `$1` > /dev/null 2>&1); then
-    echo "install `$1`"
-    # install
+# fisher install
+if !(type fisher > /dev/null 2>&1); then
+  if (type fish > /dev/null 2>&1); then
+    curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher
   else
-    echo "`$1` is exists"
+    echo "Please install fish shell"
   fi
-}
-
-check_command_list() {
-  for i in ${command_list[@]};
-  do
-    is_exists $i
-  done
-}
-
-if [ $(uname -o) = "Android" ]; then
-
-  echo "Android OS"
-
-elif [[ $(uname) = "Linux" ]]; then
-
-  ## Arch Linux
-  if [ -f /etc/arch-release ]; then
-    echo "CurrentOS is Arch Linux"  
-    OS=`echo "Arch"`; exit 0;
-  ## Ubuntu / Debian
-  elif [ -f /etc/debian_version ] || [ -f /etc/debian_release ]; then
-    echo "CurrentOS is Debian/Ubuntu"  
-    OS=`echo "Ubuntu"`
-    exit 0
-  fi
-## MacOS
-elif [[ $(uname) = "Darwin" ]]; then
-  echo "CurrentOS is MacOS"
-    OS=`echo "Darwin"`
-    exit 0
-else
-  error "Your platform ($(uname -a)) is not supported."
-  exit 1
 fi
+
+# pyenv install
+if !(type pyenv > /dev/null 2>&1); then
+  if [ ! -d ~/.pyenv ]; then
+    git clone https://github.com/pyenv/pyenv.git ~/.pyenv
+    git clone https://github.com/pyenv/pyenv-virtualenv.git ~/.pyenv/plugins/pyenv-virtualenv
+  fi
+  echo "Please set the pyenv path"
+fi
+
+if !(type rustup > /dev/null 2>&1); then
+  echo "install Rust compiler"
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  echo "finish install rust"
+  source $HOME/.cargo/env
+else
+  echo "Rust is installed"
+fi
+
+# deno install
+if !(type deno > /dev/null 2>&1); then
+  cargo install deno --locked
+  # curl -fsSL https://deno.land/install.sh | sh
+fi
+
