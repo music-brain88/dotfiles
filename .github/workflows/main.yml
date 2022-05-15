@@ -11,24 +11,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04, ubuntu-20.04]
+        os: [ubuntu-20.04]
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
       - name: Install required packages
         run: |
           sudo apt-add-repository ppa:fish-shell/release-3
-          sudo apt update
+          sudo apt update -y
           sudo apt install -y git fish
       - name: Run setup script
+        run: make install
+      - name: Run deploy script
         run: make deploy
-
-  macos:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v1
-    - name: Install required packages
-      run: |
-        brew upgrade -f
-        brew install -f git fish 
-    - name: Run setup script
-      run: make deploy

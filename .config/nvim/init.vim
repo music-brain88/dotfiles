@@ -53,24 +53,24 @@ let $COLORTERM='truecolor'
 :cnoremap <C-F> <Right>
 :cnoremap <C-B> <Left>
 
-let OSTYPE = system('uname')
-if OSTYPE == 'Darwin\n'
-  let g:python_host_prog  = '/usr/local/bin/python'
-  if empty(glob(g:python_host_prog))
-      " Fallback if not exists
-      let g:python_host_prog = '/usr/bin/python'
-  endif
-endif
+" let OSTYPE = system('uname')
+" if OSTYPE == 'Darwin\n'
+"   let g:python_host_prog  = '/usr/local/bin/python'
+"   if empty(glob(g:python_host_prog))
+"       " Fallback if not exists
+"       let g:python_host_prog = '/usr/bin/python'
+"   endif
+" endif
 
 let g:loaded_python_provider = 0
 
-if OSTYPE == 'Linux\n'
-  let g:python_host_prog  = $PYENV_ROOT.'/versions/neovim2/bin/python'
-endif
-
-if has('nvim') && isdirectory( $PYENV_ROOT.'/versions/neovim3' )
-  let g:python3_host_prog = $PYENV_ROOT.'/versions/neovim3/bin/python'
-endif
+" if OSTYPE == 'Linux\n'
+"   let g:python_host_prog  = $PYENV_ROOT.'/versions/neovim2/bin/python'
+" endif
+" 
+" if has('nvim') && isdirectory( $PYENV_ROOT.'/versions/neovim3' )
+"   let g:python3_host_prog = $PYENV_ROOT.'/versions/neovim3/bin/python'
+" endif
 
 "dein Scripts-----------------------------
 let s:dein_dir = expand('~/.cache/dein')
@@ -114,6 +114,8 @@ if dein#load_state(s:dein_dir)
   call dein#save_state()
 endif
 
+let g:dein#auto_recache = 1
+
 " Required:
 filetype plugin indent on
 syntax enable
@@ -123,7 +125,9 @@ syntax enable
 "  call dein#install()
 "endif
 
+" let g:dein#install_github_api_token = 'github token'
 "End dein Scripts-------------------------
+
 "-----------------------------------------------------------------------
 "terminal setting
 "-----------------------------------------------------------------------
