@@ -4,7 +4,6 @@ set -ue
 
 echo "Start Initialization"
 
-
 # fisher install
 if !(type fisher > /dev/null 2>&1); then
   if (type fish > /dev/null 2>&1); then
@@ -23,6 +22,7 @@ if !(type pyenv > /dev/null 2>&1); then
   echo "Please set the pyenv path"
 fi
 
+# Rust install
 if !(type rustup > /dev/null 2>&1); then
   echo "install Rust compiler"
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -36,5 +36,8 @@ fi
 if !(type deno > /dev/null 2>&1); then
   cargo install deno --locked
   # curl -fsSL https://deno.land/install.sh | sh
+else
+  echo "Deno is installed"
+  echo "Rust is installed"
 fi
 
