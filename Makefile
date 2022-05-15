@@ -6,7 +6,7 @@ DOTFILES   := $(filter-out $(EXCLUSIONS), $(CANDIDATES))
 .DEFAULT_GOAL := help
 
 help:
-	@echo "init    => Initialize enviroment settings."
+	@echo "install    => Initialize enviroment settings."
 	@echo "deploy  => Create symlinks to home directory."
 	@echo "update  => Fetch all changes from remote repo."
 	@echo "install => Run update, deploy, init"
@@ -19,7 +19,7 @@ help:
 	@echo "backup  => export installed arch linux packages,this command for arch linux user"
 
 init:
-	bash .bin/init.sh
+	bash .bin/install.sh
 
 deploy:
 	@echo '==> Start to deploy dotfiles to home directory.'

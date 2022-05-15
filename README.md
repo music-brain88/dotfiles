@@ -34,8 +34,8 @@ Warning: If you want to give these dotfiles a try, you should first fork this re
    ```shell
    git clone https://github.com/music-brain88/dotfiles.git ~/dotfiles
    ```
-   
-   
+
+
 
 
 2. move to dotfiles repo
@@ -43,11 +43,16 @@ Warning: If you want to give these dotfiles a try, you should first fork this re
    ```shell
    cd ~/dotfiles
    ```
-   
-   
 
 
-3. run deploy command
+
+3. run install command
+
+   ```shell
+   make install
+   ```
+
+4. run deploy command
 
    ```shell
    make deploy
