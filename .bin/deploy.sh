@@ -124,6 +124,7 @@ fi
 
 # fish settings
 ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
+ln -snfv ~/dotfiles/.config/fish/functions/fish_user_key_bindings.fish ~/.config/fish/functions/fish_user_key_bindings.fish
 
 echo "alacritty setting"
 if [ ! -d ~/.config/alacritty ]; then
