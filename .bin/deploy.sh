@@ -119,6 +119,7 @@ fi
 if [ ! -d ~/.config/fish ]; then
   mkdir -p ~/.config/fish/
   touch ~/.config/fish/config.fish
+  touch ~/.config/fish/functions/fish_user_key_bindings.fish
   fish fish_plugin_setup.fish
 fi
 
