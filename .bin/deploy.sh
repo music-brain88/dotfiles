@@ -119,11 +119,13 @@ fi
 if [ ! -d ~/.config/fish ]; then
   mkdir -p ~/.config/fish/
   touch ~/.config/fish/config.fish
+  touch ~/.config/fish/functions/fish_user_key_bindings.fish
   fish fish_plugin_setup.fish
 fi
 
 # fish settings
 ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
+ln -snfv ~/dotfiles/.config/fish/functions/fish_user_key_bindings.fish ~/.config/fish/functions/fish_user_key_bindings.fish
 
 echo "alacritty setting"
 if [ ! -d ~/.config/alacritty ]; then

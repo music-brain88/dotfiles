@@ -7,6 +7,9 @@
   autocrlf = false
   safecrlf = true
 
+[alias]
+  preview = !fish -c "fzf-checkout-branch"
+
 [merge]
   ff = false
 

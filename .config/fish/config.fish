@@ -11,11 +11,20 @@ set -x PATH $PYENV_ROOT/bin $PATH
 set -x PATH $HOME/.cargo/bin $PATH
 
 # set exa alias
-alias ls='exa --icons'
+if type -q test exa
+  alias ls='exa --icons'
+end
 
 # set bat alias
-alias cat='bat'
-alias ps='procs'
+if type -q bat 
+  alias cat='bat'
+end
+
+# set procs alias
+if type -q procs
+  alias ps='procs'
+end
+
 # set poetry path
 # set -U PATH $HOME/.poetry/env $PATH
 
@@ -39,6 +48,7 @@ set __fish_git_prompt_color_branch yellow
 set -x PATH ~/.fzf/bin $PATH
 set -x FZF_LEGACY_KEYBINDINGS 0
 set -x FZF_REVERSE_ISEARCH_OPTS "--height=50%"
+set -x FZF_DEFAULT_COMMAND 'rg --files --hidden --follow --glob "!.git/*"'
 
 # set GO PATH
 set -x GOPATH $HOME/go
@@ -48,6 +58,29 @@ export TERM=xterm-256color
 
 # set startship
 #starship init fish | source
+
+function fzf-checkout-branch
+    set -l branchname (
+        env FZF_DEFAULT_COMMAND='git --no-pager branch -a | grep -v HEAD | sed -e "s/^.* //g"' \
+            fzf --height 70% --prompt "BRANCH NAME>" \
+                --preview "git --no-pager log -20 --color=always {}"
+    )
+    if test -n "$branchname"
+        git checkout (echo "$branchname"| sed "s#remotes/[^/]*/##")
+    end
+end
+
+function fzf-docker-continer-name-select
+    commandline -i (env FZF_DEFAULT_COMMAND="docker ps -a --format 'table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Command}}\t{{.RunningFor}}\t{{.Ports}}\t{{.Networks}}'" \
+        fzf --no-sort --height 80% --bind='p:toggle-preview' --preview-window=down:70% \
+            --preview '
+                set -l containername (echo {} | awk -F " " \'{print $2}\');
+                if test "$containername" != "ID"
+                    docker logs --tail 300 $containername
+                end
+            ' | \
+        awk -F " " '{print $2}')
+end
 
 function reload
   exec fish
