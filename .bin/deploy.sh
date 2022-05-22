@@ -5,17 +5,6 @@ set -ue
 set -o errexit    # exit when command fails
 set -o nounset    # error when referencing undefined variable
 
-
-# Install latest nodejs
-# if [ ! -x "$(command -v node)" ]; then
-# 
-#   if !(type sudo > /dev/null 2>&1); then
-#     curl --fail -LSs install-node.now.sh/lts | bash -s -- --yes
-#   else
-#     curl --fail -LSs install-node.now.sh/lts | sudo bash -s -- --yes
-#   fi
-#   export PATH="/usr/local/bin/:$PATH"
-# fi
 echo "start setup..."
 
 # For example, we just use `~/.cache/dein` as installation directory
@@ -44,7 +33,7 @@ ln -snfv ~/dotfiles/.config/nvim/init.vim ~/.config/nvim/init.vim
 ln -snfv ~/dotfiles/.config/nvim/coc-settings.json ~/.config/nvim/coc-settings.json
 ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
 ln -snfv ~/dotfiles/.gitconfig ~/.gitconfig
-ln -snfv ~/dotfiles/.config/starship.toml ~/.config/starship.toml
+ln -snfv ~/dotfiles/.config/starship/starship.toml ~/.config/starship.toml
 
 # Setup Rust
 if !(type rustup > /dev/null 2>&1); then
