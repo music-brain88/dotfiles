@@ -1,0 +1,5 @@
+[user]
+	name = <git user name>
+	email = sample@gmail.com
+  signingkey = samplesignkey
+
