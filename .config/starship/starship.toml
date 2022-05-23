@@ -4,6 +4,54 @@
 # This file is taken from and modified by the following repositories.
 # https://github.com/mickimnet/myth-prompt-themes
 
+
+
+
+#                                                                                                                                                                                                                                                         
+#                                                                                                          bbbbbbbb                                                                                                                ''''''                 
+#                                                               iiii                                       b::::::b                                                  iiii                        888888888          888888888      '::::'                 
+#                                                              i::::i                                      b::::::b                                                 i::::i                     88:::::::::88      88:::::::::88    '::::'                 
+#                                                               iiii                                       b::::::b                                                  iiii                    88:::::::::::::88  88:::::::::::::88  ':::''                 
+#                                                                                                           b:::::b                                                                         8::::::88888::::::88::::::88888::::::8':::'                   
+#     mmmmmmm    mmmmmmm   uuuuuu    uuuuuu      ssssssssss   iiiiiii     cccccccccccccccc                  b:::::bbbbbbbbb    rrrrr   rrrrrrrrr   aaaaaaaaaaaaa   iiiiiiinnnn  nnnnnnnn    8:::::8     8:::::88:::::8     8:::::8''''       ssssssssss   
+#   mm:::::::m  m:::::::mm u::::u    u::::u    ss::::::::::s  i:::::i   cc:::::::::::::::c                  b::::::::::::::bb  r::::rrr:::::::::r  a::::::::::::a  i:::::in:::nn::::::::nn  8:::::8     8:::::88:::::8     8:::::8         ss::::::::::s  
+#  m::::::::::mm::::::::::mu::::u    u::::u  ss:::::::::::::s  i::::i  c:::::::::::::::::c                  b::::::::::::::::b r:::::::::::::::::r aaaaaaaaa:::::a  i::::in::::::::::::::nn  8:::::88888:::::8  8:::::88888:::::8        ss:::::::::::::s 
+#  m::::::::::::::::::::::mu::::u    u::::u  s::::::ssss:::::s i::::i c:::::::cccccc:::::c ---------------  b:::::bbbbb:::::::brr::::::rrrrr::::::r         a::::a  i::::inn:::::::::::::::n  8:::::::::::::8    8:::::::::::::8         s::::::ssss:::::s
+#  m:::::mmm::::::mmm:::::mu::::u    u::::u   s:::::s  ssssss  i::::i c::::::c     ccccccc -:::::::::::::-  b:::::b    b::::::b r:::::r     r:::::r  aaaaaaa:::::a  i::::i  n:::::nnnn:::::n 8:::::88888:::::8  8:::::88888:::::8         s:::::s  ssssss 
+#  m::::m   m::::m   m::::mu::::u    u::::u     s::::::s       i::::i c:::::c              ---------------  b:::::b     b:::::b r:::::r     rrrrrrraa::::::::::::a  i::::i  n::::n    n::::n8:::::8     8:::::88:::::8     8:::::8          s::::::s      
+#  m::::m   m::::m   m::::mu::::u    u::::u        s::::::s    i::::i c:::::c                               b:::::b     b:::::b r:::::r           a::::aaaa::::::a  i::::i  n::::n    n::::n8:::::8     8:::::88:::::8     8:::::8             s::::::s   
+#  m::::m   m::::m   m::::mu:::::uuuu:::::u  ssssss   s:::::s  i::::i c::::::c     ccccccc                  b:::::b     b:::::b r:::::r          a::::a    a:::::a  i::::i  n::::n    n::::n8:::::8     8:::::88:::::8     8:::::8       ssssss   s:::::s 
+#  m::::m   m::::m   m::::mu:::::::::::::::uus:::::ssss::::::si::::::ic:::::::cccccc:::::c                  b:::::bbbbbb::::::b r:::::r          a::::a    a:::::a i::::::i n::::n    n::::n8::::::88888::::::88::::::88888::::::8       s:::::ssss::::::s
+#  m::::m   m::::m   m::::m u:::::::::::::::us::::::::::::::s i::::::i c:::::::::::::::::c                  b::::::::::::::::b  r:::::r          a:::::aaaa::::::a i::::::i n::::n    n::::n 88:::::::::::::88  88:::::::::::::88        s::::::::::::::s 
+#  m::::m   m::::m   m::::m  uu::::::::uu:::u s:::::::::::ss  i::::::i  cc:::::::::::::::c                  b:::::::::::::::b   r:::::r           a::::::::::aa:::ai::::::i n::::n    n::::n   88:::::::::88      88:::::::::88           s:::::::::::ss  
+#  mmmmmm   mmmmmm   mmmmmm    uuuuuuuu  uuuu  sssssssssss    iiiiiiii    cccccccccccccccc                  bbbbbbbbbbbbbbbb    rrrrrrr            aaaaaaaaaa  aaaaiiiiiiii nnnnnn    nnnnnn     888888888          888888888              sssssssssss    
+#     SSSSSSSSSSSSSSS      tttt                                                               hhhhhhh               iiii                                                                                    ffffffffffffffff    iiii                      
+#  
+#   SS:::::::::::::::S  ttt:::t                                                               h:::::h              i::::i                                                                                  f::::::::::::::::f  i::::i                     
+#  S:::::SSSSSS::::::S  t:::::t                                                               h:::::h               iiii                                                                                  f::::::::::::::::::f  iiii                      
+#  S:::::S     SSSSSSS  t:::::t                                                               h:::::h                                                                                                     f::::::fffffff:::::f                            
+#  S:::::S        ttttttt:::::ttttttt      aaaaaaaaaaaaa  rrrrr   rrrrrrrrr       ssssssssss   h::::h hhhhh       iiiiiiippppp   ppppppppp            cccccccccccccccc   ooooooooooo   nnnn  nnnnnnnn     f:::::f       ffffffiiiiiii    ggggggggg   ggggg
+#  S:::::S        t:::::::::::::::::t      a::::::::::::a r::::rrr:::::::::r    ss::::::::::s  h::::hh:::::hhh    i:::::ip::::ppp:::::::::p         cc:::::::::::::::c oo:::::::::::oo n:::nn::::::::nn   f:::::f             i:::::i   g:::::::::ggg::::g
+#   S::::SSSS     t:::::::::::::::::t      aaaaaaaaa:::::ar:::::::::::::::::r ss:::::::::::::s h::::::::::::::hh   i::::ip:::::::::::::::::p       c:::::::::::::::::co:::::::::::::::on::::::::::::::nn f:::::::ffffff        i::::i  g:::::::::::::::::g
+#    SS::::::SSSSStttttt:::::::tttttt               a::::arr::::::rrrrr::::::rs::::::ssss:::::sh:::::::hhh::::::h  i::::ipp::::::ppppp::::::p     c:::::::cccccc:::::co:::::ooooo:::::onn:::::::::::::::nf::::::::::::f        i::::i g::::::ggggg::::::gg
+#      SSS::::::::SS    t:::::t              aaaaaaa:::::a r:::::r     r:::::r s:::::s  ssssss h::::::h   h::::::h i::::i p:::::p     p:::::p     c::::::c     ccccccco::::o     o::::o  n:::::nnnn:::::nf::::::::::::f        i::::i g:::::g     g:::::g 
+#         SSSSSS::::S   t:::::t            aa::::::::::::a r:::::r     rrrrrrr   s::::::s      h:::::h     h:::::h i::::i p:::::p     p:::::p     c:::::c             o::::o     o::::o  n::::n    n::::nf:::::::ffffff        i::::i g:::::g     g:::::g 
+#              S:::::S  t:::::t           a::::aaaa::::::a r:::::r                  s::::::s   h:::::h     h:::::h i::::i p:::::p     p:::::p     c:::::c             o::::o     o::::o  n::::n    n::::n f:::::f              i::::i g:::::g     g:::::g 
+#              S:::::S  t:::::t    tttttta::::a    a:::::a r:::::r            ssssss   s:::::s h:::::h     h:::::h i::::i p:::::p    p::::::p     c::::::c     ccccccco::::o     o::::o  n::::n    n::::n f:::::f              i::::i g::::::g    g:::::g 
+#  SSSSSSS     S:::::S  t::::::tttt:::::ta::::a    a:::::a r:::::r            s:::::ssss::::::sh:::::h     h:::::hi::::::ip:::::ppppp:::::::p     c:::::::cccccc:::::co:::::ooooo:::::o  n::::n    n::::nf:::::::f            i::::::ig:::::::ggggg:::::g 
+#  S::::::SSSSSS:::::S  tt::::::::::::::ta:::::aaaa::::::a r:::::r            s::::::::::::::s h:::::h     h:::::hi::::::ip::::::::::::::::p       c:::::::::::::::::co:::::::::::::::o  n::::n    n::::nf:::::::f            i::::::i g::::::::::::::::g 
+#  S:::::::::::::::SS     tt:::::::::::tt a::::::::::aa:::ar:::::r             s:::::::::::ss  h:::::h     h:::::hi::::::ip::::::::::::::pp         cc:::::::::::::::c oo:::::::::::oo   n::::n    n::::nf:::::::f            i::::::i  gg::::::::::::::g 
+#   SSSSSSSSSSSSSSS         ttttttttttt    aaaaaaaaaa  aaaarrrrrrr              sssssssssss    hhhhhhh     hhhhhhhiiiiiiiip::::::pppppppp             cccccccccccccccc   ooooooooooo     nnnnnn    nnnnnnfffffffff            iiiiiiii    gggggggg::::::g 
+#                                                                                                                         p:::::p                                                                                                                 g:::::g 
+#                                                                                                                         p:::::p                                                                                                     gggggg      g:::::g 
+#                                                                                                                        p:::::::p                                                                                                    g:::::gg   gg:::::g 
+#                                                                                                                        p:::::::p                                                                                                     g::::::ggg:::::::g 
+#                                                                                                                        p:::::::p                                                                                                      gg:::::::::::::g  
+#                                                                                                                        ppppppppp                                                                                                        ggg::::::ggg    
+#                                                                                                                                                                                                                                            gggggg       
+
+
+
 # Don't print a new line at the start of the prompt
 add_newline = false
 
