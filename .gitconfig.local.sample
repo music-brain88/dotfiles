@@ -1,5 +1,5 @@
 [user]
-	name = <gitb user name>
+	name = <git user name>
 	email = sample@gmail.com
   signingkey = samplesignkey
 
