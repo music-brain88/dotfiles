@@ -12,9 +12,6 @@ format = """[](bg:#464347 fg:#AFD700)\
         $username\
         $hostname\
         $directory\
-        $aws\
-        $gcloud\
-        $singularity\
         $kubernetes\
         $docker_context\
         (↓ Source control - for right side ↓)\
@@ -25,40 +22,25 @@ format = """[](bg:#464347 fg:#AFD700)\
         $git_state\
         (↑ Source control - for right side ↑)\
         (↓ Toolchain version modules ↓)\
-(        $crystal)\
-(        $dart)\
-(        $dotnet)\
-(        $elixir)\
-(        $elm)\
-(        $erlang)\
         $golang\
         $java\
         $julia\
         $nim\
         $nodejs\
-(        $ocaml)\
-(        $perl)\
         $php\
-(        $purescript)\
         $python\
-(        $ruby)\
         $rust\
-(        $swift)\
         $terraform\
-(        $zig)\
         (↑ Toolchain version modules ↑)\
         (↓ Package modules ↓)\
         $helm\
         $package\
         $cmake\
-(        $conda)\
         (↑ Package modules ↑)\
-(        $nix_shell)\
         $memory_usage\
         $env_var\
         $custom\
         (↑ above input line ↑)\
-        $line_break\
         (↓ on input line ↓)\
         $battery\
         $shlvl\
@@ -68,10 +50,12 @@ format = """[](bg:#464347 fg:#AFD700)\
     """
 
 
-right_format = """[\uE0B3](bg:#464347 fg:#AFD700)\
+right_format = """
+        [\uE0B3](bold bg:#464347 fg:#AFD700)\
         $cmd_duration\
         $time\
-        [\uE0B2](bg:#464347 fg:#AFD700)
+        [\uE0B2](bg:#464347 fg:#AFD700)\
+        $line_break\
 """
 
 # Generic prompt configurations
