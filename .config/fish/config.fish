@@ -32,12 +32,6 @@ end
 # export PATH="$HOME/.rbenv/bin:$PATH"
 # eval $(rbenv init - | source)
 
-# bobthefish setting
-set -g theme_powerline_fonts no
-set -g theme_nerd_fonts yes
-set -g theme_display_user ssh
-set -g theme_display_date yes
-
 # fish git prompt
 set __fish_git_prompt_showdirtystate 'yes'
 set __fish_git_prompt_showstashstate 'yes' set __fish_git_prompt_showupstream 'yes'
@@ -55,9 +49,6 @@ set -x GOPATH $HOME/go
 set -x PATH $PATH $GOPATH/bin
 
 export TERM=xterm-256color
-
-# set startship
-#starship init fish | source
 
 function fzf-checkout-branch
     set -l branchname (
@@ -85,3 +76,6 @@ end
 function reload
   exec fish
 end
+
+# set startship
+starship init fish | source
