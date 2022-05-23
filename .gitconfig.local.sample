@@ -1,0 +1,5 @@
+[user]
+	name = <gitb user name>
+	email = sample@gmail.com
+  signingkey = samplesignkey
+
