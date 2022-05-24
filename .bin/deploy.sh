@@ -35,6 +35,28 @@ ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
 ln -snfv ~/dotfiles/.gitconfig ~/.gitconfig
 ln -snfv ~/dotfiles/.config/starship/starship.toml ~/.config/starship.toml
 
+
+# Install fisher
+if !(type fisher > /dev/null 2>&1); then
+  echo "Install Fisher"
+  curl https://git.io/fisher --create-dirs -sLo ~/.config/fish/functions/fisher.fish
+  echo "Finish install fisher"
+else
+  echo "fisher is installed"
+  fisher
+fi
+
+if [ ! -d ~/.config/fish ]; then
+  mkdir -p ~/.config/fish/
+  touch ~/.config/fish/config.fish
+  touch ~/.config/fish/functions/fish_user_key_bindings.fish
+  fish fish_plugin_setup.fish
+fi
+
+# fish settings
+ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
+ln -snfv ~/dotfiles/.config/fish/functions/fish_user_key_bindings.fish ~/.config/fish/functions/fish_user_key_bindings.fish
+
 # Setup Rust
 if !(type rustup > /dev/null 2>&1); then
   echo "install Rust compiler"
@@ -42,13 +64,13 @@ if !(type rustup > /dev/null 2>&1); then
   echo "finish install rust"
   source $HOME/.cargo/env
   if (type rustup > /dev/null 2>&1); then
-    cargo install exa
-    cargo install fd-find
-    cargo install ripgrep
-    cargo install exa
-    cargo install procs
-    cargo install gitui
-    cargo install git-delta
+    # cargo install exa
+    # cargo install fd-find
+    # cargo install ripgrep
+    # cargo install exa
+    # cargo install procs
+    # cargo install gitui
+    # cargo install git-delta
     # cargo install cargo-update
     # cargo install tealdeer
     # cargo install broot
@@ -67,13 +89,12 @@ else
     cargo install procs
     cargo install gitui
     cargo install git-delta
-    # cargo install cargo-update
-    # cargo install tealdeer
-    # cargo install broot
-    # cargo install hyperfine
+    cargo install cargo-update
+    cargo install tealdeer
+    cargo install hyperfine
     # cargo install du-dust
     # cargo install tokei
-    # cargo install starship
+    cargo install starship
   fi
 fi
 
@@ -96,25 +117,6 @@ if !(type fzf > /dev/null 2>&1); then
   fi
 fi
 
-if !(type fisher > /dev/null 2>&1); then
-  echo "Install Fisher"
-  curl https://git.io/fisher --create-dirs -sLo ~/.config/fish/functions/fisher.fish
-  echo "Finish install fisher"
-else
-  echo "fisher is installed"
-  fisher
-fi
-
-if [ ! -d ~/.config/fish ]; then
-  mkdir -p ~/.config/fish/
-  touch ~/.config/fish/config.fish
-  touch ~/.config/fish/functions/fish_user_key_bindings.fish
-  fish fish_plugin_setup.fish
-fi
-
-# fish settings
-ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
-ln -snfv ~/dotfiles/.config/fish/functions/fish_user_key_bindings.fish ~/.config/fish/functions/fish_user_key_bindings.fish
 
 echo "alacritty setting"
 if [ ! -d ~/.config/alacritty ]; then
@@ -138,7 +140,6 @@ fi
 ln -snfv ~/dotfiles/.config/polybar/config ~/.config/polybar/config
 echo "polybar setting finish"
 
-
 echo "mpd setting"
 if [ ! -d ~/.config/mpd ]; then
   mkdir -p ~/.config/mpd
@@ -159,7 +160,6 @@ if [ ! -d ~/.config/rofi ]; then
 fi
 ln -snfv ~/dotfiles/.config/rofi/config.rasi ~/.config/rofi/config.rasi
 echo "rofi setting finish"
-
 
 echo "finish setup"
 echo "next you call dein script"
