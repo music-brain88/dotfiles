@@ -58,44 +58,20 @@ ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
 ln -snfv ~/dotfiles/.config/fish/functions/fish_user_key_bindings.fish ~/.config/fish/functions/fish_user_key_bindings.fish
 
 # Setup Rust
-if !(type rustup > /dev/null 2>&1); then
-  echo "install Rust compiler"
-  curl https://sh.rustup.rs -sSf | sh -s -- -y
-  echo "finish install rust"
-  source $HOME/.cargo/env
-  if (type rustup > /dev/null 2>&1); then
-    # cargo install exa
-    # cargo install fd-find
-    # cargo install ripgrep
-    # cargo install exa
-    # cargo install procs
-    # cargo install gitui
-    # cargo install git-delta
-    # cargo install cargo-update
-    # cargo install tealdeer
-    # cargo install broot
-    # cargo install hyperfine
-    # cargo install du-dust
-    # cargo install tokei
-    # cargo install starship
-  fi
-else
-  echo "Rust is installed"
-  if (type rustup > /dev/null 2>&1); then
-    cargo install exa
-    cargo install fd-find
-    cargo install ripgrep
-    cargo install exa
-    cargo install procs
-    cargo install gitui
-    cargo install git-delta
-    cargo install cargo-update
-    cargo install tealdeer
-    cargo install hyperfine
-    # cargo install du-dust
-    # cargo install tokei
-    cargo install starship
-  fi
+if (type rustup > /dev/null 2>&1); then
+  cargo install exa
+  cargo install fd-find
+  cargo install ripgrep
+  cargo install exa
+  cargo install procs
+  cargo install gitui
+  cargo install git-delta
+  cargo install cargo-update
+  cargo install tealdeer
+  cargo install hyperfine
+  # cargo install du-dust
+  # cargo install tokei
+  cargo install starship
 fi
 
 # Setup Golang
