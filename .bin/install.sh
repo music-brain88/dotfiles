@@ -25,7 +25,7 @@ fi
 # Rust install
 if !(type rustup > /dev/null 2>&1); then
   echo "install Rust compiler"
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
   echo "finish install rust"
   source $HOME/.cargo/env
 else
