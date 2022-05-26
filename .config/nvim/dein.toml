@@ -456,7 +456,6 @@ repo = 'tpope/vim-fugitive'
 # コメント機能強化
 [[plugins]]
 repo = 'tyru/caw.vim'
-
 hook_add = '''
   " 行の最初の文字の前にコメント文字をトグル
   "nmap <C-S-/> (caw:hatpos:toggle)
@@ -479,8 +478,8 @@ lua << EOF
   filetype_hlgroups = {}, -- Override default highlight groups for specific filetypes
   plugins = { -- Override which plugins highlight groups are loaded
       native_lsp = true,
-      polygot = true,
-      treesitter = false,
+      polygot = false,
+      treesitter = true,
       -- NOTE: Other plugins have been omitted for brevity
   },
   styles = {
@@ -499,7 +498,7 @@ lua << EOF
       cursorline = false, -- Use cursorline highlighting?
       transparency = false, -- Use a transparent background?
       terminal_colors = false, -- Use the theme's colors for Neovim's :terminal?
-      window_unfocussed_color = true, -- When the window is out of focus, change the normal background?
+      window_unfocussed_color = false, -- When the window is out of focus, change the normal background?
   }
 })
 onedarkpro.load()
