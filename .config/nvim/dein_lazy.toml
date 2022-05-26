@@ -132,3 +132,38 @@ merged = 0
 
 [[plugins]]
 repo = 'thinca/vim-quickrun'
+
+[[plugins]]
+repo = 'kat0h/bufpreview.vim'
+
+[[plugins]]
+repo = 'nvim-treesitter/nvim-treesitter'
+merged = 0
+on_event = 'BufReadPost'
+hook_source = '''
+lua << EOF
+  require'nvim-treesitter.configs'.setup {
+    ensure_installed = { "c", "lua", "rust", "python" },
+
+    sync_install = false,
+
+    ignore_install = { "javascript" },
+
+    highlight = {
+      enable = true,
+      disable = {
+        "lua",
+        "c",
+        "rust",
+        "vue",
+        "toml",
+    },
+
+    additional_vim_regex_highlighting = false,
+    },
+    indent = {
+      enable = true,
+    },
+  }
+EOF
+'''
