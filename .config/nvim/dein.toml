@@ -418,40 +418,6 @@ hook_add = '''
 repo = 'vim-airline/vim-airline-themes'
 # ステータスライン周り 
 
-# カラースキーム
-[[plugins]]
-repo = 'joshdick/onedark.vim'
-hook_add = '''
-  if (empty($TMUX))
-    if (has("nvim"))
-      "For Neovim 0.1.3 and 0.1.4 < https://github.com/neovim/neovim/pull/2198 >
-      let $NVIM_TUI_ENABLE_TRUE_COLOR=1
-    endif
-    "For Neovim > 0.1.5 and Vim > patch 7.4.1799 < https://github.com/vim/vim/commit/61be73bb0f965a895bfb064ea3e55476ac175162 >
-    "Based on Vim patch 7.4.1770 (`guicolors` option) < https://github.com/vim/vim/commit/8a633e3427b47286869aa4b96f2bfc1fe65b25cd >
-    " < https://github.com/neovim/neovim/wiki/Following-HEAD#20160511 >
-    if (has("termguicolors"))
-      set termguicolors
-    endif
-  endif
-  let g:onedark_termcolors=256
-  autocmd VimEnter * nested call SetHighlightOptions()
-
-  augroup transparent-windows
-    autocmd!
-    autocmd FileType denite set winblend=10  " こちらも 5 〜 30 で試してみてください。
-    autocmd FileType denite-filter set winblend=10
-  augroup END
-
-  function! SetHighlightOptions()
-    colorscheme onedark  "example
-    "highlight Normal ctermbg=NONE guibg=NONE
-    highlight NonText ctermbg=NONE guibg=NONE
-    highlight LineNr ctermbg=NONE guibg=NONE
-    highlight Folded ctermbg=NONE guibg=NONE
-    highlight EndOfBuffer ctermbg=NONE guibg=NONE
-  endfunction
-'''
 
 # toml syntax
 [[plugins]] 
@@ -502,7 +468,40 @@ hook_add = '''
 '''
 
 [[plugins]]
-repo = 'kat0h/bufpreview.vim'
-
-[[plugins]]
-repo = 'vim-denops/denops-helloworld.vim'
+repo = 'olimorris/onedarkpro.nvim'
+hook_add = '''
+lua << EOF
+  local onedarkpro = require('onedarkpro')
+  onedarkpro.setup({
+  dark_theme = "onedark", -- The default dark theme
+  colors = {}, -- Override default colors by specifying colors for 'onelight' or 'onedark' themes
+  hlgroups = {}, -- Override default highlight groups
+  filetype_hlgroups = {}, -- Override default highlight groups for specific filetypes
+  plugins = { -- Override which plugins highlight groups are loaded
+      native_lsp = true,
+      polygot = true,
+      treesitter = false,
+      -- NOTE: Other plugins have been omitted for brevity
+  },
+  styles = {
+      strings = "NONE", -- Style that is applied to strings
+      comments = "NONE", -- Style that is applied to comments
+      keywords = "NONE", -- Style that is applied to keywords
+      functions = "NONE", -- Style that is applied to functions
+      variables = "NONE", -- Style that is applied to variables
+      virtual_text = "NONE", -- Style that is applied to virtual text
+  },
+  options = {
+      bold = false, -- Use the themes opinionated bold styles?
+      italic = false, -- Use the themes opinionated italic styles?
+      underline = false, -- Use the themes opinionated underline styles?
+      undercurl = false, -- Use the themes opinionated undercurl styles?
+      cursorline = false, -- Use cursorline highlighting?
+      transparency = false, -- Use a transparent background?
+      terminal_colors = false, -- Use the theme's colors for Neovim's :terminal?
+      window_unfocussed_color = true, -- When the window is out of focus, change the normal background?
+  }
+})
+onedarkpro.load()
+EOF
+'''
