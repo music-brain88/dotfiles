@@ -30,6 +30,7 @@ fi
 ln -snfv ~/dotfiles/.bashrc ~/.bashrc
 
 ln -snfv ~/dotfiles/.config/nvim/init.vim ~/.config/nvim/init.vim
+ln -snfv ~/dotfiles/.config/nvim/init.lua ~/.config/nvim/init.lua
 ln -snfv ~/dotfiles/.config/nvim/coc-settings.json ~/.config/nvim/coc-settings.json
 ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
 ln -snfv ~/dotfiles/.gitconfig ~/.gitconfig
