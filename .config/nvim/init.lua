@@ -20,9 +20,6 @@
 --
 
 -- dein Scripts-----------------------------
-vim.api.nvim_set_var('dein#auto_recache', 1)
-vim.api.nvim_set_var('dein#enable_notification', 1)
-
 local dein_dir = vim.env.HOME .. '/.cache/dein'
 local dein_repo_dir = dein_dir .. '/repos/github.com/Shougo/dein.vim'
 if not string.match(vim.o.runtimepath, '/dein.vim') then
@@ -40,12 +37,19 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   vim.call('dein#begin', dein_dir, {vim.fn.expand('<sfile>'), dein_toml, dein_toml_lazy, dein_toml_input})
   vim.call('dein#load_toml', dein_toml, {lazy = 0})
   vim.call('dein#load_toml', dein_toml_lazy, {lazy = 1})
+
+
   vim.call('dein#end')
   vim.call('dein#save_state')
 end
--- dein Scripts-----------------------------
 
-vim.cmd 'set clipboard+=unnamedplus'
+vim.api.nvim_set_var('dein#auto_recache', 1)
+vim.api.nvim_set_var('dein#lazy_rplugins', 1)
+vim.api.nvim_set_var('dein#enable_notification', 1)
+-- vim.api.nvim_set_var('dein#install_github_api_token', 'github token')
+
+--End dein Scripts-----------------------------
+
 vim.cmd 'set relativenumber'
 vim.cmd 'set t_Co=256'
 vim.cmd 'set ttimeoutlen=10'
@@ -65,9 +69,9 @@ vim.cmd 'set wrapscan'
 vim.cmd 'set spell'
 vim.cmd 'set spelllang=en,cjk'
 vim.cmd 'set noswapfile'
+
 -- vim.cmd 'set listchars=tab:»-,trail:-,eol:↲,extends:»,precedes:«,nbsp:%,space:␣'
 
-vim.api.nvim_set_var('dein#lazy_rplugins', 1)
 
 -- vim.api.nvim_set_keymap('c', '<C-A>', '<HOME>' , {})
 -- :cnoremap <C-F> <Right>
@@ -78,3 +82,9 @@ vim.api.nvim_set_var('dein#lazy_rplugins', 1)
 -- buffer
 vim.api.nvim_set_keymap('n', '<C-j>', '<Cmd> bprev <CR>' , {})
 vim.api.nvim_set_keymap('n', '<C-k>', '<Cmd> bnext <CR>', {})
+
+-- tabline
+vim.api.nvim_set_keymap('n', 'tc', '<Cmd> tabnew <CR>', {})
+vim.api.nvim_set_keymap('n', 'tx', '<Cmd> tabclose <CR>', {})
+vim.api.nvim_set_keymap('n', 'tn', '<Cmd> tabnext <CR>', {})
+vim.api.nvim_set_keymap('n', 'tp', '<Cmd> tabprevious <CR>', {})
