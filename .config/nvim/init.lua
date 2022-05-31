@@ -44,7 +44,6 @@ if vim.call('dein#load_state', dein_dir) == 1 then
 end
 
 vim.api.nvim_set_var('dein#auto_recache', 1)
-vim.api.nvim_set_var('dein#lazy_rplugins', 1)
 vim.api.nvim_set_var('dein#enable_notification', 1)
 -- vim.api.nvim_set_var('dein#install_github_api_token', 'github token')
 
