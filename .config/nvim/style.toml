@@ -1,0 +1,465 @@
+# icons
+[[plugins]]
+repo = 'ryanoasis/vim-devicons'
+
+# Color scheme
+[[plugins]]
+repo = 'olimorris/onedarkpro.nvim'
+hook_add = '''
+lua << EOF
+  local onedarkpro = require('onedarkpro')
+  onedarkpro.setup({
+  dark_theme = "onedark", -- The default dark theme
+  colors = {}, -- Override default colors by specifying colors for 'onelight' or 'onedark' themes
+  hlgroups = {}, -- Override default highlight groups
+  filetype_hlgroups = {}, -- Override default highlight groups for specific filetypes
+  plugins = { -- Override which plugins highlight groups are loaded
+      native_lsp = true,
+      polygot = false,
+      treesitter = true,
+      -- NOTE: Other plugins have been omitted for brevity
+  },
+  styles = {
+      strings = "NONE", -- Style that is applied to strings
+      comments = "NONE", -- Style that is applied to comments
+      keywords = "NONE", -- Style that is applied to keywords
+      functions = "NONE", -- Style that is applied to functions
+      variables = "NONE", -- Style that is applied to variables
+      virtual_text = "NONE", -- Style that is applied to virtual text
+  },
+  options = {
+      bold = false, -- Use the themes opinionated bold styles?
+      italic = false, -- Use the themes opinionated italic styles?
+      underline = false, -- Use the themes opinionated underline styles?
+      undercurl = false, -- Use the themes opinionated undercurl styles?
+      cursorline = false, -- Use cursorline highlighting?
+      transparency = false, -- Use a transparent background?
+      terminal_colors = false, -- Use the theme's colors for Neovim's :terminal?
+      window_unfocussed_color = false, -- When the window is out of focus, change the normal background?
+  }
+})
+onedarkpro.load()
+EOF
+'''
+
+# ステータスライン周り
+[[plugins]]
+repo = 'feline-nvim/feline.nvim'
+hook_add = '''
+lua << EOF
+vim.cmd 'set termguicolors'
+if not pcall(require, "feline") then
+  return
+end
+
+-- onedark theme
+local colors = {
+    bg = "#282c34",
+    fg = "#abb2bf",
+    red = "#e06c75",
+    orange = "#d19a66",
+    yellow = "#e5c07b",
+    green = "#98c379",
+    cyan = "#56b6c2",
+    blue = "#61afef",
+    purple = "#c678dd",
+    white = "#abb2bf",
+    black = "#282c34",
+    gray = "#5c6370",
+    highlight = "#e2be7d",
+    none = "NONE"
+}
+
+local vi_mode_colors = {
+    NORMAL = colors.green,
+    INSERT = colors.bule,
+    VISUAL = colors.red,
+    OP = colors.green,
+    BLOCK = colors.blue,
+    REPLACE = colors.purple,
+    ['V-REPLACE'] = colors.purple,
+    ENTER = colors.cyan,
+    MORE = colors.cyan,
+    SELECT = colors.orange,
+    COMMAND = colors.green,
+    SHELL = colors.green,
+    TERM = colors.green,
+    NONE = colors.yellow
+}
+
+local function file_osinfo()
+    local os = vim.loop.os_uname().sysname
+    local icon
+    if os == 'Linux' then
+        icon = ' ' 
+    -- This elseif is not work
+    -- vim.loop.os_uname().sysname return
+    --  Linux or MAC
+    elseif os == 'Arch' then
+        icon = ''
+    elseif os == 'MAC' then
+        icon = ' '
+    else
+        icon = ' '
+    end
+    return icon .. os
+end
+
+local lsp = require 'feline.providers.lsp'
+
+local vi_mode_utils = require 'feline.providers.vi_mode'
+
+local lsp_get_diag = function(str)
+  local count = vim.lsp.diagnostic.get_count(0, str)
+  return (count > 0) and ' '..count..' ' or ''
+end
+
+-- LuaFormatter off
+
+local comps = {
+    vi_mode = {
+        left = {
+--            provider = function()
+--              return '  ' .. vi_mode_utils.get_vim_mode()
+--            end,
+            provider = function()
+              return ' ' .. vi_mode_utils.get_vim_mode() .. ' '
+            end,
+            hl = function()
+                local val = {
+                    name = vi_mode_utils.get_mode_highlight_name(),
+                    bg = vi_mode_utils.get_mode_color(),
+                    fg = colors.black
+                }
+                return val
+            end,
+            right_sep = {
+              {
+                str = '',
+                hl = {
+                  fg = colors.fg,
+                },
+              },
+              'right_filled'
+            },
+            -- right_sep = ' ',
+            legt_sep = ''
+        },
+        right = {
+            -- provider = '' ,
+            provider = '' ,
+            hl = function()
+                local val = {
+                    name = vi_mode_utils.get_mode_highlight_name(),
+                    fg = vi_mode_utils.get_mode_color()
+                }
+                return val
+            end,
+            -- left_sep = '  ',
+            -- right_sep = '  '
+            left_sep = '',
+            right_sep = ''
+        }
+    },
+    file = {
+        info = {
+            provider = {
+              name = 'file_info',
+              opts = {
+
+                type = 'base-only',
+                file_readonly_icon = '  ',
+                -- file_readonly_icon = '  ',
+                -- file_readonly_icon = '  ',
+                -- file_readonly_icon = '  ',
+                -- file_modified_icon = '',
+                file_modified_icon = '',
+                -- file_modified_icon = 'ﱐ',
+                -- file_modified_icon = '',
+                -- file_modified_icon = '',
+                -- file_modified_icon = '',
+              }
+            },
+            hl = {
+                bg = colors.blue,
+                fg = colors.black,
+                style = 'bold'
+            },
+            left_sep = {
+              {
+                str = '',
+                hl = {
+                  bg = colors.fg,
+                  fg = colors.fg,
+                },
+              },
+              'left_filled'
+            },
+            right_sep = 'right_filled'
+        },
+        encoding = {
+            provider = 'file_encoding',
+            left_sep = ' ',
+            hl = {
+                fg = colors.purple,
+                style = 'bold'
+            }
+        },
+        type = {
+            provider = 'file_type'
+        },
+        os = {
+            provider = file_osinfo,
+            left_sep = ' ',
+            hl = {
+                fg = colors.purple,
+                style = 'bold'
+            }
+        },
+        position = {
+            provider = 'position',
+            left_sep = ' ',
+            hl = {
+                fg = colors.cyan,
+                -- style = 'bold'
+            }
+        },
+    },
+    left_end = {
+        provider = function() return '' end,
+        hl = {
+            fg = colors.bg,
+            bg = colors.blue,
+        }
+    },
+    line_percentage = {
+        provider = 'line_percentage',
+        left_sep = ' ',
+        hl = {
+            style = 'bold'
+
+        }
+    },
+    scroll_bar = {
+        provider = 'scroll_bar',
+        left_sep = ' ',
+        hl = {
+            fg = colors.blue,
+            style = 'bold'
+        }
+    },
+    diagnos = {
+        err = {
+            -- provider = 'diagnostic_errors',
+            provider = function()
+                return '' .. lsp_get_diag("ERROR")
+            end,
+            -- left_sep = ' ',
+            enabled = function() return lsp.diagnostics_exist('ERROR') end,
+            hl = {
+                fg = colors.red
+            }
+        },
+        warn = {
+            -- provider = 'diagnostic_warnings',
+            provider = function()
+                return '' ..  lsp_get_diag("WARN")
+            end,
+            -- left_sep = ' ',
+            enabled = function() return lsp.diagnostics_exist('WARN') end,
+            hl = {
+                fg = colors.yellow
+            }
+        },
+        info = {
+            -- provider = 'diagnostic_info',
+            provider = function()
+                return '' .. lsp_get_diag("INFO")
+            end,
+            -- left_sep = ' ',
+            enabled = function() return lsp.diagnostics_exist('INFO') end,
+            hl = {
+                fg = colors.blue
+            }
+        },
+        hint = {
+            -- provider = 'diagnostic_hints',
+            provider = function()
+                return '' .. lsp_get_diag("HINT")
+            end,
+            -- left_sep = ' ',
+            enabled = function() return lsp.diagnostics_exist('HINT') end,
+            hl = {
+                fg = colors.cyan
+            }
+        },
+    },
+    lsp = {
+        name = {
+            provider = 'lsp_client_names',
+            -- left_sep = ' ',
+            right_sep = ' ',
+            -- icon = '  ',
+            icon = '慎',
+            hl = {
+                fg = colors.yellow
+            }
+        }
+    },
+    git = {
+        branch = {
+            provider = 'git_branch',
+            icon = ' ',
+            -- icon = ' ',
+            left_sep = ' ',
+            hl = {
+                fg = colors.purple,
+                style = 'bold'
+            },
+        },
+        add = {
+            provider = 'git_diff_added',
+            hl = {
+                fg = colors.green
+            }
+        },
+        change = {
+            provider = 'git_diff_changed',
+            hl = {
+                fg = colors.orange
+            }
+        },
+        remove = {
+            provider = 'git_diff_removed',
+            hl = {
+                fg = colors.red
+            }
+        }
+    }
+}
+
+local components = {
+  active = {},
+  inactive = {},
+}
+
+table.insert(components.active, {})
+table.insert(components.active, {})
+table.insert(components.active, {})
+
+table.insert(components.inactive, {})
+table.insert(components.inactive, {})
+table.insert(components.inactive, {})
+
+table.insert(components.active[1], comps.vi_mode.left)
+table.insert(components.active[1], comps.file.info)
+table.insert(components.active[1], comps.git.branch)
+table.insert(components.active[3], comps.git.add)
+table.insert(components.active[3], comps.git.change)
+table.insert(components.active[3], comps.git.remove)
+table.insert(components.inactive[1], comps.vi_mode.left)
+table.insert(components.inactive[1], comps.file.info)
+table.insert(components.active[3], comps.diagnos.err)
+table.insert(components.active[3], comps.diagnos.warn)
+table.insert(components.active[3], comps.diagnos.hint)
+table.insert(components.active[3], comps.diagnos.info)
+table.insert(components.active[3], comps.lsp.name)
+table.insert(components.active[3], comps.file.os)
+table.insert(components.active[3], comps.file.position)
+table.insert(components.active[3], comps.line_percentage)
+table.insert(components.active[3], comps.scroll_bar)
+table.insert(components.active[3], comps.vi_mode.right)
+
+
+
+-- TreeSitter
+-- local ts_utils = require("nvim-treesitter.ts_utils")
+-- local ts_parsers = require("nvim-treesitter.parsers")
+-- local ts_queries = require("nvim-treesitter.query")
+--[[ table.insert(components.active[2], {
+  provider = function()
+    local node = require("nvim-treesitter.ts_utils").get_node_at_cursor()
+    return ("%d:%s [%d, %d] - [%d, %d]")
+      :format(node:symbol(), node:type(), node:range())
+  end,
+  enabled = function()
+    local ok, ts_parsers = pcall(require, "nvim-treesitter.parsers")
+    return ok and ts_parsers.has_parser()
+  end
+}) ]]
+
+-- require'feline'.setup {}
+require'feline'.setup {
+    colors = { bg = colors.bg, fg = colors.fg },
+    components = components,
+    vi_mode_colors = vi_mode_colors,
+    force_inactive = {
+        filetypes = {
+            '^fern$',
+            '^fugitive$',
+            '^fugitiveblame$',
+            '^help$'
+        },
+        buftypes = {
+          'terminal'
+        },
+        bufnames = {}
+    }
+}
+EOF
+'''
+
+
+[[plugins]]
+repo = 'lewis6991/gitsigns.nvim'
+hook_add = '''
+lua << EOF
+require('gitsigns').setup {
+  signs = {
+    add          = {hl = 'GitSignsAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'},
+    change       = {hl = 'GitSignsChange', text = '│', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn'},
+    delete       = {hl = 'GitSignsDelete', text = '_', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn'},
+    topdelete    = {hl = 'GitSignsDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn'},
+    changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn'},
+  },
+  signcolumn = true,  -- Toggle with `:Gitsigns toggle_signs`
+  numhl      = false, -- Toggle with `:Gitsigns toggle_numhl`
+  linehl     = false, -- Toggle with `:Gitsigns toggle_linehl`
+  word_diff  = false, -- Toggle with `:Gitsigns toggle_word_diff`
+  watch_gitdir = {
+    interval = 1000,
+    follow_files = true
+  },
+  attach_to_untracked = true,
+  current_line_blame = false, -- Toggle with `:Gitsigns toggle_current_line_blame`
+  current_line_blame_opts = {
+    virt_text = true,
+    virt_text_pos = 'eol', -- 'eol' | 'overlay' | 'right_align'
+    delay = 1000,
+    ignore_whitespace = false,
+  },
+  current_line_blame_formatter = '<author>, <author_time:%Y-%m-%d> - <summary>',
+  sign_priority = 6,
+  update_debounce = 100,
+  status_formatter = nil, -- Use default
+  max_file_length = 40000,
+  preview_config = {
+    -- Options passed to nvim_open_win
+    border = 'single',
+    style = 'minimal',
+    relative = 'cursor',
+    row = 0,
+    col = 1
+  },
+  yadm = {
+    enable = false
+  },
+}
+EOF
+'''
+
+
+[[plugins]]
+repo = 'kyazdani42/nvim-web-devicons'
+depends = ['feline.nvim']
+# ステータスライン周り 
