@@ -32,10 +32,12 @@ end
 if vim.call('dein#load_state', dein_dir) == 1 then
   local dein_toml_dir = vim.env.HOME .. '/dotfiles/.config/nvim'
   local dein_toml = dein_toml_dir .. '/dein.toml'
+  local style_toml = dein_toml_dir .. '/style.toml'
   local dein_toml_lazy = dein_toml_dir .. '/dein_lazy.toml'
 
-  vim.call('dein#begin', dein_dir, {vim.fn.expand('<sfile>'), dein_toml, dein_toml_lazy, dein_toml_input})
+  vim.call('dein#begin', dein_dir, {vim.fn.expand('<sfile>'), dein_toml, dein_toml_lazy, style_toml})
   vim.call('dein#load_toml', dein_toml, {lazy = 0})
+  vim.call('dein#load_toml', style_toml, {lazy = 0})
   vim.call('dein#load_toml', dein_toml_lazy, {lazy = 1})
 
 
