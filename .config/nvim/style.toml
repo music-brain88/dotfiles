@@ -2,6 +2,265 @@
 [[plugins]]
 repo = 'ryanoasis/vim-devicons'
 
+[[plugins]]
+repo = 'goolord/alpha-nvim'
+hook_add = '''
+lua << EOF
+local alpha = require("alpha")
+local function button(sc, txt, keybind)
+  local sc_ = sc:gsub("%s", ""):gsub("SPC", "<leader>")
+  local opts = {
+    position = "center", text = txt,
+    shortcut = sc,
+    cursor = 5,
+    width = 36,
+    align_shortcut = "right",
+    hl = "AlphaButtons",
+  }
+
+  if keybind then
+    opts.keymap = { "n", sc_, keybind, { noremap = true, silent = true } }
+  end
+
+  return {
+    type = "button",
+    val = txt,
+    on_press = function()
+      local key = vim.api.nvim_replace_termcodes(sc_, true, false, true)
+      vim.api.nvim_feedkeys(key, "normal", false)
+    end,
+    opts = opts,
+  }
+end
+
+local col = function(strlist, opts)
+  -- strlist is a TABLE of TABLES, representing columns of text
+  -- opts is a text display option
+
+  -- column spacing
+  local padding = 6
+  -- fill lines up to the maximim length with 'fillchar'
+  local fillchar = " "
+  -- columns padding char (for testing)
+  local padchar = " "
+
+  -- define maximum string length in a table
+  local maxlen = function(str)
+    local max = 0
+    for i in pairs(str) do
+      if #str[i] > max then
+      max = #str[i]
+    end
+  end
+  return max
+end
+
+-- add as much right-padding to align the text block
+local pad = function(str, max)
+  local strlist = {}
+  for i in pairs(str) do
+    if #str[i] < max then
+      local newstr = str[i] .. string.rep(fillchar, max - #str[i])
+      table.insert(strlist, newstr)
+    else
+      table.insert(strlist, str[i])
+    end
+  end
+  return strlist
+end
+
+-- this is a table for text strings
+local values = {}
+-- process all the lines
+for i = 1, maxlen(strlist) do
+  local str = ""
+  -- process all the columns but last, because we dont wand extra padding
+  -- after last column
+  for column = 1, #strlist - 1 do
+    local maxstr = maxlen(strlist[column])
+    local padded = pad(strlist[column], maxstr)
+    if strlist[column][i] == nil then
+      str = str .. string.rep(fillchar, maxstr) .. string.rep(padchar, padding)
+    else
+      str = str .. padded[i] .. string.rep(padchar, padding)
+    end
+  end
+
+  -- lets process the last column, no extra padding
+  do
+    local maxstr = maxlen(strlist[#strlist])
+    local padded = pad(strlist[#strlist], maxstr)
+    if strlist[#strlist][i] == nil then
+      str = str .. string.rep(fillchar, maxlen(strlist[#strlist]))
+    else
+      str = str .. padded[i]
+    end
+  end
+
+  -- insert result into output table
+  table.insert(values, { type = "text", val = str, opts = opts })
+  end
+
+  return values
+end
+
+-- DEFAULT THEME
+local default = {}
+
+default.ascii = {
+"                  -`                   ",
+"                 .o+`                  ",
+"                `ooo/                  ",
+"               `+oooo:                 ",
+"              `+oooooo:                ",
+"              -+oooooo+:               ",
+"            `/:-:++oooo+:              ",
+"           `/++++/+++++++:             ",
+"          `/++++++++++++++:            ",
+"         `/+++ooooooooooooo/`          ",
+"        ./ooosssso++osssssso+`         ",
+"       .oossssso-````/ossssss+`        ",
+"      -osssssso.      :ssssssso.       ",
+"     :osssssss/        osssso+++.      ",
+"    /ossssssss/        +ssssooo/-      ",
+"  `/ossssso+/:-        -:/+osssso+-    ",
+" `+sso+:-`                 `.-/+oso:   ",
+"`++:.                           `-/+/  ",
+".`                                 `   ",
+}
+
+default.header = {
+  type = "text",
+  val = default.ascii,
+  opts = {
+    position = "center",
+    hl = "type",
+  },
+}
+
+-- key reference
+local ddu = {
+  "         Search        ",
+  "",
+  ",f  fuzzy find files",
+  ",w  fuzzy find under cur",
+  ",g  fuzzy find live grep",
+  ",b  fuzzy find buffers",
+}
+
+local ddu_ff = {
+  "     Search action     ",
+  "",
+  "<CR>     itemAction",
+  "i        openFilterWindow",
+  "<Space>  toggleSelectItem",
+  "q        quit",
+}
+
+local tabuffers = {
+  "      tabs      ",
+  "",
+  "tc     create tab",
+  "tn     next tab",
+  "tp     prev tab",
+  "tx     Close tab",
+}
+
+local filer = {
+  "              Filer        ",
+  "",
+  ",m     open filer (toggle)",
+  "!      hidden file(toggle)",
+  "?      List mappings/actions available",
+  "m      move",
+  "<F5>   Redraw",
+  "<C-h>  Leave",
+}
+
+
+local lsp_nav1 = {
+  "         LSP         ",
+  "",
+  "gd  goto definition",
+  "gy  goto type-definition",
+  "gi  goto implementation",
+  "gr  goto references",
+}
+
+local buffers = {
+  "    buffers     ",
+  "",
+  "<C-k>  buff next",
+  "<C-j>  buff prev",
+}
+
+default.buttons = {
+  type = "group",
+  val = {
+    button("e", "  new", ":ene <BAR> startinsert <CR>"),
+    button("f", "  search file ", ":Ddu file_rec <CR>"),
+    button("u", "  update", ":call dein#update()<CR>"),
+    button("c", "  config", ":e ~/.config/nvim/init.lua <CR>"),
+    button("q", "  quit", ":qa<CR>"),
+  },
+  position = "center",
+}
+
+default.block1 = {
+  type = "group",
+  val = col({ ddu, ddu_ff, tabuffers }, {
+  position = "center",
+  hl = {
+    { "SpecialKey", 0, -1 },
+    -- { "MoreMsg", 13, 20 },
+    -- { "MoreMsg", 39, 47 },
+    -- { "MoreMsg", 67, 74 },
+    },
+  }),
+  opts = {
+    spacing = 0,
+  },
+}
+
+default.block2 = {
+  type = "group",
+  val = col({ filer, lsp_nav1, buffers }, {
+  position = "center",
+  hl = {
+    { "SpecialKey", 0, -1 },
+    -- { "MoreMsg", 12, 20 },
+    -- { "MoreMsg", 43, 51 },
+    -- { "MoreMsg", 67, 75 },
+    },
+  }),
+  opts = {
+    spacing = 0,
+  },
+}
+
+-- load config
+alpha.setup({
+  layout = {
+  { type = "padding", val = 1 },
+  default.header,
+  { type = "padding", val = 1 },
+  default.buttons,
+  { type = "padding", val = 1 },
+  default.block1,
+  { type = "padding", val = 1 },
+  default.block2,
+  { type = "padding", val = 20 },
+  },
+  opts = {},
+})
+
+-- autocmd
+-- hide/unhide tabs when toggling Alpha
+vim.cmd([[ autocmd User AlphaReady set showtabline=0 | autocmd BufUnload <buffer> set showtabline=2 ]])
+EOF
+'''
+
+
 # Color scheme
 [[plugins]]
 repo = 'olimorris/onedarkpro.nvim'
@@ -414,6 +673,7 @@ EOF
 repo = 'lewis6991/gitsigns.nvim'
 hook_add = '''
 lua << EOF
+vim.cmd 'set signcolumn=yes'
 require('gitsigns').setup {
   signs = {
     add          = {hl = 'GitSignsAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'},
@@ -454,6 +714,42 @@ require('gitsigns').setup {
   yadm = {
     enable = false
   },
+ on_attach = function(bufnr)
+  local gs = package.loaded.gitsigns
+
+  local function map(mode, l, r, opts)
+    opts = opts or {}
+    opts.buffer = bufnr
+    vim.keymap.set(mode, l, r, opts)
+  end
+
+  -- Navigation
+  map('n', ']c', function()
+    if vim.wo.diff then return ']c' end
+    vim.schedule(function() gs.next_hunk() end)
+    return '<Ignore>'
+  end, {expr=true})
+
+  map('n', '[c', function()
+    if vim.wo.diff then return '[c' end
+    vim.schedule(function() gs.prev_hunk() end)
+    return '<Ignore>'
+  end, {expr=true})
+   -- Actions
+  map({'n', 'v'}, '<leader>hs', ':Gitsigns stage_hunk<CR>')
+  map({'n', 'v'}, '<leader>hr', ':Gitsigns reset_hunk<CR>')
+  map('n', '<leader>hS', gs.stage_buffer)
+  map('n', '<leader>hu', gs.undo_stage_hunk)
+  map('n', '<leader>hR', gs.reset_buffer)
+  map('n', '<leader>hp', gs.preview_hunk)
+  map('n', '<leader>hb', function() gs.blame_line{full=true} end)
+  map('n', '<leader>tb', gs.toggle_current_line_blame)
+  map('n', '<leader>hd', gs.diffthis)
+  map('n', '<leader>hD', function() gs.diffthis('~') end)
+  map('n', '<leader>td', gs.toggle_deleted)
+  -- Text object
+    map({'o', 'x'}, 'ih', ':<C-U>Gitsigns select_hunk<CR>')
+  end
 }
 EOF
 '''
