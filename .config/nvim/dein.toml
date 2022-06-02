@@ -390,7 +390,13 @@ nnoremap <silent> vs :terminal<cr>
 
 # フロントエンド周り
 [[plugins]]
-repo = 'gko/vim-coloresque'
+repo = 'norcalli/nvim-colorizer.lua'
+hook_add = '''
+lua << EOF
+  require'colorizer'.setup()
+EOF
+'''
+
 # フロントエンド周り
 
 # git関連
