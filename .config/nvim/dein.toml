@@ -391,17 +391,17 @@ nnoremap <silent> vs :terminal<cr>
 # フロントエンド周り
 [[plugins]]
 repo = 'norcalli/nvim-colorizer.lua'
+on_event = 'BufEnter'
 hook_add = '''
 lua << EOF
   require'colorizer'.setup()
 EOF
 '''
-
 # フロントエンド周り
 
-# git関連
 [[plugins]]
-repo = 'tpope/vim-fugitive'
+repo = 'romgrk/barbar.nvim'
+
 
 # コメント機能強化
 [[plugins]]

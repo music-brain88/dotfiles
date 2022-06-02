@@ -51,6 +51,13 @@ vim.api.nvim_set_var('dein#enable_notification', 1)
 
 --End dein Scripts-----------------------------
 
+
+vim.o.termguicolors = true
+vim.bo.autoread = true
+vim.bo.tabstop = 2
+vim.bo.expandtab = true
+
+vim.cmd 'set clipboard+=unnamedplus'
 vim.cmd 'set relativenumber'
 vim.cmd 'set t_Co=256'
 vim.cmd 'set ttimeoutlen=10'
@@ -60,7 +67,6 @@ vim.cmd 'set nowrap'
 vim.cmd 'set number'
 vim.cmd 'set title'
 vim.cmd 'set autoindent'
-vim.cmd 'set tabstop=2'
 vim.cmd 'set list'
 vim.cmd 'set shiftwidth=2'
 vim.cmd 'set expandtab'
