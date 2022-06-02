@@ -31,12 +31,34 @@ end
 
 if vim.call('dein#load_state', dein_dir) == 1 then
   local dein_toml_dir = vim.env.HOME .. '/dotfiles/.config/nvim'
+  local status_line_dir = vim.env.HOME .. '/dotfiles/.config/nvim'
+
+  -- startup
   local dein_toml = dein_toml_dir .. '/dein.toml'
+  local dashboard_toml = dein_toml_dir .. '/dashboard.toml'
   local style_toml = dein_toml_dir .. '/style.toml'
+
+  -- status line
+  local feline_toml = dein_toml_dir .. status_line_dir ..'/feline.toml'
+  local gitsigns_toml = dein_toml_dir .. status_line_dir ..'/gitsigns.toml'
+
+  -- Lazy load
   local dein_toml_lazy = dein_toml_dir .. '/dein_lazy.toml'
 
-  vim.call('dein#begin', dein_dir, {vim.fn.expand('<sfile>'), dein_toml, dein_toml_lazy, style_toml})
+  vim.call('dein#begin', dein_dir, {
+    vim.fn.expand('<sfile>'),
+    -- startup
+    dein_toml,
+    dashboard_toml,
+    style_toml,
+    -- status line
+    feline_toml,
+    gitsigns_toml,
+    -- lazy
+    dein_toml_lazy
+  })
   vim.call('dein#load_toml', dein_toml, {lazy = 0})
+  vim.call('dein#load_toml', dashboard_toml, {lazy = 0})
   vim.call('dein#load_toml', style_toml, {lazy = 0})
   vim.call('dein#load_toml', dein_toml_lazy, {lazy = 1})
 
