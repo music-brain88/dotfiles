@@ -177,6 +177,7 @@ local filer = {
 local lsp_nav1 = {
   "         LSP         ",
   "",
+  ":LspInstalInfo manage LSP server",
   "gd  goto definition",
   "gy  goto type-definition",
   "gi  goto implementation",
