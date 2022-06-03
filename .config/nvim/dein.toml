@@ -410,3 +410,9 @@ hook_add = '''
   "vmap <C-S-/> (caw:zeropos:toggle)
 
 '''
+
+[[plugins]]
+repo = 'nvim-lua/plenary.nvim'
+
+[[plugins]]
+repo = 'nvim-telescope/telescope.nvim'
