@@ -40,7 +40,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
 
   -- status line
   local feline_toml = dein_toml_dir .. status_line_dir .. '/feline.toml'
-  local barbar_toml = dein_toml_dir .. status_line_dir .. '/barbar.toml'
+  local bufferline_toml = dein_toml_dir .. status_line_dir .. '/bufferline.toml'
   local gitsigns_toml = dein_toml_dir .. status_line_dir .. '/gitsigns.toml'
 
   -- Lazy load
@@ -66,7 +66,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
 
   -- status line
   vim.call('dein#load_toml', feline_toml, {lazy = 0})
-  vim.call('dein#load_toml', barbar_toml, {lazy = 0})
+  vim.call('dein#load_toml', bufferline_toml, {lazy = 0})
   vim.call('dein#load_toml', gitsigns_toml, {lazy = 0})
 
   -- Lazy load
