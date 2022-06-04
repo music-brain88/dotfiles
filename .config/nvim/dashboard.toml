@@ -178,13 +178,15 @@ local lsp_nav1 = {
   "         LSP         ",
   "",
   ":LspInstallInfo manage LSP server",
+  "ge  show diagnostic openf loat",
+  "g[  goto diagnostic to prev",
+  "g]  goto diagnostic to next",
   "gd  goto definition",
   "gD  goto declaration",
   "gr  goto references",
-  "[d  goto diagnostic to prev",
-  "]d  goto diagnostic to next",
   "gi  goto implementation",
   "gr  goto references",
+  "gs  show signature help",
 }
 
 local buffers = {
