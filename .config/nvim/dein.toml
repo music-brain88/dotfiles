@@ -416,3 +416,13 @@ repo = 'nvim-lua/plenary.nvim'
 
 [[plugins]]
 repo = 'nvim-telescope/telescope.nvim'
+
+[[plugins]]
+repo = 'rust-lang/rust.vim'
+hook_add = '''
+syntax enable
+filetype plugin indent on
+
+" 保存時に自動でrustfmt
+let g:rustfmt_autosave = 1
+'''

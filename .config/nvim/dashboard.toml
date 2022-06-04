@@ -179,7 +179,10 @@ local lsp_nav1 = {
   "",
   ":LspInstallInfo manage LSP server",
   "gd  goto definition",
-  "gy  goto type-definition",
+  "gD  goto declaration",
+  "gr  goto references",
+  "[d  goto diagnostic to prev",
+  "]d  goto diagnostic to next",
   "gi  goto implementation",
   "gr  goto references",
 }
