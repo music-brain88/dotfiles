@@ -31,12 +31,13 @@
   file-decoration-style = none
 
 [delta "line-numbers"]
-    line-numbers-left-style = cyan
-    line-numbers-right-style = cyan
-    line-numbers-minus-style = 124
-    line-numbers-plus-style = 28
+  line-numbers-left-style = cyan
+  line-numbers-right-style = cyan
+  line-numbers-minus-style = 124
+  line-numbers-plus-style = 28
 
 [push]
   default = simple
+
 [commit]
-	gpgsign = true
+  gpgsign = true

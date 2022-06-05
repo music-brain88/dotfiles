@@ -19,6 +19,14 @@ jobs:
           sudo apt-add-repository ppa:fish-shell/release-3
           sudo apt update -y
           sudo apt install -y git fish
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: beta
+          override: true
+      - name: Install cargo-bisect-rustc
+        run: cargo install cargo-bisect-rustc
       - name: Run setup script
         run: make install
       - name: Run deploy script
