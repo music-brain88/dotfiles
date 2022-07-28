@@ -7,34 +7,35 @@ repo = 'vim-denops/denops.vim'
 #-----------------------------------------------------------------------
 # fern settings
 #-----------------------------------------------------------------------
-[[plugins]]
-repo = 'lambdalisue/fern.vim'
-hook_add = '''
-let g:fern#renderer = 'nerdfont'
-nnoremap <silent>,m :<C-u>Fern . -reveal=% -drawer -toggle<CR>
-'''
-
-[[plugins]]
-repo = 'lambdalisue/fern-git-status.vim'
-
-[[plugins]]
-repo = 'lambdalisue/nerdfont.vim'
-
-[[plugins]]
-repo = 'lambdalisue/fern-renderer-nerdfont.vim'
-
-### Coloring icon glyph
-[[plugins]]
-repo = 'lambdalisue/glyph-palette.vim'
-hook_add = '''
-augroup my-glyph-palette
-  autocmd! *
-  autocmd FileType fern call glyph_palette#apply()
-augroup END
-'''
+#[[plugins]]
+#repo = 'lambdalisue/fern.vim'
+#hook_add = '''
+#let g:fern#renderer = 'nerdfont'
+#nnoremap <silent>,m :<C-u>Fern . -reveal=% -drawer -toggle<CR>
+#'''
+#
+#[[plugins]]
+#repo = 'lambdalisue/fern-git-status.vim'
+#
+#[[plugins]]
+#repo = 'lambdalisue/nerdfont.vim'
+#
+#[[plugins]]
+#repo = 'lambdalisue/fern-renderer-nerdfont.vim'
+#
+#### Coloring icon glyph
+#[[plugins]]
+#repo = 'lambdalisue/glyph-palette.vim'
+#hook_add = '''
+#augroup my-glyph-palette
+#  autocmd! *
+#  autocmd FileType fern call glyph_palette#apply()
+#augroup END
+#'''
 #-----------------------------------------------------------------------
 # end of fern settings
 #-----------------------------------------------------------------------
+
 
 #-----------------------------------------------------------------------
 # ddu settings
@@ -43,8 +44,10 @@ augroup END
 repo = 'Shougo/ddu.vim'
 hook_add = '''
 
-" fuzzy find filename
-nmap <silent> ,f <Cmd>call ddu#start({ 'name' : 'file' })<CR>
+"-----------------------------------------------------------------------
+" ddu filer settings
+"-----------------------------------------------------------------------
+nmap <silent> ,m <Cmd>call ddu#start({ 'name' : 'file' })<CR>
 
 " fuzzy find full text search
 nmap <silent> ,g <Cmd>call ddu#start({
@@ -87,16 +90,48 @@ call ddu#custom#patch_global({
 \   },
 \   'uiParams': {
 \     'ff': {
-\     'prompt': '> ',
-\     'split': 'floating',
-\   },
+\       'prompt': '> ',
+\       'split': 'floating',
+\     },
+\    'filer': {
+\       'split': 'floating',
+\     }
 \  },
 \ })
 
-" fuzzy find filename setting
+"-----------------------------------------------------------------------
+" ddu filer settings
+"-----------------------------------------------------------------------
 call ddu#custom#patch_local('file', {
-\   'sources': [{'name': 'file_rec', 'params': {}}],
+\   'ui': 'filer',
+\   'sources': [{'name': 'file', 'params': {}}],
+\   'sourceOptions': {
+\       '_': {
+\           'columns': ['filename'],
+\       },
+\   },
+\   'kindOptions': {
+\     'file': {
+\       'defaultAction': 'open',
+\     },
+\   }
 \ })
+
+autocmd FileType ddu-filer call s:ddu_my_settings()
+function! s:ddu_my_settings() abort
+  nnoremap <buffer><silent> <CR>
+        \ <Cmd>call ddu#ui#filer#do_action('itemAction')<CR>
+  nnoremap <buffer><silent> <Space>
+        \ <Cmd>call ddu#ui#filer#do_action('toggleSelectItem')<CR>
+  nnoremap <buffer> o
+        \ <Cmd>call ddu#ui#filer#do_action('expandItem',
+        \ {'mode': 'toggle'})<CR>
+  nnoremap <buffer><silent> q
+        \ <Cmd>call ddu#ui#filer#do_action('quit')<CR>
+endfunction
+"-----------------------------------------------------------------------
+" end ddu filer settings
+"-----------------------------------------------------------------------
 
 " fuzzy find full text search setting
 call ddu#custom#patch_local('text', {
@@ -166,11 +201,23 @@ function! s:ddu_filter_my_settings() abort
 endfunction
 '''
 
+# filer
+[[plugins]]
+repo = 'Shougo/ddu-ui-filer'
+
+# filer
+[[plugins]]
+repo = 'Shougo/ddu-column-filename'
+
 [[plugins]]
 repo = 'Shougo/ddu-ui-ff'
 
 [[plugins]]
 repo = 'Shougo/ddu-commands.vim'
+
+# filer
+[[plugins]]
+repo = 'Shougo/ddu-source-file'
 
 [[plugins]]
 repo = 'Shougo/ddu-source-file_rec'
