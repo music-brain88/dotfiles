@@ -4,38 +4,6 @@ repo = 'vim-denops/denops.vim'
 [[plugins]]
  repo = 'Shougo/pum.vim'
 
-#-----------------------------------------------------------------------
-# fern settings
-#-----------------------------------------------------------------------
-#[[plugins]]
-#repo = 'lambdalisue/fern.vim'
-#hook_add = '''
-#let g:fern#renderer = 'nerdfont'
-#nnoremap <silent>,m :<C-u>Fern . -reveal=% -drawer -toggle<CR>
-#'''
-#
-#[[plugins]]
-#repo = 'lambdalisue/fern-git-status.vim'
-#
-#[[plugins]]
-#repo = 'lambdalisue/nerdfont.vim'
-#
-#[[plugins]]
-#repo = 'lambdalisue/fern-renderer-nerdfont.vim'
-#
-#### Coloring icon glyph
-#[[plugins]]
-#repo = 'lambdalisue/glyph-palette.vim'
-#hook_add = '''
-#augroup my-glyph-palette
-#  autocmd! *
-#  autocmd FileType fern call glyph_palette#apply()
-#augroup END
-#'''
-#-----------------------------------------------------------------------
-# end of fern settings
-#-----------------------------------------------------------------------
-
 
 #-----------------------------------------------------------------------
 # ddu settings
