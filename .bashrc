@@ -2,6 +2,7 @@
 # ~/.bashrc
 #
 
+[ -z "$PS1" ] && return
 alias vim='nvim'
 alias rm='rm -i'
 export TERM=xterm-256color
