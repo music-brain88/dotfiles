@@ -186,7 +186,22 @@ on_event = 'BufReadPost'
 hook_source = '''
 lua << EOF
   require'nvim-treesitter.configs'.setup {
-    ensure_installed = { "c", "lua", "rust", "python" },
+    ensure_installed = {
+      "lua",
+      "rust",
+      "python",
+      "fish",
+      "bash",
+      "typescript",
+      "json",
+      "go",
+      "dockerfile",
+      "html",
+      "markdown",
+      "toml",
+      "make",
+      "yaml",
+    },
 
     sync_install = false,
 
@@ -196,7 +211,6 @@ lua << EOF
       enable = true,
       disable = {
         "lua",
-        "c",
         "rust",
         "vue",
         "toml",
