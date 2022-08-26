@@ -101,6 +101,8 @@ function! s:ddu_filer_my_settings() abort
         \ <Cmd>call ddu#ui#filer#do_action('itemAction', {'name': 'delete'})<CR>
   nnoremap <buffer><silent> mv
         \ <Cmd>call ddu#ui#filer#do_action('itemAction', {'name': 'move'})<CR>
+  nnoremap <buffer><silent> r
+        \ <Cmd>call ddu#ui#filer#do_action('itemAction', {'name': 'rename'})<CR>
   nnoremap <buffer><silent> t
         \ <Cmd>call ddu#ui#filer#do_action('itemAction', {'name': 'newFile'})<CR>
   nnoremap <buffer><silent> mk
