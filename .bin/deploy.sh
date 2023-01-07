@@ -11,7 +11,7 @@ echo "start setup..."
 if [ ! -d ~/.cache/dein ]; then
   echo "Dein is not exists"
   echo "Download Dein scripts"
-  curl https://raw.githubusercontent.com/Shougo/dein.vim/master/bin/installer.sh > installer.sh
+  curl https://raw.githubusercontent.com/Shougo/dein-installer.vim/master/installer.sh > installer.sh
   sh ./installer.sh ~/.cache/dein
   rm installer.sh
 else
