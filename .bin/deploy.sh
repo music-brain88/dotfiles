@@ -35,6 +35,15 @@ ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
 ln -snfv ~/dotfiles/.gitconfig ~/.gitconfig
 ln -snfv ~/dotfiles/.config/starship/starship.toml ~/.config/starship.toml
 
+# install volta
+if !(type volta > /dev/null 2>&1); then
+  echo "Install volta"
+  curl https://get.volta.sh | bash
+  echo "Finish install volta"
+else
+  echo "volta is installed"
+  fisher
+fi
 
 # Install fisher
 if !(type fisher > /dev/null 2>&1); then
