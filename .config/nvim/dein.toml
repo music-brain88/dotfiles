@@ -63,6 +63,7 @@ call ddu#custom#patch_global({
 \     },
 \    'filer': {
 \       'split': 'floating',
+\       'sortTreesFirst': v:true,
 \     }
 \  },
 \ })
