@@ -20,11 +20,9 @@ jobs:
           sudo apt update -y
           sudo apt install -y git fish
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          profile: minimal
           toolchain: stable
-          override: true
       - name: Run setup script
         run: make install
       - name: Run deploy script
