@@ -14,7 +14,7 @@ lua << EOF
   highlights = {}, -- Override default highlight groups
   ft_highlights = {}, -- Override default highlight groups for specific filetypes
   plugins = { -- Override which plugins highlight groups are loaded
-      native_lsp = true,
+      nvim_lsp = true,
       polygot = false,
       treesitter = true,
       -- NOTE: Other plugins have been omitted for brevity
