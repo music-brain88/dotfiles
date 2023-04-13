@@ -2,8 +2,14 @@
 repo = 'vim-denops/denops.vim'
 
 [[plugins]]
- repo = 'Shougo/pum.vim'
+repo = 'Shougo/pum.vim'
 
+[[plugins]]
+repo = 'Shougo/ddc.vim'
+
+[[plugins]]
+on_source = ['ddc.vim', 'vim-lsp']
+repo = 'shun/ddc-vim-lsp'
 
 #-----------------------------------------------------------------------
 # ddu settings
@@ -90,9 +96,9 @@ autocmd FileType ddu-filer call s:ddu_filer_my_settings()
 function! s:ddu_filer_my_settings() abort
   " Change action, Is cursor item drectory or not.
   nnoremap <buffer><silent><expr> <CR>
-        \ ddu#ui#filer#is_tree() ?
+        \ ddu#ui#get_item()->get('isTree', v:false) ?
         \ "<Cmd>call ddu#ui#filer#do_action('itemAction', {'name': 'narrow'})<CR>" :
-        \ "<Cmd>call ddu#ui#filer#do_action('itemAction',{'name': 'open'})<CR>"
+        \ "<Cmd>call ddu#ui#filer#do_action('itemAction', {'name': 'open'})<CR>"
   " Move to higher path
   nnoremap <buffer><silent> ..
         \ <Cmd>call ddu#ui#filer#do_action('itemAction', {'name': 'narrow', 'params': {'path': '..'}})<CR>
@@ -190,35 +196,45 @@ endfunction
 # filer
 [[plugins]]
 repo = 'Shougo/ddu-ui-filer'
+on_source = 'ddu.vim'
 
 # filer
 [[plugins]]
 repo = 'Shougo/ddu-column-filename'
+on_source = 'ddu.vim'
 
 [[plugins]]
 repo = 'Shougo/ddu-ui-ff'
+on_source = 'ddu.vim'
 
 [[plugins]]
 repo = 'Shougo/ddu-commands.vim'
+on_source = 'ddu.vim'
 
 # filer
 [[plugins]]
 repo = 'Shougo/ddu-source-file'
+on_source = 'ddu.vim'
 
 [[plugins]]
 repo = 'Shougo/ddu-source-file_rec'
+on_source = 'ddu.vim'
 
 [[plugins]]
 repo = 'shun/ddu-source-rg'
+on_source = 'ddu.vim'
 
 [[plugins]]
 repo = 'shun/ddu-source-buffer'
+on_source = 'ddu.vim'
 
 [[plugins]]
 repo = 'Shougo/ddu-filter-matcher_substring'
+on_source = 'ddu.vim'
 
 [[plugins]]
 repo = 'Shougo/ddu-kind-file'
+on_source = 'ddu.vim'
 
 #-----------------------------------------------------------------------
 # end of ddu settings
