@@ -115,7 +115,7 @@ hook_source= '''
   vim.keymap.set('n', '<space>ca', vim.lsp.buf.code_action, bufopts)
   vim.keymap.set('n', 'gr', vim.lsp.buf.references, bufopts)
 
-  vim.cmd [[autocmd BufWritePre * lua vim.lsp.buf.formatting_sync()]]
+  vim.cmd [[autocmd BufWritePre * lua vim.lsp.buf.format()]]
 EOF
 '''
 
