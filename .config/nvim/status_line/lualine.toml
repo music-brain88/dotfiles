@@ -1,43 +1,9 @@
 # ステータスライン周り
 [[plugins]]
 repo = 'nvim-lualine/lualine.nvim'
-hook_add = '''
-lua << EOF
+depends = ['nvim-tree/nvim-web-devicons']
+lua_add = '''
   vim.cmd 'set termguicolors'
--- onedark theme
-local colors = {
-    bg = "#282c34",
-    fg = "#abb2bf",
-    red = "#e06c75",
-    orange = "#d19a66",
-    yellow = "#e5c07b",
-    green = "#98c379",
-    cyan = "#56b6c2",
-    blue = "#61afef",
-    purple = "#c678dd",
-    white = "#abb2bf",
-    black = "#282c34",
-    gray = "#5c6370",
-    highlight = "#e2be7d",
-    none = "NONE"
-}
-
-local vi_mode_colors = {
-    NORMAL = colors.green,
-    INSERT = colors.bule,
-    VISUAL = colors.red,
-    OP = colors.green,
-    BLOCK = colors.blue,
-    REPLACE = colors.purple,
-    ['V-REPLACE'] = colors.purple,
-    ENTER = colors.cyan,
-    MORE = colors.cyan,
-    SELECT = colors.orange,
-    COMMAND = colors.green,
-    SHELL = colors.green,
-    TERM = colors.green,
-    NONE = colors.yellow
-}
 
 require('lualine').setup {
   options = {
@@ -51,7 +17,7 @@ require('lualine').setup {
     },
     ignore_focus = {},
     always_divide_middle = true,
-    globalstatus = false,
+    globalstatus = true,
     refresh = {
       statusline = 1000,
       tabline = 1000,
@@ -61,18 +27,51 @@ require('lualine').setup {
   },
   sections = {
     lualine_a = {'mode'},
-    lualine_b = {'branch', 'diff', 'diagnostics'},
-    lualine_c = {'filename'},
-    lualine_x = {'encoding', 'fileformat', 'filetype'},
-    lualine_y = {'progress'},
-    lualine_z = {'location'}
+    lualine_b = {
+      'branch',
+      -- git diff component options
+      {
+        'diff',
+        colored = true, -- Displays a colored diff status if set to true
+        diff_color = {
+          -- Same color values as the general color option can be used here.
+          added    = 'DiffAdd',    -- Changes the diff's added color
+          modified = 'DiffChange', -- Changes the diff's modified color
+          removed  = 'DiffDelete', -- Changes the diff's removed color you
+        },
+        symbols = {added = '+', modified = '~', removed = '-'}, -- Changes the symbols used by the diff.
+        source = nil, -- A function that works as a data source for diff.
+      },
+      -- LSP component options
+      {
+        'diagnostics',
+        sources = { 'nvim_diagnostic', 'nvim_lsp' },
+        -- Displays diagnostics for the defined severity types
+        sections = { 'error', 'warn', 'info', 'hint' },
+        diagnostics_color = {
+        -- Same values as the general color option can be used here.
+        error = 'DiagnosticError', -- Changes diagnostics' error color.
+        warn  = 'DiagnosticWarn',  -- Changes diagnostics' warn color.
+        info  = 'DiagnosticInfo',  -- Changes diagnostics' info color.
+        hint  = 'DiagnosticHint',  -- Changes diagnostics' hint color.
+        },
+        symbols = {error = 'E', warn = 'W', info = 'I', hint = 'H'},
+        colored = true,           -- Displays diagnostics status in color if set to true.
+        update_in_insert = false, -- Update diagnostics in insert mode.
+        always_visible = false,   -- Show diagnostics even if there are none.
+      }
+    },
+    lualine_c = { 'filename' },
+    lualine_x = { 'encoding', 'fileformat', 'filetype'},
+    lualine_y = { 'progress' },
+    lualine_z = { 'location' }
   },
   inactive_sections = {
     lualine_a = {},
     lualine_b = {},
-    lualine_c = {'filename'},
+    lualine_c = { 'filename' },
 
-    lualine_x = {'location'},
+    lualine_x = { 'location' },
     lualine_y = {},
     lualine_z = {}
   },
@@ -83,7 +82,6 @@ require('lualine').setup {
 
   extensions = {}
 }
-EOF
 '''
 
 

@@ -65,7 +65,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   vim.call('dein#load_toml', style_toml, {lazy = 0})
 
   -- status line
-  vim.call('dein#load_toml', feline_toml, {lazy = 0})
+  vim.call('dein#load_toml', lualine_toml, {lazy = 0})
   vim.call('dein#load_toml', bufferline_toml, {lazy = 0})
   vim.call('dein#load_toml', gitsigns_toml, {lazy = 0})
 
