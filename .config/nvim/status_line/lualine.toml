@@ -1,0 +1,69 @@
+# ステータスライン周り
+[[plugins]]
+repo = 'nvim-lualine/lualine.nvim'
+lua_post_source = '''
+  vim.cmd 'set termguicolors'
+-- onedark theme
+local colors = {
+    bg = "#282c34",
+    fg = "#abb2bf",
+    red = "#e06c75",
+    orange = "#d19a66",
+    yellow = "#e5c07b",
+    green = "#98c379",
+    cyan = "#56b6c2",
+    blue = "#61afef",
+    purple = "#c678dd",
+    white = "#abb2bf",
+    black = "#282c34",
+    gray = "#5c6370",
+    highlight = "#e2be7d",
+    none = "NONE"
+}
+
+local vi_mode_colors = {
+    NORMAL = colors.green,
+    INSERT = colors.bule,
+    VISUAL = colors.red,
+    OP = colors.green,
+    BLOCK = colors.blue,
+    REPLACE = colors.purple,
+    ['V-REPLACE'] = colors.purple,
+    ENTER = colors.cyan,
+    MORE = colors.cyan,
+    SELECT = colors.orange,
+    COMMAND = colors.green,
+    SHELL = colors.green,
+    TERM = colors.green,
+    NONE = colors.yellow
+}
+
+require("lualine").setup({
+  options = {
+    theme = 'onedark',
+    icons_enabled = true,
+  },
+  sections = {
+    lualine_a = {'mode'},
+    lualine_b = {'branch', 'diff', 'diagnostics'},
+    lualine_c = {'filename'},
+    lualine_x = {'encoding', 'fileformat', 'filetype'},
+    lualine_y = {'progress'},
+    lualine_z = {'location'}
+  },
+  inactive_sections = {
+    lualine_a = {},
+    lualine_b = {},
+    lualine_c = {'filename'},
+    lualine_x = {'location'},
+    lualine_y = {},
+
+    lualine_z = {}
+    },
+  tabline = {},
+  extensions = {}
+})
+'''
+
+
+
