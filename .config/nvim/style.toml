@@ -44,4 +44,4 @@ EOF
 
 [[plugins]]
 repo = 'kyazdani42/nvim-web-devicons'
-depends = ['feline.nvim']
+depends = ['nvim-lualine/lualine.nvim']
