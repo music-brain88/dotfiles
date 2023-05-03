@@ -1,17 +1,23 @@
 [[plugins]]
 repo = 'neovim/nvim-lspconfig'
+on_event = 'BufEnter'
 lua_source = '''
-  local nvim_lsp = require('lspconfig')
+  local nvim_lspconfig = require('lspconfig')
   local opts = { noremap=true, silent=true }
   vim.keymap.set('n', 'ge', vim.diagnostic.open_float)
   vim.keymap.set('n', 'g[', vim.diagnostic.goto_prev)
   vim.keymap.set('n', 'g]', vim.diagnostic.goto_next)
-
   vim.api.nvim_create_autocmd('LspAttach', {
     local bufopts = { noremap=true, silent=true, buffer=bufnr }
     vim.keymap.set('n', 'gr', vim.lsp.buf.references, bufopts)
     vim.keymap.set('n', 'gd', vim.lsp.buf.definition, bufopts)
   })
+  nvim_lspconfig.rust_analyzer.setup {
+    -- Server-specific settings. See `:help lspconfig-setup`
+    settings = {
+       ['rust-analyzer'] = {},
+    }
+  }
 '''
 
 [[plugins]]
@@ -37,5 +43,4 @@ depends = ['nvim-lspconfig.nvim', 'mason.nvim']
 lua_source= '''
   local mason_lspconfig = require('mason-lspconfig')
   mason_lspconfig.setup{}
-
 '''

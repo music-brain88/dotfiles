@@ -4,12 +4,13 @@
 [[plugins]]
 repo = 'Shougo/ddc.vim'
 on_event = 'InsertEnter'
-depends = ['denops.vim']
+depends = ['denops.vim', 'pum.vim']
 hook_add = '''
 inoremap <Tab> <Cmd>call pum#map#insert_relative(+1)<CR>
 inoremap <S-Tab> <Cmd>call pum#map#insert_relative(-1)<CR>
 '''
 hook_source = '''
+  vim.fn["ddc#custom#patch_global"]('ui', 'native')
   call ddc#custom#patch_global('sources', ['nvim-lsp' ,'around', 'file'])
   call ddc#custom#patch_global('sourceOptions', {
         \ '_': {
@@ -30,7 +31,6 @@ hook_source = '''
         \  },
         \ })
   call ddc#enable()
-  vim.fn["ddc#custom#patch_global"]('ui', 'native')
 '''
 
 [[plugins]]
