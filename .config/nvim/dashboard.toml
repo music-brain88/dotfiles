@@ -177,7 +177,7 @@ local filer = {
 local lsp_nav1 = {
   "         LSP         ",
   "",
-  ":LspInstallInfo manage LSP server",
+  ":Mason manage LSP server",
   "ge  show diagnostic openf loat",
   "g[  goto diagnostic to prev",
   "g]  goto diagnostic to next",
