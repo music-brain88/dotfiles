@@ -12,10 +12,20 @@ lua_source = '''
     vim.keymap.set('n', 'gr', vim.lsp.buf.references, bufopts)
     vim.keymap.set('n', 'gd', vim.lsp.buf.definition, bufopts)
   })
+  vim.lsp.set_log_level("debug")
   nvim_lspconfig.rust_analyzer.setup {
     -- Server-specific settings. See `:help lspconfig-setup`
+    cmd = { "rust-analyzer" },
+    root_dir = lspconfig.util.root_pattern("Cargo.toml", "rust-project.json"),
     settings = {
-       ['rust-analyzer'] = {},
+       ['rust-analyzer'] = {
+         cargo = {
+          loadOutDirsFromCheck = true
+        },
+        procMacro = {
+          enable = true
+        }
+      },
     }
   }
 '''
@@ -26,7 +36,14 @@ on_event = 'BufEnter'
 lua_source = '''
   local mason = require('mason')
   mason.setup({
+    PATH = "prepend",
+    log_level = vim.log.levels.INFO,
+    pip = {
+      upgrade_pip = false,
+    },
     ui = {
+      width = 0.6,
+      height = 0.7,
       icons = {
         package_installed = "✓",
         package_pending = "➜",
