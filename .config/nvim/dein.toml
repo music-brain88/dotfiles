@@ -5,11 +5,8 @@ repo = 'vim-denops/denops.vim'
 repo = 'Shougo/pum.vim'
 
 [[plugins]]
-repo = 'Shougo/ddc.vim'
-
-[[plugins]]
-on_source = ['ddc.vim', 'vim-lsp']
 repo = 'shun/ddc-vim-lsp'
+on_source = ['ddc.vim', 'vim-lsp']
 
 #-----------------------------------------------------------------------
 # ddu settings

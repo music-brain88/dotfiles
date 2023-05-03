@@ -2,6 +2,10 @@
 [[plugins]]
 repo = 'ryanoasis/vim-devicons'
 
+# icons
+[[plugins]]
+repo = 'nvim-tree/nvim-web-devicons'
+
 # Color scheme
 [[plugins]]
 repo = 'olimorris/onedarkpro.nvim'
@@ -41,7 +45,3 @@ lua << EOF
 onedarkpro.load()
 EOF
 '''
-
-[[plugins]]
-repo = 'kyazdani42/nvim-web-devicons'
-depends = ['feline.nvim']

@@ -39,7 +39,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   local style_toml = dein_toml_dir .. '/style.toml'
 
   -- status line
-  local feline_toml = dein_toml_dir .. status_line_dir .. '/feline.toml'
+  local lualine_toml = dein_toml_dir .. status_line_dir .. '/lualine.toml'
   local bufferline_toml = dein_toml_dir .. status_line_dir .. '/bufferline.toml'
   local gitsigns_toml = dein_toml_dir .. status_line_dir .. '/gitsigns.toml'
 
@@ -53,7 +53,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
     dashboard_toml,
     style_toml,
     -- status line
-    feline_toml,
+    lualine_toml,
     gitsigns_toml,
     -- lazy
     dein_toml_lazy
@@ -65,7 +65,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   vim.call('dein#load_toml', style_toml, {lazy = 0})
 
   -- status line
-  vim.call('dein#load_toml', feline_toml, {lazy = 0})
+  vim.call('dein#load_toml', lualine_toml, {lazy = 0})
   vim.call('dein#load_toml', bufferline_toml, {lazy = 0})
   vim.call('dein#load_toml', gitsigns_toml, {lazy = 0})
 
