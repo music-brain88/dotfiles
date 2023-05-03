@@ -3,31 +3,29 @@ repo = 'neovim/nvim-lspconfig'
 on_event = 'BufEnter'
 lua_source = '''
   local nvim_lspconfig = require('lspconfig')
-  local opts = { noremap=true, silent=true }
   vim.keymap.set('n', 'ge', vim.diagnostic.open_float)
   vim.keymap.set('n', 'g[', vim.diagnostic.goto_prev)
   vim.keymap.set('n', 'g]', vim.diagnostic.goto_next)
-  vim.api.nvim_create_autocmd('LspAttach', {
-    local bufopts = { noremap=true, silent=true, buffer=bufnr }
-    vim.keymap.set('n', 'gr', vim.lsp.buf.references, bufopts)
-    vim.keymap.set('n', 'gd', vim.lsp.buf.definition, bufopts)
-  })
   vim.lsp.set_log_level("debug")
-  nvim_lspconfig.rust_analyzer.setup {
-    -- Server-specific settings. See `:help lspconfig-setup`
-    cmd = { "rust-analyzer" },
-    root_dir = lspconfig.util.root_pattern("Cargo.toml", "rust-project.json"),
-    settings = {
-       ['rust-analyzer'] = {
-         cargo = {
-          loadOutDirsFromCheck = true
-        },
-        procMacro = {
-          enable = true
-        }
-      },
-    }
-  }
+  nvim_lspconfig.rust_analyzer.setup {}
+  vim.api.nvim_create_autocmd('LspAttach', {
+    group = vim.api.nvim_create_augroup('UserLspConfig', {}),
+    callback = function(ev)
+      local opts = { buffer = ev.buf }
+      vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)
+      vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
+      vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
+      vim.keymap.set('n', 'gk>', vim.lsp.buf.signature_help, opts)
+      vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, opts)
+      vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, opts)
+      vim.keymap.set('n', '<space>wl', function()
+        print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
+      end, opts)
+      vim.keymap.set('n', '<space>rn', vim.lsp.buf.rename, opts)
+      vim.keymap.set({ 'n', 'v' }, '<space>ca', vim.lsp.buf.code_action, opts)
+    end,
+  })
+  vim.cmd [[autocmd BufWritePre * lua vim.lsp.buf.format()]]
 '''
 
 [[plugins]]
@@ -59,5 +57,4 @@ on_event = 'BufEnter'
 depends = ['nvim-lspconfig.nvim', 'mason.nvim']
 lua_source= '''
   local mason_lspconfig = require('mason-lspconfig')
-  mason_lspconfig.setup{}
 '''
