@@ -1,7 +1,7 @@
 [[plugins]]
 repo = 'lewis6991/gitsigns.nvim'
 on_event = 'BufEnter'
-depends = ['feline']
+depends = ['lualine']
 hook_add = '''
 lua << EOF
 vim.cmd 'set signcolumn=yes'

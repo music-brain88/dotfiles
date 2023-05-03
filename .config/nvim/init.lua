@@ -45,18 +45,23 @@ if vim.call('dein#load_state', dein_dir) == 1 then
 
   -- Lazy load
   local dein_toml_lazy = dein_toml_dir .. '/dein_lazy.toml'
+  local lsp_setting_toml_lazy = dein_toml_dir .. '/lsp_settings.toml'
 
   vim.call('dein#begin', dein_dir, {
     vim.fn.expand('<sfile>'),
+
     -- startup
     dein_toml,
     dashboard_toml,
     style_toml,
+
     -- status line
     lualine_toml,
     gitsigns_toml,
+
     -- lazy
-    dein_toml_lazy
+    dein_toml_lazy,
+    lsp_setting_toml_lazy
   })
 
   -- startup
@@ -71,6 +76,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
 
   -- Lazy load
   vim.call('dein#load_toml', dein_toml_lazy, {lazy = 1})
+  vim.call('dein#load_toml', lsp_setting_toml_lazy, {lazy = 1})
 
 
   vim.call('dein#end')
