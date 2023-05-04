@@ -46,6 +46,8 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   -- Lazy load
   local dein_toml_lazy = dein_toml_dir .. '/dein_lazy.toml'
   local lsp_setting_toml_lazy = dein_toml_dir .. '/lsp_settings.toml'
+  local ddc_toml_lazy = dein_toml_dir .. '/ddc_settings.toml'
+  local treesitter_settings_lazy = dein_toml_dir .. '/treesitter_settings.toml'
 
   vim.call('dein#begin', dein_dir, {
     vim.fn.expand('<sfile>'),
@@ -61,7 +63,9 @@ if vim.call('dein#load_state', dein_dir) == 1 then
 
     -- lazy
     dein_toml_lazy,
-    lsp_setting_toml_lazy
+    lsp_setting_toml_lazy,
+    ddc_toml_lazy,
+    treesitter_settings_lazy
   })
 
   -- startup
@@ -77,7 +81,8 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   -- Lazy load
   vim.call('dein#load_toml', dein_toml_lazy, {lazy = 1})
   vim.call('dein#load_toml', lsp_setting_toml_lazy, {lazy = 1})
-
+  vim.call('dein#load_toml', ddc_toml_lazy, {lazy = 1})
+  vim.call('dein#load_toml', treesitter_settings_lazy, {lazy = 1})
 
   vim.call('dein#end')
   vim.call('dein#save_state')

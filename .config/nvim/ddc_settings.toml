@@ -1,0 +1,110 @@
+#-----------------------------------------------------------------------
+# ddc settings
+#-----------------------------------------------------------------------
+[[plugins]]
+repo = 'Shougo/ddc-ui-native'
+
+[[plugins]]
+repo = 'Shougo/ddc.vim'
+on_event = 'InsertEnter'
+depends = ['denops.vim', 'pum.vim', 'ddc-ui-native']
+hook_add = '''
+inoremap <Tab>   <Cmd>call pum#map#insert_relative(+1)<CR>
+inoremap <S-Tab> <Cmd>call pum#map#insert_relative(-1)<CR>
+'''
+hook_source = '''
+  call ddc#custom#patch_global('ui', 'native')
+  call ddc#custom#patch_buffer('completionMenu', 'pum.vim')
+  call ddc#custom#patch_global('sources', ['nvim-lsp' ,'around', 'file'])
+  call ddc#custom#patch_global('sourceOptions', #{
+        \   _:#{
+        \   matchers: ['matcher_fuzzy'],
+        \   sorters: ['sorter_fuzzy'],
+        \ },
+        \   around:#{
+        \   mark: 'A'
+        \  },
+        \   nvim-lsp:#{
+        \   mark: 'LSP',
+        \   forceCompletionPattern: '\.\w*|:\w*|->\w*'
+        \  },
+        \   file: #{
+        \   mark: 'FILE',
+        \   isVolatile: v:true,
+        \   forceCompletionPattern: '\S/\S*'
+        \  },
+        \ })
+  " Mappings
+  " <TAB>: completion.
+  inoremap <silent><expr> <TAB>
+  \ pumvisible() ? '<C-n>' :
+  \ (col('.') <= 1 <Bar><Bar> getline('.')[col('.') - 2] =~# '\s') ?
+  \ '<TAB>' : ddc#map#manual_complete()
+  " <S-TAB>: completion back.
+  inoremap <expr><S-TAB>  pumvisible() ? '<C-p>' : '<C-h>'
+  call ddc#enable()
+'''
+
+[[plugins]]
+repo = 'Shougo/ddc-source-nvim-lsp'
+on_source = 'ddc.vim'
+
+[[plugins]]
+repo = 'Shougo/ddc-around'
+on_source = 'ddc.vim'
+
+[[plugins]]
+repo = 'tani/ddc-fuzzy'
+on_source = 'ddc.vim'
+
+[[plugins]]
+repo = 'Shougo/ddc-converter_remove_overlap'
+on_source = 'ddc.vim'
+
+[[plugins]]
+repo = 'LumaKernel/ddc-file'
+on_source = 'ddc.vim'
+
+[[plugins]]
+repo = 'Shougo/ddc-nvim-lsp'
+on_source = 'ddc.vim'
+
+[[plugins]]
+repo = 'matsui54/denops-popup-preview.vim'
+on_source = 'ddc.vim'
+lua_source = '''
+  vim.fn["popup_preview#enable()"]()
+'''
+
+[[plugins]]
+repo = 'matsui54/denops-signature_help'
+on_source = 'ddc.vim'
+lua_source = '''
+  vim.fn["signature_help#enable()"]()
+'''
+
+[[plugins]]
+repo = 'hrsh7th/vim-vsnip'
+on_event = 'InsertEnter'
+depends = ['vim-vsnip-integ', 'friendly-snippets']
+hook_add = '''
+  imap <expr> <C-j> vsnip#expandable() ? '<Plug>(vsnip-expand)' : '<C-j>'
+  smap <expr> <C-j> vsnip#expandable() ? '<Plug>(vsnip-expand)' : '<C-j>'
+  imap <expr> <C-f> vsnip#jumpable(1)  ? '<Plug>(vsnip-jump-next)' : '<C-f>'
+  smap <expr> <C-f> vsnip#jumpable(1)  ? '<Plug>(vsnip-jump-next)' : '<C-f>'
+  imap <expr> <C-b> vsnip#jumpable(-1) ? '<Plug>(vsnip-jump-prev)' : '<C-b>'
+  smap <expr> <C-b> vsnip#jumpable(-1) ? '<Plug>(vsnip-jump-prev)' : '<C-b>'
+  let g:vsnip_filetypes = {}
+'''
+lua_add = '''
+  vim.opt.completeopt = "menu,menuone,noselect"
+'''
+
+[[plugins]]
+repo = 'hrsh7th/vim-vsnip-integ'
+
+[[plugins]]
+repo = 'rafamadriz/friendly-snippets'
+#-----------------------------------------------------------------------
+# end of ddc settings
+#-----------------------------------------------------------------------

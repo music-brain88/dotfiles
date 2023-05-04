@@ -1,0 +1,43 @@
+[[plugins]]
+repo = 'nvim-treesitter/nvim-treesitter'
+merged = 0
+on_event = 'BufReadPost'
+lua_source = '''
+require'nvim-treesitter.configs'.setup {
+  ensure_installed = {
+    "lua",
+    "rust",
+    "python",
+    "fish",
+    "bash",
+    "typescript",
+    "json",
+    "go",
+    "dockerfile",
+    "html",
+    "markdown",
+    "toml",
+    "make",
+    "yaml",
+  },
+
+  sync_install = false,
+
+  ignore_install = { "javascript" },
+
+  highlight = {
+    enable = true,
+    disable = {
+      "lua",
+      "rust",
+      "vue",
+      "toml",
+  },
+
+  additional_vim_regex_highlighting = false,
+  },
+  indent = {
+    enable = true,
+  },
+}
+'''
