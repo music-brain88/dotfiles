@@ -22,14 +22,14 @@ hook_source = '''
         \   sorters: ['sorter_fuzzy'],
         \ },
         \   around:#{
-        \   mark: 'around'
+        \   mark: 'A'
         \  },
         \   nvim-lsp:#{
-        \   mark: 'lsp',
+        \   mark: 'LSP',
         \   forceCompletionPattern: '\.\w*|:\w*|->\w*'
         \  },
         \   file: #{
-        \   mark: 'file',
+        \   mark: 'FILE',
         \   isVolatile: v:true,
         \   forceCompletionPattern: '\S/\S*'
         \  },
