@@ -35,7 +35,6 @@ hook_source = '''
         \  },
         \ })
   " Mappings
-
   " <TAB>: completion.
   inoremap <silent><expr> <TAB>
   \ pumvisible() ? '<C-n>' :
