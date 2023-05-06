@@ -152,7 +152,7 @@ min_time = 2_000
 show_milliseconds = true
 show_notifications = false
 min_time_to_notify = 45_000
-format = "[ 祥$duration]($style)"
+format = "[ ⌛$duration]($style)"
 
 [conda]
 # disabled = true
@@ -275,15 +275,15 @@ format = '\([[](bg:#E0B25D fg:#464347)$state($progress_current/$progress_tota
 # disabled = true
 style = "bg:#E0B25D fg:#000000"
 stashed = " ${count}"
-ahead = "ﲗ ${count}"
-behind = "ﲔ ${count}"
-diverged = "李 ${ahead_count} ${behind_count}"
-conflicted = "${count}"
-deleted = " ${count}"
-renamed = "﫦${count}"
-modified = " 凜${count}"
+ahead = " ⇡${count}"
+behind = " ⇣${count}"
+diverged = " ⇕${ahead_count} ${behind_count}"
+conflicted = "  ${count}"
+deleted = "  ${count}"
+renamed = " » ${count}"
+modified = " 📝${count}"
 staged = "  ${count}"
-untracked = "  ${count}"
+untracked = " 🐾${count}"
 format = "([[](bg:#E0B25D fg:#464347)$stashed$staged$modified$renamed$untracked$deleted$conflicted$ahead_behind[](bg:#464347 fg:#E0B25D)]($style))"
 
 [golang]
