@@ -14,7 +14,6 @@ inoremap <S-Tab> <Cmd>call pum#map#insert_relative(-1)<CR>
 '''
 hook_source = '''
   call ddc#custom#patch_global('ui', 'native')
-  call ddc#custom#patch_buffer('completionMenu', 'pum.vim')
   call ddc#custom#patch_global('sources', ['nvim-lsp' ,'around', 'file'])
   call ddc#custom#patch_global('sourceOptions', #{
         \   _:#{
@@ -105,6 +104,23 @@ repo = 'hrsh7th/vim-vsnip-integ'
 
 [[plugins]]
 repo = 'rafamadriz/friendly-snippets'
+
+
+[[plugins]]
+repo = 'Shougo/ddc-source-copilot'
+depends = ['copilot']
+hook_source = '''
+  let g:copilot_no_maps = v:true
+  call ddc#custom#patch_global('sources', ['copilot'])
+  call ddc#custom#patch_global('sourceOptions', #{
+  \   copilot: #{
+  \     mark: 'copilot',
+  \     matchers: [],
+  \     minAutoCompleteLength: 0,
+  \   }
+  \})
+'''
+
 #-----------------------------------------------------------------------
 # end of ddc settings
 #-----------------------------------------------------------------------

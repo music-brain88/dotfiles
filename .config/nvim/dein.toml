@@ -464,3 +464,6 @@ repo = 'nvim-lua/plenary.nvim'
 
 [[plugins]]
 repo = 'nvim-telescope/telescope.nvim'
+
+[[plugins]]
+repo = 'github/copilot.vim'
