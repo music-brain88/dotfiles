@@ -108,6 +108,7 @@ repo = 'rafamadriz/friendly-snippets'
 
 [[plugins]]
 repo = 'Shougo/ddc-source-copilot'
+depends = ['copilot']
 hook_source = '''
   let g:copilot_no_maps = v:true
   call ddc#custom#patch_global('sources', ['copilot'])
