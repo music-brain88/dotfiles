@@ -10,6 +10,9 @@ set -x PATH $PYENV_ROOT/bin $PATH
 # set cargo path
 set -x PATH $HOME/.cargo/bin $PATH
 
+# set pulimi path
+set -x PATH $HOME/.pulumi/bin $PATH
+
 # set exa alias
 if type -q test exa
   alias ls='exa --icons'
