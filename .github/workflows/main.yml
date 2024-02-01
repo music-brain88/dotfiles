@@ -18,7 +18,7 @@ jobs:
         run: |
           sudo apt-add-repository ppa:fish-shell/release-3
           sudo apt update -y
-          sudo apt install -y git fish
+          sudo apt install -y git fish protobuf-compiler
       - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
