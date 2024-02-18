@@ -13,12 +13,12 @@ jobs:
       matrix:
         os: [ubuntu-20.04, ubuntu-22.04]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install required packages
         run: |
           sudo apt-add-repository ppa:fish-shell/release-3
           sudo apt update -y
-          sudo apt install -y git fish
+          sudo apt install -y git fish protobuf-compiler
       - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
