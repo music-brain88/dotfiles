@@ -31,6 +31,8 @@ window:
     # General application class
     general: Alacritty
 
+  opacity: 0.8
+
 # Font configuration
 font:
   # Normal (roman) font face
@@ -132,10 +134,8 @@ colors:
     cyan:    '0x56b6c2'
     white:   '0x828791'
 
-window:
-  opacity: 0.8
-
-key_bindings:
+keyboard:
+  bindings:
   - { key: V, mods: Control|Shift, action: Paste }
   - { key: C, mods: Control|Shift, action: Copy }
   - { key: Key0, mods: Control, action: ResetFontSize }
