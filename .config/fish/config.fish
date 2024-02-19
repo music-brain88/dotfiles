@@ -13,6 +13,9 @@ set -x PATH $HOME/.cargo/bin $PATH
 # set pulimi path
 set -x PATH $HOME/.pulumi/bin $PATH
 
+# set poetry path
+set -x PATH $HOME/.local/bin $PATH
+
 # set exa alias
 if type -q test exa
   alias ls='exa --icons'
