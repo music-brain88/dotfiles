@@ -125,11 +125,11 @@ format = '[[](bg:#EC912D fg:#464347)$symbol$profile(\($region\))[](bg:#464
 
 [battery]
 # disabled = true
-full_symbol = ""
+full_symbol = "🔋 "
 charging_symbol = " "
-discharging_symbol = " "
+discharging_symbol = "🪫"
 unknown_symbol = ""
-empty_symbol = ""
+empty_symbol = "🪫"
 format = "[[](bg:#FF5511 fg:#464347)$symbol$percentage[](bg:#464347 fg:#FF5511)]($style)"
 [[battery.display]]
 threshold = 10
@@ -245,8 +245,8 @@ format = '[[](bg:#1A73E8 fg:#464347)$symbol$account(\($region\))[](bg:#464
 
 [git_branch]
 # disabled = true
-symbol = " "
-# symbol = " " # alternate
+#symbol = " "
+symbol = " " # alternate
 style = "bg:#96ab5f fg:#111111"
 # truncation_length = 4
 # truncation_symbol = ""
