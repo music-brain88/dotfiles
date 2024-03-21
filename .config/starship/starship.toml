@@ -126,8 +126,8 @@ format = '[[](bg:#EC912D fg:#464347)$symbol$profile(\($region\))[](bg:#464
 [battery]
 # disabled = true
 full_symbol = "🔋 "
-charging_symbol = " "
-discharging_symbol = "🪫"
+charging_symbol = "🔌"
+discharging_symbol = "⚡"
 unknown_symbol = ""
 empty_symbol = "🪫"
 format = "[[](bg:#FF5511 fg:#464347)$symbol$percentage[](bg:#464347 fg:#FF5511)]($style)"
@@ -179,7 +179,7 @@ format = "[[](bg:#32BBF9 fg:#464347)$symbol$version[](bg:#464347 fg:#32BBF
 [directory]
 # style = "italic bg:#6F6A70 fg:#EEEEEE"
 style = "bold bg:#6F6A70 fg:#EEEEEE"
-read_only = ""
+read_only = "🔒 "
 read_only_style = "bg:#ff3322 fg:#EEEEEE"
 truncation_length = 4
 truncate_to_repo = true
@@ -362,7 +362,7 @@ format = '[[](bg:#27385D fg:#464347)$symbol$name$state[](bg:#464347 fg:#27
 
 [nodejs]
 # disabled = true
-symbol = " "
+symbol = " "
 style = "bg:#005F00 fg:#EEEEEE"
 format = "[[](bg:#005F00 fg:#464347)$symbol$version[](bg:#464347 fg:#005F00)]($style)"
 
@@ -404,7 +404,6 @@ style = "bg:#EBD45B fg:#111111"
 # pyenv_version_name = true
 pyenv_prefix = "pyenv "
 python_binary = "python3"
-scan_for_pyfiles = true
 format = '[[](bg:#EBD45B fg:#464347)$symbol$pyenv_prefix$version(\($virtualenv\))[](bg:#464347 fg:#EBD45B)]($style)'
 
 [ruby]
