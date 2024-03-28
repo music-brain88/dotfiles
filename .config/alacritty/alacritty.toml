@@ -42,11 +42,11 @@ TERM = "alacritty"
 size = 14.0
 
 [font.bold]
-family = "Saucecode Pro Nerd Font"
+family = "HackGen35 NF Bold"
 style = "Bold"
 
 [font.normal]
-family = "Saucecode Pro Nerd Font"
+family = "HackGen35 Console NF"
 style = "Medium"
 
 [font.offset]
