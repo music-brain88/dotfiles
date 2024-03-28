@@ -245,8 +245,8 @@ format = '[[](bg:#1A73E8 fg:#464347)$symbol$account(\($region\))[](bg:#464
 
 [git_branch]
 # disabled = true
-#symbol = " "
-symbol = " " # alternate
+symbol = "󰊢 "
+#symbol = " " # alternate
 style = "bg:#96ab5f fg:#111111"
 # truncation_length = 4
 # truncation_symbol = ""
