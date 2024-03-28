@@ -42,12 +42,12 @@ TERM = "alacritty"
 size = 14.0
 
 [font.bold]
-family = "HackGen35 NF Bold"
+family = "HackGen35 Console NF"
 style = "Bold"
 
 [font.normal]
 family = "HackGen35 Console NF"
-style = "Medium"
+style = "Regular"
 
 [font.offset]
 x = -1
