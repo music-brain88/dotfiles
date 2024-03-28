@@ -109,7 +109,8 @@ if [ ! -d ~/.config/alacritty ]; then
 fi
 echo "alacritty setting finish"
 
-ln -snfv ~/dotfiles/.config/alacritty/alacritty.yml ~/.config/alacritty/alacritty.yml
+#ln -snfv ~/dotfiles/.config/alacritty/alacritty.yml ~/.config/alacritty/alacritty.yml
+ln -snfv ~/dotfiles/.config/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
 
 echo "i3 setting"
 if [ ! -d ~/.config/i3 ]; then
