@@ -81,6 +81,7 @@ format = """[](bg:#464347 fg:#AFD700)\
         $terraform\
         (↑ Toolchain version modules ↑)\
         (↓ Package modules ↓)\
+        $pulumi\
         $helm\
         $package\
         $cmake\
@@ -244,8 +245,7 @@ style = "bg:#1A73E8 fg:#EEEEEE"
 format = '[[](bg:#1A73E8 fg:#464347)$symbol$account(\($region\))[](bg:#464347 fg:#1A73E8)]($style)'
 
 [git_branch]
-# disabled = true
-symbol = "󰊢 "
+symbol = ""
 #symbol = " " # alternate
 style = "bg:#96ab5f fg:#111111"
 # truncation_length = 4
@@ -281,7 +281,7 @@ diverged = " ⇕${ahead_count} ${behind_count}"
 conflicted = "  ${count}"
 deleted = "  ${count}"
 renamed = " » ${count}"
-modified = " 📝${count}"
+modified = "📝${count}"
 staged = "  ${count}"
 untracked = " 🐾${count}"
 format = "([[](bg:#E0B25D fg:#464347)$stashed$staged$modified$renamed$untracked$deleted$conflicted$ahead_behind[](bg:#464347 fg:#E0B25D)]($style))"
@@ -453,6 +453,10 @@ style = "bg:#5836CD fg:#EEEEEE"
 format = '[[](bg:#5836CD fg:#464347)$symbol\($workspace\)[](bg:#464347 fg:#5836CD)]($style)'
 ### uncomment the following, to see the version
 # format = "[[](bg:#5836CD fg:#464347)$symbol$version($workspace)[](bg:#464347 fg:#5836CD)]($style)"
+
+[pulumi]
+symbol = ""
+format = '[[](bg:#5836CD fg:#464347)$symbol\($stack\)[](bg:#464347 fg:#5836CD)]($style)'
 
 [time]
 disabled = false
