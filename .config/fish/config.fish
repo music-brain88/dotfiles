@@ -45,10 +45,10 @@ set __fish_git_prompt_color_branch yellow
 
 
 # set fzf setting
-set -x PATH ~/.fzf/bin $PATH
-set -x FZF_LEGACY_KEYBINDINGS 0
-set -x FZF_REVERSE_ISEARCH_OPTS "--height=50%"
-set -x FZF_DEFAULT_COMMAND 'rg --files --hidden --follow --glob "!.git/*"'
+# set -x PATH ~/.fzf/bin $PATH
+# set -x FZF_LEGACY_KEYBINDINGS 0
+# set -x FZF_REVERSE_ISEARCH_OPTS "--height=50%"
+# set -x FZF_DEFAULT_COMMAND 'rg --files --hidden --follow --glob "!.git/*"'
 
 # set GO PATH
 set -x GOPATH $HOME/go
