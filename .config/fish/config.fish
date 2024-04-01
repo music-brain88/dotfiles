@@ -13,9 +13,12 @@ set -x PATH $HOME/.cargo/bin $PATH
 # set pulimi path
 set -x PATH $HOME/.pulumi/bin $PATH
 
+# set mise path
+~/.local/bin/mise activate fish | source
+
 # set exa alias
-if type -q test exa
-  alias ls='exa --icons'
+if type -q test eza
+  alias ls='eza --icons'
 end
 
 # set bat alias
@@ -84,3 +87,4 @@ end
 starship init fish | source
 set -gx VOLTA_HOME "$HOME/.volta"
 set -gx PATH "$VOLTA_HOME/bin" $PATH
+

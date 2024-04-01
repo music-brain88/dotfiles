@@ -81,6 +81,7 @@ format = """[](bg:#464347 fg:#AFD700)\
         $terraform\
         (↑ Toolchain version modules ↑)\
         (↓ Package modules ↓)\
+        $pulumi\
         $helm\
         $package\
         $cmake\
@@ -125,11 +126,11 @@ format = '[[](bg:#EC912D fg:#464347)$symbol$profile(\($region\))[](bg:#464
 
 [battery]
 # disabled = true
-full_symbol = ""
-charging_symbol = " "
-discharging_symbol = " "
+full_symbol = "🔋 "
+charging_symbol = "🔌"
+discharging_symbol = "⚡"
 unknown_symbol = ""
-empty_symbol = ""
+empty_symbol = "🪫"
 format = "[[](bg:#FF5511 fg:#464347)$symbol$percentage[](bg:#464347 fg:#FF5511)]($style)"
 [[battery.display]]
 threshold = 10
@@ -179,7 +180,7 @@ format = "[[](bg:#32BBF9 fg:#464347)$symbol$version[](bg:#464347 fg:#32BBF
 [directory]
 # style = "italic bg:#6F6A70 fg:#EEEEEE"
 style = "bold bg:#6F6A70 fg:#EEEEEE"
-read_only = ""
+read_only = "🔒 "
 read_only_style = "bg:#ff3322 fg:#EEEEEE"
 truncation_length = 4
 truncate_to_repo = true
@@ -244,9 +245,8 @@ style = "bg:#1A73E8 fg:#EEEEEE"
 format = '[[](bg:#1A73E8 fg:#464347)$symbol$account(\($region\))[](bg:#464347 fg:#1A73E8)]($style)'
 
 [git_branch]
-# disabled = true
-symbol = " "
-# symbol = " " # alternate
+symbol = ""
+#symbol = " " # alternate
 style = "bg:#96ab5f fg:#111111"
 # truncation_length = 4
 # truncation_symbol = ""
@@ -281,7 +281,7 @@ diverged = " ⇕${ahead_count} ${behind_count}"
 conflicted = "  ${count}"
 deleted = "  ${count}"
 renamed = " » ${count}"
-modified = " 📝${count}"
+modified = "📝${count}"
 staged = "  ${count}"
 untracked = " 🐾${count}"
 format = "([[](bg:#E0B25D fg:#464347)$stashed$staged$modified$renamed$untracked$deleted$conflicted$ahead_behind[](bg:#464347 fg:#E0B25D)]($style))"
@@ -362,7 +362,7 @@ format = '[[](bg:#27385D fg:#464347)$symbol$name$state[](bg:#464347 fg:#27
 
 [nodejs]
 # disabled = true
-symbol = " "
+symbol = " "
 style = "bg:#005F00 fg:#EEEEEE"
 format = "[[](bg:#005F00 fg:#464347)$symbol$version[](bg:#464347 fg:#005F00)]($style)"
 
@@ -404,7 +404,6 @@ style = "bg:#EBD45B fg:#111111"
 # pyenv_version_name = true
 pyenv_prefix = "pyenv "
 python_binary = "python3"
-scan_for_pyfiles = true
 format = '[[](bg:#EBD45B fg:#464347)$symbol$pyenv_prefix$version(\($virtualenv\))[](bg:#464347 fg:#EBD45B)]($style)'
 
 [ruby]
@@ -454,6 +453,10 @@ style = "bg:#5836CD fg:#EEEEEE"
 format = '[[](bg:#5836CD fg:#464347)$symbol\($workspace\)[](bg:#464347 fg:#5836CD)]($style)'
 ### uncomment the following, to see the version
 # format = "[[](bg:#5836CD fg:#464347)$symbol$version($workspace)[](bg:#464347 fg:#5836CD)]($style)"
+
+[pulumi]
+symbol = ""
+format = '[[](bg:#5836CD fg:#464347)$symbol\($stack\)[](bg:#464347 fg:#5836CD)]($style)'
 
 [time]
 disabled = false

@@ -204,7 +204,7 @@ default.buttons = {
     button("r", "  Recently used files", ":Telescope oldfiles <CR>"),
     button("u", "  Update", ":call dein#update()<CR>"),
     button("c", "  Configuration", ":e ~/.config/nvim/init.lua <CR>"),
-    button("q", "  quit", ":qa<CR>"),
+    button("q", "  quit", ":qa<CR>"),
   },
   position = "center",
 }
