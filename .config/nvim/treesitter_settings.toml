@@ -19,6 +19,7 @@ require'nvim-treesitter.configs'.setup {
     "toml",
     "make",
     "yaml",
+    "jsonnet",
   },
 
   sync_install = false,
