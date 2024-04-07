@@ -9,16 +9,26 @@ on:
 jobs:
   ubuntu:
     runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, ubuntu-22.04]
+    container:
+      image: archlinux:base
+      options: --privileged
+    #    strategy:
+    #      matrix:
+    #        os: [ubuntu-22.04]
+    #steps:
+    #  - uses: actions/checkout@v4
+    #  - name: Install required packages
+    #    run: |
+    #      sudo apt-add-repository ppa:fish-shell/release-3
+    #      sudo apt update -y
+    #      sudo apt install -y git fish protobuf-compiler
+    
     steps:
       - uses: actions/checkout@v4
       - name: Install required packages
         run: |
-          sudo apt-add-repository ppa:fish-shell/release-3
-          sudo apt update -y
-          sudo apt install -y git fish protobuf-compiler
+          pacman -S git gcc make neovim fish openssh pkg-config cmake protobuf xsel
+
       - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
