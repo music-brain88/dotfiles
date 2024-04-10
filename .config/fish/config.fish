@@ -31,6 +31,11 @@ if type -q procs
   alias ps='procs'
 end
 
+# set jql alias
+if type -q jql
+  alias jq='jql'
+end
+
 # set poetry path
 # set -U PATH $HOME/.poetry/env $PATH
 
