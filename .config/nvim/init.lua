@@ -100,6 +100,9 @@ vim.bo.autoread = true
 vim.bo.tabstop = 2
 vim.bo.expandtab = true
 
+-- copilot init
+vim.g.copilot_no_tab_maps = true
+
 vim.cmd 'set clipboard+=unnamedplus'
 vim.cmd 'set relativenumber'
 vim.cmd 'set t_Co=256'

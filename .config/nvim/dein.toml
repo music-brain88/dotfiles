@@ -467,3 +467,16 @@ repo = 'nvim-telescope/telescope.nvim'
 
 [[plugins]]
 repo = 'github/copilot.vim'
+
+[[plugins]]
+repo = 'CopilotC-Nvim/CopilotChat.nvim'
+depends = ['copilot.vim', 'plenary.nvim']
+rev = 'canary'
+hook_add = '''
+lua << EOF
+require("CopilotChat").setup {
+  debug = true, -- Enable debugging
+  -- See Configuration section for rest
+}
+EOF
+'''
