@@ -61,20 +61,20 @@ set -x PATH $PATH $GOPATH/bin
 
 export TERM=xterm-256color
 
-function fzf-checkout-branch
-    set -l branchname (
-        env FZF_DEFAULT_COMMAND='git --no-pager branch -a | grep -v HEAD | sed -e "s/^.* //g"' \
-            fzf --height 70% --prompt "BRANCH NAME>" \
-                --preview "git --no-pager log -20 --color=always {}"
-    )
-    if test -n "$branchname"
-        git checkout (echo "$branchname"| sed "s#remotes/[^/]*/##")
-    end
-end
+# function fzf-checkout-branch
+#     set -l branchname (
+#         env FZF_DEFAULT_COMMAND='git --no-pager branch -a | grep -v HEAD | sed -e "s/^.* //g"' \
+#             skim-cd-widget --height 70% --prompt "BRANCH NAME>" \
+#                 --preview "git --no-pager log -20 --color=always {}"
+#     )
+#     if test -n "$branchname"
+#         git checkout (echo "$branchname"| sed "s#remotes/[^/]*/##")
+#     end
+# end
 
 function fzf-docker-continer-name-select
     commandline -i (env FZF_DEFAULT_COMMAND="docker ps -a --format 'table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Command}}\t{{.RunningFor}}\t{{.Ports}}\t{{.Networks}}'" \
-        fzf --no-sort --height 80% --bind='p:toggle-preview' --preview-window=down:70% \
+        skim-cd-widget --no-sort --height 80% --bind='p:toggle-preview' --preview-window=down:70% \
             --preview '
                 set -l containername (echo {} | awk -F " " \'{print $2}\');
                 if test "$containername" != "ID"
