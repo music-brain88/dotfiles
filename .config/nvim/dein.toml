@@ -96,29 +96,29 @@ function! s:ddu_filer_my_settings() abort
   " Change action, Is cursor item drectory or not.
   nnoremap <buffer><silent><expr> <CR>
         \ ddu#ui#get_item()->get('isTree', v:false) ?
-        \ "<Cmd>call ddu#ui#do_action('itemAction', {'name': 'narrow'})<CR>" :
-        \ "<Cmd>call ddu#ui#do_action('itemAction', {'name': 'open'})<CR>"
+        \ "<Cmd>call ddu#ui#sync_action('itemAction', {'name': 'narrow'})<CR>" :
+        \ "<Cmd>call ddu#ui#sync_action('itemAction', {'name': 'open'})<CR>"
   " Move to higher path
   nnoremap <buffer><silent> ..
-        \ <Cmd>call ddu#ui#do_action('itemAction', {'name': 'narrow', 'params': {'path': '..'}})<CR>
+        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'narrow', 'params': {'path': '..'}})<CR>
   nnoremap <buffer><silent> c
-        \ <Cmd>call ddu#ui#do_action('itemAction', {'name': 'copy'})<CR>
+        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'copy'})<CR>
   nnoremap <buffer><silent> d
-        \ <Cmd>call ddu#ui#do_action('itemAction', {'name': 'delete'})<CR>
+        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'delete'})<CR>
   nnoremap <buffer><silent> mv
-        \ <Cmd>call ddu#ui#do_action('itemAction', {'name': 'move'})<CR>
+        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'move'})<CR>
   nnoremap <buffer><silent> r
-        \ <Cmd>call ddu#ui#do_action('itemAction', {'name': 'rename'})<CR>
+        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'rename'})<CR>
   nnoremap <buffer><silent> t
-        \ <Cmd>call ddu#ui#do_action('itemAction', {'name': 'newFile'})<CR>
+        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'newFile'})<CR>
   nnoremap <buffer><silent> mk
-        \ <Cmd>call ddu#ui#do_action('itemAction', {'name': 'newDirectory'})<CR>
+        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'newDirectory'})<CR>
   nnoremap <buffer><silent> <Space>
-        \ <Cmd>call ddu#ui#do_action('toggleSelectItem')<CR>
+        \ <Cmd>call ddu#ui#sync_action('toggleSelectItem')<CR>
   nnoremap <buffer> o
-        \ <Cmd>call ddu#ui#do_action('expandItem', {'mode': 'toggle'})<CR>
+        \ <Cmd>call ddu#ui#sync_action('expandItem', {'mode': 'toggle'})<CR>
   nnoremap <buffer><silent> q
-        \ <Cmd>call ddu#ui#do_action('quit')<CR>
+        \ <Cmd>call ddu#ui#sync_action('quit')<CR>
 endfunction
 "-----------------------------------------------------------------------
 " end ddu filer settings
