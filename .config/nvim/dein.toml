@@ -55,6 +55,9 @@ call ddu#custom#patch_global({
 \     '_': {
 \       'matchers': ['matcher_substring'],
 \     },
+\     'file': {
+\       'columns': ['icon_filename'],
+\     },
 \   },
 \   'kindOptions': {
 \     'file': {
@@ -78,17 +81,7 @@ call ddu#custom#patch_global({
 "-----------------------------------------------------------------------
 call ddu#custom#patch_local('file', {
 \   'ui': 'filer',
-\   'sources': [{'name': 'file', 'params': {}}],
-\   'sourceOptions': {
-\       '_': {
-\           'columns': ['filename'],
-\       },
-\   },
-\   'kindOptions': {
-\     'file': {
-\       'defaultAction': 'open',
-\     },
-\   }
+\   'sources': [{'name': 'file', 'params': {}}]
 \ })
 
 autocmd FileType ddu-filer call s:ddu_filer_my_settings()
@@ -96,8 +89,8 @@ function! s:ddu_filer_my_settings() abort
   " Change action, Is cursor item drectory or not.
   nnoremap <buffer><silent><expr> <CR>
         \ ddu#ui#get_item()->get('isTree', v:false) ?
-        \ "<Cmd>call ddu#ui#sync_action('itemAction', {'name': 'narrow'})<CR>" :
-        \ "<Cmd>call ddu#ui#sync_action('itemAction', {'name': 'open'})<CR>"
+        \ "<Cmd>call ddu#ui#do_action('itemAction', #{name: 'narrow'})<CR>" :
+        \ "<Cmd>call ddu#ui#do_action('itemAction', #{name: 'open'})<CR>"
   " Move to higher path
   nnoremap <buffer><silent> ..
         \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'narrow', 'params': {'path': '..'}})<CR>
@@ -200,6 +193,11 @@ on_source = 'ddu.vim'
 # filer
 [[plugins]]
 repo = 'Shougo/ddu-column-filename'
+on_source = 'ddu.vim'
+
+# icon
+[[plugins]]
+repo = 'ryota2357/ddu-column-icon_filename'
 on_source = 'ddu.vim'
 
 [[plugins]]
