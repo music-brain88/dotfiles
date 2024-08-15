@@ -33,9 +33,44 @@ lua_source = '''
   -- setup each Language Server
   local servers = {'rust_analyzer', 'pyright', 'tsserver'}
   for _, lsp in ipairs(servers) do
-    nvim_lspconfig[lsp].setup {}
+    nvim_lspconfig[lsp].setup {
+       -- on_attach = function(client, bufnr)
+       --   -- フォーマット機能を有効にする
+       --   client.resolved_capabilities.document_formatting = true
+
+       --   -- 保存時にフォーマットを実行する
+       --   vim.api.nvim_command [[augroup Format]]
+       --   vim.api.nvim_command [[autocmd! * <buffer>]]
+       --   vim.api.nvim_command [[autocmd BufWritePre <buffer> lua vim.lsp.buf.formatting_sync(nil, 1000)]]
+       --   vim.api.nvim_command [[augroup END]]
+       -- end,
+  }
   end
-  vim.cmd [[autocmd BufWritePre * lua vim.lsp.buf.format()]]
+'''
+
+[[plugins]]
+repo = 'nvimtools/none-ls.nvim'
+on_event = 'BufEnter'
+lua_source = '''
+  local none_ls = require('none-ls')
+  local augroup = vim.api.nvim_create_augroup("LspFormatting", {})
+  none_ls.setup({
+    sources = {
+      null_ls.builtins.formatting.prettier,
+    },
+    on_attach = function(client, bufnr)
+      if client.supports_method('textDocument/formatting') then
+        vim.api.nvim_clear_autocmds({ group = augroup, bufnr = bufnr })
+        vim.api_nvim_create_autocmd("BufWritePre", {
+          group = augroup,
+          buffer = bufnr,
+          callback = function()
+            vim.lsp.buf.format({ async = false })
+          end,
+        })
+      end
+    end
+  })
 '''
 
 [[plugins]]
