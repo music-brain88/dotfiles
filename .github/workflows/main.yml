@@ -51,6 +51,12 @@ jobs:
           pacman -Syu --noconfirm
           pacman -S --noconfirm git gcc make neovim fish openssh pkg-config cmake protobuf xsel base-devel
 
+      # Rust と Cargo のインストール
+      - name: Install Rust and Cargo
+        run: |
+          rustup default stable
+          rustup update
+
       # Rust の依存関係をキャッシュ
       - name: Cache Rust dependencies
         uses: actions/cache@v3
