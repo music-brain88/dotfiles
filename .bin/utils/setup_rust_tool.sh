@@ -29,7 +29,6 @@ install_or_update_tool() {
 
 # "gitui"は本来は以下のようにしてインストールする
 # gitui --locked
-#
 # List of Cargo tools to manage
 cargo_tools=(
     "cargo-update"
