@@ -83,7 +83,6 @@ jobs:
           .bin/utils/setup_symlinks.sh
           .bin/utils/setup_rust_tools.sh
           .bin/utils/setup_neovim.sh
-          .bin/utils/setup_terminal.sh
           .bin/utils/setup_shell.sh
           .bin/utils/setup_tmux.sh
           .bin/utils/setup_git.sh
