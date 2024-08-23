@@ -5,16 +5,13 @@ set -euo pipefail
 
 # Function to check if a command exists
 command_exists() {
-
     command -v "$1" &> /dev/null
-
 }
 
 
 # Function to install Rust and Cargo
 install_rust() {
     echo "Cargo not found. Installing Rust..."
-
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
     # shellcheck source=/dev/null
     source "$HOME/.cargo/env"
@@ -42,9 +39,7 @@ cargo_tools=(
     "tealdeer"
     "hyperfine"
     "du-dust"
-
     "tokei"
-
     "skim"
     "jql"
 )
