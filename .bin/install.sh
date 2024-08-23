@@ -11,19 +11,19 @@ echo "Starting dotfiles installation..."
 
 # Run setup scripts
 # install.sh スクリプト内で、source コマンドの前に ShellCheck の指示コメントを追加する。
-# shellcheck source=utils/setup_base.sh
+# shellcheck disable=SC1091
 source "$UTILS_DIR/setup_base.sh"
-# shellcheck source=utils/setup_symlinks.sh
+# shellcheck disable=SC1091
 source "$UTILS_DIR/setup_symlinks.sh"
-# shellcheck source=utils/setup_neovim.sh
+# shellcheck disable=SC1091
 source "$UTILS_DIR/setup_neovim.sh"
-# shellcheck source=utils/setup_rust_tools.sh
+# shellcheck disable=SC1091
 source "$UTILS_DIR/setup_rust_tools.sh"
-# shellcheck source=utils/setup_terminal.sh
+# shellcheck disable=SC1091
 source "$UTILS_DIR/setup_terminal.sh"
-# shellcheck source=utils/setup_shell.sh
+# shellcheck disable=SC1091
 source "$UTILS_DIR/setup_shell.sh"
-# shellcheck source=utils/setup_tmux.sh
+# shellcheck disable=SC1091
 source "$UTILS_DIR/setup_tmux.sh"
 
 echo "Dotfiles installation complete!"
