@@ -39,8 +39,6 @@ jobs:
     steps:
       # リポジトリのチェックアウト
       - uses: actions/checkout@v4
-        with:
-          path: /github/home/dotfiles
 
       # システムの更新と必要なパッケージのインストール
       - name: Set up environment
@@ -75,7 +73,6 @@ jobs:
       # セットアップスクリプトの実行
       - name: Run setup scripts
         run: |
-          cd /github/home/dotfiles
           .bin/utils/setup_base.sh
           .bin/utils/setup_symlinks.sh
           .bin/utils/setup_neovim.sh
