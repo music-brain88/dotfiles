@@ -32,7 +32,7 @@ fi
 # Deno install
 if !(type deno > /dev/null 2>&1); then
   cargo install deno --locked
-else
+fi
 
 # Install plugins using dein
 nvim --headless +"call dein#install()" +qall
