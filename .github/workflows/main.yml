@@ -18,11 +18,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # shellcheck のインストール
       - name: Run shellcheck
         uses: ludeeus/action-shellcheck@master
-
         with:
           scandir: '.bin'  # '.bin' ディレクトリ内のシェルスクリプトをチェック
+          shell_files: '**/*.sh'  # '.sh' 拡張子のファイルをチェック
+          extra_args: '-x'  # エラーがある場合にスクリプトを終了
 
  # dotfiles のビルドとテストを行うジョブ
   build-and-test:
