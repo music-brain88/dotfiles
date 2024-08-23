@@ -102,8 +102,8 @@ jobs:
       - name: Setup Neovim
         run: .bin/utils/setup_neovim.sh
 
-      - name: Setup shell
-        run: .bin/utils/setup_shell.sh
+      - name: Setup fish shell
+        run: .bin/utils/setup_fish.sh
 
       - name: Setup Tmux
         run: .bin/utils/setup_tmux.sh
