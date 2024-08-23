@@ -19,6 +19,6 @@ fi
 
 
 # Install Tmux plugins
-~/.tmux/plugins/tpm/bin/install_plugins
+# ~/.tmux/plugins/tpm/bin/install_plugins
 
 echo "Tmux setup completed."
