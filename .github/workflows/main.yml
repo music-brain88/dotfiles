@@ -39,6 +39,9 @@ jobs:
     steps:
       # リポジトリのチェックアウト
       - uses: actions/checkout@v4
+        # clone する path を指定
+        # ~/dotfiles に clone する
+        path: dotfiles
 
       # システムの更新と必要なパッケージのインストール
       - name: Set up environment
@@ -80,7 +83,6 @@ jobs:
           .bin/utils/setup_terminal.sh
           .bin/utils/setup_shell.sh
           .bin/utils/setup_tmux.sh
-
           .bin/utils/setup_git.sh
 
 
