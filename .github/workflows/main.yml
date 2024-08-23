@@ -36,27 +36,27 @@ jobs:
     container: ${{ matrix.container }}
 
     steps:
+      # リポジトリのチェックアウト
       - uses: actions/checkout@v4
 
       # システムの更新と必要なパッケージのインストール
-
       - name: Set up environment
         run: |
 
           if [ "${{ matrix.container }}" = "ubuntu:latest" ]; then
 
             apt-get update
-            apt-get install -y neovim tmux fish curl git build-essential sudo
+            apt-get install -y neovim tmux fish curl git build-essential sudo tar
 
           elif [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
             # Arch Linux
             pacman -Syu --noconfirm
-            pacman -S --noconfirm neovim tmux fish curl git sudo
+            pacman -S --noconfirm neovim tmux fish curl git sudo tar
 
           else
             # Amazon Linux 2023
             yum update -y
-            yum install -y neovim tmux fish curl git gcc make sudo
+            yum install -y neovim tmux fish curl git gcc make sudo tar
           fi
 
 
