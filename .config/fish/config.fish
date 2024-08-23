@@ -14,7 +14,7 @@ set -x PATH $HOME/.cargo/bin $PATH
 set -x PATH $HOME/.pulumi/bin $PATH
 
 # set mise path
-~/.local/bin/mise activate fish | source
+# ~/.local/bin/mise activate fish | source
 
 # set exa alias
 if type -q test eza
@@ -72,17 +72,17 @@ export TERM=xterm-256color
 #     end
 # end
 
-function fzf-docker-continer-name-select
-    commandline -i (env FZF_DEFAULT_COMMAND="docker ps -a --format 'table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Command}}\t{{.RunningFor}}\t{{.Ports}}\t{{.Networks}}'" \
-        skim-cd-widget --no-sort --height 80% --bind='p:toggle-preview' --preview-window=down:70% \
-            --preview '
-                set -l containername (echo {} | awk -F " " \'{print $2}\');
-                if test "$containername" != "ID"
-                    docker logs --tail 300 $containername
-                end
-            ' | \
-        awk -F " " '{print $2}')
-end
+# function fzf-docker-continer-name-select
+#     commandline -i (env FZF_DEFAULT_COMMAND="docker ps -a --format 'table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Command}}\t{{.RunningFor}}\t{{.Ports}}\t{{.Networks}}'" \
+#         skim-cd-widget --no-sort --height 80% --bind='p:toggle-preview' --preview-window=down:70% \
+#             --preview '
+#                 set -l containername (echo {} | awk -F " " \'{print $2}\');
+#                 if test "$containername" != "ID"
+#                     docker logs --tail 300 $containername
+#                 end
+#             ' | \
+#         awk -F " " '{print $2}')
+# end
 
 function reload
   exec fish
