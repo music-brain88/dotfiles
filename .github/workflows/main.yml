@@ -1,48 +1,98 @@
-name: build
-
+name: Dotfiles CI
 
 on:
   push:
+    branches: [ main, develop ]
     paths-ignore:
-      - 'README.md'
-      - '.github/PULL_REQUEST_TEMPLATE.md'
+    - 'README.md'
+    - '.github/PULL_REQUEST_TEMPLATE.md'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+    - 'README.md'
+    - '.github/PULL_REQUEST_TEMPLATE.md'
+  workflow_dispatch:
 
 
 jobs:
-  build:
+  # シェルスクリプトの静的解析ジョブ
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
 
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run shellcheck
+        uses: ludeeus/action-shellcheck@master
+
+        with:
+          scandir: './scripts'
+
+  # Arch Linuxでのテストジョブ
+  test-arch:
+
+    name: Test on Arch Linux
     runs-on: ubuntu-latest
     container:
-
       image: archlinux:base
-
       options: --privileged
-
     steps:
 
       - uses: actions/checkout@v4
-
-      - name: Update system and install required packages
+      - name: Cache pacman packages
+        uses: actions/cache@v3
+        with:
+          path: /var/cache/pacman/pkg
+          key: ${{ runner.os }}-pacman-${{ hashFiles('**/pacman.conf') }}
+      - name: Install dependencies
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm git gcc make neovim fish openssh pkg-config cmake protobuf xsel sudo base-devel
-
-      - name: Install Rust
-        run: |
-
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-
-      - name: Run setup script
+          pacman -S --noconfirm git make fish neovim openssh
+      - name: Run install script
         run: make install
-
-      - name: Run deploy script
-        run: make deploy
 
       - name: Verify installation
         run: |
           fish -c "echo 'Fish shell is working'"
-
           nvim --version
-          cargo --version
+          [ -f ~/.config/fish/config.fish ] && echo "Fish config exists" || exit 1
+          [ -f ~/.config/nvim/init.vim ] && echo "Neovim config exists" || exit 1
+
+  test-ubuntu:
+    name: Test on Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-add-repository ppa:fish-shell/release-3
+          sudo apt update
+          sudo apt install -y git make fish neovim
+      - name: Run install script
+        run: make install
+      - name: Verify installation
+        run: |
+          fish -c "echo 'Fish shell is working'"
+          nvim --version
+          [ -f ~/.config/fish/config.fish ] && echo "Fish config exists" || exit 1
+          [ -f ~/.config/nvim/init.vim ] && echo "Neovim config exists" || exit 1
+
+  test-macos:
+    name: Test on macOS
+
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+
+        run: |
+          brew install fish neovim
+
+      - name: Run install script
+        run: make install
+      - name: Verify installation
+        run: |
+          fish -c "echo 'Fish shell is working'"
+          nvim --version
+          [ -f ~/.config/fish/config.fish ] && echo "Fish config exists" || exit 1
+          [ -f ~/.config/nvim/init.vim ] && echo "Neovim config exists" || exit 1

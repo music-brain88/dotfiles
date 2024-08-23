@@ -4,11 +4,9 @@ FROM archlinux:base
 RUN pacman -Syu --noconfirm && \
     pacman -S --noconfirm \
     git \
-
     gcc \
     make \
     neovim \
-
     fish \
     openssh \
     pkg-config \
