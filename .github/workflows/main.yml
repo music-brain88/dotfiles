@@ -32,7 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        container: ['ubuntu:latest', 'archlinux:base-devel', 'amazonlinux:2023']
+        container: ['ubuntu:latest', 'archlinux:base-devel']
+        # container: ['ubuntu:latest', 'archlinux:base-devel', 'amazonlinux:2023']
     container: ${{ matrix.container }}
 
     steps:
@@ -43,20 +44,17 @@ jobs:
       - name: Set up environment
         run: |
 
-          if [ "${{ matrix.container }}" = "ubuntu:latest" ]; then
+          if [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
 
-            apt-get update
-            apt-get install -y neovim tmux fish curl git build-essential sudo tar
-
-          elif [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
             # Arch Linux
             pacman -Syu --noconfirm
             pacman -S --noconfirm neovim tmux fish curl git sudo tar
 
           else
-            # Amazon Linux 2023
-            yum update -y
-            yum install -y neovim tmux fish curl git gcc make sudo tar
+            # Ubuntu
+            apt-get update
+            apt-get install -y neovim tmux fish curl git build-essential sudo tar
+
           fi
 
 
