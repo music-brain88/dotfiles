@@ -1,51 +1,61 @@
-#/bin/bash
+#!/bin/bash
 
-set -ue
+set -euo pipefail
 
-set -o errexit    # exit when command fails
-set -o nounset    # error when referencing undefined variable
 
-# An cargo update tools
-cargo install cargo-update
+# Function to check if a command exists
+command_exists() {
 
-# A simple, fast and user-friendly alternative to 'find'
-cargo install fd-find
+    command -v "$1" &> /dev/null
 
-# ripgrep recursively searches directories for a regex pattern while respecting your gitignore
-cargo install ripgrep
+}
 
-# A replacement for 'ls'
-cargo install eza
+# Function to install Rust and Cargo
+install_rust() {
+    echo "Cargo not found. Installing Rust..."
 
-# A replacement for 'cat'
-cargo install bat
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+    source $HOME/.cargo/env
+}
 
-# A replacement for 'ps'
-cargo install procs
+# Function to install or update a single Cargo tool
+install_or_update_tool() {
+    local tool=$1
+    echo "Installing/Updating $tool..."
+    cargo install --force "$tool" || echo "Failed to install $tool"
+}
 
-# terminal-ui for git written in Rust
-cargo install gitui --locked
+# List of Cargo tools to manage
+cargo_tools=(
+    "cargo-update"
+    "fd-find"
+    "ripgrep"
+    "exa"
+    "bat"
+    "procs"
+    "gitui"
+    "git-delta"
+    "tealdeer"
+    "hyperfine"
+    "du-dust"
+    "tokei"
+    "skim"
+    "jql"
+)
 
-# A syntax-highlighting pager for git, diff, and grep output
-cargo install git-delta
+echo "Managing Cargo tools..."
 
-# A very fast implementation of tldr in Rust.
-cargo install tealdeer
+# Ensure Rust and Cargo are installed
 
-# A better way to navigate directories
-cargo install broot
+if ! command_exists cargo; then
+    install_rust
 
-# A command-line benchmarking tool
-cargo install hyperfine
+fi
 
-# A more intuitive version of du in rust
-cargo install du-dust
 
-# Count your code, quickly.
-cargo install tokei
+# Install or update Cargo tools
+for tool in "${cargo_tools[@]}"; do
+    install_or_update_tool "$tool"
+done
 
-# Fuzzy Finder in rust!
-cargo install skim
-
-# JSON Query Language tool built with Rust 🦀.
-cargo install jql
+echo "Cargo tools management completed."
