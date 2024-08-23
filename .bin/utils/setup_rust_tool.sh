@@ -13,7 +13,6 @@ command_exists() {
 # Function to install Rust and Cargo
 install_rust() {
     echo "Cargo not found. Installing Rust..."
-
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
     source $HOME/.cargo/env
 }
@@ -33,7 +32,7 @@ cargo_tools=(
     "exa"
     "bat"
     "procs"
-    "gitui"
+    "gitui --locked"
     "git-delta"
     "tealdeer"
     "hyperfine"

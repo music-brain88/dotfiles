@@ -7,6 +7,109 @@
 
 This repository contains my personal dotfiles - a collection of configuration files and scripts for setting up a powerful development environment. It focuses on creating a highly customized and efficient workspace primarily using Neovim, Tmux, and Fish shell, along with various other tools and utilities.
 
+```shell
+# Directory Structure
+dotfiles/
+├── .bin/
+│   ├── deploy.sh
+│   ├── install.sh
+│   └── utils/
+│       ├── manage_cargo_tools.sh
+│       ├── setup_neovim.sh
+│       ├── setup_fish.sh
+│       └── setup_tmux.sh
+├── .config/
+│   ├── alacritty/
+│   ├── fish/
+│   ├── i3/
+│   ├── mpd/
+│   ├── ncmpcpp/
+│   ├── nvim/
+│   │   └── status_line/
+│   ├── polybar/
+│   │   └── forest/
+│   ├── rofi/
+│   └── starship/
+├── .github/
+├── polybar-themes/
+├── .bash_aliases
+├── .bashrc
+├── .gitconfig
+├── .gitconfig.local.sample
+├── .gitignore
+├── .gitmodules
+├── .tmux.conf
+├── Dockerfile
+├── LICENSE
+├── Makefile
+├── README.md
+└── fish_plugin_setup.fish
+```
+## Directory Structure Explanation
+
+.bin/: Contains main scripts and utility scripts
+
+deploy.sh: Handles symlinking of dotfiles
+install.sh: Main installation script
+utils/: Directory for utility scripts
+
+manage_cargo_tools.sh: Manages Cargo tools
+setup_neovim.sh: Sets up Neovim
+setup_fish.sh: Sets up Fish shell
+setup_tmux.sh: Sets up Tmux
+
+
+
+
+configs/: Contains configuration files for various tools
+
+nvim/: Neovim configuration
+fish/: Fish shell configuration
+tmux/: Tmux configuration
+... (other tool configurations)
+
+
+Makefile: Defines tasks for easy execution
+README.md: Project documentation
+
+## Makefile Tasks
+```makefile
+.PHONY: all install deploy update-tools
+
+all: install deploy
+
+install:
+	@echo "Installing dotfiles..."
+
+	@.bin/install.sh
+
+
+deploy:
+	@echo "Deploying dotfiles..."
+
+	@.bin/deploy.sh
+
+update-tools:
+
+	@echo "Updating Cargo tools..."
+
+	@.bin/utils/manage_cargo_tools.sh
+
+
+setup-neovim:
+	@echo "Setting up Neovim..."
+	@.bin/utils/setup_neovim.sh
+
+setup-fish:
+	@echo "Setting up Fish shell..."
+	@.bin/utils/setup_fish.sh
+
+setup-tmux:
+	@echo "Setting up Tmux..."
+	@.bin/utils/setup_tmux.sh
+
+```
+
 ## Key Features
 
 - **Neovim Configuration**: Advanced setup with Dein plugin manager and LSP integration
@@ -124,3 +227,34 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Author
 
 [1saver](https://github.com/music-brain88/)
+#!/bin/bash
+
+set -euo pipefail
+
+
+echo "Setting up Neovim..."
+
+
+NVIM_CONFIG_DIR="$HOME/.config/nvim"
+
+
+# Ensure Neovim is installed
+if ! command -v nvim &> /dev/null; then
+    echo "Neovim not found. Please install Neovim first."
+
+    exit 1
+fi
+
+# Create Neovim config directory if it doesn't exist
+mkdir -p "$NVIM_CONFIG_DIR"
+
+# Install vim-plug if not already installed
+if [ ! -f "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim ]; then
+    sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim --create-dirs \
+        https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+fi
+
+# Install plugins
+nvim --headless +PlugInstall +qall
+
+echo "Neovim setup completed."

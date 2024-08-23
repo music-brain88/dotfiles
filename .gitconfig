@@ -8,7 +8,7 @@
   safecrlf = true
 
 [alias]
-  preview = !fish -c "fzf-checkout-branch"
+  preview = !fish -c "skim-checkout-branch"
 
 [merge]
   ff = false

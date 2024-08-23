@@ -7,25 +7,34 @@ echo "Setting up Neovim..."
 
 
 NVIM_CONFIG_DIR="$HOME/.config/nvim"
-
+DEIN_DIR="$HOME/.cache/dein"
+DEIN_INSTALLER="$DEIN_DIR/installer.sh"
 
 # Ensure Neovim is installed
 if ! command -v nvim &> /dev/null; then
     echo "Neovim not found. Please install Neovim first."
-
     exit 1
 fi
 
 # Create Neovim config directory if it doesn't exist
+
 mkdir -p "$NVIM_CONFIG_DIR"
 
-# Install vim-plug if not already installed
-if [ ! -f "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim ]; then
-    sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim --create-dirs \
-        https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+
+# Install dein if not already installed
+if [ ! -d "$DEIN_DIR" ]; then
+    echo "Installing dein..."
+    curl https://raw.githubusercontent.com/Shougo/dein.vim/master/bin/installer.sh > "$DEIN_INSTALLER"
+    sh "$DEIN_INSTALLER" "$DEIN_DIR"
+    rm "$DEIN_INSTALLER"
 fi
 
-# Install plugins
-nvim --headless +PlugInstall +qall
+# Deno install
+if !(type deno > /dev/null 2>&1); then
+  cargo install deno --locked
+else
+
+# Install plugins using dein
+nvim --headless +"call dein#install()" +qall
 
 echo "Neovim setup completed."

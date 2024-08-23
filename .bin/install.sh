@@ -1,43 +1,21 @@
-#!bin/bash
+#!/bin/bash
 
-set -ue
+set -euo pipefail
 
-echo "Start Initialization"
 
-# fisher install
-if !(type fisher > /dev/null 2>&1); then
-  if (type fish > /dev/null 2>&1); then
-    curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher
-  else
-    echo "Please install fish shell"
-  fi
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+UTILS_DIR="$SCRIPT_DIR/utils"
 
-# pyenv install
-if !(type pyenv > /dev/null 2>&1); then
-  if [ ! -d ~/.pyenv ]; then
-    git clone https://github.com/pyenv/pyenv.git ~/.pyenv
-    git clone https://github.com/pyenv/pyenv-virtualenv.git ~/.pyenv/plugins/pyenv-virtualenv
-  fi
-  echo "Please set the pyenv path"
-fi
+echo "Starting dotfiles installation..."
 
-# Rust install
-if !(type rustup > /dev/null 2>&1); then
-  echo "install Rust compiler"
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-  echo "finish install rust"
-  source $HOME/.cargo/env
-else
-  echo "Rust is installed"
-fi
 
-# deno install
-if !(type deno > /dev/null 2>&1); then
-  cargo install deno --locked
-  # curl -fsSL https://deno.land/install.sh | sh
-else
-  echo "Deno is installed"
-  echo "Rust is installed"
-fi
+# Run setup scripts
+source "$UTILS_DIR/setup_base.sh"
+source "$UTILS_DIR/setup_symlinks.sh"
+source "$UTILS_DIR/setup_neovim.sh"
+source "$UTILS_DIR/setup_rust_tools.sh"
+source "$UTILS_DIR/setup_terminal.sh"
+source "$UTILS_DIR/setup_shell.sh"
+source "$UTILS_DIR/setup_tmux.sh"
 
+echo "Dotfiles installation complete!"
