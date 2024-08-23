@@ -39,6 +39,8 @@ jobs:
     steps:
       # リポジトリのチェックアウト
       - uses: actions/checkout@v4
+        with:
+          path: $HOME/dotfiles
 
       # システムの更新と必要なパッケージのインストール
       - name: Set up environment
