@@ -26,9 +26,12 @@ fish -c "fisher install jethrokuan/z"
 fish -c "fisher install edc/bass"
 
 # starship install
-if !(type deno > /dev/null 2>&1); then
+if command -v cargo > /dev/null 2>&1; then
   cargo install starship
+else
+  echo "Cargo not found. Please install Rust first."
 fi
+
 
 
 echo "Fish shell setup completed."

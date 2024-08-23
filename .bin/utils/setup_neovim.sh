@@ -30,8 +30,10 @@ if [ ! -d "$DEIN_DIR" ]; then
 fi
 
 # Deno install
-if !(type deno > /dev/null 2>&1); then
+if command -v deno > /dev/null 2>&1; then
   cargo install deno --locked
+else
+  echo "Deno not found. Please install Deno first."
 fi
 
 # Install plugins using dein
