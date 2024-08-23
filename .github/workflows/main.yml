@@ -40,6 +40,16 @@ jobs:
       # リポジトリのチェックアウト
       - uses: actions/checkout@v4
 
+
+      # システムパッケージのキャッシュ
+      - name: Cache system packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            /var/cache/pacman/pkg
+            /var/lib/apt/lists
+          key: ${{ runner.os }}-${{ matrix.container }}-system-packages-${{ hashFiles('.bin/utils/setup_base.sh') }}
+
       # システムの更新と必要なパッケージのインストール
       - name: Set up environment
         run: |
@@ -77,16 +87,29 @@ jobs:
 
       # セットアップスクリプトの実行
       - name: Run setup scripts
-        run: |
-          .bin/utils/setup_directories.sh
-          .bin/utils/setup_base.sh
-          .bin/utils/setup_symlinks.sh
-          .bin/utils/setup_rust_tools.sh
-          .bin/utils/setup_neovim.sh
-          .bin/utils/setup_shell.sh
-          .bin/utils/setup_tmux.sh
-          .bin/utils/setup_git.sh
+        run: .bin/utils/setup_base.sh
 
+      - name: Setup directories
+        run: .bin/utils/setup_directories.sh
+
+      - name: Setup symlinks
+        run: .bin/utils/setup_symlinks.sh
+
+      - name: Setup Rust tools
+        run: .bin/utils/setup_rust_tools.sh
+        continue-on-error: true
+
+      - name: Setup Neovim
+        run: .bin/utils/setup_neovim.sh
+
+      - name: Setup shell
+        run: .bin/utils/setup_shell.sh
+
+      - name: Setup Tmux
+        run: .bin/utils/setup_tmux.sh
+
+      - name: Setup Git
+        run: .bin/utils/setup_git.sh
 
       # インストールの検証
       - name: Verify installation

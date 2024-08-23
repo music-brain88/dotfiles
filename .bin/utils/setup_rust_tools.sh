@@ -31,7 +31,7 @@ cargo_tools=(
     "cargo-update"
     "fd-find"
     "ripgrep"
-    "exa"
+    "eza"
     "bat"
     "procs"
     "gitui"
