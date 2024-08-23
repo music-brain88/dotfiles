@@ -13,6 +13,7 @@ directories=(
     "$HOME/.config/fish"
     "$HOME/.config/alacritty"
     "$HOME/.config/starship"
+    "$HOME/.cache/dein"
 )
 
 # Create directories
