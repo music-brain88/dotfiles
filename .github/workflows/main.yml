@@ -1,4 +1,7 @@
+# Dotfiles CI ワークフロー
+# このワークフローは dotfiles のリント、ビルド、およびデプロイを自動化します。
 name: build
+
 
 on:
   push:
@@ -6,24 +9,80 @@ on:
       - 'README.md'
       - '.github/PULL_REQUEST_TEMPLATE.md'
 
+
 jobs:
-  ubuntu:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, ubuntu-22.04]
+  # シェルスクリプトの静的解析を行うジョブ
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install required packages
-        run: |
-          sudo apt-add-repository ppa:fish-shell/release-3
-          sudo apt update -y
-          sudo apt install -y git fish protobuf-compiler
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Run shellcheck
+
+        uses: ludeeus/action-shellcheck@master
         with:
-          toolchain: stable
+          scandir: './scripts'  # 'scripts' ディレクトリ内のシェルスクリプトをチェック
+
+  # dotfiles のビルドとデプロイを行うジョブ
+  build:
+    needs: lint  # lint ジョブが成功した後にのみ実行
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base
+      options: --privileged  # 特権モードで実行（システムレベルの操作に必要）
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      # pacman パッケージのキャッシュを設定
+      - name: Cache pacman packages
+        uses: actions/cache@v3
+        with:
+          path: /var/cache/pacman/pkg
+          key: ${{ runner.os }}-pacman-${{ hashFiles('**/pacman.conf') }}
+          restore-keys: |
+            ${{ runner.os }}-pacman-
+
+
+      # システムの更新と必要なパッケージのインストール
+      - name: Update system and install required packages
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm git gcc make neovim fish openssh pkg-config cmake protobuf xsel base-devel rustup
+
+      # Rust と Cargo のインストール
+      - name: Install Rust and Cargo
+        run: |
+          rustup default stable
+          rustup update
+
+      # Rust の依存関係をキャッシュ
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      # セットアップスクリプトの実行
       - name: Run setup script
         run: make install
+
+      # デプロイスクリプトの実行
       - name: Run deploy script
         run: make deploy
+
+      # インストールの検証
+      - name: Verify installation
+
+        run: |
+          fish -c "echo 'Fish shell is working'"  # Fish シェルが正常に動作することを確認
+          nvim --version  # Neovim のバージョンを確認
+          cargo --version  # Rust/Cargo のバージョンを確認
+          rustc --version # Rustコンパイラのバージョン確認
+          protoc --version  # Protocol Buffers のバージョンを確認

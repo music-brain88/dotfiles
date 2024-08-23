@@ -13,25 +13,33 @@ inoremap <Tab>   <Cmd>call pum#map#insert_relative(+1)<CR>
 inoremap <S-Tab> <Cmd>call pum#map#insert_relative(-1)<CR>
 '''
 hook_source = '''
+  let g:copilot_no_maps = v:true
   call ddc#custom#patch_global('ui', 'native')
-  call ddc#custom#patch_global('sources', ['nvim-lsp' ,'around', 'file'])
+  call ddc#custom#patch_global('sources', ['lsp' ,'around', 'file', 'copilot'])
   call ddc#custom#patch_global('sourceOptions', #{
         \   _:#{
         \   matchers: ['matcher_fuzzy'],
         \   sorters: ['sorter_fuzzy'],
         \ },
+        \   copilot: #{
+        \     mark: ' Copilot',
+        \     matchers: [],
+        \     minAutoCompleteLength: 0,
+        \     isVolatile: false
+        \   },
         \   around:#{
-        \   mark: 'A'
+        \   mark: ' Text',
         \  },
         \   nvim-lsp:#{
-        \   mark: 'LSP',
+        \   mark: ' LSP',
         \   forceCompletionPattern: '\.\w*|:\w*|->\w*'
         \  },
         \   file: #{
-        \   mark: 'FILE',
+        \   mark: ' File',
+        \   filenameChars: "[:keyword:]."
         \   isVolatile: v:true,
         \   forceCompletionPattern: '\S/\S*'
-        \  },
+        \  }
         \ })
   " Mappings
   " <TAB>: completion.
@@ -109,18 +117,6 @@ repo = 'rafamadriz/friendly-snippets'
 [[plugins]]
 repo = 'Shougo/ddc-source-copilot'
 depends = ['copilot']
-hook_source = '''
-  let g:copilot_no_maps = v:true
-  call ddc#custom#patch_global('sources', ['copilot'])
-  call ddc#custom#patch_global('sourceOptions', #{
-  \   copilot: #{
-  \     mark: 'copilot',
-  \     matchers: [],
-  \     minAutoCompleteLength: 0,
-  \   }
-  \})
-'''
-
 #-----------------------------------------------------------------------
 # end of ddc settings
 #-----------------------------------------------------------------------

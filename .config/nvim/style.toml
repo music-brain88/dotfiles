@@ -1,9 +1,5 @@
 # icons
 [[plugins]]
-repo = 'ryanoasis/vim-devicons'
-
-# icons
-[[plugins]]
 repo = 'nvim-tree/nvim-web-devicons'
 
 # Color scheme
