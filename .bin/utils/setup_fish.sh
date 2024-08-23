@@ -11,14 +11,20 @@ FISH_CONFIG_DIR="$HOME/.config/fish"
 if ! command -v fish &> /dev/null; then
     echo "Fish shell not found. Please install Fish first."
     exit 1
+  else
+    echo "Fish shell found. Skipping..."
 fi
 
 # Create Fish config directory if it doesn't exist
 mkdir -p "$FISH_CONFIG_DIR/functions"
 
 # Install Fisher (plugin manager for Fish)
-if [ ! -f "$FISH_CONFIG_DIR/functions/fisher.fish" ]; then
-    curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher
+if command -v fisher &> /dev/null; then
+    echo "Fisher already installed. Skipping..."
+else
+    echo "Installing Fisher..."
+    curl https://git.io/fisher --create-dirs -sLo ~/.config/fish/functions/fisher.fish
+    echo "Fisher installed."
 fi
 
 # Install Fish plugins (add your preferred plugins here)
