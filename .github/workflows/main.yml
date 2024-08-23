@@ -1,38 +1,48 @@
 name: build
 
+
 on:
   push:
     paths-ignore:
       - 'README.md'
       - '.github/PULL_REQUEST_TEMPLATE.md'
 
-jobs:
-  ubuntu:
-    runs-on: ${{ matrix.os }}
-    container:
-      image: archlinux:base
-      options: --privileged
-        strategy:
-        matrix:
-            os: [ubuntu-22.04]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install required packages
-        run: |
-          sudo apt-add-repository ppa:fish-shell/release-3
-          sudo apt update -y
-          sudo apt install -y git fish protobuf-compiler
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install required packages
-        run: |
-          pacman -S git gcc make neovim fish openssh pkg-config cmake protobuf xsel
 
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    container:
+
+      image: archlinux:base
+
+      options: --privileged
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Update system and install required packages
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm git gcc make neovim fish openssh pkg-config cmake protobuf xsel sudo base-devel
+
+      - name: Install Rust
+        run: |
+
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+
       - name: Run setup script
         run: make install
+
       - name: Run deploy script
         run: make deploy
+
+      - name: Verify installation
+        run: |
+          fish -c "echo 'Fish shell is working'"
+
+          nvim --version
+          cargo --version
