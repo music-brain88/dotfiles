@@ -69,6 +69,11 @@ jobs:
             ~/.cache/dein
           key: ${{ runner.os }}-${{ matrix.container }}-deps-${{ hashFiles('**/Cargo.lock', '.bin/utils/setup_neovim.sh') }}
 
+      # Rust のインストール
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          export PATH="$HOME/.cargo/bin:$PATH"
 
       # セットアップスクリプトの実行
       - name: Run setup scripts

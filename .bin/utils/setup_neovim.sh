@@ -33,7 +33,14 @@ fi
 if command -v deno > /dev/null 2>&1; then
   cargo install deno --locked
 else
-  echo "Deno not found. Please install Deno first."
+  echo "Deno not found. Checking for Cargo..."
+  # deno install
+  if command -v cargo > /dev/null 2>&1; then
+    echo "Cargo found. Installing Deno..."
+    cargo install deno --locked
+  else
+    echo "Cargo not found. Please install Rust first."
+  fi
 fi
 
 # Install plugins using dein
