@@ -24,8 +24,6 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           scandir: '.bin'  # '.bin' ディレクトリ内のシェルスクリプトをチェック
-          shell_files: '**/*.sh'  # '.sh' 拡張子のファイルをチェック
-          extra_args: '-x'  # エラーがある場合にスクリプトを終了
 
  # dotfiles のビルドとテストを行うジョブ
   build-and-test:
@@ -46,7 +44,7 @@ jobs:
         run: |
 
           if [ "${{ matrix.container }}" = "ubuntu:latest" ]; then
-          
+
             apt-get update
             apt-get install -y neovim tmux fish curl git build-essential sudo
 
@@ -54,7 +52,7 @@ jobs:
             # Arch Linux
             pacman -Syu --noconfirm
             pacman -S --noconfirm neovim tmux fish curl git sudo
-          
+
           else
             # Amazon Linux 2023
             yum update -y
