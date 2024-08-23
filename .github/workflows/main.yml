@@ -40,7 +40,7 @@ jobs:
       # リポジトリのチェックアウト
       - uses: actions/checkout@v4
         with:
-          path: $HOME/dotfiles
+          path: /github/home/dotfiles
 
       # システムの更新と必要なパッケージのインストール
       - name: Set up environment
