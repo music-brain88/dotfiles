@@ -11,6 +11,9 @@ cargo_tools=(
     "skim"
 )
 
+
+################### Install or update Cargo tools ###################
+# 脳筋的な方法でインストールする
 if command -v delta > /dev/null 2>&1; then
   echo "Delta already installed. Skipping..."
 else
@@ -60,17 +63,7 @@ else
   fi
 fi
 
-
-# Function to install or update a single Cargo tool
-install_or_update_tool() {
-    local tool=$1
-    echo "Installing/Updating $tool..."
-    cargo install --force "$tool" || echo "Failed to install $tool"
-}
-
-command_exists() {
-    command -v "$1" &> /dev/null
-}
+################### Install or update Cargo tools ###################
 
 
 # Set up global Git configuration
