@@ -73,6 +73,7 @@ jobs:
       # セットアップスクリプトの実行
       - name: Run setup scripts
         run: |
+          .bin/utils/setup_directories.sh
           .bin/utils/setup_base.sh
           .bin/utils/setup_symlinks.sh
           .bin/utils/setup_neovim.sh

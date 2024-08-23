@@ -10,7 +10,6 @@ echo "Creating necessary directories..."
 directories=(
     "$HOME/.config"
     "$HOME/.config/nvim"
-
     "$HOME/.config/fish"
     "$HOME/.config/alacritty"
     "$HOME/.config/starship"
