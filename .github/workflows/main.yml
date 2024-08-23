@@ -49,7 +49,7 @@ jobs:
       - name: Update system and install required packages
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm git gcc make neovim fish openssh pkg-config cmake protobuf xsel base-devel
+          pacman -S --noconfirm git gcc make neovim fish openssh pkg-config cmake protobuf xsel base-devel rustup
 
       # Rust と Cargo のインストール
       - name: Install Rust and Cargo
@@ -84,4 +84,5 @@ jobs:
           fish -c "echo 'Fish shell is working'"  # Fish シェルが正常に動作することを確認
           nvim --version  # Neovim のバージョンを確認
           cargo --version  # Rust/Cargo のバージョンを確認
+          rustc --version # Rustコンパイラのバージョン確認
           protoc --version  # Protocol Buffers のバージョンを確認
