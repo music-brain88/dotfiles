@@ -4,14 +4,6 @@ set -euo pipefail
 
 echo "Setting up Git..."
 
-cargo_tools=(
-    "fd-find"
-    "gitui"
-    "git-delta"
-    "skim"
-)
-
-
 ################### Install or update Cargo tools ###################
 # 脳筋的な方法でインストールする
 if command -v delta > /dev/null 2>&1; then
