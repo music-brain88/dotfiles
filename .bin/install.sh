@@ -26,6 +26,8 @@ create_dir_if_not_exists "$HOME/.config/fish"
 create_dir_if_not_exists "$HOME/.config/alacritty"
 
 # Run setup scripts
+# shellcheck disable=SC1091
+source "$UTILS_DIR/setup_directories.sh"
 # install.sh スクリプト内で、source コマンドの前に ShellCheck の指示コメントを追加する。
 # shellcheck disable=SC1091
 source "$UTILS_DIR/setup_base.sh"
