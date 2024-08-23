@@ -8,17 +8,22 @@ UTILS_DIR="$SCRIPT_DIR/utils"
 
 echo "Starting dotfiles installation..."
 
-# 必要なディレクトリを作成
-# TODO: この部分をもっとスマートに書く
-mkdir -p ~/.config/nvim
-mkdir -p ~/.config/fish
-mkdir -p ~/.config/alacritty
-mkdir -p ~/.config/starship
-mkdir -p ~/.config/rofi
-mkdir -p ~/.config/i3
-mkdir -p ~/.config/polybar
-mkdir -p ~/.config/mpd
-mkdir -p ~/.config/ncmpcpp
+# Function to create directory if it doesn't exist
+create_dir_if_not_exists() {
+    if [ ! -d "$1" ]; then
+        mkdir -p "$1"
+        echo "Created directory: $1"
+    fi
+}
+
+# Export the function so it can be used in other scripts
+export -f create_dir_if_not_exists
+
+# Create necessary directories
+create_dir_if_not_exists "$HOME/.config/nvim"
+create_dir_if_not_exists "$HOME/.config/starship"
+create_dir_if_not_exists "$HOME/.config/fish"
+create_dir_if_not_exists "$HOME/.config/alacritty"
 
 # Run setup scripts
 # install.sh スクリプト内で、source コマンドの前に ShellCheck の指示コメントを追加する。
