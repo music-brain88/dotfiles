@@ -46,13 +46,17 @@ jobs:
         run: |
 
           if [ "${{ matrix.container }}" = "ubuntu:latest" ]; then
+          
             apt-get update
             apt-get install -y neovim tmux fish curl git build-essential sudo
+
           elif [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
+            # Arch Linux
             pacman -Syu --noconfirm
             pacman -S --noconfirm neovim tmux fish curl git sudo
+          
           else
-
+            # Amazon Linux 2023
             yum update -y
             yum install -y neovim tmux fish curl git gcc make sudo
           fi
