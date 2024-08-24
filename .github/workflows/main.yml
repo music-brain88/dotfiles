@@ -83,7 +83,10 @@ jobs:
       - name: Install Rust
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          export PATH="$HOME/.cargo/bin:$PATH"
+          source $HOME/.cargo/env
+          echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+          rustc --version || echo "Rust installation failed"
+          cargo --version || echo "Cargo installation failed"
 
       # セットアップスクリプトの実行
       - name: Run setup scripts
