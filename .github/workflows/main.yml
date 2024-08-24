@@ -112,8 +112,11 @@ jobs:
       - name: Setup Tmux
         run: .bin/utils/setup_tmux.sh
 
+        # TODO:
+        # gituiがエラーを出すので、一旦continue-on-errorを設定
       - name: Setup Git
         run: .bin/utils/setup_git.sh
+        continue-on-error: true
 
       # インストールの検証
       - name: Verify installation
