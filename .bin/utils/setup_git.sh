@@ -37,7 +37,7 @@ else
   echo "gitui not found. Checking for Cargo..."
   if command -v cargo > /dev/null 2>&1; then
     echo "Cargo found. Installing gitui..."
-    cargo install gitui
+    cargo install gitui@0.25.2
   else
     echo "Cargo not found. Please install Rust first."
   fi
