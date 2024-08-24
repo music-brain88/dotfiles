@@ -36,8 +36,9 @@ ln -snfv ~/dotfiles/.gitconfig ~/.gitconfig
 ln -snfv ~/dotfiles/.config/starship/starship.toml ~/.config/starship.toml
 
 # install volta
-if !(type volta > /dev/null 2>&1); then
+if ! command -v volta > /dev/null 2>&1; then
   echo "Install volta"
+
   curl https://get.volta.sh | bash
   echo "Finish install volta"
 else
@@ -46,7 +47,7 @@ else
 fi
 
 # Install fisher
-if !(type fisher > /dev/null 2>&1); then
+if ! command -v fisher > /dev/null 2>&1; then
   echo "Install Fisher"
   curl https://git.io/fisher --create-dirs -sLo ~/.config/fish/functions/fisher.fish
   echo "Finish install fisher"
@@ -67,7 +68,7 @@ ln -snfv ~/dotfiles/.config/fish/config.fish ~/.config/fish/config.fish
 ln -snfv ~/dotfiles/.config/fish/functions/fish_user_key_bindings.fish ~/.config/fish/functions/fish_user_key_bindings.fish
 
 # Setup Rust
-if (type rustup > /dev/null 2>&1); then
+if command -v rustup > /dev/null 2>&1; then
   cargo install exa
   cargo install fd-find
   cargo install ripgrep
@@ -95,7 +96,7 @@ fi
 # fi
 
 # install fzf
-if !(type fzf > /dev/null 2>&1); then
+if ! command -v fzf > /dev/null 2>&1; then
   if [ ! -d ~/.fzf ]; then
     git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
     ~/.fzf/install --bin

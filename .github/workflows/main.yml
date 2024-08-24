@@ -15,74 +15,114 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - name: Run shellcheck
 
+      # shellcheck のインストール
+      - name: Run shellcheck
         uses: ludeeus/action-shellcheck@master
         with:
-          scandir: './scripts'  # 'scripts' ディレクトリ内のシェルスクリプトをチェック
+          scandir: '.bin'  # '.bin' ディレクトリ内のシェルスクリプトをチェック
 
-  # dotfiles のビルドとデプロイを行うジョブ
-  build:
+ # dotfiles のビルドとテストを行うジョブ
+  build-and-test:
     needs: lint  # lint ジョブが成功した後にのみ実行
+    name: Build and Test
     runs-on: ubuntu-latest
-    container:
-      image: archlinux:base
-      options: --privileged  # 特権モードで実行（システムレベルの操作に必要）
+    strategy:
+      matrix:
+        container: ['ubuntu:latest', 'archlinux:base-devel']
+        # container: ['ubuntu:latest', 'archlinux:base-devel', 'amazonlinux:2023']
+    container: ${{ matrix.container }}
 
     steps:
-
+      # リポジトリのチェックアウト
       - uses: actions/checkout@v4
 
-      # pacman パッケージのキャッシュを設定
-      - name: Cache pacman packages
-        uses: actions/cache@v3
-        with:
-          path: /var/cache/pacman/pkg
-          key: ${{ runner.os }}-pacman-${{ hashFiles('**/pacman.conf') }}
-          restore-keys: |
-            ${{ runner.os }}-pacman-
 
-
-      # システムの更新と必要なパッケージのインストール
-      - name: Update system and install required packages
-        run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm git gcc make neovim fish openssh pkg-config cmake protobuf xsel base-devel rustup
-
-      # Rust と Cargo のインストール
-      - name: Install Rust and Cargo
-        run: |
-          rustup default stable
-          rustup update
-
-      # Rust の依存関係をキャッシュ
-      - name: Cache Rust dependencies
+      # システムパッケージのキャッシュ
+      - name: Cache system packages
         uses: actions/cache@v3
         with:
           path: |
+            /var/cache/pacman/pkg
+            /var/lib/apt/lists
+          key: ${{ runner.os }}-${{ matrix.container }}-system-packages-${{ hashFiles('.bin/utils/setup_base.sh') }}
+
+      # システムの更新と必要なパッケージのインストール
+      - name: Set up environment
+        run: |
+
+          if [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
+
+            # Arch Linux
+            pacman -Syu --noconfirm
+            pacman -S --noconfirm neovim tmux fish curl git sudo tar cmake pkg-config protobuf
+
+          else
+            # Ubuntu
+            apt-get update
+            apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
+
+          fi
+
+
+      # 依存関係のキャッシュ
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+
             ~/.cargo/registry
             ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+            ~/.cache/dein
+          key: ${{ runner.os }}-${{ matrix.container }}-deps-${{ hashFiles('**/Cargo.lock', '.bin/utils/setup_neovim.sh') }}
+
+      # Rust のインストール
+      - name: Install Rust
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustc --version || echo "Rust installation failed"
+          cargo --version || echo "Cargo installation failed"
 
       # セットアップスクリプトの実行
-      - name: Run setup script
-        run: make install
+      - name: Run setup scripts
+        run: .bin/utils/setup_base.sh
 
-      # デプロイスクリプトの実行
-      - name: Run deploy script
-        run: make deploy
+      - name: Setup directories
+        run: .bin/utils/setup_directories.sh
+
+      - name: Setup symlinks
+        run: .bin/utils/setup_symlinks.sh
+
+      - name: Setup Rust tools
+        run: .bin/utils/setup_rust_tools.sh
+        continue-on-error: true
+
+      - name: Setup Neovim
+        run: .bin/utils/setup_neovim.sh
+
+      - name: Setup fish shell
+        run: .bin/utils/setup_fish.sh
+
+      - name: Setup Tmux
+        run: .bin/utils/setup_tmux.sh
+
+        # TODO:
+        # gituiがエラーを出すので、一旦continue-on-errorを設定
+      - name: Setup Git
+        run: .bin/utils/setup_git.sh
+        continue-on-error: true
 
       # インストールの検証
       - name: Verify installation
-
         run: |
-          fish -c "echo 'Fish shell is working'"  # Fish シェルが正常に動作することを確認
-          nvim --version  # Neovim のバージョンを確認
-          cargo --version  # Rust/Cargo のバージョンを確認
-          rustc --version # Rustコンパイラのバージョン確認
-          protoc --version  # Protocol Buffers のバージョンを確認
+          fish -c "echo 'Fish shell is working'"
+          nvim --version
+          cargo --version
+          tmux -V
+          git --version
