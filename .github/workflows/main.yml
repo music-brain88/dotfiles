@@ -81,10 +81,11 @@ jobs:
 
       # Rust のインストール
       - name: Install Rust
+        shell: bash
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          source $HOME/.cargo/env
           echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+          export PATH="$HOME/.cargo/bin:$PATH"
           rustc --version || echo "Rust installation failed"
           cargo --version || echo "Cargo installation failed"
 
