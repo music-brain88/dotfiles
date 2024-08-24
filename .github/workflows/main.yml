@@ -58,7 +58,7 @@ jobs:
 
             # Arch Linux
             pacman -Syu --noconfirm
-            pacman -S --noconfirm neovim tmux fish curl git sudo tar
+            pacman -S --noconfirm neovim tmux fish curl git sudo tar cmake pkg-config protobuf
 
           else
             # Ubuntu
