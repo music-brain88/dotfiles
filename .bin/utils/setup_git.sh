@@ -58,7 +58,4 @@ fi
 ################### Install or update Cargo tools ###################
 
 
-# Set up global Git configuration
-git config --global core.editor "nvim"
-
 echo "Git setup complete."
