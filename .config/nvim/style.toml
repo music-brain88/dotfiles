@@ -1,6 +1,6 @@
 # icons
 [[plugins]]
-repo = 'ryanoasis/vim-devicons'
+repo = 'nvim-tree/nvim-web-devicons'
 
 # Color scheme
 [[plugins]]
@@ -11,10 +11,10 @@ lua << EOF
   onedarkpro.setup({
   dark_theme = "onedark", -- The default dark theme
   colors = {}, -- Override default colors by specifying colors for 'onelight' or 'onedark' themes
-  hlgroups = {}, -- Override default highlight groups
-  filetype_hlgroups = {}, -- Override default highlight groups for specific filetypes
+  highlights = {}, -- Override default highlight groups
+  ft_highlights = {}, -- Override default highlight groups for specific filetypes
   plugins = { -- Override which plugins highlight groups are loaded
-      native_lsp = true,
+      nvim_lsp = true,
       polygot = false,
       treesitter = true,
       -- NOTE: Other plugins have been omitted for brevity
@@ -41,7 +41,3 @@ lua << EOF
 onedarkpro.load()
 EOF
 '''
-
-[[plugins]]
-repo = 'kyazdani42/nvim-web-devicons'
-depends = ['feline.nvim']

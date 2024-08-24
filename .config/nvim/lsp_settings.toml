@@ -1,0 +1,121 @@
+[[plugins]]
+repo = 'neovim/nvim-lspconfig'
+on_event = 'BufEnter'
+lua_source = '''
+  -- nvim-lspconfigのrequire
+  local nvim_lspconfig = require('lspconfig')
+
+  -- グローバルな診断用のキーマッピング
+  vim.keymap.set('n', 'ge', vim.diagnostic.open_float)
+  vim.keymap.set('n', 'g[', vim.diagnostic.goto_prev)
+  vim.keymap.set('n', 'g]', vim.diagnostic.goto_next)
+
+
+  -- デバッグログを有効にする場合はコメントを解除
+  -- vim.lsp.set_log_level("debug")
+
+
+  -- LSPがアタッチされた時の処理
+  vim.api.nvim_create_autocmd('LspAttach', {
+    group = vim.api.nvim_create_augroup('UserLspConfig', {}),
+    callback = function(ev)
+
+      -- バッファローカルなキーマッピングの設定
+      local opts = { buffer = ev.buf }
+      vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)
+      vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
+      vim.keymap.set('n', 'gh', vim.lsp.buf.hover, opts)
+      vim.keymap.set('n', 'gs', vim.lsp.buf.signature_help, opts)
+      vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, opts)
+      vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, opts)
+      vim.keymap.set('n', '<space>wl', function()
+        print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
+      end, opts)
+      vim.keymap.set('n', '<space>rn', vim.lsp.buf.rename, opts)
+      vim.keymap.set({ 'n', 'v' }, '<space>ca', vim.lsp.buf.code_action, opts)
+      vim.keymap.set('n', '<space>D', vim.lsp.buf.type_definition, opts)
+      vim.keymap.set('n', '<space>rn', vim.lsp.buf.rename, opts)
+    end,
+  })
+  
+  -- 自動フォーマット用のon_attach関数
+  local on_attach = function(client, bufnr)
+    -- クライアントがフォーマット機能をサポートしているか確認
+    if client.server_capabilities.documentFormattingProvider then
+      -- ファイル保存時に自動フォーマットを適用するautocmdを作成
+      vim.api.nvim_create_autocmd("BufWritePre", {
+        group = vim.api.nvim_create_augroup("Format", { clear = true }),
+        buffer = bufnr,
+        callback = function() vim.lsp.buf.format() end
+      })
+    end
+  end
+
+  -- 設定する言語サーバーのリスト
+  local servers = {'rust_analyzer', 'pyright', 'tsserver'}
+
+  -- 各言語サーバーの設定
+  for _, lsp in ipairs(servers) do
+    nvim_lspconfig[lsp].setup {
+      on_attach = on_attach,  -- 自動フォーマット用の関数を設定
+
+      -- capabilities = capabilities,  -- 必要に応じて追加の機能を設定
+    }
+  end
+'''
+
+[[plugins]]
+repo = 'nvimtools/none-ls.nvim'
+on_event = 'BufEnter'
+lua_source = '''
+  local none_ls = require('none-ls')
+  local augroup = vim.api.nvim_create_augroup("LspFormatting", {})
+  none_ls.setup({
+    sources = {
+      null_ls.builtins.formatting.prettier,
+    },
+    on_attach = function(client, bufnr)
+      if client.supports_method('textDocument/formatting') then
+        vim.api.nvim_clear_autocmds({ group = augroup, bufnr = bufnr })
+        vim.api_nvim_create_autocmd("BufWritePre", {
+          group = augroup,
+          buffer = bufnr,
+          callback = function()
+            vim.lsp.buf.format({ async = false })
+          end,
+        })
+      end
+    end
+  })
+'''
+
+[[plugins]]
+repo = 'williamboman/mason.nvim'
+on_event = 'BufEnter'
+lua_source = '''
+  local mason = require('mason')
+  mason.setup({
+    PATH = "prepend",
+    log_level = vim.log.levels.INFO,
+    pip = {
+      upgrade_pip = false,
+    },
+    ui = {
+      width = 0.6,
+      height = 0.7,
+      icons = {
+        package_installed = "✓",
+        package_pending = "➜",
+        package_uninstalled = "✗"
+      }
+    }
+})
+'''
+
+[[plugins]]
+repo = 'williamboman/mason-lspconfig.nvim'
+on_event = 'BufEnter'
+depends = ['nvim-lspconfig', 'mason.nvim']
+lua_source= '''
+  local mason_lspconfig = require('mason-lspconfig')
+'''

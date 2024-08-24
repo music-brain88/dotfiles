@@ -39,24 +39,33 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   local style_toml = dein_toml_dir .. '/style.toml'
 
   -- status line
-  local feline_toml = dein_toml_dir .. status_line_dir .. '/feline.toml'
+  local lualine_toml = dein_toml_dir .. status_line_dir .. '/lualine.toml'
   local bufferline_toml = dein_toml_dir .. status_line_dir .. '/bufferline.toml'
   local gitsigns_toml = dein_toml_dir .. status_line_dir .. '/gitsigns.toml'
 
   -- Lazy load
   local dein_toml_lazy = dein_toml_dir .. '/dein_lazy.toml'
+  local lsp_setting_toml_lazy = dein_toml_dir .. '/lsp_settings.toml'
+  local ddc_toml_lazy = dein_toml_dir .. '/ddc_settings.toml'
+  local treesitter_settings_lazy = dein_toml_dir .. '/treesitter_settings.toml'
 
   vim.call('dein#begin', dein_dir, {
     vim.fn.expand('<sfile>'),
+
     -- startup
     dein_toml,
     dashboard_toml,
     style_toml,
+
     -- status line
-    feline_toml,
+    lualine_toml,
     gitsigns_toml,
+
     -- lazy
-    dein_toml_lazy
+    dein_toml_lazy,
+    lsp_setting_toml_lazy,
+    ddc_toml_lazy,
+    treesitter_settings_lazy
   })
 
   -- startup
@@ -65,13 +74,15 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   vim.call('dein#load_toml', style_toml, {lazy = 0})
 
   -- status line
-  vim.call('dein#load_toml', feline_toml, {lazy = 0})
+  vim.call('dein#load_toml', lualine_toml, {lazy = 0})
   vim.call('dein#load_toml', bufferline_toml, {lazy = 0})
   vim.call('dein#load_toml', gitsigns_toml, {lazy = 0})
 
   -- Lazy load
   vim.call('dein#load_toml', dein_toml_lazy, {lazy = 1})
-
+  vim.call('dein#load_toml', lsp_setting_toml_lazy, {lazy = 1})
+  vim.call('dein#load_toml', ddc_toml_lazy, {lazy = 1})
+  vim.call('dein#load_toml', treesitter_settings_lazy, {lazy = 1})
 
   vim.call('dein#end')
   vim.call('dein#save_state')
@@ -88,6 +99,9 @@ vim.o.termguicolors = true
 vim.bo.autoread = true
 vim.bo.tabstop = 2
 vim.bo.expandtab = true
+
+-- copilot init
+vim.g.copilot_no_tab_maps = true
 
 vim.cmd 'set clipboard+=unnamedplus'
 vim.cmd 'set relativenumber'

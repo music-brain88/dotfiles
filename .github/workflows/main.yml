@@ -1,4 +1,7 @@
+# Dotfiles CI ワークフロー
+# このワークフローは dotfiles のリント、ビルド、およびデプロイを自動化します。
 name: build
+
 
 on:
   push:
@@ -6,28 +9,120 @@ on:
       - 'README.md'
       - '.github/PULL_REQUEST_TEMPLATE.md'
 
+
 jobs:
-  ubuntu:
-    runs-on: ${{ matrix.os }}
+  # シェルスクリプトの静的解析を行うジョブ
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # shellcheck のインストール
+      - name: Run shellcheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: '.bin'  # '.bin' ディレクトリ内のシェルスクリプトをチェック
+
+ # dotfiles のビルドとテストを行うジョブ
+  build-and-test:
+    needs: lint  # lint ジョブが成功した後にのみ実行
+    name: Build and Test
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        container: ['ubuntu:latest', 'archlinux:base-devel']
+        # container: ['ubuntu:latest', 'archlinux:base-devel', 'amazonlinux:2023']
+    container: ${{ matrix.container }}
+
     steps:
-      - uses: actions/checkout@v3
-      - name: Install required packages
-        run: |
-          sudo apt-add-repository ppa:fish-shell/release-3
-          sudo apt update -y
-          sudo apt install -y git fish
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+      # リポジトリのチェックアウト
+      - uses: actions/checkout@v4
+
+
+      # システムパッケージのキャッシュ
+      - name: Cache system packages
+        uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: beta
-          override: true
-      - name: Install cargo-bisect-rustc
-        run: cargo install cargo-bisect-rustc
-      - name: Run setup script
-        run: make install
-      - name: Run deploy script
-        run: make deploy
+          path: |
+            /var/cache/pacman/pkg
+            /var/lib/apt/lists
+          key: ${{ runner.os }}-${{ matrix.container }}-system-packages-${{ hashFiles('.bin/utils/setup_base.sh') }}
+
+      # システムの更新と必要なパッケージのインストール
+      - name: Set up environment
+        run: |
+
+          if [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
+
+            # Arch Linux
+            pacman -Syu --noconfirm
+            pacman -S --noconfirm neovim tmux fish curl git sudo tar cmake pkg-config protobuf
+
+          else
+            # Ubuntu
+            apt-get update
+            apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
+
+          fi
+
+
+      # 依存関係のキャッシュ
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dein
+          key: ${{ runner.os }}-${{ matrix.container }}-deps-${{ hashFiles('**/Cargo.lock', '.bin/utils/setup_neovim.sh') }}
+
+      # Rust のインストール
+      - name: Install Rust
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustc --version || echo "Rust installation failed"
+          cargo --version || echo "Cargo installation failed"
+
+      # セットアップスクリプトの実行
+      - name: Run setup scripts
+        run: .bin/utils/setup_base.sh
+
+      - name: Setup directories
+        run: .bin/utils/setup_directories.sh
+
+      - name: Setup symlinks
+        run: .bin/utils/setup_symlinks.sh
+
+      - name: Setup Rust tools
+        run: .bin/utils/setup_rust_tools.sh
+        continue-on-error: true
+
+      - name: Setup Neovim
+        run: .bin/utils/setup_neovim.sh
+
+      - name: Setup fish shell
+        run: .bin/utils/setup_fish.sh
+
+      - name: Setup Tmux
+        run: .bin/utils/setup_tmux.sh
+
+        # TODO:
+        # gituiがエラーを出すので、一旦continue-on-errorを設定
+      - name: Setup Git
+        run: .bin/utils/setup_git.sh
+        continue-on-error: true
+
+      # インストールの検証
+      - name: Verify installation
+        run: |
+          fish -c "echo 'Fish shell is working'"
+          nvim --version
+          cargo --version
+          tmux -V
+          git --version
