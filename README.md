@@ -10,22 +10,46 @@ This repository contains my personal dotfiles - a collection of configuration fi
 ```shell
 # Directory Structure
 dotfiles/
+├── .backup/
 ├── .bin/
+│   ├── utils/
 │   ├── deploy.sh
-│   ├── install.sh
-│   └── utils/
-│       ├── manage_cargo_tools.sh
-│       ├── setup_neovim.sh
-│       ├── setup_fish.sh
-│       └── setup_tmux.sh
+│   └── install.sh
 ├── .config/
 │   ├── alacritty/
+│   │   └── alacritty.toml
 │   ├── fish/
+│   │   ├── completions/
+│   │   │   ├── fisher.fish
+│   │   │   ├── git.fish
+│   │   │   ├── poetry.fish
+│   │   │   └── pyenv.fish
+│   │   ├── functions/
+│   │   │   └── config.fish
+│   │   └── config.fish
 │   ├── i3/
+│   │   ├── config
+│   │   └── i3-alt-tab.py
 │   ├── mpd/
+│   │   └── mpd.conf
 │   ├── ncmpcpp/
+│   │   └── config
 │   ├── nvim/
 │   │   └── status_line/
+│   │       ├── bufferline.toml
+│   │       ├── gitsigns.toml
+│   │       ├── lualine.toml
+│   │       ├── coc-settings.json
+│   │       ├── dashboard.toml
+│   │       ├── ddc_settings.toml
+│   │       ├── dein.toml
+│   │       ├── dein_lazy.toml
+│   │       ├── init.lua
+│   │       ├── lsp_settings.toml
+│   │       ├── style.toml
+│   │       └── treesitter_settings.toml
+│   ├── picom/
+│   │   └── picom.conf
 │   ├── polybar/
 │   │   └── forest/
 │   ├── rofi/
