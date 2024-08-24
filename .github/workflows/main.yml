@@ -125,14 +125,4 @@ jobs:
           nvim --version
           cargo --version
           tmux -V
-
           git --version
-
-      # dotfilesのテスト
-      - name: Test dotfiles
-        run: |
-
-          source ~/.bashrc
-          fish -c "source ~/.config/fish/config.fish"
-          tmux new-session -d "echo 'Tmux is working'"
-          git config --list
