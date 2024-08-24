@@ -63,7 +63,7 @@ jobs:
           else
             # Ubuntu
             apt-get update
-            apt-get install -y neovim tmux fish curl git build-essential sudo tar libz-sys
+            apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
 
           fi
 
