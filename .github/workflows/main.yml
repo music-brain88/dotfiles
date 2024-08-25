@@ -54,10 +54,8 @@ jobs:
           apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
         fi
 
-    # リポジトリのチェックアウト
-    - uses: actions/checkout@v4
     - name: Test Setup base Script
-      run: ./bin/utils/setup_base.sh
+      run: .bin/utils/setup_base.sh
 
 
   # ローカルで私用しているRust ツール確認する
@@ -115,7 +113,7 @@ jobs:
       # TODO: ここでエラーが出るので、一旦continue-on-errorを設定
       # これは、gituiがエラーを出すため
     - name: Test Setup Rust Script
-      run: ./bin/utils/setup_rust_tools.sh
+      run: .bin/utils/setup_rust_tools.sh
       continue-on-error: true
 
 
