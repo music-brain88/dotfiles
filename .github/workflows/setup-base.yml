@@ -1,0 +1,37 @@
+name: Setup Base
+
+on:
+  workflow_call:
+
+jobs:
+  setup-base:
+    name: Setup Base Environment
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        container: ['ubuntu:latest', 'archlinux:base-devel']
+    container: ${{ matrix.container }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Cache system packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          /var/cache/pacman/pkg
+          /var/lib/apt/lists
+
+        key: ${{ runner.os }}-${{ matrix.container }}-system-packages-${{ hashFiles('.bin/utils/setup_base.sh') }}
+    - name: Set up environment
+      run: |
+        if [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm neovim tmux fish curl git sudo tar cmake pkg-config protobuf
+        else
+          apt-get update
+
+          apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
+
+        fi
+    - name: Test Setup base Script
+      run: .bin/utils/setup_base.sh
