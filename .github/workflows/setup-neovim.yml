@@ -13,8 +13,7 @@ jobs:
     name: Setup Neovim Environment
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        include: ${{fromJson(needs.common-setup.outputs.matrix)}}
+      matrix: ${{fromJson(needs.common-setup.outputs.matrix)}}
     container: ${{ matrix.container }}
 
     steps:
