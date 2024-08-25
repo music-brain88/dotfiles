@@ -53,6 +53,9 @@ jobs:
           apt-get update
           apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
         fi
+
+    # リポジトリのチェックアウト
+    - uses: actions/checkout@v4
     - name: Test Setup base Script
       run: ./bin/utils/setup_base.sh
 
@@ -60,7 +63,7 @@ jobs:
   # ローカルで私用しているRust ツール確認する
   setup-rust:
     needs: setup-base
-    name: Setup Rust Environment
+    name: Test Setup Rust Environment
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -118,8 +121,8 @@ jobs:
 
  # dotfiles のビルドとテストを行うジョブ
   setup-tools:
-    needs: lint  # lint ジョブが成功した後にのみ実行
-    name: Build and Test
+    needs: setup-base
+    name: Test Setup Tools
     runs-on: ubuntu-latest
     strategy:
       matrix:
