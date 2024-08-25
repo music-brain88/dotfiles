@@ -25,11 +25,14 @@ jobs:
     - name: Set up environment
       run: |
         if [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
+
+          # Arch Linux
           pacman -Syu --noconfirm
           pacman -S --noconfirm neovim tmux fish curl git sudo tar cmake pkg-config protobuf
         else
-          apt-get update
 
+          # Ubuntu
+          apt-get update
           apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
 
         fi
