@@ -25,10 +25,102 @@ jobs:
         with:
           scandir: '.bin'  # '.bin' ディレクトリ内のシェルスクリプトをチェック
 
- # dotfiles のビルドとテストを行うジョブ
-  build-and-test:
+  setup-base:
     needs: lint  # lint ジョブが成功した後にのみ実行
-    name: Build and Test
+    name: Setup Base Environment
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container: ['ubuntu:latest', 'archlinux:base-devel']
+        # container: ['ubuntu:latest', 'archlinux:base-devel', 'amazonlinux:2023']
+    container: ${{ matrix.container }}
+    steps:
+    # リポジトリのチェックアウト
+    - uses: actions/checkout@v4
+    - name: Cache system packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          /var/cache/pacman/pkg
+          /var/lib/apt/lists
+        key: ${{ runner.os }}-${{ matrix.container }}-system-packages-${{ hashFiles('.bin/utils/setup_base.sh') }}
+    - name: Set up environment
+      run: |
+        if [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm neovim tmux fish curl git sudo tar cmake pkg-config protobuf
+        else
+          apt-get update
+          apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
+        fi
+
+    - name: Test Setup base Script
+      run: .bin/utils/setup_base.sh
+
+
+  # ローカルで私用しているRust ツール確認する
+  setup-rust:
+    needs: setup-base
+    name: Test Setup Rust Environment
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container: ['ubuntu:latest', 'archlinux:base-devel']
+        # container: ['ubuntu:latest', 'archlinux:base-devel', 'amazonlinux:2023']
+    container: ${{ matrix.container }}
+
+    steps:
+
+      # リポジトリのチェックアウト
+    - uses: actions/checkout@v4
+
+      # システムパッケージのキャッシュ
+    - name: Cache system packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          /var/cache/pacman/pkg
+          /var/lib/apt/lists
+        key: ${{ runner.os }}-${{ matrix.container }}-system-packages-${{ hashFiles('.bin/utils/setup_base.sh') }}
+
+      # システムの更新と必要なパッケージのインストール
+    - name: Set up environment
+      run: |
+
+        if [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
+
+          # Arch Linux
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm neovim tmux fish curl git sudo tar cmake pkg-config protobuf
+
+        else
+          # Ubuntu
+          apt-get update
+          apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
+
+        fi
+
+    - name: Install Rust
+      shell: bash
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+        export PATH="$HOME/.cargo/bin:$PATH"
+        rustc --version || echo "Rust installation failed"
+        cargo --version || echo "Cargo installation failed"
+
+      # セットアップスクリプトの実行
+      # TODO: ここでエラーが出るので、一旦continue-on-errorを設定
+      # これは、gituiがエラーを出すため
+    - name: Test Setup Rust Script
+      run: .bin/utils/setup_rust_tools.sh
+      continue-on-error: true
+
+
+ # dotfiles のビルドとテストを行うジョブ
+  setup-tools:
+    needs: setup-base
+    name: Test Setup Tools
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -67,7 +159,6 @@ jobs:
 
           fi
 
-
       # 依存関係のキャッシュ
       - name: Cache dependencies
         uses: actions/cache@v3
@@ -98,10 +189,6 @@ jobs:
 
       - name: Setup symlinks
         run: .bin/utils/setup_symlinks.sh
-
-      - name: Setup Rust tools
-        run: .bin/utils/setup_rust_tools.sh
-        continue-on-error: true
 
       - name: Setup Neovim
         run: .bin/utils/setup_neovim.sh

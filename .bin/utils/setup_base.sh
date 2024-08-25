@@ -10,12 +10,12 @@ if [ -f /etc/arch-release ]; then
     # Arch Linux
     echo "Detected Arch Linux"
     sudo pacman -Syu --noconfirm
-    sudo pacman -S --noconfirm neovim tmux fish curl git base-devel
+    sudo pacman -S --noconfirm neovim tmux fish curl git sudo tar cmake pkg-config protobuf
 elif [ -f /etc/lsb-release ]; then
     # Ubuntu
     echo "Detected Ubuntu"
     sudo apt-get update
-    sudo apt-get install -y neovim tmux fish curl git build-essential
+    sudo apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
 else
     echo "Unsupported operating system"
     exit 1

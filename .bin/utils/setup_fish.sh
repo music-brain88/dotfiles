@@ -31,13 +31,19 @@ fi
 fish -c "fisher install jethrokuan/z"
 fish -c "fisher install edc/bass"
 
-# starship install
-if command -v cargo > /dev/null 2>&1; then
-  cargo install starship
+# SetUp starship
+if command -v starship > /dev/null 2>&1; then
+  echo "Starship found. Skipping..."
 else
-  echo "Cargo not found. Please install Rust first."
+  echo "Starship not found. Checking for Cargo..."
+  # starship install
+  if command -v cargo > /dev/null 2>&1; then
+    echo "Cargo found. Installing Starship..."
+    cargo install starship
+  else
+    echo "Cargo not found. Please install Rust first."
+  fi
 fi
-
 
 
 echo "Fish shell setup completed."
