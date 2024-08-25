@@ -39,7 +39,8 @@ jobs:
 
       - name: Set matrix outputs
         id: set-matrix
-        run: echo "matrix=${{ toJson(matrix) }}" >> $GITHUB_OUTPUT
+        run: |
+          echo 'matrix={"container":${{ toJson(matrix.container) }}}' >> $GITHUB_OUTPUT
 
 
       - name: Debug output
