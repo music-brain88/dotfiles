@@ -1,4 +1,5 @@
-name: Setup Rust
+name: Setup Terminal
+
 
 on:
   workflow_call:
@@ -7,9 +8,9 @@ jobs:
   common-setup:
     uses: ./.github/workflows/setup-common.yml
 
-  setup-rust:
+  setup-neovim:
     needs: common-setup
-    name: Setup Rust Environment
+    name: Setup Terminal Environment
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{fromJson(needs.common-setup.outputs.matrix)}}
@@ -17,15 +18,20 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Install Rust
-      run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+
+    - name: Setup symlinks
+      run: .bin/utils/setup_symlinks.sh
+
+    - name: Setup directories
+      run: .bin/utils/setup_directories.sh
+
+    - name: Setup terminal
+      run: .bin/utils/setup_tmux.sh
 
     # セットアップスクリプトの実行
     # TODO: stable, nightly, betaで何れか通ったら次のステップに進むようにしたい
     # これは、gituiがエラーを出すため
     # gitui0.26.2のnightlyがエラーを出すため、一旦continue-on-errorを設定
-    - name: Test Setup Rust Script
-      run: .bin/utils/setup_rust_tools.sh
+    - name: Setup Git config
+      run: .bin/utils/setup_git.sh
       continue-on-error: true

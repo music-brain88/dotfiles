@@ -1,0 +1,22 @@
+name: Setup Fish Shell
+
+
+on:
+  workflow_call:
+
+jobs:
+  common-setup:
+    uses: ./.github/workflows/setup-common.yml
+
+  setup-neovim:
+    needs: common-setup
+    name: Setup Fish Shell
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{fromJson(needs.common-setup.outputs.matrix)}}
+    container: ${{ matrix.container }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Fish shell
+      run: .bin/utils/setup_fish.sh
