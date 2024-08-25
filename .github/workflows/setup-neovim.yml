@@ -5,13 +5,15 @@ on:
   workflow_call:
 
 jobs:
-  setup-tools:
-    name: Setup Various Tools
+  common-setup:
+    uses: ./.github/workflows/setup-common.yml
+
+  setup-neovim:
+    needs: common-setup
+    name: Setup Neovim Environment
     runs-on: ubuntu-latest
     strategy:
-
-      matrix:
-        container: ['ubuntu:latest', 'archlinux:base-devel']
+      matrix: ${{fromJson(needs.common-setup.outputs.matrix)}}
     container: ${{ matrix.container }}
 
     steps:

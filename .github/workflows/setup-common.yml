@@ -1,0 +1,29 @@
+name: Common Setup
+
+on:
+  workflow_call:
+
+jobs:
+  setup:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container: ['ubuntu:latest', 'archlinux:base-devel']
+    container: ${{ matrix.container }}
+
+    steps:
+      - name: Set up environment
+        run: |
+          if [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
+            # Arch Linux
+            pacman -Syu --noconfirm
+            pacman -S --noconfirm neovim tmux fish curl git sudo tar cmake pkg-config protobuf
+          else
+            # Ubuntu
+            apt-get update
+            apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
+          fi
+      # 他の共通セットアップステップを追加
+    outputs:
+      matrix: ${{ toJson(matrix) }}

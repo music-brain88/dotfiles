@@ -4,14 +4,16 @@ on:
   workflow_call:
 
 jobs:
+  common-setup:
+    uses: ./.github/workflows/setup-common.yml
+
   setup-rust:
     name: Setup Rust Environment
     runs-on: ubuntu-latest
-
     strategy:
-      matrix:
-        container: ['ubuntu:latest', 'archlinux:base-devel']
+      matrix: ${{fromJson(needs.common-setup.outputs.matrix)}}
     container: ${{ matrix.container }}
+
     steps:
     - uses: actions/checkout@v4
     - name: Install Rust
