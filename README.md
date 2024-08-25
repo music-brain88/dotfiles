@@ -13,6 +13,14 @@ dotfiles/
 ├── .backup/
 ├── .bin/
 │   ├── utils/
+│   │   ├── setup_base.sh
+│   │   ├── setup_directories.sh
+│   │   ├── setup_fish.sh
+│   │   ├── setup_git.sh
+│   │   ├── setup_neovim.sh
+│   │   ├── setup_rust_tools.sh
+│   │   ├── setup_symlinks.sh
+│   │   └── setup_tmux.sh
 │   ├── deploy.sh
 │   └── install.sh
 ├── .config/
