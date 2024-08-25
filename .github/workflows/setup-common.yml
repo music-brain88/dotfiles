@@ -39,8 +39,7 @@ jobs:
 
       - name: Set matrix outputs
         id: set-matrix
-        run: |
-          echo "matrix=${{ toJson(matrix) }}" >> $GITHUB_ENV
+        run: echo "matrix=${{ toJson(matrix) }}" >> $GITHUB_OUTPUT
 
 
       - name: Debug output
@@ -51,4 +50,4 @@ jobs:
 
     # 他の共通セットアップステップを追加
     outputs:
-      matrix: ${{ toJson(steps.set-matrix.outputs.matrix) }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
