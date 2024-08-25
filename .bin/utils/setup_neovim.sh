@@ -31,7 +31,7 @@ fi
 
 # Deno install
 if command -v deno > /dev/null 2>&1; then
-  cargo install deno --locked
+  echo "Deno found. Skipping..."
 else
   echo "Deno not found. Checking for Cargo..."
   # deno install
@@ -42,6 +42,35 @@ else
     echo "Cargo not found. Please install Rust first."
   fi
 fi
+
+# ripgrep install
+if ! command -v rg > /dev/null 2>&1; then
+  echo "rip-grep found. Skipping..."
+else
+  echo "rip-grep not found. Checking for Cargo..."
+  # rip-grep install
+  if command -v cargo > /dev/null 2>&1; then
+    echo "Cargo found. Installing ripgrep..."
+    cargo install rip-grep
+  else
+    echo "Cargo not found. Please install Rust first."
+  fi
+fi
+
+# fd-find install
+if ! command -v fd > /dev/null 2>&1; then
+  echo "fd-find found. Skipping..."
+else
+  echo "fd-find not found. Checking for Cargo..."
+  # fd-find install
+  if command -v cargo > /dev/null 2>&1; then
+    echo "Cargo found. Installing fd-find..."
+    cargo install fd-find
+  else
+    echo "Cargo not found. Please install Rust first."
+  fi
+fi
+
 
 # Install plugins using dein
 nvim --headless +"call dein#install()" +qall

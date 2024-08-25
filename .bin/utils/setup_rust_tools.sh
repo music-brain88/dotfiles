@@ -35,13 +35,12 @@ cargo_tools=(
     "bat"
     "procs"
     "gitui"
-    "git-delta"
     "tealdeer"
     "hyperfine"
     "du-dust"
     "tokei"
-    "skim"
     "jql"
+    "oxker"
 )
 
 echo "Managing Cargo tools..."
