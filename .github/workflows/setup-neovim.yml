@@ -1,0 +1,20 @@
+name: Setup Neovim
+
+
+on:
+  workflow_call:
+
+jobs:
+  setup-tools:
+    name: Setup Various Tools
+    runs-on: ubuntu-latest
+    strategy:
+
+      matrix:
+        container: ['ubuntu:latest', 'archlinux:base-devel']
+    container: ${{ matrix.container }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Neovim
+      run: .bin/utils/setup_neovim.sh
