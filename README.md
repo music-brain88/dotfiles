@@ -10,22 +10,54 @@ This repository contains my personal dotfiles - a collection of configuration fi
 ```shell
 # Directory Structure
 dotfiles/
+├── .backup/
 ├── .bin/
+│   ├── utils/
+│   │   ├── setup_base.sh
+│   │   ├── setup_directories.sh
+│   │   ├── setup_fish.sh
+│   │   ├── setup_git.sh
+│   │   ├── setup_neovim.sh
+│   │   ├── setup_rust_tools.sh
+│   │   ├── setup_symlinks.sh
+│   │   └── setup_tmux.sh
 │   ├── deploy.sh
-│   ├── install.sh
-│   └── utils/
-│       ├── manage_cargo_tools.sh
-│       ├── setup_neovim.sh
-│       ├── setup_fish.sh
-│       └── setup_tmux.sh
+│   └── install.sh
 ├── .config/
 │   ├── alacritty/
+│   │   └── alacritty.toml
 │   ├── fish/
+│   │   ├── completions/
+│   │   │   ├── fisher.fish
+│   │   │   ├── git.fish
+│   │   │   ├── poetry.fish
+│   │   │   └── pyenv.fish
+│   │   ├── functions/
+│   │   │   └── config.fish
+│   │   └── config.fish
 │   ├── i3/
+│   │   ├── config
+│   │   └── i3-alt-tab.py
 │   ├── mpd/
+│   │   └── mpd.conf
 │   ├── ncmpcpp/
+│   │   └── config
 │   ├── nvim/
 │   │   └── status_line/
+│   │       ├── bufferline.toml
+│   │       ├── gitsigns.toml
+│   │       ├── lualine.toml
+│   │       ├── coc-settings.json
+│   │       ├── dashboard.toml
+│   │       ├── ddc_settings.toml
+│   │       ├── dein.toml
+│   │       ├── dein_lazy.toml
+│   │       ├── init.lua
+│   │       ├── lsp_settings.toml
+│   │       ├── style.toml
+│   │       └── treesitter_settings.toml
+│   ├── picom/
+│   │   └── picom.conf
 │   ├── polybar/
 │   │   └── forest/
 │   ├── rofi/
@@ -227,34 +259,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Author
 
 [1saver](https://github.com/music-brain88/)
-#!/bin/bash
-
-set -euo pipefail
-
-
-echo "Setting up Neovim..."
-
-
-NVIM_CONFIG_DIR="$HOME/.config/nvim"
-
-
-# Ensure Neovim is installed
-if ! command -v nvim &> /dev/null; then
-    echo "Neovim not found. Please install Neovim first."
-
-    exit 1
-fi
-
-# Create Neovim config directory if it doesn't exist
-mkdir -p "$NVIM_CONFIG_DIR"
-
-# Install vim-plug if not already installed
-if [ ! -f "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim ]; then
-    sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim --create-dirs \
-        https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
-fi
-
-# Install plugins
-nvim --headless +PlugInstall +qall
-
-echo "Neovim setup completed."
