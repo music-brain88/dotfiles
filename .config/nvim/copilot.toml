@@ -11,9 +11,13 @@ require("CopilotChat").setup {
   debug = false, -- デバッグモードを無効化
 
   show_help = true, -- ヘルプメッセージを表示
+  system_prompt = "日本語で解説してください", 
   prompts = {
     Explain = {
       prompt = "このコードの動作を詳細に説明してください。コードの各部分が何を行っているのか、全体の流れはどうなっているのか、具体的に解説してください。",
+      mapping = '<leader>ce', -- キーマッピング
+      description = "選択したコードを説明します。", -- 機能の説明
+      selection = require('CopilotChat.select').visual, -- 選択範囲を取得する関数
     },
 
     Review = {
@@ -39,11 +43,11 @@ require("CopilotChat").setup {
 }
 
 -- 既存のキーマッピング
-vim.keymap.set('n', '<leader>ce', function() require('CopilotChat').ask('Explain') end, { noremap = true, silent = true })
+-- vim.keymap.set('n', '<leader>ce', function() require('CopilotChat').ask('Explain') end, { noremap = true, silent = true })
 vim.keymap.set('n', '<leader>cr', function() require('CopilotChat').ask('Review') end, { noremap = true, silent = true })
 vim.keymap.set('n', '<leader>ct', function() require('CopilotChat').ask('Tests') end, { noremap = true, silent = true })
 vim.keymap.set('v', '<leader>ce', function() require('CopilotChat').ask('Explain') end, { noremap = true, silent = true })
-vim.keymap.set('v', '<leader>cc', function() require('CopilotChat').ask('Document') end, { noremap = true, silent = true })
+-- vim.keymap.set('v', '<leader>cc', function() require('CopilotChat').ask('Document') end, { noremap = true, silent = true })
 
 -- 機能の説明コメント
 --[[
