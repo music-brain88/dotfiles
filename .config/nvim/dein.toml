@@ -496,6 +496,8 @@ vim.keymap.set('n', '<leader>ce', ':CopilotChatExplain<CR>', { noremap = true, s
 vim.keymap.set('n', '<leader>cr', ':CopilotChatReview<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<leader>ct', ':CopilotChatTests<CR>', { noremap = true, silent = true })
 vim.keymap.set('v', '<leader>ce', ':CopilotChatExplain<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>cd', ':CopilotDebug<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>cg', ':CopilotDocGen<CR>', { noremap = true, silent = true })
 
 -- デバッグ支援機能
 vim.api.nvim_create_user_command('CopilotDebug', function()
@@ -519,7 +521,7 @@ end, {})
 
 -- コード品質チェック機能
 vim.api.nvim_create_autocmd("BufWritePost", {
-  pattern = {"*.py", "*.js", "*.lua"},  -- 対象のファイルタイプを指定
+  pattern = {"*.py", "*.js", "*.lua", "*.rs", "*.ts"},  -- 対象のファイルタイプを指定
 
   callback = function()
     local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
@@ -530,9 +532,6 @@ vim.api.nvim_create_autocmd("BufWritePost", {
   end,
 })
 
--- 新しい機能のキーマッピング
-vim.keymap.set('n', '<leader>cd', ':CopilotDebug<CR>', { noremap = true, silent = true })
-vim.keymap.set('n', '<leader>cg', ':CopilotDocGen<CR>', { noremap = true, silent = true })
 
 
 -- 機能の説明コメント
