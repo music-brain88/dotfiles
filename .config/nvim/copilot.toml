@@ -1,0 +1,59 @@
+[[plugins]]
+repo = 'github/copilot.vim'
+
+[[plugins]]
+repo = 'CopilotC-Nvim/CopilotChat.nvim'
+depends = ['copilot.vim', 'plenary.nvim']
+rev = 'canary'
+hook_add = '''
+lua << EOF
+require("CopilotChat").setup {
+  debug = false, -- デバッグモードを無効化
+
+  show_help = true, -- ヘルプメッセージを表示
+  prompts = {
+    Explain = {
+      prompt = "このコードの動作を詳細に説明してください。コードの各部分が何を行っているのか、全体の流れはどうなっているのか、具体的に解説してください。",
+    },
+
+    Review = {
+      prompt = "このコードをレビューし、改善点を提案してください。効率性、可読性、ベストプラクティスの観点から、具体的な修正案を提示してください。",
+    },
+    Tests = {
+      prompt = "このコードに対する適切な単体テストを提案してください。テストすべき主要なシナリオ、エッジケース、想定される入力と期待される出力を含めて説明してください。",
+    },
+    Refactor = {
+      prompt = "このコードをリファクタリングして、可読性と効率を向上させてください。具体的な変更点とその理由を説明し、リファクタリング後のコードも提示してください。",
+    },
+    Debug = {
+      prompt = "このエラーメッセージを解析し、問題の原因と解決策を提案してください。",
+    },
+    Document = {
+      prompt = "この関数またはクラスのドキュメントを生成してください。目的、パラメータ、戻り値、使用例を含めてください。",
+    },
+    CodeQuality = {
+      prompt = "このコードの品質を分析し、改善点を提案してください。パフォーマンス、可読性、保守性の観点から具体的な提案をしてください。",
+    },
+  },
+  auto_follow_cursor = true, -- カーソル位置に基づいて自動的にコンテキストを更新
+}
+
+-- 既存のキーマッピング
+vim.keymap.set('n', '<leader>ce', function() require('CopilotChat').ask('Explain') end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>cr', function() require('CopilotChat').ask('Review') end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>ct', function() require('CopilotChat').ask('Tests') end, { noremap = true, silent = true })
+vim.keymap.set('v', '<leader>ce', function() require('CopilotChat').ask('Explain') end, { noremap = true, silent = true })
+vim.keymap.set('v', '<leader>cc', function() require('CopilotChat').ask('Document') end, { noremap = true, silent = true })
+
+-- 機能の説明コメント
+--[[
+#######################################################################
+- ノーマルモードで `<leader>ce` を押すと、Copilotを使って選択したコードを説明します。
+- ノーマルモードで `<leader>cr` を押すと、Copilotを使って選択したコードをレビューします。
+- ノーマルモードで `<leader>ct` を押すと、Copilotを使って選択したコードのユニットテストを生成します。
+- ビジュアルモードで `<leader>ce` を押すと、Copilotを使って選択したコードを説明します。
+
+#######################################################################
+]]
+EOF
+'''
