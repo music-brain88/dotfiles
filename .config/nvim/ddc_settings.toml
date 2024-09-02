@@ -140,6 +140,7 @@ depends = ['copilot']
 
 [[plugins]]
 repo = 'Shougo/neosnippet.vim'
+rev = 'master'
 on_event = 'InsertEnter'
 depends = ['neosnippet-snippets']
 hook_source = '''
@@ -147,8 +148,14 @@ hook_source = '''
   smap <C-k>     <Plug>(neosnippet_expand_or_jump)
   xmap <C-k>     <Plug>(neosnippet_expand_target)
   let g:neosnippet#enable_completed_snippet = 1
+  let g:neosnippet#enable_snipmate_compatibility = 1
+
+  let g:neosnippet#snippets_directory = '~/.cache/dein/repos/github.com/Shougo/neosnippet-snippets/neosnippets'
 '''
 
+[[plugins]]
+repo = 'Shougo/neosnippet-snippets'
+rev = 'master'
 #-----------------------------------------------------------------------
 # end of ddc settings
 #-----------------------------------------------------------------------
