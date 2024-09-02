@@ -15,7 +15,7 @@ inoremap <S-Tab> <Cmd>call pum#map#insert_relative(-1)<CR>
 hook_source = '''
   let g:copilot_no_maps = v:true
   call ddc#custom#patch_global('ui', 'native')
-  call ddc#custom#patch_global('sources', ['lsp' ,'around', 'file', 'copilot'])
+  call ddc#custom#patch_global('sources', ['lsp' ,'around', 'file', 'copilot', 'neosnippet', 'cmdline', 'cmdline_history'])
   call ddc#custom#patch_global('sourceOptions', #{
         \   _:#{
         \   matchers: ['matcher_fuzzy'],
@@ -25,7 +25,7 @@ hook_source = '''
         \     mark: ' Copilot',
         \     matchers: [],
         \     minAutoCompleteLength: 0,
-        \     isVolatile: false
+        \     isVolatile: v:false
         \   },
         \   around:#{
         \   mark: ' Text',
@@ -39,8 +39,28 @@ hook_source = '''
         \   filenameChars: "[:keyword:]."
         \   isVolatile: v:true,
         \   forceCompletionPattern: '\S/\S*'
-        \  }
+        \  },
+        \   neosnippet: #{
+        \   mark: ' Snippet',
+        \   dup: v:true,
+        \   },
+        \   cmdline: #{
+        \   mark: ' Cmdline',
+        \   },
+        \   cmdline_history: #{
+        \   mark: ' Cmdline History',
+        \  },
         \ })
+
+" Customize settings for specific filetypes
+call ddc#custom#patch_filetype(['rs', 'toml', 'py'], 'sources', ['lsp', 'around', 'file', 'neosnippet'])
+call ddc#custom#patch_filetype('markdown', 'sourceParams', #{
+\   around: #{
+\     maxSize: 100,
+\   },
+\ })
+
+
   " Mappings
   " <TAB>: completion.
   inoremap <silent><expr> <TAB>
@@ -117,6 +137,18 @@ repo = 'rafamadriz/friendly-snippets'
 [[plugins]]
 repo = 'Shougo/ddc-source-copilot'
 depends = ['copilot']
+
+[[plugins]]
+repo = 'Shougo/neosnippet.vim'
+on_event = 'InsertEnter'
+depends = ['neosnippet-snippets']
+hook_source = '''
+  imap <C-k>     <Plug>(neosnippet_expand_or_jump)
+  smap <C-k>     <Plug>(neosnippet_expand_or_jump)
+  xmap <C-k>     <Plug>(neosnippet_expand_target)
+  let g:neosnippet#enable_completed_snippet = 1
+'''
+
 #-----------------------------------------------------------------------
 # end of ddc settings
 #-----------------------------------------------------------------------
