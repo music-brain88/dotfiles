@@ -14,7 +14,7 @@ local config = {
   show_help = true, -- ヘルプメッセージを表示
   prompts = {
     Explain = {
-      prompt = "/COPILOT_EXPLAIN このコードの動作を詳細に説明してください。コードの各部分が何を行っているのか、全体の流れはどうなっているのか、具体的に解説してください。",
+      prompt = "このコードの動作を詳細に説明してください。コードの各部分が何を行っているのか、全体の流れはどうなっているのか、具体的に解説してください。",
     },
     Review = {
       prompt = "このコードをレビューし、改善点を提案してください。効率性、可読性、ベストプラクティスの観点から、具体的な修正案を提示してください。",
@@ -55,9 +55,31 @@ local config = {
 
 copilot_chat.setup(config)
 
+-- バッファ全体の内容を使ってCopilotとチャットする新しい関数
+function CopilotChatBuffer()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local buffer_content = table.concat(lines, "\n")
+  
+  print("Buffer content length: " .. #buffer_content)
+  
+  local input = vim.fn.input("Chat with entire buffer content: ")
+  if input ~= "" then
+    print("User input: " .. input)
+    
+    vim.schedule(function()
+      require("CopilotChat").ask(input, {
+        selection = function()
+          return buffer_content
+        end,
+        context = "buffer"
+      })
+    end)
+  end
+end
 -- 既存のキーマッピング
 vim.keymap.set('n', '<leader>ct', '<cmd>CopilotChatToggle<cr>', { noremap = true, silent = true, desc = "Toggle Copilot Chat" })
-vim.keymap.set('n', '<leader>cp', '<cmd>CopilotChatCommit<cr>', { noremap = true, silent = true, desc = "Copilot Chat Commit" })
+vim.keymap.set('n', '<leader>cm', '<cmd>CopilotChatCommit<cr>', { noremap = true, silent = true, desc = "Copilot Chat Commit" })
 vim.keymap.set('v', '<leader>ce', function() require('CopilotChat').ask(config.prompts.Explain.prompt) end, { noremap = true, silent = true, desc = "Copilot Explain (Visual)" })
 vim.keymap.set('n', '<leader>ce', function() require('CopilotChat').ask(config.prompts.Explain.prompt) end, { noremap = true, silent = true, desc = "Copilot Explain (Normal)" })
 vim.keymap.set('n', '<leader>cr', function() require('CopilotChat').ask(config.prompts.Review.prompt) end, { noremap = true, silent = true, desc = "Copilot Review" })
@@ -65,16 +87,8 @@ vim.keymap.set('n', '<leader>cf', function() require('CopilotChat').ask(config.p
 vim.keymap.set('n', '<leader>cd', function() require('CopilotChat').ask(config.prompts.Debug.prompt) end, { noremap = true, silent = true, desc = "Copilot Debug" })
 vim.keymap.set('n', '<leader>cc', function() require('CopilotChat').ask(config.prompts.Document.prompt) end, { noremap = true, silent = true, desc = "Copilot Document" })
 vim.keymap.set('n', '<leader>cq', function() require('CopilotChat').ask(config.prompts.CodeQuality.prompt) end, { noremap = true, silent = true, desc = "Copilot Code Quality" })
+-- <leader>qq (Copilot Chat Quick) で Copilot とチャットする
+vim.api.nvim_set_keymap("n", "<leader>qq", "<cmd>lua CopilotChatBuffer()<cr>", { noremap = true, silent = true })
 
--- 機能の説明コメント
---[[
-#######################################################################
-- ノーマルモードで `<leader>ce` を押すと、Copilotを使って選択したコードを説明します。
-- ノーマルモードで `<leader>cr` を押すと、Copilotを使って選択したコードをレビューします。
-- ノーマルモードで `<leader>ct` を押すと、Copilotを使って選択したコードのユニットテストを生成します。
-- ビジュアルモードで `<leader>ce` を押すと、Copilotを使って選択したコードを説明します。
-
-#######################################################################
-]]
 EOF
 '''
