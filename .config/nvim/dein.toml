@@ -473,8 +473,83 @@ rev = 'canary'
 hook_add = '''
 lua << EOF
 require("CopilotChat").setup {
-  debug = true, -- Enable debugging
-  -- See Configuration section for rest
+  debug = false, -- デバッグモードを無効化
+  show_help = true, -- ヘルプメッセージを表示
+  prompts = {
+
+    Explain = "このコードの動作を詳細に説明してください。コードの各部分が何を行っているのか、全体の流れはどうなっているのか、具体的に解説してください。",
+    Review = "このコードをレビューし、改善点を提案してください。効率性、可読性、ベストプラクティスの観点から、具体的な修正案を提示してください。",
+    Tests = "このコードに対する適切な単体テストを提案してください。テストすべき主要なシナリオ、エッジケース、想定される入力と期待される出力を含めて説明してください。",
+    Refactor = "このコードをリファクタリングして、可読性と効率を向上させてください。具体的な変更点とその理由を説明し、リファクタリング後のコードも提示してください。",
+    Debug = "このエラーメッセージを解析し、問題の原因と解決策を提案してください。",
+    Document = "この関数またはクラスのドキュメントを生成してください。目的、パラメータ、戻り値、使用例を含めてください。",
+
+    CodeQuality = "このコードの品質を分析し、改善点を提案してください。パフォーマンス、可読性、保守性の観点から具体的な提案をしてください。",
+
+  },
+
+  auto_follow_cursor = true, -- カーソル位置に基づいて自動的にコンテキストを更新
 }
+
+-- 既存のキーマッピング
+vim.keymap.set('n', '<leader>ce', ':CopilotChatExplain<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>cr', ':CopilotChatReview<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>ct', ':CopilotChatTests<CR>', { noremap = true, silent = true })
+vim.keymap.set('v', '<leader>ce', ':CopilotChatExplain<CR>', { noremap = true, silent = true })
+
+-- デバッグ支援機能
+vim.api.nvim_create_user_command('CopilotDebug', function()
+  local error_msg = vim.fn.expand('<cexpr>')
+  local chat = require('CopilotChat')
+  chat.ask('Debug', error_msg)
+end, {})
+
+-- ドキュメンテーション生成機能
+vim.api.nvim_create_user_command('CopilotDocGen', function()
+  local node = vim.treesitter.get_node()
+  if node then
+    local start_row, _, end_row, _ = node:range()
+    local lines = vim.api.nvim_buf_get_lines(0, start_row, end_row + 1, false)
+    local code = table.concat(lines, '\n')
+    local chat = require('CopilotChat')
+    chat.ask('Document', code)
+  end
+end, {})
+
+
+-- コード品質チェック機能
+vim.api.nvim_create_autocmd("BufWritePost", {
+  pattern = {"*.py", "*.js", "*.lua"},  -- 対象のファイルタイプを指定
+
+  callback = function()
+    local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+    local code = table.concat(lines, '\n')
+
+    local chat = require('CopilotChat')
+    chat.ask('CodeQuality', code)
+  end,
+})
+
+-- 新しい機能のキーマッピング
+vim.keymap.set('n', '<leader>cd', ':CopilotDebug<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>cg', ':CopilotDocGen<CR>', { noremap = true, silent = true })
+
+
+-- 機能の説明コメント
+--[[
+#######################################################################
+- ノーマルモードで `<leader>ce` を押すと、Copilotを使って選択したコードを説明します。
+- ノーマルモードで `<leader>cr` を押すと、Copilotを使って選択したコードをレビューします。
+- ノーマルモードで `<leader>ct` を押すと、Copilotを使って選択したコードのユニットテストを生成します。
+
+- ビジュアルモードで `<leader>ce` を押すと、Copilotを使って選択したコードを説明します。
+- ノーマルモードで `<leader>cd` を押すと、エラーメッセージのデバッグ支援を行います。
+- ノーマルモードで `<leader>cg` を押すと、カーソル位置の関数やクラスのドキュメントを生成します。
+- 対象ファイルタイプ（.py, .js, .lua）の保存時に自動的にコード品質チェックを行います。
+#######################################################################
+
+]]
+
+
 EOF
 '''
