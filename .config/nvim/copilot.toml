@@ -57,6 +57,7 @@ copilot_chat.setup(config)
 
 -- 既存のキーマッピング
 vim.keymap.set('n', '<leader>ct', '<cmd>CopilotChatToggle<cr>', { noremap = true, silent = true, desc = "Toggle Copilot Chat" })
+vim.keymap.set('n', '<leader>cp', '<cmd>CopilotChatCommit<cr>', { noremap = true, silent = true, desc = "Copilot Chat Commit" })
 vim.keymap.set('v', '<leader>ce', function() require('CopilotChat').ask(config.prompts.Explain.prompt) end, { noremap = true, silent = true, desc = "Copilot Explain (Visual)" })
 vim.keymap.set('n', '<leader>ce', function() require('CopilotChat').ask(config.prompts.Explain.prompt) end, { noremap = true, silent = true, desc = "Copilot Explain (Normal)" })
 vim.keymap.set('n', '<leader>cr', function() require('CopilotChat').ask(config.prompts.Review.prompt) end, { noremap = true, silent = true, desc = "Copilot Review" })
