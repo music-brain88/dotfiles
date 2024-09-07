@@ -9,8 +9,8 @@ repo = 'Shougo/ddc.vim'
 on_event = 'InsertEnter'
 depends = ['denops.vim', 'pum.vim', 'ddc-ui-native', 'copilot.vim', 'neosnippet.vim']
 hook_add = '''
-inoremap <Tab>   <Cmd>call pum#map#insert_relative(+1)<CR>
-inoremap <S-Tab> <Cmd>call pum#map#insert_relative(-1)<CR>
+" Copilot
+" <A-[>: previous completion.
 inoremap <A-[> <Plug>(copilot-previous)
 inoremap <A-]> <Plug>(copilot-next)
 '''
@@ -64,14 +64,17 @@ call ddc#custom#patch_filetype('markdown', 'sourceParams', #{
 \ })
 
 
-  " Mappings
-  " <TAB>: completion.
-  inoremap <silent><expr> <TAB>
-  \ pumvisible() ? '<C-n>' :
-  \ (col('.') <= 1 <Bar><Bar> getline('.')[col('.') - 2] =~# '\s') ?
-  \ '<TAB>' : ddc#map#manual_complete()
+" Mappings
+" <TAB>: completion.
+inoremap <silent><expr> <TAB>
+\ pumvisible() ? pum#map#insert_relative(+1) :
+\ (col('.') <= 1 <Bar><Bar> getline('.')[col('.') - 2] =~# '\s') ?
+\ '<TAB>' : ddc#map#manual_complete()
+
+inoremap <silent><expr> <S-TAB>
+\ pumvisible() ? pum#map#insert_relative(-1) : '<C-n>'
   " <S-TAB>: completion back.
-  inoremap <expr><S-TAB>  pumvisible() ? '<C-p>' : '<C-h>'
+  inoremap <expr><S-TAB>  pumvisible() ? '<C-p>' : '<C-n>'
   call ddc#enable()
 '''
 
