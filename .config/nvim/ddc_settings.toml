@@ -32,7 +32,7 @@ hook_source = '''
         \  },
         \   nvim-lsp:#{
         \   mark: ' LSP',
-        \   forceCompletionPattern: '\.\w*|:\w*|->\w*',
+        \   forceCompletionPattern: '\\.\\w*|::\\w*|->\\w*',
         \  },
         \   file: #{
         \   mark: ' File',
