@@ -11,6 +11,8 @@ depends = ['denops.vim', 'pum.vim', 'ddc-ui-native', 'copilot.vim', 'neosnippet.
 hook_add = '''
 inoremap <Tab>   <Cmd>call pum#map#insert_relative(+1)<CR>
 inoremap <S-Tab> <Cmd>call pum#map#insert_relative(-1)<CR>
+inoremap <A-[> <Plug>(copilot-previous)
+inoremap <A-]> <Plug>(copilot-next)
 '''
 hook_source = '''
   let g:copilot_no_maps = v:true
@@ -32,6 +34,8 @@ hook_source = '''
         \  },
         \   nvim-lsp:#{
         \   mark: ' LSP',
+        \   dup: 'keep',
+        \   keywordPattern: '\k+',
         \   forceCompletionPattern: '\\.\\w*|::\\w*|->\\w*',
         \  },
         \   file: #{
@@ -52,7 +56,7 @@ hook_source = '''
         \ })
 
 " Customize settings for specific filetypes
-call ddc#custom#patch_filetype(['rs', 'toml', 'py'], 'sources', ['lsp', 'around', 'file', 'neosnippet'])
+call ddc#custom#patch_filetype(['rs', 'toml', 'py'], 'sources', ['lsp', 'around', 'file', 'neosnippet', 'copilot'])
 call ddc#custom#patch_filetype('markdown', 'sourceParams', #{
 \   around: #{
 \     maxSize: 100,
