@@ -1,5 +1,11 @@
 [[plugins]]
 repo = 'github/copilot.vim'
+on_event = 'InsertEnter'
+
+
+[[plugins]]
+repo = 'Shougo/ddc-source-copilot'
+depends = ['copilot.vim', 'ddc.vim']
 
 [[plugins]]
 repo = 'CopilotC-Nvim/CopilotChat.nvim'

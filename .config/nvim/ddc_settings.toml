@@ -7,7 +7,7 @@ repo = 'Shougo/ddc-ui-native'
 [[plugins]]
 repo = 'Shougo/ddc.vim'
 on_event = 'InsertEnter'
-depends = ['denops.vim', 'pum.vim', 'ddc-ui-native']
+depends = ['denops.vim', 'pum.vim', 'ddc-ui-native', 'copilot.vim', 'neosnippet.vim']
 hook_add = '''
 inoremap <Tab>   <Cmd>call pum#map#insert_relative(+1)<CR>
 inoremap <S-Tab> <Cmd>call pum#map#insert_relative(-1)<CR>
@@ -15,7 +15,7 @@ inoremap <S-Tab> <Cmd>call pum#map#insert_relative(-1)<CR>
 hook_source = '''
   let g:copilot_no_maps = v:true
   call ddc#custom#patch_global('ui', 'native')
-  call ddc#custom#patch_global('sources', ['lsp' ,'around', 'file', 'copilot', 'neosnippet', 'cmdline', 'cmdline_history'])
+  call ddc#custom#patch_global('sources', ['lsp' ,'around', 'file', 'copilot', 'neosnippet', 'cmdline', 'cmdline-history'])
   call ddc#custom#patch_global('sourceOptions', #{
         \   _:#{
         \   matchers: ['matcher_fuzzy'],
@@ -25,20 +25,19 @@ hook_source = '''
         \     mark: ' Copilot',
         \     matchers: [],
         \     minAutoCompleteLength: 0,
-        \     isVolatile: v:false
+        \     isVolatile: v:true,
         \   },
         \   around:#{
         \   mark: ' Text',
         \  },
         \   nvim-lsp:#{
         \   mark: ' LSP',
-        \   forceCompletionPattern: '\.\w*|:\w*|->\w*'
+        \   forceCompletionPattern: '\.\w*|:\w*|->\w*',
         \  },
         \   file: #{
         \   mark: ' File',
-        \   filenameChars: "[:keyword:]."
         \   isVolatile: v:true,
-        \   forceCompletionPattern: '\S/\S*'
+        \   forceCompletionPattern: '\S/\S*',
         \  },
         \   neosnippet: #{
         \   mark: ' Snippet',
@@ -97,17 +96,25 @@ repo = 'Shougo/ddc-nvim-lsp'
 on_source = 'ddc.vim'
 
 [[plugins]]
+repo = 'Shougo/ddc-source-cmdline'
+on_source = 'ddc.vim'
+
+[[plugins]]
+repo = 'Shougo/ddc-source-cmdline-history'
+on_source = 'ddc.vim'
+
+[[plugins]]
 repo = 'matsui54/denops-popup-preview.vim'
 on_source = 'ddc.vim'
-lua_source = '''
-  vim.fn["popup_preview#enable()"]()
+hook_source = '''
+  call popup_preview#enable()
 '''
 
 [[plugins]]
 repo = 'matsui54/denops-signature_help'
 on_source = 'ddc.vim'
-lua_source = '''
-  vim.fn["signature_help#enable()"]()
+hook_source = '''
+  call signature_help#enable()
 '''
 
 [[plugins]]
@@ -132,11 +139,6 @@ repo = 'hrsh7th/vim-vsnip-integ'
 
 [[plugins]]
 repo = 'rafamadriz/friendly-snippets'
-
-
-[[plugins]]
-repo = 'Shougo/ddc-source-copilot'
-depends = ['copilot']
 
 [[plugins]]
 repo = 'Shougo/neosnippet.vim'
