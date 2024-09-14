@@ -28,7 +28,8 @@ jobs:
   build-dokcer-image:
     needs: lint
     uses: ./.github/workflows/build-docker-image.yml
-    secrets: inherit
+    secrets:
+      CR_PAT: ${{ secrets.CR_PAT }}
 
   # 別で定義したworkflowを呼び出すジョブ
   setup-base:
