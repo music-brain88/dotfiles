@@ -6,7 +6,9 @@ lua_source = '''
 require'nvim-treesitter.configs'.setup {
   ensure_installed = {
     "lua",
+
     "rust",
+
     "python",
     "fish",
     "bash",
@@ -20,6 +22,10 @@ require'nvim-treesitter.configs'.setup {
     "make",
     "yaml",
     "jsonnet",
+    "hurl",
+    "vim",
+    "regex",
+    "css",
   },
 
   sync_install = false,
@@ -28,17 +34,41 @@ require'nvim-treesitter.configs'.setup {
 
   highlight = {
     enable = true,
-    disable = {
-      "lua",
-      "rust",
-      "vue",
-      "toml",
+    disable = { "vue" },
+    additional_vim_regex_highlighting = false,
+    use_languagetree = true,
   },
 
-  additional_vim_regex_highlighting = false,
-  },
   indent = {
     enable = true,
   },
+
+  autotag = {
+
+    enable = true,
+  },
+
+
+  incremental_selection = {
+
+    enable = true,
+    keymaps = {
+
+      init_selection = "gnn",
+      node_incremental = "grn",
+
+      scope_incremental = "grc",
+      node_decremental = "grm",
+    },
+  },
 }
+
+-- Treesitter folding
+vim.opt.foldmethod = "expr"
+vim.opt.foldexpr = "nvim_treesitter#foldexpr()"
+-- Unfold all blocks when opening a file
+vim.opt.foldlevel = 99
+
+-- Optional: Enable Treesitter based indentation
+vim.opt.indentexpr = "nvim_treesitter#indent()"
 '''
