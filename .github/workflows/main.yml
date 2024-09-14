@@ -24,6 +24,7 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           scandir: '.bin'  # '.bin' ディレクトリ内のシェルスクリプトをチェック
+
   build-dokcer-image:
     needs: lint
     uses: ./.github/workflows/build-docker-image.yml
