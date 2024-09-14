@@ -31,7 +31,7 @@ jobs:
 
   # 別で定義したworkflowを呼び出すジョブ
   setup-base:
-    needs: [lint, build-docker-image]  # lint ジョブが成功した後にのみ実行
+    needs: build-docker-image  # lint ジョブが成功した後にのみ実行
     uses: ./.github/workflows/setup-base.yml
     secrets: inherit
     with:
@@ -40,7 +40,7 @@ jobs:
 
   # ローカルで使用しているRust ツール確認する
   setup-rust:
-    needs: [lint, build-docker-image]  # lint ジョブが成功した後にのみ実行
+    needs: build-docker-image  # lint ジョブが成功した後にのみ実行
     name: Test Setup Rust
     uses: ./.github/workflows/setup-rust.yml
     secrets: inherit
@@ -48,13 +48,13 @@ jobs:
 
   # 別で定義したworkflowを呼び出すジョブ
   setup-neovim:
-    needs: [lint, build-docker-image]  # lint ジョブが成功した後にのみ実行
+    needs: build-docker-image  # lint ジョブが成功した後にのみ実行
     name: Test Setup Neovim
     uses: ./.github/workflows/setup-neovim.yml
     secrets: inherit
 
   setup-terminal:
-    needs: [lint, build-docker-image]  # lint ジョブが成功した後にのみ実行
+    needs: build-docker-image  # lint ジョブが成功した後にのみ実行
     name: Test Setup Terminal
     uses: ./.github/workflows/setup-terminal.yml
     secrets: inherit
@@ -62,7 +62,7 @@ jobs:
 
 
   setup-fish:
-    needs: [lint, build-docker-image]  # lint ジョブが成功した後にのみ実行
+    needs: build-docker-image  # lint ジョブが成功した後にのみ実行
     name: Test Setup Fish
     uses: ./.github/workflows/setup-fish.yml
     secrets: inherit
