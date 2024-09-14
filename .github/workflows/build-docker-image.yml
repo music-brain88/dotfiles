@@ -8,7 +8,6 @@ on:
         required: true
 
     outputs:
-
       image_name:
         description: "The name of the built Docker image"
         value: ${{ jobs.build.outputs.image_name }}
