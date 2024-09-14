@@ -6,8 +6,8 @@ on:
     secrets:
       CR_PAT:
         required: true
-
     outputs:
+
       image_name:
         description: "The name of the built Docker image"
         value: ${{ jobs.build.outputs.image_name }}
@@ -40,8 +40,8 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/dotfiles-env:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository }}/dotfiles-env:${{ github.sha }}
 
       - name: Output image name
         id: image_name
-        run: echo "value=ghcr.io/${{ github.repository_owner }}/dotfiles-env:${{ github.sha }}" >> $GITHUB_OUTPUT
+        run: echo "value=ghcr.io/${{ github.repository }}/dotfiles-env:${{ github.sha }}" >> $GITHUB_OUTPUT
