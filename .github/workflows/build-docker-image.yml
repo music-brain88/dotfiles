@@ -1,0 +1,33 @@
+name: Build Docker Image
+
+
+on:
+  workflow_call:
+    outputs:
+      image_name:
+        description: "The name of the built Docker image"
+        value: ${{ jobs.build.outputs.image_name }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image_name: ${{ steps.image_name.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}/dotfiles-env:${{ github.sha }}
+
+
+      - name: Output image name
+        id: image_name
+
+        run: echo "value=ghcr.io/${{ github.repository }}/dotfiles-env:${{ github.sha }}" >> $GITHUB_OUTPUT

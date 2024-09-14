@@ -24,11 +24,16 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           scandir: '.bin'  # '.bin' ディレクトリ内のシェルスクリプトをチェック
+  build-dokcer-image:
+    needs: lint
+    uses: ./.github/workflows/build-dokcer-image.yml
+    secrets: inherit
 
   # 別で定義したworkflowを呼び出すジョブ
   setup-base:
     needs: lint  # lint ジョブが成功した後にのみ実行
     uses: ./.github/workflows/setup-base.yml
+    secrets: inherit
 
 
   # ローカルで使用しているRust ツール確認する
@@ -36,6 +41,7 @@ jobs:
     needs: setup-base
     name: Test Setup Rust
     uses: ./.github/workflows/setup-rust.yml
+    secrets: inherit
 
 
   # 別で定義したworkflowを呼び出すジョブ
@@ -43,17 +49,21 @@ jobs:
     needs: setup-base
     name: Test Setup Neovim
     uses: ./.github/workflows/setup-neovim.yml
+    secrets: inherit
 
   setup-terminal:
     needs: setup-base
     name: Test Setup Terminal
     uses: ./.github/workflows/setup-terminal.yml
+    secrets: inherit
+
 
 
   setup-fish:
     needs: setup-base
     name: Test Setup Fish
     uses: ./.github/workflows/setup-fish.yml
+    secrets: inherit
 
 
   verify:

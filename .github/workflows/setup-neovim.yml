@@ -3,34 +3,30 @@ name: Setup Neovim
 
 on:
   workflow_call:
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+
 
 jobs:
-  common-setup:
-    uses: ./.github/workflows/setup-common.yml
-
-  # DOCUMENTATION:
-  # common-setup で設定した matrix でinstallされた環境はここでは使えない
   setup-neovim:
-    needs: common-setup
     name: Setup Neovim Environment
     runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{fromJson(needs.common-setup.outputs.matrix)}}
-    container: ${{ matrix.container }}
-
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up environment
-      run: |
-        if [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
-          # Arch Linux
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm neovim tmux fish curl git sudo tar cmake pkg-config protobuf
-        else
-          # Ubuntu
-          apt-get update
-          apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
-        fi
+
+    - name: Log in to GitHub Container Registry
+
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Setup Neovim
-      run: .bin/utils/setup_neovim.sh
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          ghcr.io/${{ github.repository }}/dotfiles-env:${{ github.sha }} \
+          .bin/utils/setup_neovim.sh
