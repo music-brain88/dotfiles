@@ -28,10 +28,10 @@ WORKDIR /root
 COPY . dotfiles/
 
 # セットアップスクリプトの実行
-RUN cd dotfiles && make install
+# RUN cd dotfiles && make install
 
 # デプロイスクリプトの実行
-RUN cd dotfiles && make deploy
+# RUN cd dotfiles && make deploy
 
 
 CMD ["bash"]
