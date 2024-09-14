@@ -78,6 +78,15 @@ action = "DecreaseFontSize"
 key = "Minus"
 mods = "Control"
 
+[[keyboard.bindings]]
+action = "ToggleFullscreen"
+key = "F11"
+
+[[keyboard.bindings]]
+action = "CreateNewWindow"
+key = "N"
+mods = "Control|Shift"
+
 [shell]
 args = ["--login", "--command", "tmux attach || tmux"]
 program = "/usr/bin/fish"
