@@ -41,8 +41,8 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}/dotfiles-env:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository_owner }}/dotfiles-env:${{ github.sha }}
 
       - name: Output image name
         id: image_name
-        run: echo "value=ghcr.io/${{ github.repository }}/dotfiles-env:${{ github.sha }}" >> $GITHUB_OUTPUT
+        run: echo "value=ghcr.io/${{ github.repository_owner }}/dotfiles-env:${{ github.sha }}" >> $GITHUB_OUTPUT
