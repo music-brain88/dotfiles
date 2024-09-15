@@ -16,23 +16,13 @@ jobs:
     container:
       image: ${{ inputs.image_name }}
     steps:
-    - name: Check environment
+    - name: Debug Environment
       run: |
-        echo "Current user: $(whoami)"
-        echo "Current directory: $(pwd)"
-        echo "Home directory: $HOME"
-        echo "PATH: $PATH"
-        echo "Installed packages:"
-        if command -v pacman &> /dev/null; then
-          pacman -Q | grep nvim
-          echo "Arch"
-        elif command -v dpkg &> /dev/null; then
-          dpkg -l
-          echo "Ubuntu"
-        fi
-        echo "Neovim installation:"
-        which nvim || echo "nvim not found"
-        nvim --version || echo "nvim --version failed"
+        echo "Container image: ${{ inputs.image_name }}"
+        cat /etc/os-release
+        uname -a
+        which pacman || echo "pacman not found"
+        which apt-get || echo "apt-get not found"
     - uses: actions/checkout@v4
     - name: Setup Neovim
       run: .bin/utils/setup_neovim.sh
