@@ -3,25 +3,22 @@ name: Build Docker Image
 
 on:
   workflow_call:
-    outputs:
-      image_name:
-        description: "The name of the built Docker image"
-        value: ${{ jobs.build.outputs.image_name }}
+    inputs:
+      push_image:
+        description: 'Whether to push the image to the registry'
+        required: false
+        default: true
+        type: boolean
+
 
 jobs:
 
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      image_name: ${{ steps.set_image_name.outputs.value }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Log in to GitHub Container Registry
-
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -36,8 +33,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}/dotfiles-env:${{ github.sha }}
-
-      - name: Output image name
-        id: set_image_name
-        run: echo "value=ghcr.io/${{ github.repository }}/dotfiles-env:${{ github.sha }}" >> $GITHUB_OUTPUT
+          tags: ghcr.io/${{ github.repository }}/dotfiles-env:latest

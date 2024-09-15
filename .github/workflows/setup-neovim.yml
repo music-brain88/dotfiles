@@ -3,10 +3,6 @@ name: Setup Neovim
 
 on:
   workflow_call:
-    inputs:
-      image_name:
-        required: true
-        type: string
 
 
 jobs:
@@ -14,7 +10,10 @@ jobs:
     name: Setup Neovim Environment
     runs-on: ubuntu-latest
     container:
-      image: ${{ inputs.image_name }}
+      image: ghcr.io/${{ github.repository }}/dotfiles-env:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - name: Debug Image Input
       run: |
