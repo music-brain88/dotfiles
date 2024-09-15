@@ -16,7 +16,21 @@ jobs:
     container:
       image: ${{ needs.build-docker-image.outputs.image_name }}
     steps:
+    - name: Check environment
+      run: |
+        echo "Current user: $(whoami)"
+        echo "Current directory: $(pwd)"
+        echo "Home directory: $HOME"
+        echo "PATH: $PATH"
+        echo "Installed packages:"
+        if command -v pacman &> /dev/null; then
+          pacman -Q | grep nvim
+        elif command -v dpkg &> /dev/null; then
+          dpkg -l | grep nvim
+        fi
+        echo "Neovim installation:"
+        which nvim || echo "nvim not found"
+        nvim --version || echo "nvim --version failed"
     - uses: actions/checkout@v4
-
     - name: Setup Neovim
       run: .bin/utils/setup_neovim.sh
