@@ -22,6 +22,7 @@ jobs:
         uname -a
         which pacman || echo "pacman not found"
         which apt-get || echo "apt-get not found"
+
     - uses: actions/checkout@v4
     - name: Setup Neovim
       run: .bin/utils/setup_neovim.sh
