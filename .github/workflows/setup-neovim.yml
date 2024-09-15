@@ -28,6 +28,7 @@ jobs:
           echo "Arch"
         elif command -v dpkg &> /dev/null; then
           dpkg -l | grep nvim
+          echo "Ubuntu"
         fi
         echo "Neovim installation:"
         which nvim || echo "nvim not found"
