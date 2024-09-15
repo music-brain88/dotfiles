@@ -25,7 +25,7 @@ jobs:
         with:
           scandir: '.bin'  # '.bin' ディレクトリ内のシェルスクリプトをチェック
 
-  build-dokcer-image:
+  build-docker-image:
     needs: lint
     uses: ./.github/workflows/build-docker-image.yml
 
