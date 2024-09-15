@@ -39,5 +39,5 @@ jobs:
           tags: ghcr.io/${{ github.repository }}/dotfiles-env:${{ github.sha }}
 
       - name: Output image name
-        id: image_name
+        id: set_image_name
         run: echo "value=ghcr.io/${{ github.repository }}/dotfiles-env:${{ github.sha }}" >> $GITHUB_OUTPUT
