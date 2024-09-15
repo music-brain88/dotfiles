@@ -20,6 +20,7 @@ fi
 if ! command -v rustup > /dev/null 2>&1; then
     echo "Rustup not found. Installing Rust..."
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    # shellcheck source=/dev/null
     source $HOME/.cargo/env
 else
     echo "Rustup found. Updating Rust..."

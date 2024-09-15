@@ -20,6 +20,7 @@ RUN pacman -Syu --noconfirm && \
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
+RUN rustup default stable
 
 # 作業ディレクトリの設定
 WORKDIR /root
