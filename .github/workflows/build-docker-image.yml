@@ -16,7 +16,7 @@ jobs:
       contents: read
       packages: write
     outputs:
-      image_name: ${{ steps.set_image_name.outputs.image_name }}
+      image_name: ${{ steps.set_image_name.outputs.value }
     steps:
       - uses: actions/checkout@v4
 

@@ -28,8 +28,6 @@ jobs:
   build-docker-image:
     needs: lint
     uses: ./.github/workflows/build-docker-image.yml
-    outputs:
-      image_name: ${{ jobs.build.outputs.image_name }}
 
   # 別で定義したworkflowを呼び出すジョブ
   setup-base:
