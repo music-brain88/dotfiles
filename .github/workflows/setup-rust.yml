@@ -4,11 +4,7 @@ on:
   workflow_call:
 
 jobs:
-  common-setup:
-    uses: ./.github/workflows/setup-common.yml
-
   setup-rust:
-    needs: common-setup
     name: Setup Rust Environment
     runs-on: ubuntu-latest
     container:

@@ -5,11 +5,7 @@ on:
   workflow_call:
 
 jobs:
-  common-setup:
-    uses: ./.github/workflows/setup-common.yml
-
-  setup-neovim:
-    needs: common-setup
+  setup-terminal:
     name: Setup Terminal Environment
     runs-on: ubuntu-latest
     container:
