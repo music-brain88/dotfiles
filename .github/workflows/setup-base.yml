@@ -14,7 +14,10 @@ jobs:
     name: Setup Base Environment
     runs-on: ubuntu-latest
     container:
-      image: ${{ needs.build-docker-image.outputs.image_name }}
+      image: ghcr.io/${{ github.repository }}/dotfiles-env:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
     - uses: actions/checkout@v4
