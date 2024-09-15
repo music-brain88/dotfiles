@@ -11,9 +11,8 @@ jobs:
     needs: common-setup
     name: Setup Rust Environment
     runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{fromJson(needs.common-setup.outputs.matrix)}}
-    container: ${{ matrix.container }}
+    container:
+      image: ${{ needs.build-docker-image.outputs.image_name }}
 
     steps:
     - uses: actions/checkout@v4

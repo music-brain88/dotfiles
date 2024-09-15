@@ -52,6 +52,8 @@ jobs:
     name: Test Setup Neovim
     uses: ./.github/workflows/setup-neovim.yml
     secrets: inherit
+    with:
+      image_name: ${{ needs.build-docker-image.outputs.image_name }}
 
   setup-terminal:
     needs: build-docker-image  # lint ジョブが成功した後にのみ実行
@@ -66,6 +68,8 @@ jobs:
     name: Test Setup Fish
     uses: ./.github/workflows/setup-fish.yml
     secrets: inherit
+    with:
+      image_name: ${{ needs.build-docker-image.outputs.image_name }}
 
 
   verify:

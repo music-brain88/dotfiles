@@ -3,6 +3,10 @@ name: Setup Terminal
 
 on:
   workflow_call:
+    inputs:
+      image_name:
+        required: true
+        type: string
 
 jobs:
   common-setup:
@@ -12,9 +16,8 @@ jobs:
     needs: common-setup
     name: Setup Terminal Environment
     runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{fromJson(needs.common-setup.outputs.matrix)}}
-    container: ${{ matrix.container }}
+    container:
+      image: ${{ needs.build-docker-image.outputs.image_name }}
 
     steps:
     - uses: actions/checkout@v4
