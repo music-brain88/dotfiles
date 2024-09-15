@@ -25,6 +25,7 @@ jobs:
         echo "Installed packages:"
         if command -v pacman &> /dev/null; then
           pacman -Q | grep nvim
+          echo "Arch"
         elif command -v dpkg &> /dev/null; then
           dpkg -l | grep nvim
         fi
