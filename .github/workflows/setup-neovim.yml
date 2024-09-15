@@ -18,7 +18,7 @@ jobs:
     steps:
     - name: Debug Image Input
       run: |
-      echo "Received image name: ${{ inputs.image_name }}"
+        echo "Received image name: ${{ inputs.image_name }}"
     - name: Debug Environment
       run: |
         echo "Container image: ${{ inputs.image_name }}"
