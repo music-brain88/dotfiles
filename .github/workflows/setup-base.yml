@@ -7,11 +7,9 @@ jobs:
   setup-base:
     name: Setup Base Environment
     runs-on: ubuntu-latest
+    container:
+      image: ${{ needs.build-docker-image.outputs.image_name }}
 
-    strategy:
-      matrix:
-        container:
-          image: ${{ needs.build-docker-image.outputs.image_name }}
     steps:
     - uses: actions/checkout@v4
     - name: Test Setup base Script
