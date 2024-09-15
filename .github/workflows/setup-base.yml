@@ -2,6 +2,12 @@ name: Setup Base
 
 on:
   workflow_call:
+    inputs:
+      image_name:
+        required: true
+        type: string
+
+
 
 jobs:
   setup-base:
