@@ -14,7 +14,7 @@ jobs:
     name: Setup Neovim Environment
     runs-on: ubuntu-latest
     container:
-      image: ${{ needs.build-docker-image.outputs.image_name }}
+      image: ${{ inputs.image_name }}
     steps:
     - name: Check environment
       run: |
