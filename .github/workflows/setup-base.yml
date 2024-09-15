@@ -17,6 +17,21 @@ jobs:
       image: ${{ needs.build-docker-image.outputs.image_name }}
 
     steps:
+    - name: Check environment
+      run: |
+        echo "Current user: $(whoami)"
+        echo "Current directory: $(pwd)"
+        echo "Home directory: $HOME"
+        echo "PATH: $PATH"
+        echo "Installed packages:"
+        if command -v pacman &> /dev/null; then
+          pacman -Q
+        elif command -v dpkg &> /dev/null; then
+          dpkg -l
+        fi
+        echo "Neovim installation:"
+        which nvim || echo "nvim not found"
+        nvim --version || echo "nvim --version failed"
     - uses: actions/checkout@v4
     - name: Test Setup base Script
       run: .bin/utils/setup_base.sh
