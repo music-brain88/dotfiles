@@ -26,8 +26,8 @@ jobs:
         if command -v pacman &> /dev/null; then
           pacman -Q | grep nvim
           echo "Arch"
-        elif command -v apt &> /dev/null; then
-          dpkg -l | grep nvim
+        elif command -v dpkg &> /dev/null; then
+          dpkg -l
           echo "Ubuntu"
         fi
         echo "Neovim installation:"
