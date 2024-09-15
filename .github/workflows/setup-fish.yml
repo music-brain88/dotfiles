@@ -3,18 +3,9 @@ name: Setup Fish Shell
 
 on:
   workflow_call:
-    inputs:
-      image_name:
-        required: true
-        type: string
 
 jobs:
-  common-setup:
-    uses: ./.github/workflows/setup-common.yml
-
-  setup-neovim:
-    needs: common-setup
-    name: Setup Fish Shell
+  setup-fish:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/dotfiles-env:latest
