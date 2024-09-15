@@ -19,6 +19,7 @@ fi
 # Create Neovim config directory if it doesn't exist
 
 mkdir -p "$NVIM_CONFIG_DIR"
+mkdir -p "$DEIN_DIR"
 
 
 # Install dein if not already installed
