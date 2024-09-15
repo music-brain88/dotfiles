@@ -60,6 +60,8 @@ jobs:
     name: Test Setup Terminal
     uses: ./.github/workflows/setup-terminal.yml
     secrets: inherit
+    with:
+      image_name: ${{ needs.build-docker-image.outputs.image_name }}
 
 
 
