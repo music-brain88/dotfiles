@@ -65,6 +65,11 @@ jobs:
     needs: [setup-base, setup-rust, setup-neovim, setup-terminal, setup-fish]
     name: Verify Setup
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/dotfiles-env:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
