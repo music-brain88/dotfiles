@@ -12,8 +12,6 @@ set -x PATH $HOME/.cargo/bin $PATH
 # set pulimi path
 set -x PATH $HOME/.pulumi/bin $PATH
 
-# set mise path
-~/.local/bin/mise activate fish | source
 
 # set exa alias
 if type -q test eza

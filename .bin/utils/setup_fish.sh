@@ -31,6 +31,18 @@ fi
 fish -c "fisher install jethrokuan/z"
 fish -c "fisher install edc/bass"
 
+
+# Rustup and Rust toolchain installation
+if ! command -v rustup > /dev/null 2>&1; then
+    echo "Rustup not found. Installing Rust..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    # shellcheck source=/dev/null
+    source "$HOME/.cargo/env"
+fi
+
+# Set default toolchain
+rustup default stable
+
 # SetUp starship
 if command -v starship > /dev/null 2>&1; then
   echo "Starship found. Skipping..."

@@ -52,7 +52,7 @@ lua_source = '''
   end
 
   -- 設定する言語サーバーのリスト
-  local servers = {'rust_analyzer', 'pyright', 'tsserver'}
+  local servers = {'rust_analyzer', 'pyright', 'ts_ls'}
 
   -- 各言語サーバーの設定
   for _, lsp in ipairs(servers) do
@@ -68,20 +68,20 @@ lua_source = '''
 repo = 'nvimtools/none-ls.nvim'
 on_event = 'BufEnter'
 lua_source = '''
-  local none_ls = require('none-ls')
+  local null_ls = require('null-ls')
   local augroup = vim.api.nvim_create_augroup("LspFormatting", {})
-  none_ls.setup({
+  null_ls.setup({
     sources = {
       null_ls.builtins.formatting.prettier,
     },
     on_attach = function(client, bufnr)
       if client.supports_method('textDocument/formatting') then
-        vim.api.nvim_clear_autocmds({ group = augroup, bufnr = bufnr })
-        vim.api_nvim_create_autocmd("BufWritePre", {
+        vim.api.nvim_clear_autocmds({ group = augroup, buffer = bufnr })
+        vim.api.nvim_create_autocmd("BufWritePre", {
           group = augroup,
           buffer = bufnr,
           callback = function()
-            vim.lsp.buf.format({ async = false })
+            vim.lsp.buf.format({ bufnr = bufnr })
           end,
         })
       end

@@ -37,6 +37,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   local dein_toml = dein_toml_dir .. '/dein.toml'
   local dashboard_toml = dein_toml_dir .. '/dashboard.toml'
   local style_toml = dein_toml_dir .. '/style.toml'
+  local copilot_toml = dein_toml_dir .. '/copilot.toml'
 
   -- status line
   local lualine_toml = dein_toml_dir .. status_line_dir .. '/lualine.toml'
@@ -56,6 +57,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
     dein_toml,
     dashboard_toml,
     style_toml,
+    copilot_toml,
 
     -- status line
     lualine_toml,
@@ -72,6 +74,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   vim.call('dein#load_toml', dein_toml, {lazy = 0})
   vim.call('dein#load_toml', dashboard_toml, {lazy = 0})
   vim.call('dein#load_toml', style_toml, {lazy = 0})
+  vim.call('dein#load_toml', copilot_toml, {lazy = 0})
 
   -- status line
   vim.call('dein#load_toml', lualine_toml, {lazy = 0})

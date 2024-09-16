@@ -1,0 +1,101 @@
+[[plugins]]
+repo = 'github/copilot.vim'
+on_event = 'InsertEnter'
+
+
+[[plugins]]
+repo = 'Shougo/ddc-source-copilot'
+depends = ['copilot.vim', 'ddc.vim']
+
+[[plugins]]
+repo = 'CopilotC-Nvim/CopilotChat.nvim'
+depends = ['copilot.vim', 'plenary.nvim']
+rev = 'canary'
+hook_add = '''
+lua << EOF
+local copilot_chat = require("CopilotChat")
+local config = {
+  debug = false, -- デバッグモードを無効化
+
+  show_help = true, -- ヘルプメッセージを表示
+  prompts = {
+    Explain = {
+      prompt = "このコードの動作を詳細に説明してください。コードの各部分が何を行っているのか、全体の流れはどうなっているのか、具体的に解説してください。",
+    },
+    Review = {
+      prompt = "このコードをレビューし、改善点を提案してください。効率性、可読性、ベストプラクティスの観点から、具体的な修正案を提示してください。",
+    },
+    Tests = {
+      prompt = "このコードに対する適切な単体テストを提案してください。テストすべき主要なシナリオ、エッジケース、想定される入力と期待される出力を含めて説明してください。",
+    },
+    Refactor = {
+      prompt = "このコードをリファクタリングして、可読性と効率を向上させてください。具体的な変更点とその理由を説明し、リファクタリング後のコードも提示してください。",
+    },
+    Debug = {
+      prompt = "このエラーメッセージを解析し、問題の原因と解決策を提案してください。",
+    },
+    Document = {
+      prompt = "この関数またはクラスのドキュメントを生成してください。目的、パラメータ、戻り値、使用例を含めてください。",
+    },
+    CodeQuality = {
+      prompt = "このコードの品質を分析し、改善点を提案してください。パフォーマンス、可読性、保守性の観点から具体的な提案をしてください。",
+    },
+  },
+  auto_follow_cursor = true, -- カーソル位置に基づいて自動的にコンテキストを更新
+  window = {
+    layout = 'float', -- 'vertical', 'horizontal', 'float', 'replace'
+    width = 0.8, -- fractional width of parent, or absolute width in columns when > 1
+    height = 0.8, -- fractional height of parent, or absolute height in rows when > 1
+    -- Options below only apply to floating windows
+    relative = 'editor', -- 'editor', 'win', 'cursor', 'mouse'
+    border = 'single', -- 'none', single', 'double', 'rounded', 'solid', 'shadow'
+
+    row = nil, -- row position of the window, default is centered
+    col = nil, -- column position of the window, default is centered
+    title = 'Copilot Chat', -- title of chat window
+    footer = nil, -- footer of chat window
+
+    zindex = 1, -- determines if window is on top or below other floating windows
+  },
+}
+
+copilot_chat.setup(config)
+
+-- バッファ全体の内容を使ってCopilotとチャットする新しい関数
+function CopilotChatBuffer()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local buffer_content = table.concat(lines, "\n")
+  
+  print("Buffer content length: " .. #buffer_content)
+  
+  local input = vim.fn.input("Chat with entire buffer content: ")
+  if input ~= "" then
+    print("User input: " .. input)
+    
+    vim.schedule(function()
+      require("CopilotChat").ask(input, {
+        selection = function()
+          return buffer_content
+        end,
+        context = "buffer"
+      })
+    end)
+  end
+end
+-- 既存のキーマッピング
+vim.keymap.set('n', '<leader>ct', '<cmd>CopilotChatToggle<cr>', { noremap = true, silent = true, desc = "Toggle Copilot Chat" })
+vim.keymap.set('n', '<leader>cm', '<cmd>CopilotChatCommit<cr>', { noremap = true, silent = true, desc = "Copilot Chat Commit" })
+vim.keymap.set('v', '<leader>ce', function() require('CopilotChat').ask(config.prompts.Explain.prompt) end, { noremap = true, silent = true, desc = "Copilot Explain (Visual)" })
+vim.keymap.set('n', '<leader>ce', function() require('CopilotChat').ask(config.prompts.Explain.prompt) end, { noremap = true, silent = true, desc = "Copilot Explain (Normal)" })
+vim.keymap.set('n', '<leader>cr', function() require('CopilotChat').ask(config.prompts.Review.prompt) end, { noremap = true, silent = true, desc = "Copilot Review" })
+vim.keymap.set('n', '<leader>cf', function() require('CopilotChat').ask(config.prompts.Refactor.prompt) end, { noremap = true, silent = true, desc = "Copilot Refactor" })
+vim.keymap.set('n', '<leader>cd', function() require('CopilotChat').ask(config.prompts.Debug.prompt) end, { noremap = true, silent = true, desc = "Copilot Debug" })
+vim.keymap.set('n', '<leader>cc', function() require('CopilotChat').ask(config.prompts.Document.prompt) end, { noremap = true, silent = true, desc = "Copilot Document" })
+vim.keymap.set('v', '<leader>cc', function() require('CopilotChat').ask(config.prompts.Document.prompt) end, { noremap = true, silent = true, desc = "Copilot Document" })
+vim.keymap.set('n', '<leader>cq', function() require('CopilotChat').ask(config.prompts.CodeQuality.prompt) end, { noremap = true, silent = true, desc = "Copilot Code Quality" })
+-- <leader>qq (Copilot Chat Quick) で Copilot とチャットする
+vim.api.nvim_set_keymap("n", "<leader>qq", "<cmd>lua CopilotChatBuffer()<cr>", { noremap = true, silent = true })
+
+EOF
+'''

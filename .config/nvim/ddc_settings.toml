@@ -7,15 +7,17 @@ repo = 'Shougo/ddc-ui-native'
 [[plugins]]
 repo = 'Shougo/ddc.vim'
 on_event = 'InsertEnter'
-depends = ['denops.vim', 'pum.vim', 'ddc-ui-native']
+depends = ['denops.vim', 'pum.vim', 'ddc-ui-native', 'copilot.vim', 'neosnippet.vim']
 hook_add = '''
-inoremap <Tab>   <Cmd>call pum#map#insert_relative(+1)<CR>
-inoremap <S-Tab> <Cmd>call pum#map#insert_relative(-1)<CR>
+" Copilot
+" <A-[>: previous completion.
+inoremap <A-[> <Plug>(copilot-previous)
+inoremap <A-]> <Plug>(copilot-next)
 '''
 hook_source = '''
   let g:copilot_no_maps = v:true
   call ddc#custom#patch_global('ui', 'native')
-  call ddc#custom#patch_global('sources', ['lsp' ,'around', 'file', 'copilot'])
+  call ddc#custom#patch_global('sources', ['lsp' ,'around', 'file', 'copilot', 'neosnippet', 'cmdline', 'cmdline-history'])
   call ddc#custom#patch_global('sourceOptions', #{
         \   _:#{
         \   matchers: ['matcher_fuzzy'],
@@ -25,30 +27,54 @@ hook_source = '''
         \     mark: ' Copilot',
         \     matchers: [],
         \     minAutoCompleteLength: 0,
-        \     isVolatile: false
+        \     isVolatile: v:true,
         \   },
         \   around:#{
         \   mark: ' Text',
         \  },
         \   nvim-lsp:#{
         \   mark: ' LSP',
-        \   forceCompletionPattern: '\.\w*|:\w*|->\w*'
+        \   dup: 'keep',
+        \   keywordPattern: '\k+',
+        \   forceCompletionPattern: '\\.\\w*|::\\w*|->\\w*',
         \  },
         \   file: #{
         \   mark: ' File',
-        \   filenameChars: "[:keyword:]."
         \   isVolatile: v:true,
-        \   forceCompletionPattern: '\S/\S*'
-        \  }
+        \   forceCompletionPattern: '\S/\S*',
+        \  },
+        \   neosnippet: #{
+        \   mark: ' Snippet',
+        \   dup: v:true,
+        \   },
+        \   cmdline: #{
+        \   mark: ' Cmdline',
+        \   },
+        \   cmdline_history: #{
+        \   mark: ' Cmdline History',
+        \  },
         \ })
-  " Mappings
-  " <TAB>: completion.
-  inoremap <silent><expr> <TAB>
-  \ pumvisible() ? '<C-n>' :
-  \ (col('.') <= 1 <Bar><Bar> getline('.')[col('.') - 2] =~# '\s') ?
-  \ '<TAB>' : ddc#map#manual_complete()
+
+" Customize settings for specific filetypes
+call ddc#custom#patch_filetype(['rs', 'toml', 'py'], 'sources', ['lsp', 'around', 'file', 'neosnippet', 'copilot'])
+call ddc#custom#patch_filetype('markdown', 'sourceParams', #{
+\   around: #{
+\     maxSize: 100,
+\   },
+\ })
+
+
+" Mappings
+" <TAB>: completion.
+inoremap <silent><expr> <TAB>
+\ pumvisible() ? pum#map#insert_relative(+1) :
+\ (col('.') <= 1 <Bar><Bar> getline('.')[col('.') - 2] =~# '\s') ?
+\ '<TAB>' : ddc#map#manual_complete()
+
+inoremap <silent><expr> <S-TAB>
+\ pumvisible() ? pum#map#insert_relative(-1) : '<C-n>'
   " <S-TAB>: completion back.
-  inoremap <expr><S-TAB>  pumvisible() ? '<C-p>' : '<C-h>'
+  inoremap <expr><S-TAB>  pumvisible() ? '<C-p>' : '<C-n>'
   call ddc#enable()
 '''
 
@@ -77,17 +103,25 @@ repo = 'Shougo/ddc-nvim-lsp'
 on_source = 'ddc.vim'
 
 [[plugins]]
+repo = 'Shougo/ddc-source-cmdline'
+on_source = 'ddc.vim'
+
+[[plugins]]
+repo = 'Shougo/ddc-source-cmdline-history'
+on_source = 'ddc.vim'
+
+[[plugins]]
 repo = 'matsui54/denops-popup-preview.vim'
 on_source = 'ddc.vim'
-lua_source = '''
-  vim.fn["popup_preview#enable()"]()
+hook_source = '''
+  call popup_preview#enable()
 '''
 
 [[plugins]]
 repo = 'matsui54/denops-signature_help'
 on_source = 'ddc.vim'
-lua_source = '''
-  vim.fn["signature_help#enable()"]()
+hook_source = '''
+  call signature_help#enable()
 '''
 
 [[plugins]]
@@ -113,10 +147,24 @@ repo = 'hrsh7th/vim-vsnip-integ'
 [[plugins]]
 repo = 'rafamadriz/friendly-snippets'
 
+[[plugins]]
+repo = 'Shougo/neosnippet.vim'
+rev = 'master'
+on_event = 'InsertEnter'
+depends = ['neosnippet-snippets']
+hook_source = '''
+  imap <C-k>     <Plug>(neosnippet_expand_or_jump)
+  smap <C-k>     <Plug>(neosnippet_expand_or_jump)
+  xmap <C-k>     <Plug>(neosnippet_expand_target)
+  let g:neosnippet#enable_completed_snippet = 1
+  let g:neosnippet#enable_snipmate_compatibility = 1
+
+  let g:neosnippet#snippets_directory = '~/.cache/dein/repos/github.com/Shougo/neosnippet-snippets/neosnippets'
+'''
 
 [[plugins]]
-repo = 'Shougo/ddc-source-copilot'
-depends = ['copilot']
+repo = 'Shougo/neosnippet-snippets'
+rev = 'master'
 #-----------------------------------------------------------------------
 # end of ddc settings
 #-----------------------------------------------------------------------

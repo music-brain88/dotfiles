@@ -1,0 +1,54 @@
+name: Common Setup
+
+on:
+  workflow_call:
+    outputs:
+        matrix:
+          description: 'Matrix of OS and container configuration'
+          value: ${{ jobs.setup.outputs.matrix }}
+
+
+jobs:
+  setup:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container: ['ubuntu:latest', 'archlinux:base-devel']
+    container: ${{ matrix.container }}
+
+    steps:
+      - name: Set up environment
+        run: |
+          if [ "${{ matrix.container }}" = "archlinux:base-devel" ]; then
+            # Arch Linux
+            pacman -Syu --noconfirm
+            pacman -S --noconfirm neovim tmux fish curl git sudo tar cmake pkg-config protobuf
+          else
+            # Ubuntu
+            apt-get update
+            apt-get install -y neovim tmux fish curl git build-essential sudo tar cmake
+          fi
+      - name: Setup Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustc --version || echo "Rust installation failed"
+          cargo --version || echo "Cargo installation failed"
+
+      - name: Set matrix outputs
+        id: set-matrix
+        run: |
+          echo 'matrix={"container":["ubuntu:latest","archlinux:base-devel"]}' >> $GITHUB_OUTPUT
+
+
+      - name: Debug output
+        run: |
+          echo "Matrix output: ${{ toJson(matrix) }}"
+          echo "GITHUB_OUTPUT contents:"
+          cat $GITHUB_OUTPUT
+
+    # 他の共通セットアップステップを追加
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}

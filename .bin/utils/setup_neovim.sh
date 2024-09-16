@@ -16,9 +16,22 @@ if ! command -v nvim &> /dev/null; then
     exit 1
 fi
 
+# Rustup and Rust toolchain installation
+if ! command -v rustup > /dev/null 2>&1; then
+    echo "Rustup not found. Installing Rust..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    # shellcheck source=/dev/null
+    source "$HOME/.cargo/env"
+fi
+
+# Set default toolchain
+rustup default stable
+
+
 # Create Neovim config directory if it doesn't exist
 
 mkdir -p "$NVIM_CONFIG_DIR"
+mkdir -p "$DEIN_DIR"
 
 
 # Install dein if not already installed

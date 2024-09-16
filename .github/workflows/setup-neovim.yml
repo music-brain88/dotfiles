@@ -1,0 +1,28 @@
+name: Setup Neovim
+
+
+on:
+  workflow_call:
+
+
+jobs:
+  setup-neovim:
+    name: Setup Neovim Environment
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/dotfiles-env:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+    - name: Debug Environment
+      run: |
+        echo "Container image: ${{ inputs.image_name }}"
+        cat /etc/os-release
+        uname -a
+        which pacman || echo "pacman not found"
+        which apt-get || echo "apt-get not found"
+
+    - uses: actions/checkout@v4
+    - name: Setup Neovim
+      run: .bin/utils/setup_neovim.sh

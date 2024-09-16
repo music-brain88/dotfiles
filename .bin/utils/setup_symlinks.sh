@@ -7,6 +7,15 @@ echo "Creating symlinks..."
 
 DOTFILES_DIR="$HOME/dotfiles"
 
+# XDG_CONFIG_HOMEが設定されていたら
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+
+# Create necessary directories
+mkdir -p "${XDG_CONFIG_HOME}/nvim"
+mkdir -p "${XDG_CONFIG_HOME}/fish"
+mkdir -p "${XDG_CONFIG_HOME}/alacritty"
+mkdir -p "${XDG_CONFIG_HOME}/starship"
 
 # Create symlinks
 ln -snfv "$DOTFILES_DIR/.bashrc" "$HOME/.bashrc"
