@@ -76,7 +76,7 @@ jobs:
       - name: Verify setup
         run: |
           fish -c "echo 'Fish shell is working'"
-          nvim --version
+          nvim -v
           cargo --version
           tmux -V
           git --version
