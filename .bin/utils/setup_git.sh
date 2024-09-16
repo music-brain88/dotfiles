@@ -5,6 +5,19 @@ set -euo pipefail
 echo "Setting up Git..."
 
 ################### Install or update Cargo tools ###################
+
+# Rustup and Rust toolchain installation
+if ! command -v rustup > /dev/null 2>&1; then
+    echo "Rustup not found. Installing Rust..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    # shellcheck source=/dev/null
+    source "$HOME/.cargo/env"
+fi
+
+# Set default toolchain
+rustup default stable
+
+
 # 脳筋的な方法でインストールする
 if command -v delta > /dev/null 2>&1; then
   echo "Delta already installed. Skipping..."
