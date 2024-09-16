@@ -73,6 +73,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+
+      - name: rustup setting
+        run: |
+          rustup default stable
+
       - name: Verify setup
         run: |
           fish -c "echo 'Fish shell is working'"
