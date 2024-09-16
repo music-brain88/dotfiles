@@ -8,6 +8,7 @@ RUN pacman -Syu --noconfirm && \
     make \
     neovim \
     fish \
+    tmux \
     openssh \
     pkg-config \
     cmake \
