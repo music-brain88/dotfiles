@@ -37,7 +37,6 @@ function fish_user_key_bindings
     command find -L \$dir -mindepth 1 \\( -path \$dir'*/\\.*' -o -fstype 'sysfs' -o -fstype 'devfs' -o -fstype 'devtmpfs' \\) -prune \
     -o -type f -print \
     -o -type d -print \
-
     -o -type l -print 2> /dev/null | sed 's@^\./@@'"
 
     test -n "$SKIM_TMUX_HEIGHT"; or set SKIM_TMUX_HEIGHT 40%
