@@ -2,8 +2,21 @@ function fish_user_key_bindings
   # Ctrl + y を潰す理由 
   # 貼り付け。ctrl+wなどで一気に削除された部分を貼り付けられる。
   # マウスやtmuxのコピーモードで代用できるので潰す優先度は高い。
-  bind \cy skim-docker-container-name-select
+  # skim-checkout-branchのバインド
+  # gitのブランチをskimで選択してチェックアウトする
+  # Ctrl + y でブランチを選択する
+  bind \cy skim-checkout-branch
 
+  # skim-docker-container-name-selectのバインド
+  # ,d でdockerコンテナ名をskimで選択してログを表示する
+  bind ,d skim-docker-container-name-select
+
+  # Ctrl + t でファイルを検索する
+  bind \ct skim-file-widget
+  # Ctrl + r で履歴を検索する
+  bind \cr skim-history-widget
+  # Alt + e でディレクトリを検索する
+  bind \ed skim-cd-widget
 
     #!/bin/fish
   # completion.fish
@@ -25,43 +38,46 @@ function fish_user_key_bindings
   # Key bindings
   # ------------
   # Store current token in $dir as root for the 'find' command
-  function skim-file-widget -d "List files and folders"
+  function skim-file-widget -d "List files and folders with preview"
     set -l commandline (__skim_parse_commandline)
-
     set -l dir $commandline[1]
     set -l skim_query $commandline[2]
 
-    # "-path \$dir'*/\\.*'" matches hidden files/folders inside $dir but not
-    # $dir itself, even if hidden.
     test -n "$SKIM_CTRL_T_COMMAND"; or set -l SKIM_CTRL_T_COMMAND "
     command find -L \$dir -mindepth 1 \\( -path \$dir'*/\\.*' -o -fstype 'sysfs' -o -fstype 'devfs' -o -fstype 'devtmpfs' \\) -prune \
     -o -type f -print \
     -o -type d -print \
     -o -type l -print 2> /dev/null | sed 's@^\./@@'"
 
+    # プレビューコマンドの定義（Bash互換の構文に変更）
+    set preview_cmd "
+    if [ -d {} ]; then
+        ls -l --color=always {}
+    elif [ -f {} ]; then
+        bat --style=numbers --color=always {} 2>/dev/null || cat {}
+    else
+        echo {} is not a file or directory
+    fi
+    "
+
     test -n "$SKIM_TMUX_HEIGHT"; or set SKIM_TMUX_HEIGHT 40%
     begin
-
-      set -lx SKIM_DEFAULT_OPTIONS "--height $SKIM_TMUX_HEIGHT --reverse $SKIM_DEFAULT_OPTIONS $SKIM_CTRL_T_OPTS"
-      eval "$SKIM_CTRL_T_COMMAND | "(__skimcmd)' -m --query "'$skim_query'"' | while read -l r; set result $result $r; end
-
+        set -lx SKIM_DEFAULT_OPTIONS "--height $SKIM_TMUX_HEIGHT --reverse $SKIM_DEFAULT_OPTIONS $SKIM_CTRL_T_OPTS --preview '$preview_cmd' --preview-window right:60%"
+        eval "$SKIM_CTRL_T_COMMAND | "(__skimcmd)' -m --query "'$skim_query'"' | while read -l r; set result $result $r; end
     end
+
     if [ -z "$result" ]
-      commandline -f repaint
-      return
+        commandline -f repaint
+        return
     else
-
-      # Remove last token from commandline.
-
-      commandline -t ""
+        commandline -t ""
     end
     for i in $result
-      commandline -it -- (string escape $i)
-      commandline -it -- ' '
+        commandline -it -- (string escape $i)
+        commandline -it -- ' '
     end
     commandline -f repaint
-  end
-
+end
 
   function skim-history-widget -d "Show command history"
     test -n "$SKIM_TMUX_HEIGHT"; or set SKIM_TMUX_HEIGHT 40%
@@ -121,9 +137,6 @@ function fish_user_key_bindings
     end
   end
 
-  bind \ct skim-file-widget
-  bind \cr skim-history-widget
-  bind \ec skim-cd-widget
 
   if bind -M insert > /dev/null 2>&1
     bind -M insert \ct skim-file-widget
@@ -176,4 +189,31 @@ function fish_user_key_bindings
     echo $dir
   end
 
+
+  function skim-checkout-branch
+      set -l branchname (
+          env SKIM_DEFAULT_COMMAND='git --no-pager branch -a | grep -v HEAD | sed -e "s/^.* //g"' \
+              sk --height 70% --prompt "BRANCH NAME>" \
+                  --preview "git --no-pager log -20 --color=always {}"
+      )
+
+      if test -n "$branchname"
+          git checkout (echo "$branchname"| sed "s#remotes/[^/]*/##")
+      end
+  end
+
+
+  function skim-docker-container-name-select
+      commandline -i (env SKIM_DEFAULT_COMMAND="docker ps -a --format 'table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Command}}\t{{.RunningFor}}\t{{.Ports}}\t{{.Networks}}'" \
+          sk --no-sort --height 80% --bind='p:toggle-preview' --preview-window=down:70% \
+              --preview '
+                  set -l containername (echo {} | awk -F " " \'{print $2}\');
+                  if test "$containername" != "ID"
+
+                      docker logs --tail 300 $containername
+                  end
+              ' | \
+
+          awk -F " " '{print $2}')
+  end
 end
