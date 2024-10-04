@@ -85,7 +85,7 @@ function CopilotChatBuffer()
 end
 -- 既存のキーマッピング
 -- CopilotChatToggleのキーマッピングを変更
-vim.keymap.set('n', '<leader>cT', '<cmd>CopilotChatToggle<cr>', { noremap = true, silent = true, desc = "Toggle Copilot Chat" })
+vim.keymap.set('n', ',ct', '<cmd>CopilotChatToggle<cr>', { noremap = true, silent = true, desc = "Toggle Copilot Chat" })
 
 -- Copilot Chat Commitのキーマッピング
 vim.keymap.set('n', '<leader>cm', '<cmd>CopilotChatCommit<cr>', { noremap = true, silent = true, desc = "Copilot Chat Commit" })
