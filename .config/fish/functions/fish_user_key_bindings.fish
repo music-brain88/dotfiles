@@ -3,14 +3,20 @@ function fish_user_key_bindings
   # 貼り付け。ctrl+wなどで一気に削除された部分を貼り付けられる。
   # マウスやtmuxのコピーモードで代用できるので潰す優先度は高い。
   # skim-checkout-branchのバインド
+  # gitのブランチをskimで選択してチェックアウトする
+  # Ctrl + y でブランチを選択する
   bind \cy skim-checkout-branch
 
   # skim-docker-container-name-selectのバインド
+  # ,d でdockerコンテナ名をskimで選択してログを表示する
   bind ,d skim-docker-container-name-select
 
+  # Ctrl + t でファイルを検索する
   bind \ct skim-file-widget
+  # Ctrl + r で履歴を検索する
   bind \cr skim-history-widget
-  bind \ec skim-cd-widget
+  # Alt + e でディレクトリを検索する
+  bind \ed skim-cd-widget
 
     #!/bin/fish
   # completion.fish
