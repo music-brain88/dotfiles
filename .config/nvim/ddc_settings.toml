@@ -67,20 +67,14 @@ call ddc#custom#patch_filetype('markdown', 'sourceParams', #{
 " Mappings
 " <TAB>: completion.
 inoremap <silent><expr> <TAB>
-\ pumvisible() ? pum#map#insert_relative(+1) :
-\ (col('.') <= 1 <Bar><Bar> getline('.')[col('.') - 2] =~# '\s') ?
+\ pumvisible() ? '<C-n>' :
+\ (col('.') <= 1 || getline('.')[col('.') - 2] =~# '\s') ?
 \ '<TAB>' : ddc#map#manual_complete()
 
-inoremap <silent><expr> <S-TAB>
-\ pumvisible() ? pum#map#insert_relative(-1) : '<C-n>'
-  " <S-TAB>: completion back.
-  inoremap <expr><S-TAB>  pumvisible() ? '<C-p>' : '<C-n>'
+" <S-TAB>: completion back.
+inoremap <expr><S-TAB> pumvisible() ? '<C-p>' : '<C-h>'
   call ddc#enable()
 '''
-
-[[plugins]]
-repo = 'Shougo/ddc-source-nvim-lsp'
-on_source = 'ddc.vim'
 
 [[plugins]]
 repo = 'Shougo/ddc-around'
@@ -99,7 +93,7 @@ repo = 'LumaKernel/ddc-file'
 on_source = 'ddc.vim'
 
 [[plugins]]
-repo = 'Shougo/ddc-nvim-lsp'
+repo = 'Shougo/ddc-source-lsp'
 on_source = 'ddc.vim'
 
 [[plugins]]
