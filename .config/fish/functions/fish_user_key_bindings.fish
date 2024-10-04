@@ -38,43 +38,46 @@ function fish_user_key_bindings
   # Key bindings
   # ------------
   # Store current token in $dir as root for the 'find' command
-  function skim-file-widget -d "List files and folders"
+  function skim-file-widget -d "List files and folders with preview"
     set -l commandline (__skim_parse_commandline)
-
     set -l dir $commandline[1]
     set -l skim_query $commandline[2]
 
-    # "-path \$dir'*/\\.*'" matches hidden files/folders inside $dir but not
-    # $dir itself, even if hidden.
     test -n "$SKIM_CTRL_T_COMMAND"; or set -l SKIM_CTRL_T_COMMAND "
     command find -L \$dir -mindepth 1 \\( -path \$dir'*/\\.*' -o -fstype 'sysfs' -o -fstype 'devfs' -o -fstype 'devtmpfs' \\) -prune \
     -o -type f -print \
     -o -type d -print \
     -o -type l -print 2> /dev/null | sed 's@^\./@@'"
 
+    # プレビューコマンドの定義（Bash互換の構文に変更）
+    set preview_cmd "
+    if [ -d {} ]; then
+        ls -l --color=always {}
+    elif [ -f {} ]; then
+        bat --style=numbers --color=always {} 2>/dev/null || cat {}
+    else
+        echo {} is not a file or directory
+    fi
+    "
+
     test -n "$SKIM_TMUX_HEIGHT"; or set SKIM_TMUX_HEIGHT 40%
     begin
-
-      set -lx SKIM_DEFAULT_OPTIONS "--height $SKIM_TMUX_HEIGHT --reverse $SKIM_DEFAULT_OPTIONS $SKIM_CTRL_T_OPTS"
-      eval "$SKIM_CTRL_T_COMMAND | "(__skimcmd)' -m --query "'$skim_query'"' | while read -l r; set result $result $r; end
-
+        set -lx SKIM_DEFAULT_OPTIONS "--height $SKIM_TMUX_HEIGHT --reverse $SKIM_DEFAULT_OPTIONS $SKIM_CTRL_T_OPTS --preview '$preview_cmd' --preview-window right:60%"
+        eval "$SKIM_CTRL_T_COMMAND | "(__skimcmd)' -m --query "'$skim_query'"' | while read -l r; set result $result $r; end
     end
+
     if [ -z "$result" ]
-      commandline -f repaint
-      return
+        commandline -f repaint
+        return
     else
-
-      # Remove last token from commandline.
-
-      commandline -t ""
+        commandline -t ""
     end
     for i in $result
-      commandline -it -- (string escape $i)
-      commandline -it -- ' '
+        commandline -it -- (string escape $i)
+        commandline -it -- ' '
     end
     commandline -f repaint
-  end
-
+end
 
   function skim-history-widget -d "Show command history"
     test -n "$SKIM_TMUX_HEIGHT"; or set SKIM_TMUX_HEIGHT 40%
