@@ -1,0 +1,13 @@
+# ファイルタイプに合わせて、いい感じにコメントアウトしてくれるプラグイン
+[[plugins]]
+repo = 'echasnovski/mini.comment'
+
+# インデントの範囲を表示してくれるプラグインです。
+# インデント関係のテキストオブジェクトも提供
+[[plugins]]
+repo = 'echasnovski/mini.indentscope'
+
+
+# 複数の引数を一発で分割・結合してくれるプラグイン
+[[plugins]]
+repo = 'echasnovski/mini.splitjoin'
