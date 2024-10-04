@@ -49,32 +49,6 @@ export TERM=xterm-256color
 set -x PATH ~/.skim/bin $PATH
 set -x SKIM_DEFAULT_COMMAND 'rg --files --hidden --follow --glob "!.git/*"'
 
-function skim-checkout-branch
-    set -l branchname (
-        env SKIM_DEFAULT_COMMAND='git --no-pager branch -a | grep -v HEAD | sed -e "s/^.* //g"' \
-            sk --height 70% --prompt "BRANCH NAME>" \
-                --preview "git --no-pager log -20 --color=always {}"
-    )
-
-    if test -n "$branchname"
-        git checkout (echo "$branchname"| sed "s#remotes/[^/]*/##")
-    end
-end
-
-
-function skim-docker-container-name-select
-    commandline -i (env SKIM_DEFAULT_COMMAND="docker ps -a --format 'table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Command}}\t{{.RunningFor}}\t{{.Ports}}\t{{.Networks}}'" \
-        sk --no-sort --height 80% --bind='p:toggle-preview' --preview-window=down:70% \
-            --preview '
-                set -l containername (echo {} | awk -F " " \'{print $2}\');
-                if test "$containername" != "ID"
-
-                    docker logs --tail 300 $containername
-                end
-            ' | \
-
-        awk -F " " '{print $2}')
-end
 
 function reload
   exec fish

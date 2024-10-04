@@ -2,8 +2,15 @@ function fish_user_key_bindings
   # Ctrl + y を潰す理由 
   # 貼り付け。ctrl+wなどで一気に削除された部分を貼り付けられる。
   # マウスやtmuxのコピーモードで代用できるので潰す優先度は高い。
-  bind \cy skim-docker-container-name-select
+  # skim-checkout-branchのバインド
+  bind \cy skim-checkout-branch
 
+  # skim-docker-container-name-selectのバインド
+  bind ,d skim-docker-container-name-select
+
+  bind \ct skim-file-widget
+  bind \cr skim-history-widget
+  bind \ec skim-cd-widget
 
     #!/bin/fish
   # completion.fish
@@ -121,9 +128,6 @@ function fish_user_key_bindings
     end
   end
 
-  bind \ct skim-file-widget
-  bind \cr skim-history-widget
-  bind \ec skim-cd-widget
 
   if bind -M insert > /dev/null 2>&1
     bind -M insert \ct skim-file-widget
@@ -176,4 +180,31 @@ function fish_user_key_bindings
     echo $dir
   end
 
+
+  function skim-checkout-branch
+      set -l branchname (
+          env SKIM_DEFAULT_COMMAND='git --no-pager branch -a | grep -v HEAD | sed -e "s/^.* //g"' \
+              sk --height 70% --prompt "BRANCH NAME>" \
+                  --preview "git --no-pager log -20 --color=always {}"
+      )
+
+      if test -n "$branchname"
+          git checkout (echo "$branchname"| sed "s#remotes/[^/]*/##")
+      end
+  end
+
+
+  function skim-docker-container-name-select
+      commandline -i (env SKIM_DEFAULT_COMMAND="docker ps -a --format 'table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Command}}\t{{.RunningFor}}\t{{.Ports}}\t{{.Networks}}'" \
+          sk --no-sort --height 80% --bind='p:toggle-preview' --preview-window=down:70% \
+              --preview '
+                  set -l containername (echo {} | awk -F " " \'{print $2}\');
+                  if test "$containername" != "ID"
+
+                      docker logs --tail 300 $containername
+                  end
+              ' | \
+
+          awk -F " " '{print $2}')
+  end
 end
