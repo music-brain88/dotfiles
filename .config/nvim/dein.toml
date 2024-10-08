@@ -63,11 +63,11 @@ let g:filer_preview_command = "
 function! s:calculate_window_size() abort
   let l:lines = &lines
   let l:columns = &columns
-  let l:win_height = float2nr(l:lines * 0.60)
-  let l:win_width = float2nr(l:columns * 0.60)
+  let l:win_height = float2nr(l:lines * 0.8)
+  let l:win_width = float2nr(l:columns * 0.8)
   let l:win_row = (l:lines - l:win_height) / 2
   let l:win_col = (l:columns - l:win_width) / 2
-  let l:preview_width = float2nr(l:columns * 0.25)
+  let l:preview_width = float2nr(l:columns * 0.5)
   let l:preview_col = l:win_col + l:win_width
 
   return {
@@ -111,7 +111,6 @@ call ddu#custom#patch_global({
 \       'sortTreesFirst': v:true,
 \       'sort': 'filename',
 \       'preview': v:true,
-\       'splitDirection': 'topleft',
 \       'floatingBorder': 'single',
 \       'winHeight': s:win_size.winHeight,
 \       'winWidth': s:win_size.winWidth,
