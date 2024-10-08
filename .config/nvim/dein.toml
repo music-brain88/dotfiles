@@ -81,18 +81,18 @@ call ddu#custom#patch_global({
 \     },
 \     'filer': {
 \       'split': 'floating',
-\       'splitWidth': 30,
+\       'splitWidth': 25,
 \       'sortTreesFirst': v:true,
 \       'sort': 'filename',
 \       'preview': v:true,
-\       'winHeight': 40,
-\       'winWidth': '&columns / 2 - 2',
+\       'winHeight': '&lines * 2',
+\       'winWidth': '&columns / 2 + 1',
 \       'winRow': 1,
 \       'winCol': 1,
 \       'previewSplit': 'vertical',
 \       'previewFloating': v:true,
-\       'previewHeight': 40,
-\       'previewWidth': '&columns /2 -2',
+\       'previewHeight': '&lines * 2',
+\       'previewWidth': '&columns / 2 + 1',
 \       'previewRow': 1,
 \       'previewCol': '&columns / 2 + 1',
 \       'previewWindowOptions': [
@@ -101,7 +101,7 @@ call ddu#custom#patch_global({
 \          ['&foldcolumn', 0],
 \          ['&wrap', 0],
 \       ],
-\       'autoAction': { 'name': g:filer_preview_command },
+\       'autoAction': { 'name': 'preview' },
 \     }
 \  },
 \ })
