@@ -48,6 +48,16 @@ nmap <silent> ,w <Cmd>call ddu#start({
 \   ],
 \ })<CR>
 
+" filer用のプレビューコマンド定義
+let g:filer_preview_command = "
+\ if [[ -f {} ]]; then
+\   (bat --style=numbers --color=always {} || cat {}) 2>/dev/null | head -200;
+\ elif [[ -d {} ]]; then
+\   ls -la {};
+\ else
+\   echo {} is not a file or directory;
+\ fi"
+
 " ddu Global Setting
 call ddu#custom#patch_global({
 \   'ui': 'ff',
@@ -71,17 +81,14 @@ call ddu#custom#patch_global({
 \     },
 \     'filer': {
 \       'split': 'floating',
+\       'splitDirection': 'topleft',
+\       'splitWidth': 30,
 \       'sortTreesFirst': v:true,
-\       'winHeight': '&lines - 8',
-\       'winWidth': '&columns / 2 - 2',
-\       'winRow': 1,
-\       'winCol': 1,
+\       'sort': 'filename',
+\       'preview': v:true,
+\       'previewSplit': 'vertical',
 \       'previewFloating': v:true,
-\       'previewHeight': '&lines - 8',
-\       'previewWidth': '&columns / 2 - 2',
-\       'previewRow': 1,
-\       'previewCol': '&columns / 2 + 1',
-\       'autoAction': { 'name' : 'preview' },
+\       'autoAction': { 'name': 'togglePreview' },
 \     }
 \  },
 \ })
@@ -122,6 +129,9 @@ function! s:ddu_filer_my_settings() abort
         \ <Cmd>call ddu#ui#sync_action('expandItem', {'mode': 'toggle'})<CR>
   nnoremap <buffer><silent> q
         \ <Cmd>call ddu#ui#sync_action('quit')<CR>
+  " プレビューのトグル
+  nnoremap <buffer><silent> p
+        \ <Cmd>call ddu#ui#do_action('togglePreview')<CR>
 endfunction
 "-----------------------------------------------------------------------
 " end ddu filer settings
