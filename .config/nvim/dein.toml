@@ -68,7 +68,6 @@ function! s:calculate_window_size() abort
   let l:win_row = (l:lines - l:win_height) / 2
   let l:win_col = (l:columns - l:win_width) / 2
   let l:preview_width = float2nr(l:columns * 0.5)
-  let l:preview_col = l:win_col + l:win_width
 
   return {
     \ 'winHeight': l:win_height,
@@ -77,8 +76,6 @@ function! s:calculate_window_size() abort
     \ 'winCol': l:win_col,
     \ 'previewHeight': l:win_height,
     \ 'previewWidth': l:preview_width,
-    \ 'previewRow': l:win_row,
-    \ 'previewCol': l:preview_col,
   \ }
 endfunction
 
@@ -120,8 +117,6 @@ call ddu#custom#patch_global({
 \       'previewFloating': v:true,
 \       'previewHeight': s:win_size.previewHeight,
 \       'previewWidth': s:win_size.previewWidth,
-\       'previewRow': s:win_size.previewRow,
-\       'previewCol': s:win_size.previewCol,
 \       'previewFloatingBorder': 'single',
 \       'previewWindowOptions': [
 \          ['&signcolumn', 'no'],
