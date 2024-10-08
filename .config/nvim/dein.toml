@@ -88,6 +88,14 @@ call ddu#custom#patch_global({
 \       'preview': v:true,
 \       'previewSplit': 'vertical',
 \       'previewFloating': v:true,
+\       'previewFloatingWidth': 60,
+\       'previewFloatingHeight': 0.8,
+\       'previewWindowOptions': [
+\          ['&signcolumn', 'no'],
+\          ['&number', 0],
+\          ['&foldcolumn', 0],
+\          ['&wrap', 0],
+\       ],
 \       'autoAction': { 'name': 'togglePreview' },
 \     }
 \  },
