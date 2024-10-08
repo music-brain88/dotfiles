@@ -69,9 +69,19 @@ call ddu#custom#patch_global({
 \       'prompt': '> ',
 \       'split': 'floating',
 \     },
-\    'filer': {
+\     'filer': {
 \       'split': 'floating',
 \       'sortTreesFirst': v:true,
+\       'winHeight': '&lines - 8',
+\       'winWidth': '&columns / 2 - 2',
+\       'winRow': 1,
+\       'winCol': 1,
+\       'previewFloating': v:true,
+\       'previewHeight': '&lines - 8',
+\       'previewWidth': '&columns / 2 - 2',
+\       'previewRow': 1,
+\       'previewCol': '&columns / 2 + 1',
+\       'autoAction': { 'name' : 'preview' },
 \     }
 \  },
 \ })
