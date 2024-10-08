@@ -58,6 +58,32 @@ let g:filer_preview_command = "
 \   echo {} is not a file or directory;
 \ fi"
 
+
+" 画面サイズの計算を行う関数
+function! s:calculate_window_size() abort
+  let l:lines = &lines
+  let l:columns = &columns
+  let l:win_height = float2nr(l:lines * 0.60)
+  let l:win_width = float2nr(l:columns * 0.60)
+  let l:win_row = (l:lines - l:win_height) / 2
+  let l:win_col = (l:columns - l:win_width) / 2
+  let l:preview_width = float2nr(l:columns * 0.25)
+  let l:preview_col = l:win_col + l:win_width
+
+  return {
+    \ 'winHeight': l:win_height,
+    \ 'winWidth': l:win_width,
+    \ 'winRow': l:win_row,
+    \ 'winCol': l:win_col,
+    \ 'previewHeight': l:win_height,
+    \ 'previewWidth': l:preview_width,
+    \ 'previewRow': l:win_row,
+    \ 'previewCol': l:preview_col,
+  \ }
+endfunction
+
+let s:win_size = s:calculate_window_size()
+
 " ddu Global Setting
 call ddu#custom#patch_global({
 \   'ui': 'ff',
@@ -87,16 +113,16 @@ call ddu#custom#patch_global({
 \       'preview': v:true,
 \       'splitDirection': 'topleft',
 \       'floatingBorder': 'single',
-\       'winHeight': '&lines / 2 - 1',
-\       'winWidth': '&columns / 2 - 2',
-\       'winRow': 1,
-\       'winCol': 1,
+\       'winHeight': s:win_size.winHeight,
+\       'winWidth': s:win_size.winWidth,
+\       'winRow': s:win_size.winRow,
+\       'winCol': s:win_size.winCol,
 \       'previewSplit': 'vertical',
 \       'previewFloating': v:true,
-\       'previewHeight': '&lines / 2',
-\       'previewWidth': '&columns / 2 - 2',
-\       'previewRow': 1,
-\       'previewCol': '&columns / 2 + 1 ',
+\       'previewHeight': s:win_size.previewHeight,
+\       'previewWidth': s:win_size.previewWidth,
+\       'previewRow': s:win_size.previewRow,
+\       'previewCol': s:win_size.previewCol,
 \       'previewFloatingBorder': 'single',
 \       'previewWindowOptions': [
 \          ['&signcolumn', 'no'],
