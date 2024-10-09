@@ -105,6 +105,8 @@ call ddu#custom#patch_global({
 \       'previewFloating': v:true,
 \       'floatingBorder': 'rounded',
 \       'filterSplitDirection': 'floating',
+\       'previewSplit': 'vertical',
+\       'autoAction': { 'name': 'preview' },
 \     },
 \     'filer': {
 \       'split': 'floating',
@@ -121,7 +123,7 @@ call ddu#custom#patch_global({
 \       'previewFloating': v:true,
 \       'previewHeight': s:win_size.previewHeight,
 \       'previewWidth': s:win_size.previewWidth,
-\       'previewFloatingBorder': 'single',
+\       'previewFloatingBorder': 'rounded',
 \       'previewWindowOptions': [
 \          ['&signcolumn', 'no'],
 \          ['&number', 0],
@@ -148,6 +150,10 @@ function! s:ddu_filer_my_settings() abort
         \ ddu#ui#get_item()->get('isTree', v:false) ?
         \ "<Cmd>call ddu#ui#do_action('itemAction', #{name: 'narrow'})<CR>" :
         \ "<Cmd>call ddu#ui#do_action('itemAction', #{name: 'open'})<CR>"
+  nnoremap <buffer><silent><expr> h
+        \ ddu#ui#get_item()->get('isTree', v:false) ?
+        \ "<Cmd>call ddu#ui#do_action('collapseItem')<CR>" :
+        \ "<Cmd>call ddu#ui#do_action('preview')<CR>"
   " Move to higher path
   nnoremap <buffer><silent> ..
         \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'narrow', 'params': {'path': '..'}})<CR>
@@ -171,7 +177,7 @@ function! s:ddu_filer_my_settings() abort
         \ <Cmd>call ddu#ui#sync_action('quit')<CR>
   " プレビューのトグル
   nnoremap <buffer><silent> p
-        \ <Cmd>call ddu#ui#do_action('togglePreview')<CR>
+        \ <Cmd>call ddu#ui#do_action('preview')<CR>
 endfunction
 "-----------------------------------------------------------------------
 " end ddu filer settings
