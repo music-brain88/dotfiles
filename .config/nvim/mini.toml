@@ -1,53 +1,9 @@
 [[plugins]]
-repo = 'echasnovski/mini.indentscope'
+repo = 'echasnovski/mini.nvim'
 on_event = 'BufRead'
 hook_add = '''
 lua << EOF
-require('mini.indentscope').setup({
-  -- 描画オプション
-  draw = {
-    -- スコープインジケータの描画開始までの遅延時間（ミリ秒）
-    delay = 100,
-
-    -- スコープの初回描画のアニメーションルール
-    -- 次のステップと総ステップ数を受け取り、待機時間（ミリ秒）を返す関数
-    -- ビルトインオプションは |MiniIndentscope.gen_animation| を参照
-    -- アニメーションを無効にするには require('mini.indentscope').gen_animation.none() を使用
-    animation = require('mini.indentscope').gen_animation.linear(),
-
-    -- シンボルの優先度。他のシンボルの上に表示するには増やす
-    priority = 2,
-  },
-
-  -- モジュールのマッピング。無効にするには ''（空文字）を使用
-  mappings = {
-    -- テキストオブジェクト
-    object_scope = 'ii',
-    object_scope_with_border = 'ai',
-
-    -- モーション（それぞれの境界線にジャンプ。存在しない場合は本文の行へ）
-    goto_top = '[i',
-    goto_bottom = ']i',
-  },
-
-  -- スコープの検出とハイライトを制御するオプション
-  options = {
-    -- スコープの境界のタイプ：どの小さいインデントの行を境界として分類するか
-    -- 'both'、'top'、'bottom'、'none' のいずれか
-    border = 'both',
-
-    -- 参照インデントの計算時にカーソル列を使用するかどうか
-    -- 水平カーソル移動で増分スコープを見るのに便利
-    indent_at_cursor = true,
-
-    -- 入力行を隣接するスコープの境界として最初にチェックするかどうか
-    -- 関数のヘッダーにカーソルを置いてその本文のスコープを取得したい場合に使用
-    try_as_border = false,
-  },
-
-  -- スコープインジケータの描画に使用する文字
-  symbol = '│',
-})
+require('mini.indentscope').setup()
 EOF
 '''
 
