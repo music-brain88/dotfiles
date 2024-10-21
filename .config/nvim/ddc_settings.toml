@@ -36,7 +36,7 @@ hook_source = '''
         \   mark: ' LSP',
         \   dup: 'keep',
         \   keywordPattern: '\k+',
-        \   forceCompletionPattern: '\\.\\w*|::\\w*|->\\w*',
+        \   forceCompletionPattern: '\.\w*|:\w*',
         \  },
         \   file: #{
         \   mark: ' File',
