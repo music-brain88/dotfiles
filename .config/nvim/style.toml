@@ -53,7 +53,7 @@ repo = 'rcarriga/nvim-notify'
 
 [[plugins]]
 repo = 'folke/noice.nvim'
-lua_add = '''
+lua_source = '''
 -- noice.nvimの設定
 require("noice").setup({
   cmdline = {
