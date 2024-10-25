@@ -25,7 +25,6 @@ diffutils 3.10-1
 discord 0.0.72-1
 docker 1:27.3.1-1
 docker-compose 2.29.7-1
-dunst 1.11.0-1
 e2fsprogs 1.47.1-4
 fakeroot 1.36-1
 fcitx5 5.1.11-1
@@ -83,6 +82,7 @@ lvm2 2.03.27-1
 m4 1.4.19-3
 maim 5.8.0-2
 make 4.4.1-2
+mako 1.9.0-1
 man-db 2.13.0-1
 man-pages 6.9.1-1
 mariadb 11.5.2-1
