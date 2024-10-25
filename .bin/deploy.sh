@@ -113,19 +113,64 @@ echo "alacritty setting finish"
 #ln -snfv ~/dotfiles/.config/alacritty/alacritty.yml ~/.config/alacritty/alacritty.yml
 ln -snfv ~/dotfiles/.config/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
 
+############################################
+# hyprlandが安定したら消す予定
+############################################
 echo "i3 setting"
 if [ ! -d ~/.config/i3 ]; then
   mkdir -p ~/.config/i3/
 fi
 ln -snfv ~/dotfiles/.config/i3/config ~/.config/i3/config
 echo "i3 setting finish"
+############################################
+# hyprlandが安定したら消す予定
+############################################
 
+echo "hyprland setting"
+if [ ! -d ~/.config/hypr ]; then
+  mkdir -p ~/.config/hypr/
+fi
+ln -snfv ~/dotfiles/.config/hypr/hyprland.conf ~/.config/hypr/hyprland.conf
+ln -snfv ~/dotfiles/.config/hypr/startup.conf ~/.config/hypr/startup.conf
+ln -snfv ~/dotfiles/.config/hypr/hyprlock.conf ~/.config/hypr/hyprlock.conf
+ln -snfv ~/dotfiles/.config/hypr/keybinds.conf ~/.config/hypr/keybinds.conf 
+ln -snfv ~/dotfiles/.config/hypr/window-rules.conf ~/.config/hypr/window-rules.conf
+echo "hyprland setting finish"
+
+echo "hyprland theme setting"
+if [ ! -d ~/.config/hypr/themes ]; then
+  mkdir -p ~/.config/hypr/themes
+fi
+ln -snfv ~/dotfiles/.config/hypr/themes/mocha.conf ~/.config/hypr/themes/mocha.conf
+echo "hyprland theme setting finish"
+
+echo "hyprland scripts setting"
+if [ ! -d ~/.config/hypr/scripts ]; then
+  mkdir -p ~/.config/hypr/scripts/
+fi
+ln -snfv ~/dotfiles/.config/hypr/scripts/notifications.sh ~/.config/hypr/scripts/notifications.sh
+
+echo "waybar setting"
+if [ ! -d ~/.config/waybar ]; then
+  mkdir -p ~/.config/waybar/
+fi
+ln -snfv ~/dotfiles/.config/waybar/config.jsonc ~/.config/waybar/config.jsonc
+ln -snfv ~/dotfiles/.config/waybar/style.css ~/.config/waybar/style.css
+echo "waybar setting finish"
+
+
+############################################
+# waybarが安定したら消す予定
+############################################
 echo "polybar setting"
 if [ ! -d ~/.config/polybar ]; then
   mkdir -p ~/.config/polybar/
 fi
 ln -snfv ~/dotfiles/.config/polybar/config ~/.config/polybar/config
 echo "polybar setting finish"
+############################################
+# waybarが安定したら消す予定
+############################################
 
 echo "mpd setting"
 if [ ! -d ~/.config/mpd ]; then
@@ -141,12 +186,33 @@ fi
 ln -snfv ~/dotfiles/.config/mpd/mpd.conf ~/.config/mpd/mpd.conf
 echo "ncmpcpp setting finish"
 
+
+############################################
+# wofiが安定したら消す予定
+############################################
 echo "rofi setting"
 if [ ! -d ~/.config/rofi ]; then
   mkdir -p ~/.config/rofi/
 fi
 ln -snfv ~/dotfiles/.config/rofi/config.rasi ~/.config/rofi/config.rasi
 echo "rofi setting finish"
+############################################
+# wofiが安定したら消す予定
+############################################
+
+echo "wofi setting"
+if [ ! -d ~/.config/wofi ]; then
+  mkdir -p ~/.config/wofi/
+fi
+ln -snfv ~/dotfiles/.config/wofi/config ~/.config/wofi/config ln -snfv ~/dotfiles/.config/wofi/style.css ~/.config/wofi/style.css
+echo "wofi setting finish"
+
+echo "mako setting"
+if [ ! -d ~/.config/mako ]; then
+  mkdir -p ~/.config/mako/
+fi
+ln -snfv ~/dotfiles/.config/mako/config ~/.config/mako/config
+
 
 echo "finish setup"
 echo "next you call dein script"
