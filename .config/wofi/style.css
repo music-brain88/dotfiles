@@ -1,0 +1,80 @@
+/* Hyprlandのテーマに合わせたWofi設定 */
+window {
+    margin: 5px;
+    padding: 5px;
+    border: 2px solid #cba6f7;
+    border-radius: 12px;
+    background-color: rgba(30, 30, 46, 0.95);
+    font-family: "JetBrainsMono Nerd Font", "Noto Sans CJK JP";
+    font-size: 14px;
+}
+
+#input {
+    margin: 5px;
+    padding: 8px 12px;
+    border: none;
+    color: #cdd6f4;
+    background-color: #313244;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#input:focus {
+    border: none;
+    outline: none;
+    background-color: #313244;
+}
+
+#inner-box {
+    margin: 5px;
+    padding: 5px;
+    background-color: transparent;
+}
+
+#outer-box {
+    margin: 5px;
+    padding: 5px;
+    background-color: transparent;
+}
+
+#scroll {
+    margin: 0;
+    padding: 5px;
+    border: none;
+}
+
+#entry {
+    margin: 2px 0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background-color: transparent;
+    transition: all 0.2s ease;
+}
+
+#entry:selected {
+    background-color: #313244;
+    outline: none;
+}
+
+#entry:hover {
+    background-color: #45475a;
+}
+
+#text {
+    color: #cdd6f4;
+    margin-left: 10px;
+}
+
+#text:selected {
+    color: #cba6f7;
+}
+
+#img {
+    margin-right: 8px;
+    border-radius: 4px;
+}
+
+/* アプリケーションラベルのスタイル */
+label {
+    color: #cdd6f4;
+}

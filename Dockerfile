@@ -15,7 +15,10 @@ RUN pacman -Syu --noconfirm && \
     protobuf \
     xsel \
     sudo \
-    base-devel
+    base-devel \
+    # 通知関連のパッケージを追加
+    mako \
+    libnotify
 
 # Rust のインストール
 

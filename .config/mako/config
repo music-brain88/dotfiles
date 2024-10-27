@@ -1,0 +1,39 @@
+# 基本スタイル
+font=JetBrainsMono Nerd Font 11
+width=350
+height=100
+margin=10
+padding=15
+border-size=2
+border-radius=10
+
+# 位置
+anchor=top-right
+default-timeout=5000
+ignore-timeout=0
+
+# カラーテーマ (Catppuccin Mocha)
+background-color=#1e1e2e
+text-color=#cdd6f4
+border-color=#89b4fa
+progress-color=over #89b4fa
+
+# 優先度別カラー
+[urgency=low]
+border-color=#89dceb
+
+[urgency=normal]
+border-color=#89b4fa
+
+[urgency=high]
+border-color=#f38ba8
+default-timeout=0
+
+# アプリケーション固有の設定
+[app-name=Spotify]
+background-color=#1e1e2e
+text-color=#a6e3a1
+border-color=#a6e3a1
+
+[mode=do-not-disturb]
+invisible=1
