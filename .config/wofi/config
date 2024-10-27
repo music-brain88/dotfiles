@@ -17,3 +17,8 @@ term=alacritty
 layer=overlay
 border_radius=12
 columns=1
+
+# ウィンドウスイッチャー用設定
+show=dmenu
+matching=fuzzy
+sort_order=default
