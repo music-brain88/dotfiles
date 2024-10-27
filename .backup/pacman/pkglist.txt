@@ -56,6 +56,7 @@ htop 3.3.0-3
 hub 2.14.2-4
 hyprland 0.44.1-2
 hyprlock 0.5.0-1
+hyprpaper 0.7.1-2
 i3-wm 4.23-4
 i3blocks 1.5-4
 i3lock 2.15-2
@@ -66,11 +67,13 @@ iproute2 6.11.0-1
 iputils 20240905-1
 java-runtime-common 3-5
 jfsutils 1.1.15-9
+jq 1.7.1-2
 k9s 0.32.5-1
 less 1:661-1
 lib32-libpulse 17.0-1
 libcurl-compat 8.10.1-2
 libnet 2:1.3-1
+libnotify 0.8.3-1
 libtool 2.5.3-1
 licenses 20240728-1
 linux 6.11.5.arch1-1
@@ -94,6 +97,7 @@ ncmpcpp 0.10.1-1
 neofetch 7.1.0-2
 neovim 0.10.2-2
 netctl 1.29-2
+notification-daemon 3.20.0-6
 nvidia 560.35.03-17
 nvidia-lts 1:560.35.03-17
 nvidia-utils 560.35.03-18
@@ -149,6 +153,7 @@ whois 5.5.23-1
 wofi 1.4.1-1
 wqy-zenhei 0.9.45-10
 xclip 0.13-5
+xdg-desktop-portal-hyprland 1.3.7-1
 xfsprogs 6.11.0-1
 xmonad 0.18.0-22
 xorg-bdftopcf 1.1.2-1
