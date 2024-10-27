@@ -1,4 +1,3 @@
-live_config_reload = true
 
 [colors.bright]
 black = "0x5c6370"
@@ -87,7 +86,7 @@ action = "CreateNewWindow"
 key = "N"
 mods = "Control|Shift"
 
-[shell]
+[terminal.shell]
 args = ["--login", "--command", "tmux attach || tmux"]
 program = "/usr/bin/fish"
 
@@ -98,3 +97,8 @@ title = "Alacritty"
 [window.class]
 general = "Alacritty"
 instance = "Alacritty"
+
+[general]
+live_config_reload = true
+
+[terminal]
