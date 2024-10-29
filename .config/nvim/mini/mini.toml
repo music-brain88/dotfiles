@@ -1,0 +1,68 @@
+[[plugins]]
+repo = 'echasnovski/mini.nvim'
+
+on_event = 'BufRead'
+lua_add = '''
+require('mini.indentscope').setup({
+  -- インデントの範囲を表示するためのシンボル
+  symbol = '│',
+  options = {
+    try_as_border = true, -- インデントの範囲を表示するためのシンボルを枠線として試みる
+  },
+  -- 特定のバッファタイプで無効にする
+  draw = {
+    deley = 100, -- インデントの範囲を表示するためのシンボルを描画するまでの遅延時間
+    priority = 2, -- インデントの範囲を表示するためのシンボルを描画する優先度
+  },
+})
+
+-- ハイライトグループのカスタマイズ（オプション）
+vim.cmd([[
+  highlight MiniIndentscopeSymbol guifg=#4B5563 gui=nocombine
+]])
+-- ハイライトグループのカスタマイズ（API）
+vim.api.nvim_set_hl(0, "MiniIndentscopeSymbol", {
+  fg = "#404955",
+  nocombine = true,
+})
+
+-- ダッシュボードでindentscopeを無効化
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = {
+    "alpha",
+    "dashboard",
+    "starter",
+    "norg",
+    "Trouble",
+
+    "lazy",
+
+    "mason",
+  },
+  callback = function()
+    vim.b.miniindentscope_disable = true
+  end,
+})
+'''
+
+# ファイルタイプに合わせて、いい感じにコメントアウトしてくれるプラグイン
+[[plugins]]
+repo = 'echasnovski/mini.comment'
+on_event = 'BufRead'
+## キーマッピング
+# -- 通常モードとビジュアルモードの両方で、コメント (`gcip` - コメント内段落のようなもの) をトグルする。
+# comment = 'gc',
+# -- 通常モードで、コメント (`gcc` - 行コメント) をトグルする。
+# comment_line = 'gcc',
+
+# ビジュアルモードで、選択範囲をコメントアウトする。
+# comment_visual = 'gc',
+
+# インデントの範囲を表示してくれるプラグインです。
+# インデント関係のテキストオブジェクトも提供
+
+
+
+# 複数の引数を一発で分割・結合してくれるプラグイン
+[[plugins]]
+repo = 'echasnovski/mini.splitjoin'
