@@ -65,3 +65,23 @@ on_event = 'BufRead'
 # 複数の引数を一発で分割・結合してくれるプラグイン
 [[plugins]]
 repo = 'echasnovski/mini.splitjoin'
+
+
+# Mini.surround: テキストを囲む機能
+[[plugins]]
+repo = 'echasnovski/mini.surround'
+lua_add = '''
+require('mini.surround').setup({
+  -- テキストを囲むためのキーマッピング
+  -- saと打った後に、囲みたいテキストを入力すると、そのテキストを囲むことができる
+  mappings = {
+    add = 'sa',                 -- saで選択範囲を囲む
+    delete = 'sd',              -- sdで選択範囲の囲みを削除
+    find = 'sf',                -- sfで囲みを探す
+    find_left = 'sF',           -- sFで左側の囲みを探す
+    highlight = 'sh',           -- shで囲みをハイライト
+    replace = 'sr',             -- srで囲みを置換
+    update_n_lines = 'sn',      -- snでn行の囲みを更新
+    }
+})
+'''
