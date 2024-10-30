@@ -1,6 +1,7 @@
+# インデントの範囲を表示してくれるプラグインです。
+# インデント関係のテキストオブジェクトも提供
 [[plugins]]
 repo = 'echasnovski/mini.indentscope'
-
 on_event = 'BufRead'
 lua_add = '''
 require('mini.indentscope').setup({
@@ -57,8 +58,6 @@ on_event = 'BufRead'
 # ビジュアルモードで、選択範囲をコメントアウトする。
 # comment_visual = 'gc',
 
-# インデントの範囲を表示してくれるプラグインです。
-# インデント関係のテキストオブジェクトも提供
 
 
 
