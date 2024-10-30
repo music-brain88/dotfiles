@@ -1,5 +1,5 @@
 [[plugins]]
-repo = 'echasnovski/mini.nvim'
+repo = 'echasnovski/mini.indentscope'
 
 on_event = 'BufRead'
 lua_add = '''
@@ -9,7 +9,6 @@ require('mini.indentscope').setup({
   options = {
     try_as_border = true, -- インデントの範囲を表示するためのシンボルを枠線として試みる
   },
-  -- 特定のバッファタイプで無効にする
   draw = {
     deley = 100, -- インデントの範囲を表示するためのシンボルを描画するまでの遅延時間
     priority = 2, -- インデントの範囲を表示するためのシンボルを描画する優先度
@@ -26,7 +25,7 @@ vim.api.nvim_set_hl(0, "MiniIndentscopeSymbol", {
   nocombine = true,
 })
 
--- ダッシュボードでindentscopeを無効化
+-- ダッシュボード等でindentscopeを無効化
 vim.api.nvim_create_autocmd("FileType", {
   pattern = {
     "alpha",
@@ -34,10 +33,10 @@ vim.api.nvim_create_autocmd("FileType", {
     "starter",
     "norg",
     "Trouble",
-
     "lazy",
-
     "mason",
+    "ddu",
+    "ddu-filer-file",
   },
   callback = function()
     vim.b.miniindentscope_disable = true
