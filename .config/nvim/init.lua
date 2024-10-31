@@ -32,6 +32,7 @@ end
 if vim.call('dein#load_state', dein_dir) == 1 then
   local dein_toml_dir = vim.env.HOME .. '/dotfiles/.config/nvim'
   local status_line_dir = '/status_line'
+  local mini_dir = '/mini'
 
   -- startup
   local dein_toml = dein_toml_dir .. '/dein.toml'
@@ -39,6 +40,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   local style_toml = dein_toml_dir .. '/style.toml'
   local copilot_toml = dein_toml_dir .. '/copilot.toml'
   local ddu_toml = dein_toml_dir .. '/ddu_settings.toml'
+  local mini_toml = dein_toml_dir .. mini_dir .. '/mini.toml'
 
 
   -- status line
@@ -66,6 +68,9 @@ if vim.call('dein#load_state', dein_dir) == 1 then
     lualine_toml,
     gitsigns_toml,
 
+    -- mini
+    mini_toml,
+
     -- lazy
     dein_toml_lazy,
     lsp_setting_toml_lazy,
@@ -84,6 +89,9 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   vim.call('dein#load_toml', lualine_toml, {lazy = 0})
   vim.call('dein#load_toml', bufferline_toml, {lazy = 0})
   vim.call('dein#load_toml', gitsigns_toml, {lazy = 0})
+
+  -- mini
+  vim.call('dein#load_toml', mini_toml, {lazy = 0})
 
   -- Lazy load
   vim.call('dein#load_toml', dein_toml_lazy, {lazy = 1})
