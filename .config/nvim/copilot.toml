@@ -104,6 +104,8 @@ vim.keymap.set('n', '<leader>cd', function() require('CopilotChat').ask(config.p
 vim.keymap.set('n', '<leader>cc', function() require('CopilotChat').ask(config.prompts.Document.prompt) end, { noremap = true, silent = true, desc = "Copilot Document" })
 vim.keymap.set('v', '<leader>cc', function() require('CopilotChat').ask(config.prompts.Document.prompt) end, { noremap = true, silent = true, desc = "Copilot Document" })
 vim.keymap.set('n', '<leader>cq', function() require('CopilotChat').ask(config.prompts.CodeQuality.prompt) end, { noremap = true, silent = true, desc = "Copilot Code Quality" })
+vim.keymap.set('v', '<leader>cq', function() require('CopilotChat').ask(config.prompts.CodeQuality.prompt) end, { noremap = true, silent = true, desc = "Copilot Code Quality" })
+
 -- <leader>qq (Copilot Chat Quick) で Copilot とチャットする
 vim.api.nvim_set_keymap("n", "<leader>qq", "<cmd>lua CopilotChatBuffer()<cr>", { noremap = true, silent = true })
 
