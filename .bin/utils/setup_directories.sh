@@ -13,6 +13,8 @@ directories=(
     "$HOME/.config/fish"
     "$HOME/.config/alacritty"
     "$HOME/.config/starship"
+    "$HOME/.config/eww"
+    "$HOME/.config/hypr/scripts"
     "$HOME/.cache/dein"
 )
 

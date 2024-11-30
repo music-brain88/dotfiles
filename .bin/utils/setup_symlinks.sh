@@ -28,4 +28,13 @@ ln -snfv "$DOTFILES_DIR/.config/fish/config.fish" "$HOME/.config/fish/config.fis
 
 ln -snfv "$DOTFILES_DIR/.config/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
 
+
+# eww
+ln -snfv "$DOTFILES_DIR/.config/eww/eww.yuck" "$HOME/.config/eww/eww.yuck"
+ln -snfv "$DOTFILES_DIR/.config/eww/eww.scss" "$HOME/.config/eww/eww.scss"
+
+# hypr
+ln -snfv "$DOTFILES_DIR/.config/hypr/scripts/notifications.sh" "$HOME/.config/hypr/scripts/notifications.sh"
+ln -snfv "$DOTFILES_DIR/.config/hypr/scripts/window-switcher.py" "$HOME/.config/hypr/scripts/window-switcher.py"
+
 echo "Symlinks created."

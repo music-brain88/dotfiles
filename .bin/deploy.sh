@@ -213,6 +213,11 @@ if [ ! -d ~/.config/mako ]; then
 fi
 ln -snfv ~/dotfiles/.config/mako/config ~/.config/mako/config
 
+echo "eww setting"
+if [ ! -d ~/.config/eww ]; then
+  mkdir -p ~/.config/eww/
+fi
+ln -snfv ~/dotfiles/.config/eww/eww.yuck ~/.config/eww/eww.yuck
 
 echo "finish setup"
 echo "next you call dein script"

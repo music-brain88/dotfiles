@@ -1,0 +1,44 @@
+// ~/.config/eww/eww.scss
+
+.window-switcher {
+  background-color: rgba(30, 30, 30, 0.95);
+  border-radius: 10px;
+  padding: 1rem;
+
+  .preview-container {
+    padding: 1rem;
+
+    .window-preview {
+      min-height: 200px;
+      border-radius: 5px;
+      margin-bottom: 0.5rem;
+    }
+
+    .window-title {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: white;
+    }
+
+    .window-class {
+      font-size: 0.9em;
+      color: #888;
+    }
+  }
+
+  .window-list {
+    padding: 0.5rem;
+
+    .window-item {
+      padding: 0.5rem 1rem;
+      background-color: rgba(60, 60, 60, 0.5);
+      border-radius: 5px;
+      color: white;
+
+      &.active {
+        background-color: rgba(100, 100, 100, 0.8);
+        border: 1px solid #888;
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+;; シンボリックリンクを貼る
+;; ln -snfv ~/dotfiles/.config/eww/eww.yuck ~/.config/eww/eww.yuck
+;; ~/.config/eww/eww.yuck
+
+(defwindow window_switcher
+  :monitor 0
+  :geometry (geometry :x "0%"
+                     :y "10%"
+                     :width "50%"
+                     :height "40%"
+                     :anchor "top center")
+  :stacking "overlay"
+  :class "window-switcher"
+  (box :orientation "vertical"
+       :space-evenly false
+       :spacing 10
+    (box :class "preview-container"
+         :orientation "vertical"
+         :spacing 5
+      (image :path {window_data.current.preview}
+             :class "window-preview")
+      (label :text {window_data.current.title}
+             :class "window-title")
+      (label :text {window_data.current.class}
+             :class "window-class"))
+    (box :class "window-list"
+         :orientation "horizontal"
+         :spacing 10
+      (for window in {window_data.windows}
+        (box :class "window-item ${window.active ? 'active' : ''}"
+             (label :text "${window.class}"))))))
