@@ -448,7 +448,7 @@ format = "[$symbol$status]($style)"
 
 [terraform]
 disabled = false
-symbol = "行"
+symbol = "\ue69a"
 style = "bg:#5836CD fg:#EEEEEE"
 format = '[[](bg:#5836CD fg:#464347)$symbol\($workspace\)[](bg:#464347 fg:#5836CD)]($style)'
 ### uncomment the following, to see the version
