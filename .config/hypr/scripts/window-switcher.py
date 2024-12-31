@@ -122,7 +122,7 @@ def main():
 
     # Get current active window
     current = get_active_window_address()
-    
+
     # Find current window index
     current_index = 0
     for i, window in enumerate(windows):
@@ -132,7 +132,7 @@ def main():
 
     # Determine direction
     reverse = len(sys.argv) > 1 and sys.argv[1] == "reverse"
-    
+
     # Calculate next window index
     if reverse:
         next_index = (current_index - 1) % len(windows)
