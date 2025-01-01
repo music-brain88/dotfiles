@@ -60,3 +60,5 @@ set -gx VOLTA_HOME "$HOME/.volta"
 set -gx PATH "$VOLTA_HOME/bin" $PATH
 
 ~/.local/bin/mise activate fish | source
+eval (/home/archie/.local/bin/mise activate fish)
+~/.local/bin/mise activate fish | source

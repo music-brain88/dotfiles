@@ -24,6 +24,8 @@ create_dir_if_not_exists "$HOME/.config/nvim"
 create_dir_if_not_exists "$HOME/.config/starship"
 create_dir_if_not_exists "$HOME/.config/fish"
 create_dir_if_not_exists "$HOME/.config/alacritty"
+create_dir_if_not_exists "$HOME/.config/eww"
+create_dir_if_not_exists "$HOME/.config/hypr/scripts"
 
 # Run setup scripts
 # shellcheck disable=SC1091
