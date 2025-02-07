@@ -2,7 +2,7 @@
     border: none;
     border-radius: 0;
     font-family: "JetBrainsMono Nerd Font", "Noto Sans CJK JP";
-    font-size: 13px;
+    font-size: 16px;
     min-height: 0;
     transition-property: background-color;
     transition-duration: 0.5s;
@@ -29,9 +29,9 @@ window#waybar.hidden {
 }
 
 #workspaces button {
-    padding: 0 5px;
+    padding: 5 10px;
     color: #313244;
-    min-width: 20px;
+    min-width: 40px;
 }
 
 #workspaces button.active {
@@ -71,6 +71,8 @@ window#waybar.hidden {
 #pulseaudio,
 #custom-media,
 #custom-weather,
+#custom-updates,
+#custom-notification,
 #custom-power,
 #tray,
 #mode,
@@ -78,37 +80,33 @@ window#waybar.hidden {
 #mpd,
 #language {
     padding: 0 10px;
-    margin: 5px 0;
+    margin: 8px 0;
     background: #1e1e2e;
     border-radius: 10px;
     transition: none;
     color: #cdd6f4;
 }
 
-/* Specific module styles */
+/* Module-specific colors */
 #battery {
     color: #a6e3a1;
 }
 
-#battery.charging, #battery.plugged {
+#battery.charging {
     color: #a6e3a1;
 }
 
+#battery.warning:not(.charging) {
+    color: #f9e2af;
+}
+
 #battery.critical:not(.charging) {
-    background-color: #f53c3c;
-    color: #ffffff;
+    color: #f38ba8;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
     animation-iteration-count: infinite;
     animation-direction: alternate;
-}
-
-@keyframes blink {
-    to {
-        background-color: #ffffff;
-        color: #000000;
-    }
 }
 
 #cpu {
@@ -119,49 +117,16 @@ window#waybar.hidden {
     color: #fab387;
 }
 
-#disk {
-    color: #964B00;
-}
-
-#backlight {
-    color: #90b1b1;
-}
-
 #network {
     color: #f9e2af;
 }
 
 #network.disconnected {
-    color: #f53c3c;
+    color: #f38ba8;
 }
 
-#pulseaudio {
-    color: #89b4fa;
-}
-
-#pulseaudio.muted {
-    color: #f53c3c;
-}
-
-#pulseaudio.microphone {
+#custom-notification {
     color: #cba6f7;
-}
-
-#pulseaudio.microphone.muted {
-    color: #f53c3c;
-}
-
-#temperature {
-    color: #f9e2af;
-}
-
-#temperature.critical {
-    color: #f53c3c;
-}
-
-#custom-media {
-    color: #a6e3a1;
-    min-width: 100px;
 }
 
 #custom-power {
@@ -169,26 +134,17 @@ window#waybar.hidden {
     margin-right: 5px;
 }
 
-#tray {
-    margin-right: 5px;
-}
-
-#tray > .passive {
-    -gtk-icon-effect: dim;
-}
-
-#tray > .needs-attention {
-    -gtk-icon-effect: highlight;
-    background-color: #eb4d4b;
+#custom-updates {
+    color: #f5c2e7;
 }
 
 #language {
-    color: #cba6f7;
+    color: #89dceb;
 }
 
-#window {
-    margin: 5px;
-    padding: 0 10px;
-    border-radius: 10px;
-    background: #1e1e2e;
+@keyframes blink {
+    to {
+        background-color: #f38ba8;
+        color: #11111b;
+    }
 }
