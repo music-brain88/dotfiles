@@ -89,7 +89,45 @@ local extended_prompts = {
                 "3. 入力検証の改善\n" ..
                 "4. 認証・認可の考慮\n" ..
                 "5. データ保護の方針",
-    }
+    },
+    Commit = {
+        prompt = [[#git:staged\nGenerate a commit message using this format:
+type(scope): message
+
+Types:
+- feat: 新機能の追加
+- fix: バグ修正
+- refactor: リファクタリング（機能追加やバグ修正を含まない）
+- perf: パフォーマンス改善
+- test: テストの追加・修正
+- docs: ドキュメントの更新
+- style: コードスタイルの修正（空白、フォーマット、セミコロン追加など）
+- chore: その他の変更（ビルドプロセス、依存関係の更新など）
+
+Guidelines:
+- First line should be under 50 characters
+- Use present tense ("add" not "added")
+- Be specific about what changed and why
+- For Rust specific changes, include the module or trait name
+- If breaking change, add "BREAKING CHANGE:" in the body
+- Reference any related issues with #issue-number
+
+Description should explain:
+1. What changed
+2. Why it changed (business value)
+3. Any side effects or breaking changes
+
+Format body with:
+- Bullet points for multiple changes
+- Code examples if relevant
+- "Fixes #123" if resolving an issue
+
+Context:
+%s
+
+Changes to review:
+%s]],
+    },
 
 }
 local config = {
@@ -133,12 +171,16 @@ map_copilot_chat('n', '<leader>co', 'Optimize', "Optimize Code")
 map_copilot_chat('n', '<leader>cD', 'Document', "Generate Documentation")
 map_copilot_chat('n', '<leader>ca', 'Architecture', "Analyze Architecture")
 map_copilot_chat('n', '<leader>cs', 'Security', "Security Analysis")
-map_copilot_chat('n', '<leader>cm', 'CopilotChatCommit', "Make Commit Message")
 
 -- Visual modeでも同様のマッピングを提供
 vim.keymap.set('v', '<leader>ce', ":'<,'>CopilotChat " .. extended_prompts.Explain.prompt .. "<CR>", { desc = "Explain Selected Code" })
 vim.keymap.set('v', '<leader>cr', ":'<,'>CopilotChat " .. extended_prompts.Review.prompt .. "<CR>", { desc = "Review Selected Code" })
 vim.keymap.set('v', '<leader>ct', ":'<,'>CopilotChat " .. extended_prompts.Tests.prompt .. "<CR>", { desc = "Generate Tests for Selection" })
+
+-- キーマッピングの設定
+vim.keymap.set('n', '<leader>cm', function()
+    require('CopilotChat').ask(extended_prompts.Commit.prompt)
+end, { desc = "Generate Commit Message" })
 
 -- 全バッファの内容を取得する関数
 local function get_all_buffers_content()
