@@ -22,7 +22,6 @@ local extended_prompts = {
                 "3. データの流れ\n" ..
                 "4. 重要なアルゴリズムや処理\n" ..
                 "5. 潜在的な注意点",
-
     },
     Review = {
         prompt = "コードレビューを行い、以下の観点から改善点を指摘してください：\n" ..
@@ -141,25 +140,97 @@ vim.keymap.set('v', '<leader>ce', ":'<,'>CopilotChat " .. extended_prompts.Expla
 vim.keymap.set('v', '<leader>cr', ":'<,'>CopilotChat " .. extended_prompts.Review.prompt .. "<CR>", { desc = "Review Selected Code" })
 vim.keymap.set('v', '<leader>ct', ":'<,'>CopilotChat " .. extended_prompts.Tests.prompt .. "<CR>", { desc = "Generate Tests for Selection" })
 
--- バッファ分析用のユーティリティ関数
-local function get_buffer_content()
-    local bufnr = vim.api.nvim_get_current_buf()
-    if not vim.api.nvim_buf_is_valid(bufnr) then
-        vim.notify("Invalid buffer", vim.log.levels.ERROR)
-        return nil
-    end
-    -- バッファの行数を取得
-    local line_count = vim.api.nvim_buf_line_count(bufnr)
-    if line_count == 0 then
-        vim.notify("Empty buffer", vim.log.levels.WARN)
-        return nil
+-- 全バッファの内容を取得する関数
+local function get_all_buffers_content()
+    local buffers = {}
+    for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
 
-    end
+            local file_name = vim.api.nvim_buf_get_name(bufnr)
+            local buf_type = vim.bo[bufnr].ft
 
-    -- バッファの内容を取得
-    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    return table.concat(lines, "\n")
+            if file_name ~= "" and buf_type ~= 'help' then
+                local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+                local filetype = vim.api.nvim_buf_get_option(bufnr, 'filetype')
+                table.insert(buffers, {
+                    name = file_name,
+                    content = table.concat(lines, "\n"),
+                    type = filetype,
+                    lines = #lines
+
+                })
+            end
+        end
+    end
+    return buffers
 end
+
+-- バッファ分析用のユーティリティ関数
+function CopilotAnalyzeAllBuffers()
+    local buffers = get_all_buffers_content()
+    if #buffers == 0 then
+      vim.notify("No buffers found", vim.log.levels.WARN)
+      return
+    end
+
+    -- バッファの内容を要約
+    local buffer_summary =  "# プロジェクト分析\n\n"
+    buffer_summary = buffer_summary .. "## 分析対象ファイル：\n"
+
+    for _, buf in ipairs(buffers) do
+        buffer_summary = buffer_summary .. string.format(
+          "\n### %s\n- タイプ: %s\n- 行数: %d\n\n```%s\n%s\n```\n",
+          vim.fn.fnamemodify(buf.name, ":t"),
+          buf.type,
+          buf.lines,
+          buf.type,
+          buf.content
+        )
+    end
+
+    local analysis_prompt = string.format([[
+プロジェクト全体を分析してください。以下のファイルが含まれています：
+
+%s
+
+以下の点について詳しく報告してください：
+
+1. プロジェクト構造
+   - ファイル間の関係性
+   - モジュール構成
+   - 依存関係
+
+
+2. コードの品質
+   - 一貫性
+   - 命名規則
+   - エラーハンドリング
+   - 共通パターン
+
+3. 改善提案
+   - リファクタリングの機会
+   - モジュール化の可能性
+   - コード再利用の機会
+
+
+4. セキュリティと性能
+   - 潜在的な問題点
+   - パフォーマンスの考慮事項
+   - セキュリティリスク
+
+5. テストと文書化
+   - 必要なテストの種類
+   - ドキュメント化の推奨事項
+
+]], buffer_summary)
+
+    -- CopilotChatを介して分析プロンプトを表示
+    vim.schedule(function()
+        require("CopilotChat").ask(analysis_prompt)
+    end)
+end
+
 
 -- ファイル情報を取得する関数
 local function get_file_info()
@@ -175,73 +246,6 @@ local function get_file_info()
     }
 end
 
--- ファイル全体を使ってCopilotとチャットする新しい関数
-function CopilotAnalyzeFile()
-    local content = get_buffer_content()
-    if not content then
-        return
-    end
-
-
-    local file_info = get_file_info()
-    local analysis_prompt = string.format([[
-このファイルを詳細に分析してください：
-
-ファイル情報:
-- ファイル名: %s
-- ファイルタイプ: %s
-- 行数: %d
-
-以下の点について詳しく報告してください：
-1. コードの概要と主な機能
-   - 主要なコンポーネントと役割
-   - 実装されている機能
-
-2. アーキテクチャと設計
-   - 使用されているデザインパターン
-   - コードの構造と編成
-   - 依存関係の管理
-
-3. コードの品質
-   - コーディング規約の遵守
-   - エラーハンドリング
-   - パフォーマンスの考慮点
-   - 重複コードや複雑な領域
-
-
-4. セキュリティの考慮事項
-   - 潜在的な脆弱性
-
-   - セキュリティベストプラクティス
-   - データ検証とサニタイズ
-
-5. テスト可能性
-   - 必要なテストの種類
-   - テスト容易性
-
-   - カバレッジの推奨事項
-
-6. ドキュメンテーション
-   - 既存のドキュメントの評価
-   - 必要な追加ドキュメント
-   - API文書化の推奨事項
-
-7. 改善提案
-   - リファクタリングの機会
-   - 最適化の可能性
-   - モダンな実践の適用
-
-8. メンテナンス性
-   - コードの可読性
-   - 将来の拡張性
-   - 技術的負債の評価
-]], file_info.name, file_info.type, file_info.lines, content)
-
-    -- Copilot Chatにプロンプトを送信
-    vim.schedule(function()
-        require("CopilotChat").ask(analysis_prompt)
-    end)
-end
 
 -- エラーハンドリングを追加したVisual modeの選択範囲分析
 function CopilotAnalyzeSelection()
@@ -282,7 +286,7 @@ function CopilotAnalyzeSelection()
 end
 
 -- キーマッピングの設定
-vim.keymap.set('n', '<leader>cF', CopilotAnalyzeFile, { desc = "Analyze Entire File" })
+vim.keymap.set('n', '<leader>cF', CopilotAnalyzeAllBuffers, { desc = "Analyze All Buffers" })
 vim.keymap.set('v', '<leader>cF', CopilotAnalyzeSelection, { desc = "Analyze Selection" })
 
 EOF
