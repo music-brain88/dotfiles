@@ -179,7 +179,14 @@ vim.keymap.set('v', '<leader>ct', ":'<,'>CopilotChat " .. extended_prompts.Tests
 
 -- キーマッピングの設定
 vim.keymap.set('n', '<leader>cm', function()
-    require('CopilotChat').ask(extended_prompts.Commit.prompt)
+    -- gitのステージングされたファイルのコミットメッセージを生成
+    local git_context = vim.fn.system('git diff --staged')
+    -- 現在のGitの状態を取得
+    -- local git_status = vim.fn.system('git status --porcelain')
+    local git_status = vim.fn.system('git status')
+    -- プロンプトをフォーマット
+    local formatted_prompt = string.format(extended_prompts.Commit.prompt, git_context, git_status)
+    require('CopilotChat').ask(formatted_prompt)
 end, { desc = "Generate Commit Message" })
 
 -- 全バッファの内容を取得する関数
