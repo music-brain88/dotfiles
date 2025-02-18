@@ -159,6 +159,11 @@ local config = {
 
     zindex = 1, -- determines if window is on top or below other floating windows
   },
+  highlight_headers = false,
+  question_header = '#  User ', -- Header to use for user questions
+  answer_header = '#  Copilot ', -- Header to use for AI answers
+  error_header = '#  Error ', -- Header to use for errors
+  separator = '───', -- Separator to use in chat
 }
 
 copilot_chat.setup(config)
