@@ -8,6 +8,15 @@ repo = 'Shougo/ddc-source-copilot'
 depends = ['copilot.vim', 'ddc.vim']
 
 [[plugins]]
+repo = 'MeanderingProgrammer/render-markdown.nvim'
+depends = ['copilot.vim', 'plenary.nvim', 'CopilotChat.nvim']
+lua_add = '''
+require('render-markdown').setup({
+  file_types = { 'markdown', 'copilot-chat' },
+})
+'''
+
+[[plugins]]
 repo = 'CopilotC-Nvim/CopilotChat.nvim'
 depends = ['copilot.vim', 'plenary.nvim']
 hook_add = '''
