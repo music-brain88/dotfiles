@@ -16,6 +16,9 @@ RUN pacman -Syu --noconfirm && \
     xsel \
     sudo \
     base-devel \
+    sqlite \
+    clang \
+    llvm \
     # 通知関連のパッケージを追加
     mako \
     libnotify
