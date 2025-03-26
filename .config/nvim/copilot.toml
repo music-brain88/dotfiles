@@ -41,7 +41,7 @@ local extended_prompts = {
                 "5. ベストプラクティスの適用",
     },
     Tests = {
-        prompt = "以下を含む包括的なテスト計画を提案してください：\n" ..
+        prompt = "以下を含む包括的なテスト計画を提案してください, 既にテストコードがあればリファクタリングやレビューしてください： \n" ..
                 "1. ユニットテストのケース\n" ..
                 "2. エッジケースの考慮\n" ..
                 "3. 統合テストのシナリオ\n" ..
@@ -144,6 +144,13 @@ local config = {
   show_help = true, -- ヘルプメッセージを表示
   prompts = extended_prompts, -- 拡張プロンプトを設定
   auto_follow_cursor = true, -- カーソル位置に基づいて自動的にコンテキストを更新
+  -- model = 'gpt-4o', -- default model
+  model = 'claude-3.7-sonnet', -- 使用するモデル
+  -- model = 'claude-3.5-sonnet', -- 使用するモデル
+  -- model = 'gemini-2.0-flash-001', -- 使用するモデル
+  -- model = 'o1', -- 使用するモデル
+  -- model = 'o3-mini', -- 使用するモデル
+  -- model = 'gpt-4.5-preview', -- 使用するモデル
   window = {
     layout = 'float', -- 'vertical', 'horizontal', 'float', 'replace'
     width = 0.8, -- fractional width of parent, or absolute width in columns when > 1
