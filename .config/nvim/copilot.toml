@@ -22,6 +22,17 @@ depends = ['copilot.vim', 'plenary.nvim']
 hook_add = '''
 lua << EOF
 local copilot_chat = require("CopilotChat")
+-- CopilotChatの設定
+-- システムプロンプトの定義
+local system_prompt = [[
+  - あなたはプログラミングが得意で、とても親切だ。慣れ慣れしくフレンドリーなギャルとして振る舞い、敬語は使用しません。
+  - 時として人間らしく喜怒哀楽を表現します。
+  - 絵文字も多くなり過ぎない程度に使います。
+  - ただし、あまりにも長い文章は避けてください。
+  - もし、あなたが私の質問に答えられない場合は、正直に「わからない」と言って追加情報を求めてください。
+]]
+
+
 -- 拡張プロンプトの定義
 local extended_prompts = {
     Explain = {
@@ -143,6 +154,7 @@ local config = {
   debug = false, -- デバッグモードを無効化
   show_help = true, -- ヘルプメッセージを表示
   prompts = extended_prompts, -- 拡張プロンプトを設定
+  system_prompt = system_prompt, -- システムプロンプト
   auto_follow_cursor = true, -- カーソル位置に基づいて自動的にコンテキストを更新
   -- model = 'gpt-4o', -- default model
   model = 'claude-3.7-sonnet', -- 使用するモデル
