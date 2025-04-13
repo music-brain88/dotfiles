@@ -1,4 +1,5 @@
 /drop
+/add       llm/personalities/gyaru.md
 /add       .bash_aliases
 /add       .bash_profile
 /add       .bashrc
@@ -53,4 +54,5 @@
 /add       .github/workflows/setup-neovim.yml
 /add       .github/workflows/setup-rust.yml
 /add       .github/workflows/setup-terminal.yml
-/add       llm/personalities/gyaru.md
+/add       structure.md
+/add       techStack.md
