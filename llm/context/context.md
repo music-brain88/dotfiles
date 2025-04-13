@@ -1,8 +1,10 @@
+# LLM用コンテキストファイル一覧
+# このファイルは、aiderを使ってLLMにコンテキストを提供するためのものです。
 /drop
-/add       llm/personalities/gyaru.md
 /add       .bash_aliases
 /add       .bash_profile
 /add       .bashrc
+## ユーティリティスクリプト
 /add       .bin/deploy.sh
 /add       .bin/install.sh
 /add       .bin/utils/setup_base.sh
@@ -13,14 +15,18 @@
 /add       .bin/utils/setup_rust_tools.sh
 /add       .bin/utils/setup_symlinks.sh
 /add       .bin/utils/setup_tmux.sh
+## Alacritty設定
 /add       .config/alacritty/alacritty.toml
+## eww設定
 /add       .config/eww/eww.scss
 /add       .config/eww/eww.yuck
+## Fish設定
 /add       .config/fish/completions/fisher.fish
 /add       .config/fish/completions/poetry.fish
 /add       .config/fish/completions/pyenv.fish
 /add       .config/fish/config.fish
 /add       .config/fish/functions/fish_user_key_bindings.fish
+## Hypr設定
 /add       .config/hypr/hyprland.conf
 /add       .config/hypr/hyprlock.conf
 /add       .config/hypr/keybinds.conf
@@ -29,6 +35,7 @@
 /add       .config/hypr/startup.conf
 /add       .config/hypr/themes/mocha.conf
 /add       .config/hypr/window-rules.conf
+## Neovim設定
 /add       .config/nvim/coc-settings.json
 /add       .config/nvim/copilot.toml
 /add       .config/nvim/dashboard.toml
@@ -44,6 +51,7 @@
 /add       .config/nvim/status_line/lualine.toml
 /add       .config/nvim/style.toml
 /add       .config/nvim/treesitter_settings.toml
+## Git関連
 /add       .gitconfig
 /add       .github/workflows/build-docker-image.yml
 /add       .github/workflows/main.yml
@@ -54,5 +62,7 @@
 /add       .github/workflows/setup-neovim.yml
 /add       .github/workflows/setup-rust.yml
 /add       .github/workflows/setup-terminal.yml
+
+## コンテキストファイル
 /add       structure.md
 /add       techStack.md
