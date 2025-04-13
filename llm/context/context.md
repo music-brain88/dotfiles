@@ -68,3 +68,6 @@
 /add       llm/context/techStack.md
 /add       llm/context/Philosophy.md
 /add       llm/context/Workflow.md
+/add       llm/context/README.md
+/add       llm/personalities/gyaru.md
+/add       README.md
