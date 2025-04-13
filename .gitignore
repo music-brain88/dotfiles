@@ -2,3 +2,4 @@
 .wakatime-project
 .wakatime.cfg
 .aider*
+llm/tmp/
