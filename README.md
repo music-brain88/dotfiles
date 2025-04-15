@@ -2,260 +2,203 @@
 
 ![Actions Status](https://github.com/music-brain88/dotfiles/workflows/build/badge.svg)
 
-## Overview
+🚀 Overview / 概要
 
+This repository contains my personal dotfiles and setup scripts for creating a modern, efficient development environment centered around
+Neovim, Tmux, and Fish shell.
 
-This repository contains my personal dotfiles - a collection of configuration files and scripts for setting up a powerful development environment. It focuses on creating a highly customized and efficient workspace primarily using Neovim, Tmux, and Fish shell, along with various other tools and utilities.
+このリポジトリは、Neovim、Tmux、Fishシェルを中心に、モダンで効率的な開発環境を構築するための設定ファイル（dotfiles）とセットアップスクリプ
+トをまとめたものです。
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+📂 Directory Structure / ディレクトリ構造
 
 ```shell
-# Directory Structure
 dotfiles/
-├── .backup/
-├── .bin/
-│   ├── utils/
-│   │   ├── setup_base.sh
-│   │   ├── setup_directories.sh
-│   │   ├── setup_fish.sh
-│   │   ├── setup_git.sh
-│   │   ├── setup_neovim.sh
-│   │   ├── setup_rust_tools.sh
-│   │   ├── setup_symlinks.sh
-│   │   └── setup_tmux.sh
-│   ├── deploy.sh
-│   └── install.sh
-├── .config/
+├── .backup/                 # Backup files / バックアップ関連ファイル
+├── .bin/                    # Installation and deployment scripts (セットアップスクリプト群)
+│   ├── deploy.sh            # Deploy dotfiles to home directory (dotfilesをホームディレクトリにデプロイ)
+│   ├── install.sh           # Install required tools (必要なツールをインストール)
+│   └── utils/               # Utility scripts for setup (各種ツールのセットアップスクリプト)
+├── .config/                 # Configuration files for various tools (各種ツールの設定ファイル)
 │   ├── alacritty/
-│   │   └── alacritty.toml
 │   ├── fish/
-│   │   ├── completions/
-│   │   │   ├── fisher.fish
-│   │   │   ├── git.fish
-│   │   │   ├── poetry.fish
-│   │   │   └── pyenv.fish
-│   │   ├── functions/
-│   │   │   └── config.fish
-│   │   └── config.fish
+│   ├── hypr/
 │   ├── i3/
-│   │   ├── config
-│   │   └── i3-alt-tab.py
 │   ├── mpd/
-│   │   └── mpd.conf
 │   ├── ncmpcpp/
-│   │   └── config
 │   ├── nvim/
-│   │   └── status_line/
-│   │       ├── bufferline.toml
-│   │       ├── gitsigns.toml
-│   │       ├── lualine.toml
-│   │       ├── coc-settings.json
-│   │       ├── dashboard.toml
-│   │       ├── ddc_settings.toml
-│   │       ├── dein.toml
-│   │       ├── dein_lazy.toml
-│   │       ├── init.lua
-│   │       ├── lsp_settings.toml
-│   │       ├── style.toml
-│   │       └── treesitter_settings.toml
 │   ├── picom/
-│   │   └── picom.conf
 │   ├── polybar/
-│   │   └── forest/
 │   ├── rofi/
-│   └── starship/
-├── .github/
-├── polybar-themes/
-├── .bash_aliases
-├── .bashrc
-├── .gitconfig
-├── .gitconfig.local.sample
-├── .gitignore
-├── .gitmodules
-├── .tmux.conf
-├── Dockerfile
-├── LICENSE
-├── Makefile
-├── README.md
-└── fish_plugin_setup.fish
-```
-## Directory Structure Explanation
-
-.bin/: Contains main scripts and utility scripts
-
-deploy.sh: Handles symlinking of dotfiles
-install.sh: Main installation script
-utils/: Directory for utility scripts
-
-manage_cargo_tools.sh: Manages Cargo tools
-setup_neovim.sh: Sets up Neovim
-setup_fish.sh: Sets up Fish shell
-setup_tmux.sh: Sets up Tmux
-
-
-
-
-configs/: Contains configuration files for various tools
-
-nvim/: Neovim configuration
-fish/: Fish shell configuration
-tmux/: Tmux configuration
-... (other tool configurations)
-
-
-Makefile: Defines tasks for easy execution
-README.md: Project documentation
-
-## Makefile Tasks
-```makefile
-.PHONY: all install deploy update-tools
-
-all: install deploy
-
-install:
-	@echo "Installing dotfiles..."
-
-	@.bin/install.sh
-
-
-deploy:
-	@echo "Deploying dotfiles..."
-
-	@.bin/deploy.sh
-
-update-tools:
-
-	@echo "Updating Cargo tools..."
-
-	@.bin/utils/manage_cargo_tools.sh
-
-
-setup-neovim:
-	@echo "Setting up Neovim..."
-	@.bin/utils/setup_neovim.sh
-
-setup-fish:
-	@echo "Setting up Fish shell..."
-	@.bin/utils/setup_fish.sh
-
-setup-tmux:
-	@echo "Setting up Tmux..."
-	@.bin/utils/setup_tmux.sh
-
+│   ├── starship/
+│   └── waybar/
+├── .github/                 # GitHub Actions workflows (GitHub Actionsの設定)
+├── polybar-themes/          # Polybar themes (submodule) (Polybarテーマ（サブモジュール）)
+├── Dockerfile               # Dockerfile for containerized setup (Docker環境構築用ファイル)
+├── LICENSE                  # MIT License (MITライセンス)
+├── Makefile                 # Makefile for easy setup (簡単なセットアップ用Makefile)
+├── README.md                # This document (本ドキュメント)
+└── その他の設定ファイル (.bashrc, .gitconfigなど)
 ```
 
-## Key Features
+詳細な構造は [structure.md](structure.md) を参照してください。
 
-- **Neovim Configuration**: Advanced setup with Dein plugin manager and LSP integration
-- **Tmux**: Custom configuration for enhanced terminal multiplexing
+---
 
-- **Fish Shell**: Configured with Fisher package manager and custom functions
-- **Window Manager**: i3 setup with Polybar, Rofi, and Picom for a customized desktop experience
-- **Terminal**: Alacritty configuration for a modern terminal experience
+## 🚩 Tech Stack / 技術スタック
 
-- **Development Tools**: Integration of various Rust-based CLI tools (fd, ripgrep, exa, etc.)
-- **Version Control**: Git setup with Delta for improved diffs
+- Editor (エディタ): Neovim (LSP, Treesitter, GitHub Copilot)
+- Shell: Fish (Fisher plugin manager)
+- Terminal Multiplexer: Tmux
+- Window Managers: Hyprland (Wayland), i3 (X11)
+- Status Bars: Waybar (Wayland), Polybar (X11)
+- Launchers: Wofi (Wayland), Rofi (X11)
+- Terminal Emulator: Alacritty
+- CLI Tools: Rust-based tools (exa, ripgrep, fd, bat, gitui, delta, etc.)
+- Prompt: Starship
+- Containerization: Docker
+- CI/CD: GitHub Actions
 
-- **Package Managers**: Utilizes Cargo, Fisher, Dein, and others for managing various components
-- **Automated Setup**: Makefile and scripts for easy deployment and environment setup
+---
 
-## Installation
+## 🚀 Installation (セットアップ方法)
 
-**Warning**: If you want to give these dotfiles a try, you should first fork this repository, review the code, and remove things you don't want or need. Don't blindly use my settings unless you know what that entails. Use at your own risk!
+⚠️ **Warning**: Review and modify these dotfiles before using. Use at your own risk.
+⚠️ **注意**: 使用前に必ず内容を確認し、自己責任でご利用ください。                                                                         
 
+### 📌 Prerequisites (前提条件)
 
-### Prerequisites
+- Neovim
+- Tmux
+- Fish Shell
+- Make, GCC, pkg-config
+- Rust (Cargo)
+- Python (pyenv recommended)
 
+### 📌 Setup Steps (セットアップ手順)
 
-- [Neovim](https://github.com/neovim/neovim/wiki/Installing-Neovim)
-- [Tmux](https://github.com/tmux/tmux)
-- [Fish](https://fishshell.com/)
-- Make
-- GCC
+1. Clone the repository (リポジトリをクローン):
 
-- pkg-config
+```shell
+git clone https://github.com/music-brain88/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+```
 
-### Setup Steps
+ 2 Install required tools (必要なツールをインストール):
 
-1. Clone the repository:
-   ```shell
-   git clone https://github.com/music-brain88/dotfiles.git ~/dotfiles
-   ```
+```shell
+make install
+```
 
-2. Navigate to the dotfiles directory:
+ 3 Deploy dotfiles (dotfilesをデプロイ):
 
-   ```shell
-   cd ~/dotfiles
-   ```
+```shell
+make deploy
+```
 
-3. Run the installation command:
-   ```shell
-   make install
-   ```
-
-4. Deploy the configurations:
-   ```shell
-   make deploy
-
-   ```
-
-5. Set up Python environment (if needed):
-   ```shell
-   pyenv install <python3 version>
-   pyenv virtualenv <python3 version> neovim3
-   source ~/.pyenv/versions/neovim3/bin/activate.fish
-   ```
-
-6. Install pynvim:
-
-   ```shell
-   pip install pynvim
-   ```
-
-7. Open Neovim and install plugins:
-   ```
-   :call dein#install()
-   ```
-
-## Included Tools and Utilities
-
-
-- Rust-based CLI tools:
-  - [bat](https://github.com/sharkdp/bat)
-  - [exa](https://github.com/ogham/exa)
-  - [procs](https://github.com/dalance/procs)
-  - [fd-find](https://github.com/sharkdp/fd)
-
-  - [gitui](https://github.com/extrawurst/gitui)
-  - [git-delta](https://github.com/dandavison/delta)
-
-  - [ripgrep](https://github.com/BurntSushi/ripgrep)
-  - And more...
-
-## Usage
-
-
-To see available commands, run `make` in the dotfiles directory:
+ 4 Set up Python environment for Neovim (Python環境をセットアップ):
 
 
 ```shell
-~/dotfiles make
+pyenv install <python3 version>
+pyenv virtualenv <python3 version> neovim3
+source ~/.pyenv/versions/neovim3/bin/activate.fish
+pip install pynvim
 ```
 
-This will display a list of available commands for managing your dotfiles and development environment.
 
-## Customization
-
-
-Feel free to fork this repository and modify the configurations to suit your needs. The modular structure allows for easy customization of individual components.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-[MIT](https://github.com/tcnksm/tool/blob/master/LICENCE)
+ 4 Install Neovim plugins (Neovimプラグインをインストール):
 
 
-## Author
+```neovim
+:call dein#install()
+```
 
-[1saver](https://github.com/music-brain88/)
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+🐳 Docker Setup (Dockerを使ったセットアップ方法)
+
+You can also set up the environment using Docker:
+
+Dockerを使って環境を構築する場合は、以下の手順を実行します。
+
+ 1 Build Docker image (Dockerイメージをビルド):
+
+
+```shell
+make build
+```
+
+ 2 Run Docker container (Dockerコンテナを起動):
+
+
+```shell
+make run
+```
+
+ 3 Enter Docker container (Dockerコンテナに入る):
+
+
+```shell
+make exec
+```
+
+ 4 Inside the container, install and deploy dotfiles (コンテナ内でdotfilesをインストール・デプロイ):
+
+
+cd ~/dotfiles
+make install
+make deploy
+
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+🛠️ Makefile Tasks (Makefileタスク一覧)
+
+```shell
+make install        # Install required tools (必要なツールをインストール)
+make deploy         # Deploy dotfiles (dotfilesをデプロイ)
+make update-tools    # Update Cargo tools (Cargoツールをアップデート)
+make build           # Build Docker image (Dockerイメージをビルド)
+make run             # Run Docker container (Dockerコンテナを起動)
+make start           # Start Docker container (Dockerコンテナを開始)
+make stop            # Stop Docker container (Dockerコンテナを停止)
+make remove          # Remove Docker container (Dockerコンテナを削除)
+make exec            # Execute bash in Docker container (Dockerコンテナ内でbashを実行)
+make backup          # Backup Arch Linux packages (Arch Linuxのパッケージリストをバックアップ)
+```
+
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+📂 Directory Structure (ディレクトリ構造)
+
+See structure.md for detailed directory structure.
+詳細なディレクトリ構造は structure.md を参照してください。
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+✨ Customization (カスタマイズ方法)
+
+Feel free to fork and customize these dotfiles to suit your needs.
+自由にフォークして、自分の好みに合わせてカスタマイズしてください。
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+🤝 Contributing (コントリビューション)
+
+Contributions are welcome! Feel free to submit issues or pull requests.
+改善や機能追加の提案は大歓迎です！お気軽にIssueやPull Requestを送ってください。
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+📜 License (ライセンス)
+
+MIT License
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+👤 Author (作者)
+
+1saver (music-brain88)
