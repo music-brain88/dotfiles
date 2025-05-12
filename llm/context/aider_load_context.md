@@ -69,5 +69,6 @@
 /add       llm/context/Philosophy.md
 /add       llm/context/Workflow.md
 /add       llm/context/README.md
+/add       llm/context/environment.md
 /add       llm/personalities/gyaru.md
 /add       README.md
