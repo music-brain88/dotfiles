@@ -13,12 +13,13 @@ XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 # Create necessary directories
 mkdir -p "${XDG_CONFIG_HOME}/nvim"
-mkdir -p "${XDG_CONFIG_HOME}/claude"
 mkdir -p "${XDG_CONFIG_HOME}/fish"
 mkdir -p "${XDG_CONFIG_HOME}/alacritty"
 mkdir -p "${XDG_CONFIG_HOME}/starship"
 mkdir -p "${XDG_CONFIG_HOME}/eww"
 mkdir -p "${XDG_CONFIG_HOME}/hypr/scripts"
+
+mkdir -p "$HOME/.claude"
 
 # Create symlinks
 ln -snfv "$DOTFILES_DIR/.bashrc" "$HOME/.bashrc"
