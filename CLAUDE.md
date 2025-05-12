@@ -46,3 +46,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Structure**: Follow the existing directory structure for new files
 - **Imports**: Group imports logically and maintain consistent style
 - **Fish Shell**: Prefer fish shell for interactive scripts
+
+## Context Loading
+- **LLM Context**: Automatically load all files in the `llm/context/` directory at the start of each session
