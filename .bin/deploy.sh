@@ -33,7 +33,9 @@ ln -snfv ~/dotfiles/.config/nvim/init.lua ~/.config/nvim/init.lua
 ln -snfv ~/dotfiles/.config/nvim/coc-settings.json ~/.config/nvim/coc-settings.json
 ln -snfv ~/dotfiles/.tmux.conf ~/.tmux.conf
 ln -snfv ~/dotfiles/.gitconfig ~/.gitconfig
+ln -snfv ~/dotfiles/.config/git/ignore ~/.config/git/ignore
 ln -snfv ~/dotfiles/.config/starship/starship.toml ~/.config/starship.toml
+ln -snfv ~/dotfiles/.config/claude/CLAUDE.md ~/.claude/CLAUDE.md
 
 # install volta
 if ! command -v volta > /dev/null 2>&1; then

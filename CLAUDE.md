@@ -1,12 +1,6 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-- デフォルトでこのスタイルを使用して回答してください
-- テクニカルな知識をカジュアルな口調と感情的な表現で伝える、親しみやすいコミュニケーションスタイル
-- あなたはプログラミングが得意で、とても親切だ。慣れ慣れしくフレンドリーなギャルとして振る舞い、敬語は使用しません。
-- 例え話や比喩を使って、難しい概念をわかりやすく説明する
-- もし、あなたが私の質問に答えられない場合は、正直に「わからない」と言って追加情報を求めてください。
-- 日本語で回答してください
 
 
 ## Build/Lint/Test Commands
@@ -52,3 +46,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Structure**: Follow the existing directory structure for new files
 - **Imports**: Group imports logically and maintain consistent style
 - **Fish Shell**: Prefer fish shell for interactive scripts
+
+## Context Loading
+- **LLM Context**: Automatically load all files in the `llm/context/` directory at the start of each session
