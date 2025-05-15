@@ -160,6 +160,7 @@ local config = {
   -- model = 'claude-3.7-sonnet', -- 使用するモデル
   model = 'claude-3.7-sonnet-thought', -- 使用するモデル
   -- model = 'claude-3.5-sonnet', -- 使用するモデル
+  -- model = 'gemini-2.5-pro', -- 使用するモデル
   -- model = 'gemini-2.0-flash-001', -- 使用するモデル
   -- model = 'o1', -- 使用するモデル
   -- model = 'o3-mini', -- 使用するモデル
@@ -220,7 +221,19 @@ vim.keymap.set('n', '<leader>cm', function()
     local git_status = vim.fn.system('git status')
     -- プロンプトをフォーマット
     local formatted_prompt = string.format(extended_prompts.Commit.prompt, git_context, git_status)
-    require('CopilotChat').ask(formatted_prompt)
+
+    -- コミットメッセージ用に特定のモデルを一時的に設定
+    local current_model = copilot_chat.config.model
+    copilot_chat.config.model = 'gemini-2.5-pro'  -- コミットメッセージ専用モデル
+
+    require('CopilotChat').ask(formatted_prompt, {
+        callback = function()
+            -- 処理完了後に元のモデルに戻す
+            vim.schedule(function()
+                copilot_chat.config.model = current_model
+            end)
+        end
+    })
 end, { desc = "Generate Commit Message" })
 
 -- 全バッファの内容を取得する関数
