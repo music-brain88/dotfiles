@@ -74,6 +74,11 @@ let s:win_size = s:calculate_window_size()
 " ddu Global Setting
 call ddu#custom#patch_global({
 \   'ui': 'ff',
+\   'actionOptions': {
+\     'open': {
+\       'quit': v:false,
+\     },
+\   },
 \   'sourceOptions': {
 \     '_': {
 \       'matchers': ['matcher_substring'],
@@ -135,11 +140,13 @@ call ddu#custom#patch_local('file', {
 
 autocmd FileType ddu-filer call s:ddu_filer_my_settings()
 function! s:ddu_filer_my_settings() abort
+  " winfixbufを無効化
+  setlocal nowinfixbuf
   " Change action, Is cursor item drectory or not.
   nnoremap <buffer><silent><expr> <CR>
         \ ddu#ui#get_item()->get('isTree', v:false) ?
         \ "<Cmd>call ddu#ui#do_action('itemAction', #{name: 'narrow'})<CR>" :
-        \ "<Cmd>call ddu#ui#do_action('itemAction', #{name: 'open'})<CR>"
+        \ "<Cmd>call ddu#ui#do_action('itemAction', #{name: 'open', params: #{command: 'tabnew'}})<CR>"
   nnoremap <buffer><silent><expr> h
         \ ddu#ui#get_item()->get('isTree', v:false) ?
         \ "<Cmd>call ddu#ui#do_action('collapseItem')<CR>" :
@@ -288,6 +295,35 @@ on_source = 'ddu.vim'
 [[plugins]]
 repo = 'Shougo/ddu-kind-file'
 on_source = 'ddu.vim'
+hook_source = '''
+" winfixbufを考慮したアクション設定
+call ddu#custom#action('kind', 'file', 'open_smart', { args -> SmartOpen(args) })
+
+function! SmartOpen(args) abort
+  let item = a:args.items[0]
+  let path = item.action.path
+  
+  " winfixbufが設定されているかチェック
+  if &winfixbuf
+    " 新しいウィンドウで開く
+    execute 'vsplit' path
+  else
+    " 通常通り開く
+    execute 'edit' path
+  endif
+  
+  return 0  " ActionFlags.None
+endfunction
+
+" デフォルトアクションを変更
+call ddu#custom#patch_global(#{
+\   kindOptions: #{
+\     file: #{
+\       defaultAction: 'open_smart',
+\     },
+\   },
+\ })
+'''
 
 #-----------------------------------------------------------------------
 # end of ddu settings
