@@ -33,6 +33,6 @@ else
   exit 1
 fi
 
-. "$HOME/.cargo/env"
+# . "$HOME/.cargo/env"
 
 source /home/archie/.config/broot/launcher/bash/br
