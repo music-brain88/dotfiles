@@ -22,9 +22,10 @@ function! s:open_in_prev_window() abort
   if !empty(item) && has_key(item, 'action') && has_key(item.action, 'path')
     if !item->get('isTree', v:false)
       " ファイルの場合
-      call ddu#ui#do_action('quit')
       if g:ddu_prev_winid != 0 && win_gotoid(g:ddu_prev_winid)
         execute 'edit ' . fnameescape(item.action.path)
+        " 元のウィンドウでファイルを開いた後にdduを閉じる
+        call ddu#ui#do_action('quit')
       endif
     else
       " ディレクトリの場合は通常のnarrowアクション
