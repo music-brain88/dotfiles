@@ -8,6 +8,23 @@ hook_add = '''
 "-----------------------------------------------------------------------
 " ddu filer settings
 "-----------------------------------------------------------------------
+" 背景: dduでファイルを開いた際に、元のウィンドウではなくfloating windowで
+" ファイルが開かれてしまう問題があった。また、階層を深く潜った場合、
+" 複数のddu floating windowが残ってしまい、手動で何度も閉じる必要があった。
+"
+" 解決策: 
+" 1. ddu開始前に現在のウィンドウIDを保存 (g:ddu_prev_winid)
+" 2. ファイル選択時に元のウィンドウに移動してからファイルを開く
+" 3. dduのバッファを bwipeout! で強制削除することで、
+"    すべてのddu windowを確実に閉じる
+"
+" 試した方法と問題点:
+" - ddu#ui#do_action('quit'): 最後の1つのwindowしか閉じない
+" - actionOptions の quit: v:true: floating window内でファイルが開く
+" - 複数回 quit を呼ぶ: 階層によって必要な回数が変わる
+" - autocmd での後処理: タイミングの問題で複雑になる
+"-----------------------------------------------------------------------
+
 " DDU開始前のウィンドウIDを保存する変数
 let g:ddu_prev_winid = 0
 
@@ -22,16 +39,56 @@ function! s:open_in_prev_window() abort
   if !empty(item) && has_key(item, 'action') && has_key(item.action, 'path')
     if !item->get('isTree', v:false)
       " ファイルの場合
+      let filepath = item.action.path
+      " 現在のdduバッファを記録（後で削除するため）
+      let ddu_bufnr = bufnr('%')
+      " 元のウィンドウに移動
       if g:ddu_prev_winid != 0 && win_gotoid(g:ddu_prev_winid)
-        execute 'edit ' . fnameescape(item.action.path)
-        " 元のウィンドウでファイルを開いた後にdduを閉じる
-        call ddu#ui#do_action('quit')
+        " ファイルを開く
+        execute 'edit ' . fnameescape(filepath)
+        " dduバッファを削除してウィンドウを閉じる
+        " bwipeout! を使うことで、階層が深くても関連するすべての
+        " ddu windowが連鎖的に閉じられる
+        execute 'bwipeout! ' . ddu_bufnr
       endif
     else
       " ディレクトリの場合は通常のnarrowアクション
       call ddu#ui#do_action('itemAction', #{name: 'narrow'})
     endif
   endif
+endfunction
+
+" 全てのdduウィンドウを閉じる関数
+function! s:close_all_ddu_windows() abort
+  " デバッグ: 現在のウィンドウ数
+  echom 'Total windows: ' . winnr('$')
+  
+  " 全てのウィンドウをチェックして、ddu関連のものを閉じる
+  for winnr in reverse(range(1, winnr('$')))
+    let bufnr = winbufnr(winnr)
+    let ft = getbufvar(bufnr, '&filetype')
+    let bufname = bufname(bufnr)
+    
+    " デバッグ情報
+    echom 'Window ' . winnr . ': ft=' . ft . ', bufname=' . bufname
+    
+    " ddu関連のfiletypeを持つウィンドウを閉じる
+    if ft =~# '^ddu' || bufname =~# '\[ddu\]'
+      echom 'Closing ddu window: ' . winnr
+      execute winnr . 'close!'
+    endif
+  endfor
+  
+  " もう一つの方法: ddu#ui#do_action('quit')を複数回呼ぶ
+  let i = 0
+  while i < 10
+    try
+      call ddu#ui#do_action('quit')
+    catch
+      break
+    endtry
+    let i += 1
+  endwhile
 endfunction
 
 nmap <silent> ,m <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({ 'name' : 'file' })<CR>
@@ -161,7 +218,12 @@ call ddu#custom#patch_global({
 "-----------------------------------------------------------------------
 call ddu#custom#patch_local('file', {
 \   'ui': 'filer',
-\   'sources': [{'name': 'file', 'params': {}}]
+\   'sources': [{'name': 'file', 'params': {}}],
+\   'actionOptions': {
+\     'narrow': {
+\       'quit': v:false,
+\     },
+\   },
 \ })
 
 autocmd FileType ddu-filer call s:ddu_filer_my_settings()
@@ -250,6 +312,8 @@ call ddu#custom#patch_local('word', {
 " from ddu document
 autocmd FileType ddu-ff call s:ddu_my_settings()
 function! s:ddu_my_settings() abort
+  " winfixbufを無効化
+  setlocal nowinfixbuf
   nnoremap <buffer><silent> <CR>
         \ <Cmd>call ddu#ui#do_action('itemAction')<CR>
   nnoremap <buffer><silent> <Space>
@@ -263,6 +327,8 @@ endfunction
 " from ddu document
 autocmd FileType ddu-ff-filter call s:ddu_filter_my_settings()
 function! s:ddu_filter_my_settings() abort
+  " winfixbufを無効化
+  setlocal nowinfixbuf
   inoremap <buffer><silent> <CR>
   \ <Esc><Cmd>close<CR>
   nnoremap <buffer><silent> <CR>
