@@ -1,6 +1,7 @@
 [tools]
 poetry = "latest"
 node = "22.15.1"
+uv = "latest"
 
 [env]
 _.file = ".env"
