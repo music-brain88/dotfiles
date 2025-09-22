@@ -62,23 +62,23 @@ endfunction
 function! s:close_all_ddu_windows() abort
   " デバッグ: 現在のウィンドウ数
   echom 'Total windows: ' . winnr('$')
-  
+
   " 全てのウィンドウをチェックして、ddu関連のものを閉じる
   for winnr in reverse(range(1, winnr('$')))
     let bufnr = winbufnr(winnr)
     let ft = getbufvar(bufnr, '&filetype')
     let bufname = bufname(bufnr)
-    
+
     " デバッグ情報
     echom 'Window ' . winnr . ': ft=' . ft . ', bufname=' . bufname
-    
+
     " ddu関連のfiletypeを持つウィンドウを閉じる
     if ft =~# '^ddu' || bufname =~# '\[ddu\]'
       echom 'Closing ddu window: ' . winnr
       execute winnr . 'close!'
     endif
   endfor
-  
+
   " もう一つの方法: ddu#ui#do_action('quit')を複数回呼ぶ
   let i = 0
   while i < 10
@@ -91,16 +91,34 @@ function! s:close_all_ddu_windows() abort
   endwhile
 endfunction
 
+" ddu-ff (fuzzy finder) で前のウィンドウでファイルを開く関数
+function! s:open_in_prev_window_ff() abort
+  let item = ddu#ui#get_item()
+  if !empty(item) && has_key(item, 'action') && has_key(item.action, 'path')
+    let filepath = item.action.path
+    " 現在のdduバッファを記録（後で削除するため）
+    let ddu_bufnr = bufnr('%')
+    " 元のウィンドウに移動
+    if g:ddu_prev_winid != 0 && win_gotoid(g:ddu_prev_winid)
+      " ファイルを開く
+      execute 'edit ' . fnameescape(filepath)
+      " dduバッファを削除してウィンドウを閉じる
+      execute 'bwipeout! ' . ddu_bufnr
+    endif
+  endif
+endfunction
+
 nmap <silent> ,m <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({ 'name' : 'file' })<CR>
 
 " fuzzy find full text search
-nmap <silent> ,g <Cmd>call ddu#start({
+" 元のウィンドウIDを保存してから検索を開始
+nmap <silent> ,g <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({
 \   'name': 'text',
 \   'sources': [{
 \     'name': 'rg',
 \     'options': {
 \       'matchers': [],
-\       'volatile': v:true,
+\       'volatile': v:true
 \      },
 \   }],
 \   'uiParams': {'ff': {
@@ -111,7 +129,8 @@ nmap <silent> ,g <Cmd>call ddu#start({
 
 
 " fuzzy find buffer
-nmap <silent> ,b <Cmd>call ddu#start({ 'name' : 'buffer' })<CR>
+" 元のウィンドウIDを保存してからバッファ一覧を開始
+nmap <silent> ,b <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({ 'name' : 'buffer' })<CR>
 
 " fuzzy find grep cursor word
 nmap <silent> ,w <Cmd>call ddu#start({
@@ -314,8 +333,9 @@ autocmd FileType ddu-ff call s:ddu_my_settings()
 function! s:ddu_my_settings() abort
   " winfixbufを無効化
   setlocal nowinfixbuf
+  " <CR> を s:open_in_prev_window_ff() に変更して、元のウィンドウでファイルを開く
   nnoremap <buffer><silent> <CR>
-        \ <Cmd>call ddu#ui#do_action('itemAction')<CR>
+        \ <Cmd>call <SID>open_in_prev_window_ff()<CR>
   nnoremap <buffer><silent> <Space>
         \ <Cmd>call ddu#ui#do_action('toggleSelectItem')<CR>
   nnoremap <buffer><silent> i
