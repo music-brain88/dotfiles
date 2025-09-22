@@ -222,7 +222,11 @@ vim.keymap.set('n', '<leader>cm', function()
     local git_status = vim.fn.system('git status')
     -- プロンプトをフォーマット
     local formatted_prompt = string.format(extended_prompts.Commit.prompt, git_context, git_status)
-    require('CopilotChat').ask(formatted_prompt)
+    
+    -- コミットメッセージ生成時のみsonnet4を使用
+    require('CopilotChat').ask(formatted_prompt, {
+        model = 'claude-sonnet-4'  -- このaskだけsonnet4を使用
+    })
 end, { desc = "Generate Commit Message" })
 
 -- 全バッファの内容を取得する関数
