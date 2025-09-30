@@ -1,0 +1,7 @@
+{
+  "banner": "always",
+  "beep": true,
+  "render_markdown": true,
+  "screen_reader": false,
+  "theme": "auto"
+}
