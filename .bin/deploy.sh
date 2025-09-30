@@ -42,6 +42,7 @@ if [ ! -d ~/.copilot ]; then
   mkdir -p ~/.copilot
 fi
 ln -snfv ~/dotfiles/.config/copilot/config.json ~/.copilot/config.json
+ln -snfv ~/dotfiles/.config/copilot/copilot-instructions.md ~/.copilot/copilot-instructions.md
 
 # install volta
 if ! command -v volta > /dev/null 2>&1; then
