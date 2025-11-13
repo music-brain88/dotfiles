@@ -37,6 +37,13 @@ ln -snfv ~/dotfiles/.config/git/ignore ~/.config/git/ignore
 ln -snfv ~/dotfiles/.config/starship/starship.toml ~/.config/starship.toml
 ln -snfv ~/dotfiles/.config/claude/CLAUDE.md ~/.claude/CLAUDE.md
 
+# copilot
+if [ ! -d ~/.copilot ]; then
+  mkdir -p ~/.copilot
+fi
+ln -snfv ~/dotfiles/.config/copilot/config.json ~/.copilot/config.json
+ln -snfv ~/dotfiles/.config/copilot/copilot-instructions.md ~/.copilot/copilot-instructions.md
+
 # install volta
 if ! command -v volta > /dev/null 2>&1; then
   echo "Install volta"
