@@ -326,7 +326,7 @@ format = "[[](bg:#4063D8 fg:#464347)$symbol$version[](bg:#464347 fg:#4063D
 
 [kubernetes]
 disabled = false
-symbol = "☸︎"
+symbol = "☸︎  "
 style = "bg:#3371E3 fg:#EEEEEE"
 format = '[[](bg:#3371E3 fg:#464347)$symbol$context(\($namespace\))[](bg:#464347 fg:#3371E3)]($style)'
 # ARNからクラスター名だけを抽出
