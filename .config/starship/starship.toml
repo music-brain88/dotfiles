@@ -329,6 +329,10 @@ disabled = false
 symbol = "☸︎"
 style = "bg:#3371E3 fg:#EEEEEE"
 format = '[[](bg:#3371E3 fg:#464347)$symbol$context(\($namespace\))[](bg:#464347 fg:#3371E3)]($style)'
+# ARNからクラスター名だけを抽出
+[[kubernetes.contexts]]
+context_pattern = "arn:aws:eks:[^:]+:[^:]+:cluster/(?P<cluster>[\\w-]+)"
+context_alias = "$cluster"
 
 [memory_usage]
 # disabled = false
