@@ -52,8 +52,13 @@
       recursive = true;
     };
 
-    # Claude
+    # Claude Code
     ".claude/CLAUDE.md".source = ./.config/claude/CLAUDE.md;
+    ".claude/settings.json".source = ./.config/claude/settings.json;
+    ".claude/statusline-command.sh" = {
+      source = ./.config/claude/statusline-command.sh;
+      executable = true;
+    };
 
     # Copilot
     ".copilot/config.json".source = ./.config/copilot/config.json;
