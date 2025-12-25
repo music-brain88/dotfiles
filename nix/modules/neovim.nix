@@ -52,20 +52,14 @@
       # Debuggers
       lldb # For Rust, C, C++
 
-      # Additional tools
-      ripgrep # For telescope.nvim
-      fd # For telescope.nvim
-      fzf # Fuzzy finder
-      git # Required for various plugins
-      gnumake # For building plugins
+      # Additional tools (not duplicated - others come from specialized modules)
+      # ripgrep, fd: rust-tools.nix
+      # fzf, gnumake, unzip, nodejs_20: dev-tools.nix
+      # git: git.nix
       gcc # Compiler for some plugins
-      unzip # For unpacking plugins
 
-      # Python support for Neovim (pynvim only, main python is in dev-tools.nix)
+      # Python support for Neovim
       python311Packages.pynvim
-
-      # Node.js support
-      nodejs_20
 
       # Clipboard support
       wl-clipboard # Wayland

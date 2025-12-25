@@ -118,5 +118,11 @@
       source = ./.config/eww;
       recursive = true;
     };
+
+    # ncmpcpp config
+    ".config/ncmpcpp" = {
+      source = ./.config/ncmpcpp;
+      recursive = true;
+    };
   };
 }

@@ -2,18 +2,17 @@
 
 {
   # Base system packages
-  # Replaces setup_base.sh functionality
+  # Minimal set - other packages are in specialized modules
+  # curl, wget, unzip: dev-tools.nix
+  # git: git.nix
+  # cmake, gnumake: dev-tools.nix
+  # htop: dev-tools.nix
   home.packages = with pkgs; [
-    # Core utilities
-    curl
-    wget
-    git
+    # Core utilities (not duplicated elsewhere)
     gnutar
     gzip
-    unzip
 
-    # Build tools
-    cmake
+    # Build tools (pkg-config, protobuf not in other modules)
     pkg-config
     protobuf
 
@@ -22,10 +21,8 @@
     libnotify
 
     # Additional utilities
-    htop
     tree
     which
     file
-    gnumake
   ];
 }
