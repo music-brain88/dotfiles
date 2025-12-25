@@ -47,7 +47,7 @@
     # Version control
     git-crypt # Git encryption
     git-secret # Git secret management
-    gh # GitHub CLI
+    # gh is in git.nix
 
     # Network tools
     nmap # Network scanner

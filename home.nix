@@ -41,41 +41,81 @@
   nixpkgs.config.allowUnfree = true;
 
   # Manage dotfiles with Home Manager
-  # This allows symlinking configuration files
+  # Symlinks matching deploy.sh
   home.file = {
-    # Symlink Neovim config (keeping existing TOML-based setup)
+    # Bash
+    ".bashrc".source = ./.bashrc;
+
+    # Neovim config (keeping existing TOML-based setup)
     ".config/nvim" = {
       source = ./.config/nvim;
       recursive = true;
     };
 
-    # Symlink Hyprland config
+    # Claude
+    ".claude/CLAUDE.md".source = ./.config/claude/CLAUDE.md;
+
+    # Copilot
+    ".copilot/config.json".source = ./.config/copilot/config.json;
+    ".copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
+
+    # Hyprland config
     ".config/hypr" = {
       source = ./.config/hypr;
       recursive = true;
     };
 
-    # Symlink i3 config
+    # i3 config
     ".config/i3" = {
       source = ./.config/i3;
       recursive = true;
     };
 
-    # Symlink Waybar config
+    # Waybar config
     ".config/waybar" = {
       source = ./.config/waybar;
       recursive = true;
     };
 
-    # Symlink Polybar config
+    # Polybar config
     ".config/polybar" = {
       source = ./.config/polybar;
       recursive = true;
     };
 
-    # Symlink Alacritty config
+    # Alacritty config
     ".config/alacritty" = {
       source = ./.config/alacritty;
+      recursive = true;
+    };
+
+    # Rofi config
+    ".config/rofi" = {
+      source = ./.config/rofi;
+      recursive = true;
+    };
+
+    # Wofi config
+    ".config/wofi" = {
+      source = ./.config/wofi;
+      recursive = true;
+    };
+
+    # Mako config
+    ".config/mako" = {
+      source = ./.config/mako;
+      recursive = true;
+    };
+
+    # MPD config
+    ".config/mpd" = {
+      source = ./.config/mpd;
+      recursive = true;
+    };
+
+    # EWW config
+    ".config/eww" = {
+      source = ./.config/eww;
       recursive = true;
     };
   };

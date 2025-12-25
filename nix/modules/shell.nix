@@ -1,36 +1,25 @@
 { config, pkgs, lib, ... }:
 
 {
-  # Fish shell configuration
-  # Use existing fish config files from dotfiles
-  programs.fish = {
-    enable = true;
-  };
-
-  # Link existing fish config files (use mkForce to override programs.fish generated config)
-  xdg.configFile."fish/config.fish".source = lib.mkForce ../../.config/fish/config.fish;
-  xdg.configFile."fish/completions".source = ../../.config/fish/completions;
-  xdg.configFile."fish/functions".source = ../../.config/fish/functions;
-
-  # Starship prompt configuration
-  programs.starship = {
-    enable = true;
-    enableFishIntegration = true;
-    # Use existing starship config file from dotfiles
-  };
-
-  # Link existing starship config
-  xdg.configFile."starship.toml".source = ../../.config/starship/starship.toml;
-
-  # Fisher (Fish plugin manager) - using Home Manager's fish plugin system instead
-  # Fisher functionality is now handled by Home Manager's programs.fish.plugins
-
-  # Additional shell packages
+  # Fish shell - package only, config via symlinks
   home.packages = with pkgs; [
-    # Fish-related tools
     fish
+    starship
     fishPlugins.done
     fishPlugins.fzf-fish
     fishPlugins.forgit
+    fishPlugins.z
+    fishPlugins.bass
   ];
+
+  # Fish config symlinks (matching deploy.sh)
+  home.file.".config/fish/config.fish".source = ../../.config/fish/config.fish;
+  home.file.".config/fish/functions/fish_user_key_bindings.fish".source = ../../.config/fish/functions/fish_user_key_bindings.fish;
+  home.file.".config/fish/completions" = {
+    source = ../../.config/fish/completions;
+    recursive = true;
+  };
+
+  # Starship config symlink
+  xdg.configFile."starship.toml".source = ../../.config/starship/starship.toml;
 }
