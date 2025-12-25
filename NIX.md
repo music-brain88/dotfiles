@@ -374,15 +374,35 @@ echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
 nixpkgs.config.allowUnfree = true;
 ```
 
-#### 3. Home Manager activation fails
+#### 3. Home Manager activation fails (既存ファイルの競合)
 
-**Error**: `Existing file/directory at...`
+**Error**: `Existing file 'xxx' would be clobbered`
 
-**Solution**: Backup and remove conflicting files:
+```
+Existing file '/home/archie/.config/starship.toml' would be clobbered
+Existing file '/home/archie/.config/gh/config.yml' would be clobbered
+Existing file '/home/archie/.config/fish/config.fish' would be clobbered
+```
+
+これは Home Manager が管理したいファイルが既に存在していて、上書きしていいかわからないから止まっている状態。
+
+**Solution**: `-b backup` オプションを使って既存ファイルを自動バックアップ:
 
 ```bash
-mv ~/.config/nvim ~/.config/nvim.bak
-nix run home-manager/master -- switch --flake .#archie
+nix run home-manager/master -- switch --flake .#archie -b backup
+```
+
+これで既存ファイルは `.backup` 拡張子付きでリネームされる（例: `starship.toml.backup`）。
+
+**リストア方法**:
+
+```bash
+# バックアップから手動で戻す
+mv ~/.config/starship.toml.backup ~/.config/starship.toml
+
+# または Home Manager の世代でロールバック
+home-manager generations
+/nix/store/xxxxx-home-manager-generation/activate
 ```
 
 #### 4. Package not found
