@@ -1,0 +1,87 @@
+# Dotfiles CI ワークフロー
+# このワークフローは dotfiles のリント、ビルド、およびデプロイを自動化します。
+name: build
+
+
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+
+
+jobs:
+  # シェルスクリプトの静的解析を行うジョブ
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # shellcheck のインストール
+      - name: Run shellcheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: '.bin'  # '.bin' ディレクトリ内のシェルスクリプトをチェック
+
+  build-docker-image:
+    needs: lint
+    uses: ./.github/workflows/build-docker-image.yml
+
+  # 別で定義したworkflowを呼び出すジョブ
+  setup-base:
+    needs: build-docker-image  # lint ジョブが成功した後にのみ実行
+    uses: ./.github/workflows/setup-base.yml
+
+
+  # ローカルで使用しているRust ツール確認する
+  setup-rust:
+    needs: build-docker-image  # lint ジョブが成功した後にのみ実行
+    name: Test Setup Rust
+    uses: ./.github/workflows/setup-rust.yml
+
+
+  # 別で定義したworkflowを呼び出すジョブ
+  setup-neovim:
+    needs: build-docker-image  # lint ジョブが成功した後にのみ実行
+    name: Test Setup Neovim
+    uses: ./.github/workflows/setup-neovim.yml
+
+  setup-terminal:
+    needs: build-docker-image  # lint ジョブが成功した後にのみ実行
+    name: Test Setup Terminal
+    uses: ./.github/workflows/setup-terminal.yml
+
+
+
+  setup-fish:
+    needs: build-docker-image  # lint ジョブが成功した後にのみ実行
+    name: Test Setup Fish
+    uses: ./.github/workflows/setup-fish.yml
+
+
+  verify:
+    needs: [setup-base, setup-rust, setup-neovim, setup-terminal, setup-fish]
+    name: Verify Setup
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/dotfiles-env:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+
+      - name: rustup setting
+        run: |
+          rustup default stable
+
+      - name: Verify setup
+        run: |
+          fish -c "echo 'Fish shell is working'"
+          nvim -v
+          cargo --version
+          tmux -V
+          git --version

@@ -1,0 +1,19 @@
+name: Setup Fish Shell
+
+
+on:
+  workflow_call:
+
+jobs:
+  setup-fish:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/dotfiles-env:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Fish shell
+      run: .bin/utils/setup_fish.sh

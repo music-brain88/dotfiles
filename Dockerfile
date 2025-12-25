@@ -21,7 +21,9 @@ RUN pacman -Syu --noconfirm && \
     llvm \
     # 通知関連のパッケージを追加
     mako \
-    libnotify
+    libnotify && \
+    # キャッシュをクリーンアップしてイメージサイズを削減
+    pacman -Scc --noconfirm
 
 # Rust のインストール
 
@@ -34,6 +36,20 @@ WORKDIR /root
 
 # dotfiles のコピー（あなたのリポジトリにある場合）
 COPY . dotfiles/
+
+# Nix のインストールと設定検証
+RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon && \
+    . /root/.nix-profile/etc/profile.d/nix.sh && \
+    # experimental features を有効化（flakes用）
+    mkdir -p /root/.config/nix && \
+    echo "experimental-features = nix-command flakes" > /root/.config/nix/nix.conf && \
+    # Nix flake の設定を検証（CI用の軽量プロファイル）
+    cd dotfiles && \
+    nix build .#homeConfigurations.ci.activationPackage --no-link && \
+    echo "Nix configuration validated successfully"
+
+# 環境変数にNixのPATHを追加
+ENV PATH="/root/.nix-profile/bin:${PATH}"
 
 # セットアップスクリプトの実行
 # RUN cd dotfiles && make install

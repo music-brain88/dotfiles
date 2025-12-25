@@ -60,15 +60,28 @@ The deployment uses a two-stage approach:
    - `setup_symlinks.sh`: Creates dotfile symlinks
 
 ### CI/CD Pipeline (GitHub Actions)
-The repository uses a multi-stage workflow:
+The repository uses a **Docker-based** CI/CD pipeline for efficiency and disk space optimization:
+
+**Why Docker instead of Nix for CI:**
+- **Layer caching**: Reduces build time and disk usage significantly
+- **Disk space efficiency**: Avoids "no space left on device" errors in GitHub Actions
+- **Speed**: Cached builds complete in seconds vs minutes
+- **Simplicity**: Less complexity than Nix-based workflows
+
+**Workflow stages:**
 1. **Lint stage**: Runs shellcheck on all shell scripts in `.bin/`
-2. **Build stage**: Builds Docker image for testing
+2. **Build stage**: Builds Docker image with layer caching
 3. **Test stages**: Runs parallel tests for different components:
    - Base setup validation
    - Rust tools installation
    - Neovim setup and plugin installation
    - Fish shell configuration
    - Terminal environment setup
+4. **Nix validation**: Docker build includes Nix configuration testing
+
+**Dual Environment Strategy:**
+- **Nix (Local Development)**: Use `flake.nix` and `home.nix` for declarative environment management on local machines
+- **Docker (CI/CD)**: Use Dockerfile and GitHub Actions for automated testing with optimal resource usage
 
 ## Repository Structure
 - `.config/` - Configuration files for various tools
