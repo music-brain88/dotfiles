@@ -108,13 +108,13 @@ cd ~/dotfiles
 
 ```bash
 # Recommended: Use home-manager directly
-home-manager switch --flake .#music-brain88
+home-manager switch --flake .#archie
 
 # If home-manager is not installed yet
-nix run home-manager/master -- switch --flake .#music-brain88
+nix run home-manager/master -- switch --flake .#archie
 
 # Alternative: Manual build and activate
-nix build .#homeConfigurations.music-brain88.activationPackage
+nix build .#homeConfigurations.archie.activationPackage
 ./result/activate
 ```
 
@@ -123,22 +123,22 @@ nix build .#homeConfigurations.music-brain88.activationPackage
 `#` はシェルのコメントではなく、Nix flake の出力を指定するための区切り文字です：
 
 ```
-.#music-brain88
+.#archie
 ↑ ↑
-│ └── flake の出力名（homeConfigurations.music-brain88）
+│ └── flake の出力名（homeConfigurations.archie）
 └── flake のパス（現在のディレクトリ）
 ```
 
 他の例：
 ```bash
-# ローカルの flake から music-brain88 の設定を使う
-home-manager switch --flake .#music-brain88
+# ローカルの flake から archie の設定を使う
+home-manager switch --flake .#archie
 
 # GitHub から直接使う場合
-home-manager switch --flake github:music-brain88/dotfiles#music-brain88
+home-manager switch --flake github:music-brain88/dotfiles#archie
 
 # パスを指定する場合
-home-manager switch --flake /path/to/dotfiles#music-brain88
+home-manager switch --flake /path/to/dotfiles#archie
 ```
 
 ### 5. Install Neovim Plugins
@@ -158,7 +158,7 @@ nvim --headless +"call dein#install()" +qall
 nix flake update
 
 # Rebuild and activate the updated configuration
-nix run home-manager/master -- switch --flake .#music-brain88
+nix run home-manager/master -- switch --flake .#archie
 ```
 
 ### Updating Specific Package
@@ -168,7 +168,7 @@ nix run home-manager/master -- switch --flake .#music-brain88
 nix flake lock --update-input nixpkgs
 
 # Rebuild
-nix run home-manager/master -- switch --flake .#music-brain88
+nix run home-manager/master -- switch --flake .#archie
 ```
 
 ### Rolling Back
@@ -337,7 +337,7 @@ imports = [
 
   outputs = { self, nixpkgs, nixpkgs-unstable, ... }: {
     # Use unstable for specific packages
-    homeConfigurations.music-brain88 = {
+    homeConfigurations.archie = {
       home.packages = [
         nixpkgs-unstable.legacyPackages.${system}.neovim
       ];
@@ -379,9 +379,9 @@ nixpkgs.config.allowUnfree = true;
 **Error**: `Existing file 'xxx' would be clobbered`
 
 ```
-Existing file '/home/music-brain88/.config/starship.toml' would be clobbered
-Existing file '/home/music-brain88/.config/gh/config.yml' would be clobbered
-Existing file '/home/music-brain88/.config/fish/config.fish' would be clobbered
+Existing file '/home/archie/.config/starship.toml' would be clobbered
+Existing file '/home/archie/.config/gh/config.yml' would be clobbered
+Existing file '/home/archie/.config/fish/config.fish' would be clobbered
 ```
 
 これは Home Manager が管理したいファイルが既に存在していて、上書きしていいかわからないから止まっている状態。
@@ -389,7 +389,7 @@ Existing file '/home/music-brain88/.config/fish/config.fish' would be clobbered
 **Solution**: `-b backup` オプションを使って既存ファイルを自動バックアップ:
 
 ```bash
-nix run home-manager/master -- switch --flake .#music-brain88 -b backup
+nix run home-manager/master -- switch --flake .#archie -b backup
 ```
 
 これで既存ファイルは `.backup` 拡張子付きでリネームされる（例: `starship.toml.backup`）。
@@ -448,7 +448,7 @@ nix repl
 詳細なビルドログを表示:
 
 ```bash
-nix build --show-trace --verbose .#homeConfigurations.music-brain88.activationPackage
+nix build --show-trace --verbose .#homeConfigurations.archie.activationPackage
 ```
 
 ---
@@ -507,7 +507,7 @@ Nixモジュールの改善や新しいモジュールの追加は大歓迎で�
 1. Fork this repository
 2. Create feature branch
 3. Make your changes
-4. Test with `home-manager switch --flake .#music-brain88`
+4. Test with `home-manager switch --flake .#archie`
 5. Submit pull request
 
 ---
@@ -516,7 +516,7 @@ Nixモジュールの改善や新しいモジュールの追加は大歓迎で�
 
 ### Username Configuration
 
-現在、`home.nix` ではハードコードされたユーザー名 `music-brain88` を使用しています。
+現在、`home.nix` ではハードコードされたユーザー名 `archie` を使用しています。
 環境に応じて変更してください:
 
 ```nix
