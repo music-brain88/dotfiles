@@ -8,26 +8,16 @@
 
     # Fish plugins using Home Manager
     plugins = [
-      # z - directory jumper
+      # z - directory jumper (using nixpkgs)
       {
         name = "z";
-        src = pkgs.fetchFromGitHub {
-          owner = "jethrokuan";
-          repo = "z";
-          rev = "85f863f20f24faf675827fb00f3a4e15c7838d76";
-          sha256 = "sha256-+FUBM7CodtZrYKqU542fQD+ZDGrd2438trKM0tIESs0=";
-        };
+        src = pkgs.fishPlugins.z.src;
       }
 
-      # bass - use bash utilities in fish
+      # bass - use bash utilities in fish (using nixpkgs)
       {
         name = "bass";
-        src = pkgs.fetchFromGitHub {
-          owner = "edc";
-          repo = "bass";
-          rev = "df4a1ebf8c0536e861bb4ec0c0c0f78bb6e8c391";
-          sha256 = "sha256-FL8P9kqcPvJw1hSMhfwGEA3MgHjKx9vJ+ea0/HXnuVI=";
-        };
+        src = pkgs.fishPlugins.bass.src;
       }
     ];
 

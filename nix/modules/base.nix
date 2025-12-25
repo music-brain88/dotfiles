@@ -8,8 +8,7 @@
     curl
     wget
     git
-    sudo
-    tar
+    gnutar
     gzip
     unzip
 

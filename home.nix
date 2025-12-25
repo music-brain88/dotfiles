@@ -2,8 +2,8 @@
 
 {
   # Home Manager needs a bit of information about you and the paths it should manage
-  home.username = "music-brain88";
-  home.homeDirectory = "/home/music-brain88";
+  home.username = "archie";
+  home.homeDirectory = "/home/archie";
 
   # This value determines the Home Manager release that your configuration is compatible with
   # You should not change this value, even if you update Home Manager

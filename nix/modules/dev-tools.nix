@@ -24,7 +24,6 @@
     k9s # Kubernetes TUI
     helm # Kubernetes package manager
     terraform # Infrastructure as code
-    terragrunt # Terraform wrapper
     ansible # Configuration management
 
     # Database tools
@@ -83,7 +82,7 @@
     direnv # Directory-based environment management
     asciinema # Terminal recorder
     neofetch # System information
-    tldr # Simplified man pages
+    # tldr is provided by tealdeer in rust-tools.nix
   ];
 
   # FZF configuration
@@ -102,7 +101,6 @@
   # Direnv configuration
   programs.direnv = {
     enable = true;
-    enableFishIntegration = true;
     nix-direnv.enable = true;
   };
 

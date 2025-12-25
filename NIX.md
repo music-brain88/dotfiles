@@ -73,6 +73,13 @@ Nixを使用することで、以下のメリットが得られます:
 sh <(curl -L https://nixos.org/nix/install) --daemon
 ```
 
+> ⚠️ **重要**: 公式インストーラーを使った場合、Flakesを手動で有効化する必要があります:
+>
+> ```bash
+> mkdir -p ~/.config/nix
+> echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+> ```
+
 **Option B: Determinate Systems Installer (推奨)**
 
 ```bash
@@ -93,21 +100,45 @@ nix --version
 ### 3. Clone Repository
 
 ```bash
-git clone https://github.com/music-brain88/dotfiles.git ~/dotfiles
+git clone https://github.com/archie/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 ```
 
 ### 4. Build and Activate
 
 ```bash
-# Build the configuration
-nix build .#homeConfigurations.music-brain88.activationPackage
+# Recommended: Use home-manager directly
+home-manager switch --flake .#archie
 
-# Activate the configuration
+# If home-manager is not installed yet
+nix run home-manager/master -- switch --flake .#archie
+
+# Alternative: Manual build and activate
+nix build .#homeConfigurations.archie.activationPackage
 ./result/activate
+```
 
-# Or use a one-liner
-nix run home-manager/master -- switch --flake .#music-brain88
+#### Flake URL の構文について
+
+`#` はシェルのコメントではなく、Nix flake の出力を指定するための区切り文字です：
+
+```
+.#archie
+↑ ↑
+│ └── flake の出力名（homeConfigurations.archie）
+└── flake のパス（現在のディレクトリ）
+```
+
+他の例：
+```bash
+# ローカルの flake から archie の設定を使う
+home-manager switch --flake .#archie
+
+# GitHub から直接使う場合
+home-manager switch --flake github:user/dotfiles#archie
+
+# パスを指定する場合
+home-manager switch --flake /path/to/dotfiles#archie
 ```
 
 ### 5. Install Neovim Plugins
@@ -127,7 +158,7 @@ nvim --headless +"call dein#install()" +qall
 nix flake update
 
 # Rebuild and activate the updated configuration
-nix run home-manager/master -- switch --flake .#music-brain88
+nix run home-manager/master -- switch --flake .#archie
 ```
 
 ### Updating Specific Package
@@ -137,7 +168,7 @@ nix run home-manager/master -- switch --flake .#music-brain88
 nix flake lock --update-input nixpkgs
 
 # Rebuild
-nix run home-manager/master -- switch --flake .#music-brain88
+nix run home-manager/master -- switch --flake .#archie
 ```
 
 ### Rolling Back
@@ -306,7 +337,7 @@ imports = [
 
   outputs = { self, nixpkgs, nixpkgs-unstable, ... }: {
     # Use unstable for specific packages
-    homeConfigurations.music-brain88 = {
+    homeConfigurations.archie = {
       home.packages = [
         nixpkgs-unstable.legacyPackages.${system}.neovim
       ];
@@ -351,7 +382,7 @@ nixpkgs.config.allowUnfree = true;
 
 ```bash
 mv ~/.config/nvim ~/.config/nvim.bak
-nix run home-manager/master -- switch --flake .#music-brain88
+nix run home-manager/master -- switch --flake .#archie
 ```
 
 #### 4. Package not found
@@ -397,7 +428,7 @@ nix repl
 詳細なビルドログを表示:
 
 ```bash
-nix build --show-trace --verbose .#homeConfigurations.music-brain88.activationPackage
+nix build --show-trace --verbose .#homeConfigurations.archie.activationPackage
 ```
 
 ---
@@ -456,7 +487,7 @@ Nixモジュールの改善や新しいモジュールの追加は大歓迎で�
 1. Fork this repository
 2. Create feature branch
 3. Make your changes
-4. Test with `nix build`
+4. Test with `home-manager switch --flake .#archie`
 5. Submit pull request
 
 ---
@@ -465,7 +496,7 @@ Nixモジュールの改善や新しいモジュールの追加は大歓迎で�
 
 ### Username Configuration
 
-現在、`home.nix` ではハードコードされたユーザー名 `music-brain88` を使用しています。
+現在、`home.nix` ではハードコードされたユーザー名 `archie` を使用しています。
 環境に応じて変更してください:
 
 ```nix

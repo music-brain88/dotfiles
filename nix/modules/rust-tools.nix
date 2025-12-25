@@ -4,11 +4,8 @@
   # Rust development environment and CLI tools
   # Replaces setup_rust_tools.sh functionality
   home.packages = with pkgs; [
-    # Rust toolchain
+    # Rust toolchain (cargo is included in rustup)
     rustup
-
-    # Rust CLI tools (replacing cargo install commands)
-    cargo
     cargo-update
 
     # Modern Unix tools written in Rust
@@ -20,7 +17,7 @@
     gitui # terminal UI for git
     tealdeer # tldr client
     hyperfine # command-line benchmarking tool
-    du-dust # disk usage analyzer
+    dust # disk usage analyzer
     tokei # code statistics tool
     jql # JSON query language
     oxker # Docker TUI

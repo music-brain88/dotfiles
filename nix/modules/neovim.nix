@@ -30,7 +30,7 @@
       rust-analyzer
       gopls
       terraform-ls
-      dockerfile-language-server-nodejs
+      dockerfile-language-server
       marksman # Markdown LSP
 
       # Formatters
@@ -61,8 +61,7 @@
       gcc # Compiler for some plugins
       unzip # For unpacking plugins
 
-      # Python support for Neovim
-      python311Full
+      # Python support for Neovim (pynvim only, main python is in dev-tools.nix)
       python311Packages.pynvim
 
       # Node.js support
@@ -80,25 +79,13 @@
     source = pkgs.fetchFromGitHub {
       owner = "Shougo";
       repo = "dein.vim";
-      rev = "v3.0";
-      sha256 = "sha256-4LHf3bq7PLpc7Nm9sg6eTfMTWPFWx8nJ3r3AC+0YYxI=";
+      rev = "3.1";
+      sha256 = "sha256-qKhuqDMkjvz7i79kHidiA0tlEl/ktPK5J8CfN74SzAM=";
     };
     recursive = true;
   };
 
-  # Python environment for Neovim
-  # This replaces the manual pyenv setup from CLAUDE.md
-  home.packages = with pkgs; [
-    # Python virtual environment for Neovim
-    (python311.withPackages (ps: with ps; [
-      pynvim
-      python-lsp-server
-      pylint
-      flake8
-      black
-      isort
-    ]))
-  ];
+  # Note: Python environment is managed in dev-tools.nix to avoid conflicts
 
   # Environment variables for Neovim
   home.sessionVariables = {

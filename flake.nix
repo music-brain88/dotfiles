@@ -30,8 +30,8 @@
     {
       # Home Manager configuration
       homeConfigurations = {
-        # Default configuration for music-brain88
-        "music-brain88" = home-manager.lib.homeManagerConfiguration {
+        # Default configuration for archie
+        "archie" = home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
 
           modules = [
