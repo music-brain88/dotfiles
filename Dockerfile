@@ -43,9 +43,9 @@ RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon && \
     # experimental features を有効化（flakes用）
     mkdir -p /root/.config/nix && \
     echo "experimental-features = nix-command flakes" > /root/.config/nix/nix.conf && \
-    # Nix flake の設定を検証（CI用の軽量プロファイル）
+    # Nix flake の設定を検証（フルプロファイル）
     cd dotfiles && \
-    nix build .#homeConfigurations.ci.activationPackage --no-link && \
+    nix build .#homeConfigurations.archie.activationPackage --no-link && \
     echo "Nix configuration validated successfully"
 
 # 環境変数にNixのPATHを追加

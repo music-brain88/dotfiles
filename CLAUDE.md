@@ -80,14 +80,14 @@ verify:
   container:
     image: ghcr.io/.../dotfiles-env:latest  # Nix pre-installed
   steps:
-    - nix build .#homeConfigurations.ci.activationPackage
+    - nix build .#homeConfigurations.archie.activationPackage
 ```
 
 **Benefits:**
 - Docker layer cache: Nix installation (once)
 - Nix cache: Package builds (via magic-nix-cache)
 - No disk space cleanup needed
-- Both CI and full profiles validated
+- Same configuration tested in CI and used locally
 
 **Environment Strategy:**
 - **Local Development**: Use `nix develop` or Home Manager directly

@@ -52,20 +52,6 @@
             inherit inputs;
           };
         };
-
-        # CI-optimized configuration with minimal packages
-        # Reduces disk usage in GitHub Actions by skipping heavy tools
-        "ci" = home-manager.lib.homeManagerConfiguration {
-          inherit pkgs;
-
-          modules = [
-            ./home-ci.nix
-          ];
-
-          extraSpecialArgs = {
-            inherit inputs;
-          };
-        };
       };
 
       # Development shell for testing

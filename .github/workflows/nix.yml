@@ -33,7 +33,7 @@ jobs:
 
       - name: Check format
         run: |
-          nix develop --command nixpkgs-fmt --check flake.nix home.nix home-ci.nix nix/
+          nix develop --command nixpkgs-fmt --check flake.nix home.nix nix/
 
   # Build and verify using custom container with Nix
   verify:
@@ -52,20 +52,14 @@ jobs:
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Build CI Home Manager configuration
+      - name: Build Home Manager configuration
         run: |
           . /root/.nix-profile/etc/profile.d/nix.sh
-          nix build .#homeConfigurations.ci.activationPackage --no-link
+          nix build .#homeConfigurations.archie.activationPackage
 
-      - name: Build full Home Manager configuration
+      - name: Activate and verify tools
         run: |
           . /root/.nix-profile/etc/profile.d/nix.sh
-          nix build .#homeConfigurations.archie.activationPackage --no-link
-
-      - name: Activate CI profile and verify tools
-        run: |
-          . /root/.nix-profile/etc/profile.d/nix.sh
-          nix build .#homeConfigurations.ci.activationPackage
           ./result/activate
 
           echo "=== Verifying installed tools ==="
