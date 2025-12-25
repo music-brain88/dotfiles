@@ -60,27 +60,38 @@ The deployment uses a two-stage approach:
    - `setup_symlinks.sh`: Creates dotfile symlinks
 
 ### CI/CD Pipeline (GitHub Actions)
-The repository uses a **Nix-based** CI/CD pipeline for declarative testing:
+The repository uses a **hybrid Docker + Nix** CI/CD pipeline combining the best of both approaches:
 
-**Why Nix for CI:**
-- **Declarative**: Same configuration used for local development and CI
-- **Reproducible**: Guaranteed consistent environments across machines
-- **Efficient caching**: magic-nix-cache provides fast rebuilds
-- **No shell scripts**: Replaces legacy shell-based workflows with declarative Nix
+**Why Hybrid Approach:**
+- **Docker layer caching**: Nix installation and base packages cached in image
+- **Nix reproducibility**: Same declarative configuration for local and CI
+- **Efficient disk usage**: No need for disk cleanup, container has everything pre-installed
+- **Double caching**: Both Docker layers AND magic-nix-cache work together
+- **Fast builds**: Nix already installed in container, only build packages needed
 
 **Workflow stages:**
-1. **Check stage**: Runs `nix flake check` and format verification
-2. **Build stage**: Builds both CI and full Home Manager configurations
-3. **Verify stage**: Activates CI profile and verifies installed tools
+1. **Build Docker image**: Create container with Nix pre-installed (cached via GitHub Actions)
+2. **Check stage**: Runs `nix flake check` and format verification
+3. **Verify stage**: Run in custom container, build and verify Nix configurations
 
-**Disk space optimization:**
-- Use CI-specific profile (`home-ci.nix`) with minimal packages
-- Free disk space before heavy builds (~10-20GB recovery)
-- Skip heavy modules (dev-tools, full neovim) in CI
+**Technical approach:**
+```yaml
+verify:
+  container:
+    image: ghcr.io/.../dotfiles-env:latest  # Nix pre-installed
+  steps:
+    - nix build .#homeConfigurations.ci.activationPackage
+```
 
-**Dual Environment Strategy:**
-- **Nix (Primary)**: Use `flake.nix` and `home.nix` for all environments
-- **Docker (Optional)**: Dockerfile includes Nix validation for additional testing
+**Benefits:**
+- Docker layer cache: Nix installation (once)
+- Nix cache: Package builds (via magic-nix-cache)
+- No disk space cleanup needed
+- Both CI and full profiles validated
+
+**Environment Strategy:**
+- **Local Development**: Use `nix develop` or Home Manager directly
+- **CI/CD**: Docker container with Nix validates all configurations
 
 ## Repository Structure
 - `.config/` - Configuration files for various tools
