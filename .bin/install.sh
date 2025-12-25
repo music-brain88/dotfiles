@@ -40,10 +40,6 @@ source "$UTILS_DIR/setup_neovim.sh"
 # shellcheck disable=SC1091
 source "$UTILS_DIR/setup_rust_tools.sh"
 # shellcheck disable=SC1091
-source "$UTILS_DIR/setup_terminal.sh"
-# shellcheck disable=SC1091
-source "$UTILS_DIR/setup_shell.sh"
-# shellcheck disable=SC1091
 source "$UTILS_DIR/setup_tmux.sh"
 
 echo "Dotfiles installation complete!"
