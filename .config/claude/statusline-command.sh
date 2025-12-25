@@ -60,7 +60,8 @@ if git rev-parse --git-dir > /dev/null 2>&1; then
 fi
 
 # Separator (Starship Pointed style)
-sep="\033[2;38;5;242m\033[0m"
+# Use $'...' (ANSI-C Quoting) to properly interpret escape sequences
+sep=$'\033[2;38;5;242m\033[0m'
 
 # Build status line with colors matching Starship theme (dim for subtlety)
 # Pink accent at start (#FF6AC1 -> 38;5;205)
