@@ -3,3 +3,9 @@
 .wakatime.cfg
 .aider*
 llm/tmp/
+
+# Nix
+result
+result-*
+.direnv/
+.envrc
