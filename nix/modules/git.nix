@@ -77,21 +77,11 @@
       };
     };
 
-    # Git ignore patterns
-    ignores = [
-      "*~"
-      "*.swp"
-      "*.swo"
-      ".DS_Store"
-      "Thumbs.db"
-      ".idea/"
-      ".vscode/"
-      "*.log"
-      "node_modules/"
-      ".env"
-      ".env.local"
-    ];
+    # Git ignore patterns - use existing file
   };
+
+  # Link existing git ignore file
+  xdg.configFile."git/ignore".source = ../../.config/git/ignore;
 
   # GitHub CLI
   programs.gh = {
