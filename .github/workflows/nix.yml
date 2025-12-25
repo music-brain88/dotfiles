@@ -1,12 +1,6 @@
 name: Nix CI
 
 on:
-  push:
-    branches:
-      - main
-      - "feat/*"
-      - "fix/*"
-      - "refactor/*"
   pull_request:
     branches:
       - main
