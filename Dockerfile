@@ -37,15 +37,15 @@ WORKDIR /root
 # dotfiles のコピー（あなたのリポジトリにある場合）
 COPY . dotfiles/
 
-# Nix のインストールと設定検証
+# Nix のインストールと基本設定
 RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon && \
     . /root/.nix-profile/etc/profile.d/nix.sh && \
     # experimental features を有効化（flakes用）
     mkdir -p /root/.config/nix && \
     echo "experimental-features = nix-command flakes" > /root/.config/nix/nix.conf && \
-    # Nix flake の設定を検証（フルプロファイル）
+    # Nix flake の基本的な検証のみ（ビルドはCIで実行）
     cd dotfiles && \
-    nix build .#homeConfigurations.archie.activationPackage --no-link && \
+    nix flake check --no-build && \
     echo "Nix configuration validated successfully"
 
 # 環境変数にNixのPATHを追加
