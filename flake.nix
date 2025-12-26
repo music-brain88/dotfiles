@@ -52,6 +52,25 @@
             inherit inputs;
           };
         };
+
+        # CI用の分割プロファイル
+        "ci-minimal" = home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          modules = [ ./nix/ci-profiles/minimal.nix ];
+          extraSpecialArgs = { inherit inputs; };
+        };
+
+        "ci-rust-tools" = home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          modules = [ ./nix/ci-profiles/rust-tools.nix ];
+          extraSpecialArgs = { inherit inputs; };
+        };
+
+        "ci-shell" = home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          modules = [ ./nix/ci-profiles/shell.nix ];
+          extraSpecialArgs = { inherit inputs; };
+        };
       };
 
       # Development shell for testing

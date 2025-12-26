@@ -1,0 +1,138 @@
+name: Nix Split Test
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  # 軽量なチェックは並列実行前に実施
+  check:
+    name: Nix Check & Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Check flake
+        run: nix flake check --no-build
+
+      - name: Check format
+        run: |
+          nix develop --command nixpkgs-fmt --check flake.nix home.nix nix/
+
+  # モジュールごとに分割してビルド・テスト
+  test-module:
+    name: Test ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+    needs: check
+    strategy:
+      # 失敗しても他のジョブを継続
+      fail-fast: false
+      matrix:
+        profile:
+          - ci-minimal     # 最小構成
+          - ci-rust-tools  # Rustツールのみ
+          - ci-shell       # Shellツールのみ
+          # 必要に応じて追加:
+          # - ci-git
+          # - ci-neovim
+          # - ci-dev-tools
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Free disk space
+        run: |
+          # GitHub Actionsのrunnerから不要なファイルを削除
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          df -h
+
+      - name: Build ${{ matrix.profile }}
+        run: |
+          nix build .#homeConfigurations.${{ matrix.profile }}.activationPackage
+          df -h
+
+      - name: Verify basic functionality
+        run: |
+          ./result/activate
+          echo "Profile ${{ matrix.profile }} activated successfully"
+
+          # プロファイルに応じた検証
+          case "${{ matrix.profile }}" in
+            ci-minimal)
+              echo "Minimal profile - basic checks only"
+              ;;
+            ci-rust-tools)
+              echo "Checking Rust tools..."
+              command -v rg && rg --version || echo "ripgrep not found"
+              command -v fd && fd --version || echo "fd not found"
+              command -v bat && bat --version || echo "bat not found"
+              ;;
+            ci-shell)
+              echo "Checking shell tools..."
+              command -v fish && fish --version || echo "fish not found"
+              command -v starship && starship --version || echo "starship not found"
+              ;;
+          esac
+
+  # 全モジュールテストが成功したら、フルビルドをテスト
+  test-full:
+    name: Test Full Configuration
+    runs-on: ubuntu-latest
+    needs: test-module
+    # フルビルドは重いので、分割テストが全て成功した場合のみ実行
+    if: success()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          df -h
+
+      - name: Build full configuration
+        run: |
+          nix build .#homeConfigurations.archie.activationPackage
+          df -h
+
+      - name: Activate and verify
+        run: |
+          ./result/activate
+
+          echo "=== Verifying all tools ==="
+          fish --version
+          starship --version
+          rg --version | head -1
+          fd --version
+          bat --version
+          git --version
+          delta --version
+          nvim --version | head -1
+          tmux -V
