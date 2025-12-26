@@ -60,15 +60,38 @@ The deployment uses a two-stage approach:
    - `setup_symlinks.sh`: Creates dotfile symlinks
 
 ### CI/CD Pipeline (GitHub Actions)
-The repository uses a multi-stage workflow:
-1. **Lint stage**: Runs shellcheck on all shell scripts in `.bin/`
-2. **Build stage**: Builds Docker image for testing
-3. **Test stages**: Runs parallel tests for different components:
-   - Base setup validation
-   - Rust tools installation
-   - Neovim setup and plugin installation
-   - Fish shell configuration
-   - Terminal environment setup
+The repository uses a **hybrid Docker + Nix** CI/CD pipeline combining the best of both approaches:
+
+**Why Hybrid Approach:**
+- **Docker layer caching**: Nix installation and base packages cached in image
+- **Nix reproducibility**: Same declarative configuration for local and CI
+- **Efficient disk usage**: No need for disk cleanup, container has everything pre-installed
+- **Double caching**: Both Docker layers AND magic-nix-cache work together
+- **Fast builds**: Nix already installed in container, only build packages needed
+
+**Workflow stages:**
+1. **Build Docker image**: Create container with Nix pre-installed (cached via GitHub Actions)
+2. **Check stage**: Runs `nix flake check` and format verification
+3. **Verify stage**: Run in custom container, build and verify Nix configurations
+
+**Technical approach:**
+```yaml
+verify:
+  container:
+    image: ghcr.io/.../dotfiles-env:latest  # Nix pre-installed
+  steps:
+    - nix build .#homeConfigurations.archie.activationPackage
+```
+
+**Benefits:**
+- Docker layer cache: Nix installation (once)
+- Nix cache: Package builds (via magic-nix-cache)
+- No disk space cleanup needed
+- Same configuration tested in CI and used locally
+
+**Environment Strategy:**
+- **Local Development**: Use `nix develop` or Home Manager directly
+- **CI/CD**: Docker container with Nix validates all configurations
 
 ## Repository Structure
 - `.config/` - Configuration files for various tools

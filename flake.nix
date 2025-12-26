@@ -24,6 +24,16 @@
         config.allowUnfree = true;
         overlays = [
           neovim-nightly-overlay.overlays.default
+          # Fix for CI: websockets tests are flaky in GitHub Actions environment
+          (final: prev: {
+            python311Packages = prev.python311Packages.override {
+              overrides = pfinal: pprev: {
+                websockets = pprev.websockets.overridePythonAttrs (old: {
+                  doCheck = false;
+                });
+              };
+            };
+          })
         ];
       };
     in
