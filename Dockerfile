@@ -43,10 +43,11 @@ RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon && \
     # experimental features を有効化（flakes用）
     mkdir -p /root/.config/nix && \
     echo "experimental-features = nix-command flakes" > /root/.config/nix/nix.conf && \
-    # Nix flake の設定を検証（フルプロファイル）
+    # Nix flake の構文チェックのみ実行（ディスク容量節約のため）
+    # 実際のビルドはnix.ymlワークフローのverifyジョブで実行
     cd dotfiles && \
-    nix build .#homeConfigurations.archie.activationPackage --no-link && \
-    echo "Nix configuration validated successfully"
+    nix flake check --no-build && \
+    echo "Nix flake syntax validated successfully"
 
 # 環境変数にNixのPATHを追加
 ENV PATH="/root/.nix-profile/bin:${PATH}"
