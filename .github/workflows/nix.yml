@@ -49,6 +49,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # コンテナ内ではcheckoutしたディレクトリの所有者とNix/Gitを実行するユーザーが異なるため、
+      # Gitが「unsafe repository」エラーを出す。これを回避するためにsafe.directoryを設定する。
+      - name: Mark directory as safe for Git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
 
