@@ -54,7 +54,8 @@ jobs:
 
       - name: Build Home Manager configuration
         run: |
-          . /root/.nix-profile/etc/profile.d/nix.sh
+          # DeterminateSystems installer sets up PATH automatically
+          export PATH="/nix/var/nix/profiles/default/bin:$PATH"
           nix build .#homeConfigurations.archie.activationPackage
 
       # Note: activate is skipped because container runs as root but config is for archie user
