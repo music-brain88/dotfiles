@@ -45,7 +45,25 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+      # Mount host filesystem to allow disk cleanup from within container
+      options: --privileged -v /:/host
     steps:
+      # Free up disk space on the HOST by removing unnecessary tools
+      # This is necessary because Docker uses host disk space
+      # GitHub Actions runner has limited disk space (~14GB free)
+      - name: Free disk space on host
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h /host
+          echo "=== Removing unnecessary tools from host ==="
+          rm -rf /host/usr/share/dotnet      # ~6GB
+          rm -rf /host/usr/local/lib/android # ~10GB
+          rm -rf /host/opt/ghc               # ~5GB
+          rm -rf /host/usr/share/swift       # ~1.5GB
+          rm -rf /host/usr/local/share/boost # ~1.5GB
+          echo "=== Disk space after cleanup ==="
+          df -h /host
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
