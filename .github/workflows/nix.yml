@@ -4,6 +4,12 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'llm/**'
+      - 'LICENSE'
+      - '.gitignore'
 
 jobs:
   # Build Docker image with Nix pre-installed

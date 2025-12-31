@@ -8,16 +8,19 @@
 - [Why Nix?](#why-nix)
 - [Installation](#installation)
 - [Usage](#usage)
+- [mise Tasks Integration](#mise-tasks-integration)
 - [Module Structure](#module-structure)
 - [Customization](#customization)
 - [Troubleshooting](#troubleshooting)
-- [Migration from Shell Scripts](#migration-from-shell-scripts)
 
 ---
 
 ## 🎯 Overview
 
-このdotfilesリポジトリは、Nix FlakesとHome Managerを使用して、宣言的で再現可能な開発環境を提供します。
+このdotfilesリポジトリは、**Nix Flakes + Home Manager + mise** を使用して、宣言的で再現可能な開発環境を提供します。
+
+- **Nix/Home Manager**: パッケージ管理と環境設定
+- **mise**: タスクランナー（ビルド、デプロイなどのコマンドを簡単に実行）
 
 ### Architecture
 
@@ -201,6 +204,42 @@ nix-collect-garbage --delete-older-than 30d
 nix develop
 
 # Available tools: nil, nixpkgs-fmt, nix-tree
+```
+
+---
+
+## 🔧 mise Tasks Integration
+
+このリポジトリでは、よく使うNixコマンドを`mise`タスクとして定義しています。
+長いコマンドを覚える必要がなく、`mise run <task>` で簡単に実行できます。
+
+### Available Tasks
+
+```bash
+# タスク一覧を表示
+mise tasks
+```
+
+| Task | Description | Equivalent Command |
+|------|-------------|-------------------|
+| `nix:build` | Home Manager設定をビルド | `nix build .#homeConfigurations.archie.activationPackage` |
+| `nix:switch` | ビルド＆アクティベート | build + `./result/activate` |
+| `nix:check` | Flakeチェック実行 | `nix flake check` |
+| `nix:update` | Flake inputsを更新 | `nix flake update` |
+| `nix:gc` | 古い世代をガベージコレクト | `nix-collect-garbage -d` |
+
+### Usage Examples
+
+```bash
+# 設定を更新してアクティベート
+mise run nix:switch
+
+# パッケージを最新に更新
+mise run nix:update
+mise run nix:switch
+
+# ディスク容量を解放
+mise run nix:gc
 ```
 
 ---
@@ -450,32 +489,6 @@ nix repl
 ```bash
 nix build --show-trace --verbose .#homeConfigurations.archie.activationPackage
 ```
-
----
-
-## 🔄 Migration from Shell Scripts
-
-### Phase 1: Parallel Operation (Current)
-
-現在は、Nixとシェルスクリプトベースのセットアップが並行して動作します:
-
-- **Nix**: 推奨される新しい方法
-- **Shell Scripts**: 後方互換性のために維持
-
-どちらの方法も完全に機能します。
-
-### Phase 2: Gradual Migration (Future)
-
-今後、段階的に以下を移行予定:
-
-1. ✅ パッケージ管理 (完了)
-2. ⏳ CI/CD workflows (計画中)
-3. ⏳ Docker環境 (計画中)
-4. ⏳ Neovim plugins (オプション)
-
-### Phase 3: Complete Transition (Long-term)
-
-最終的には、すべての設定管理をNixに移行し、シェルスクリプトは削除予定です。
 
 ---
 
