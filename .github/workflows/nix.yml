@@ -88,46 +88,48 @@ jobs:
 
   # Option B: Build in Arch Linux container with Docker layer cache
   # This preserves the Arch Linux environment for testing
+  # Note: We manually pull/run Docker instead of using `container:` section
+  # because `container:` pulls the image BEFORE any steps run,
+  # which prevents disk cleanup from running first.
   verify-docker:
     name: Build & Verify (Arch Linux)
     runs-on: ubuntu-latest
     needs: [build-image, check]
-    container:
-      image: ghcr.io/${{ github.repository }}/dotfiles-env:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-      # Mount host filesystem to allow disk cleanup from within container
-      options: --privileged -v /:/host
     steps:
-      # Free up disk space on the HOST by removing unnecessary tools
-      # This is necessary because Docker uses host disk space
-      - name: Free disk space on host
+      # Free up disk space BEFORE pulling the large Docker image
+      - name: Free disk space
         run: |
           echo "=== Disk space before cleanup ==="
-          df -h /host
-          echo "=== Removing unnecessary tools from host ==="
-          rm -rf /host/usr/share/dotnet      # ~6GB
-          rm -rf /host/usr/local/lib/android # ~10GB
-          rm -rf /host/opt/ghc               # ~5GB
-          rm -rf /host/usr/share/swift       # ~1.5GB
-          rm -rf /host/usr/local/share/boost # ~1.5GB
+          df -h
+          echo "=== Removing unnecessary tools ==="
+          sudo rm -rf /usr/share/dotnet      # ~6GB
+          sudo rm -rf /usr/local/lib/android # ~10GB
+          sudo rm -rf /opt/ghc               # ~5GB
+          sudo rm -rf /usr/share/swift       # ~1.5GB
+          sudo rm -rf /usr/local/share/boost # ~1.5GB
           echo "=== Disk space after cleanup ==="
-          df -h /host
+          df -h
 
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # コンテナ内ではcheckoutしたディレクトリの所有者とNix/Gitを実行するユーザーが異なるため、
-      # Gitが「unsafe repository」エラーを出す。これを回避するためにsafe.directoryを設定する。
-      - name: Mark directory as safe for Git
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Home Manager configuration
+      - name: Pull Docker image
+        run: docker pull ghcr.io/${{ github.repository }}/dotfiles-env:latest
+
+      - name: Build Home Manager configuration in container
         run: |
-          # DeterminateSystems installer sets up PATH automatically
-          export PATH="/nix/var/nix/profiles/default/bin:$PATH"
-          nix build .#homeConfigurations.archie.activationPackage
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            ghcr.io/${{ github.repository }}/dotfiles-env:latest \
+            bash -c 'git config --global --add safe.directory /workspace && nix build .#homeConfigurations.archie.activationPackage'
 
       # Note: activate is skipped because container runs as root but config is for archie user
       # See: https://github.com/music-brain88/dotfiles/issues/200
