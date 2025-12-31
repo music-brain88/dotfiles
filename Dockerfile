@@ -34,22 +34,14 @@ RUN rustup default stable
 # 作業ディレクトリの設定
 WORKDIR /root
 
-# dotfiles のコピー（あなたのリポジトリにある場合）
-COPY . dotfiles/
-
 # Nix のインストール（DeterminateSystems installer - Docker向けに最適化）
-# flake checkはnix.ymlワークフローのcheckジョブで実行するため、ここでは省略
 RUN curl -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --init none --no-confirm
 
 # 環境変数にNixのPATHを追加（DeterminateSystems installerのパス）
 ENV PATH="/nix/var/nix/profiles/default/bin:/root/.nix-profile/bin:${PATH}"
 
-# Home Manager のビルド（結果をイメージに含めてDockerレイヤーキャッシュを活用）
-# このステップでNixストアがイメージに焼き込まれる
-WORKDIR /root/dotfiles
-RUN nix build .#homeConfigurations.archie.activationPackage
-
-# 作業ディレクトリをrootに戻す
-WORKDIR /root
+# nix buildはCI時にランタイムで実行
+# ホストのNixストアをマウントしてmagic-nix-cacheでキャッシュを効かせる
+# dotfilesはCI時にボリュームマウントで提供
 
 CMD ["bash"]

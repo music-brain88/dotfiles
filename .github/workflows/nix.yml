@@ -99,6 +99,11 @@ jobs:
   # Note: We manually pull/run Docker instead of using `container:` section
   # because `container:` pulls the image BEFORE any steps run,
   # which prevents disk cleanup from running first.
+  #
+  # Strategy: Mount host's Nix store into container for cache sharing
+  # - Host installs Nix and sets up magic-nix-cache
+  # - Container uses host's /nix store via volume mount
+  # - This enables Nix cache to persist across CI runs
   verify-docker:
     name: Build & Verify (Arch Linux)
     runs-on: ubuntu-latest
@@ -121,6 +126,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Install Nix on host to prepare shared Nix store
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      # Setup Nix cache on host - this cache will be shared with container
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-flakehub: false
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -131,13 +146,14 @@ jobs:
       - name: Pull Docker image
         run: docker pull ghcr.io/${{ github.repository }}/dotfiles-env:latest
 
-      # Build and verify inside container
+      # Build and verify inside container with host's Nix store mounted
       # Note: activate is skipped because container runs as root but config is for archie user
       # See: https://github.com/music-brain88/dotfiles/issues/200
       - name: Build and verify Home Manager configuration in container
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
+            -v "/nix:/nix" \
             -w /workspace \
             ghcr.io/${{ github.repository }}/dotfiles-env:latest \
             bash -c '
