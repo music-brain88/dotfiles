@@ -33,6 +33,8 @@ jobs:
 
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-flakehub: false
 
       - name: Check flake
         run: nix flake check --no-build
@@ -41,56 +43,107 @@ jobs:
         run: |
           nix develop --command nixpkgs-fmt --check flake.nix home.nix nix/
 
-  # Build and verify using custom container with Nix
+  # Option A: Build on Ubuntu runner with nix-community/cache-nix-action
+  # This approach uses GitHub's official cache API for stability
   verify:
-    name: Build & Verify in Container
+    name: Build & Verify (Ubuntu)
     runs-on: ubuntu-latest
-    needs: [build-image, check]
-    container:
-      image: ghcr.io/${{ github.repository }}/dotfiles-env:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-      # Mount host filesystem to allow disk cleanup from within container
-      options: --privileged -v /:/host
+    needs: [check]
     steps:
-      # Free up disk space on the HOST by removing unnecessary tools
-      # This is necessary because Docker uses host disk space
-      # GitHub Actions runner has limited disk space (~14GB free)
-      - name: Free disk space on host
-        run: |
-          echo "=== Disk space before cleanup ==="
-          df -h /host
-          echo "=== Removing unnecessary tools from host ==="
-          rm -rf /host/usr/share/dotnet      # ~6GB
-          rm -rf /host/usr/local/lib/android # ~10GB
-          rm -rf /host/opt/ghc               # ~5GB
-          rm -rf /host/usr/share/swift       # ~1.5GB
-          rm -rf /host/usr/local/share/boost # ~1.5GB
-          echo "=== Disk space after cleanup ==="
-          df -h /host
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # コンテナ内ではcheckoutしたディレクトリの所有者とNix/Gitを実行するユーザーが異なるため、
-      # Gitが「unsafe repository」エラーを出す。これを回避するためにsafe.directoryを設定する。
-      - name: Mark directory as safe for Git
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      # Free up disk space on the runner
+      # GitHub Actions runner has limited disk space (~14GB free)
+      - name: Free disk space
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+          echo "=== Removing unnecessary tools ==="
+          sudo rm -rf /usr/share/dotnet      # ~6GB
+          sudo rm -rf /usr/local/lib/android # ~10GB
+          sudo rm -rf /opt/ghc               # ~5GB
+          sudo rm -rf /usr/share/swift       # ~1.5GB
+          sudo rm -rf /usr/local/share/boost # ~1.5GB
+          echo "=== Disk space after cleanup ==="
+          df -h
 
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      # Use nix-community/cache-nix-action for stable caching
+      # Based on GitHub's official actions/cache API
+      # Note: Explicitly specify paths and limit store size to avoid
+      # "path too long" errors during tar extraction (ansible has very long paths)
       - name: Setup Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
+        uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-v2-${{ hashFiles('**/*.nix', 'flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-v2-
+          paths: |
+            /nix
+            ~/.cache/nix
+          gc-max-store-size-linux: 1073741824
 
       - name: Build Home Manager configuration
-        run: |
-          # DeterminateSystems installer sets up PATH automatically
-          export PATH="/nix/var/nix/profiles/default/bin:$PATH"
-          nix build .#homeConfigurations.archie.activationPackage
+        run: nix build .#homeConfigurations.archie.activationPackage
 
-      # Note: activate is skipped because container runs as root but config is for archie user
-      # See: https://github.com/music-brain88/dotfiles/issues/200
       - name: Verify build output exists
         run: |
           echo "=== Verifying build output ==="
           ls -la ./result/
           echo "=== Home Manager build completed successfully ==="
+
+  # Option B: Build in Arch Linux container with Docker layer cache
+  # This preserves the Arch Linux environment for testing
+  # Note: We manually pull/run Docker instead of using `container:` section
+  # because `container:` pulls the image BEFORE any steps run,
+  # which prevents disk cleanup from running first.
+  verify-docker:
+    name: Build & Verify (Arch Linux)
+    runs-on: ubuntu-latest
+    needs: [build-image, check]
+    steps:
+      # Free up disk space BEFORE pulling the large Docker image
+      - name: Free disk space
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+          echo "=== Removing unnecessary tools ==="
+          sudo rm -rf /usr/share/dotnet      # ~6GB
+          sudo rm -rf /usr/local/lib/android # ~10GB
+          sudo rm -rf /opt/ghc               # ~5GB
+          sudo rm -rf /usr/share/swift       # ~1.5GB
+          sudo rm -rf /usr/local/share/boost # ~1.5GB
+          echo "=== Disk space after cleanup ==="
+          df -h
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Docker image
+        run: docker pull ghcr.io/${{ github.repository }}/dotfiles-env:latest
+
+      # Build and verify inside container
+      # Note: activate is skipped because container runs as root but config is for archie user
+      # See: https://github.com/music-brain88/dotfiles/issues/200
+      - name: Build and verify Home Manager configuration in container
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            ghcr.io/${{ github.repository }}/dotfiles-env:latest \
+            bash -c '
+              git config --global --add safe.directory /workspace
+              nix build .#homeConfigurations.archie.activationPackage
+              echo "=== Verifying build output ==="
+              ls -la ./result/
+              echo "=== Home Manager build completed successfully ==="
+            '

@@ -44,11 +44,12 @@ RUN curl -sSf -L https://install.determinate.systems/nix | sh -s -- install linu
 # 環境変数にNixのPATHを追加（DeterminateSystems installerのパス）
 ENV PATH="/nix/var/nix/profiles/default/bin:/root/.nix-profile/bin:${PATH}"
 
-# セットアップスクリプトの実行
-# RUN cd dotfiles && make install
+# Home Manager のビルド（結果をイメージに含めてDockerレイヤーキャッシュを活用）
+# このステップでNixストアがイメージに焼き込まれる
+WORKDIR /root/dotfiles
+RUN nix build .#homeConfigurations.archie.activationPackage
 
-# デプロイスクリプトの実行
-# RUN cd dotfiles && make deploy
-
+# 作業ディレクトリをrootに戻す
+WORKDIR /root
 
 CMD ["bash"]
