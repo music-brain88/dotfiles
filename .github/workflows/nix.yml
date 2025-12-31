@@ -123,18 +123,19 @@ jobs:
       - name: Pull Docker image
         run: docker pull ghcr.io/${{ github.repository }}/dotfiles-env:latest
 
-      - name: Build Home Manager configuration in container
+      # Build and verify inside container
+      # Note: activate is skipped because container runs as root but config is for archie user
+      # See: https://github.com/music-brain88/dotfiles/issues/200
+      - name: Build and verify Home Manager configuration in container
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             ghcr.io/${{ github.repository }}/dotfiles-env:latest \
-            bash -c 'git config --global --add safe.directory /workspace && nix build .#homeConfigurations.archie.activationPackage'
-
-      # Note: activate is skipped because container runs as root but config is for archie user
-      # See: https://github.com/music-brain88/dotfiles/issues/200
-      - name: Verify build output exists
-        run: |
-          echo "=== Verifying build output ==="
-          ls -la ./result/
-          echo "=== Home Manager build completed successfully ==="
+            bash -c '
+              git config --global --add safe.directory /workspace
+              nix build .#homeConfigurations.archie.activationPackage
+              echo "=== Verifying build output ==="
+              ls -la ./result/
+              echo "=== Home Manager build completed successfully ==="
+            '
