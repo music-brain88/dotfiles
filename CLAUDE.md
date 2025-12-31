@@ -3,29 +3,28 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 
-## Build/Lint/Test Commands
-- Install dependencies: `make install`
-- Deploy dotfiles: `make deploy`
-- Update repository and tools: `make update` (pulls latest changes, updates submodules, and updates Cargo tools)
-- Install Neovim plugins: `nvim --headless +"call dein#install()" +qall`
-- Lint shell scripts: `shellcheck .bin/*.sh .bin/utils/*.sh`
-- Backup packages (Arch Linux): `make backup`
+## Task Runner (mise)
+All tasks are defined in `.mise.toml`. Run `mise tasks` to see available commands.
 
-### Python Setup for Neovim
-```bash
-pyenv install <python3 version>
-pyenv virtualenv <python3 version> neovim3
-source ~/.pyenv/versions/neovim3/bin/activate.fish
-pip install pynvim
-```
+### Nix Operations
+- Build Home Manager config: `mise run nix:build`
+- Build and activate: `mise run nix:switch`
+- Run flake checks: `mise run nix:check`
+- Update flake inputs: `mise run nix:update`
+- Garbage collect: `mise run nix:gc`
+- Enter dev shell: `nix develop`
 
 ### Docker Operations
-- Build image: `make build`
-- Run container: `make run`
-- Start container: `make start`
-- Stop container: `make stop`
-- Remove container: `make remove`
-- Execute bash in container: `make exec`
+- Build image: `mise run docker:build`
+- Run container: `mise run docker:run`
+- Start container: `mise run docker:start`
+- Stop container: `mise run docker:stop`
+- Remove container: `mise run docker:remove`
+- Execute bash in container: `mise run docker:exec`
+
+### Utility Commands
+- Backup packages (Arch Linux): `mise run backup`
+- Install Neovim plugins: `nvim --headless +"call dein#install()" +qall`
 
 ## Architecture Overview
 
@@ -46,18 +45,21 @@ The Neovim setup uses a modular TOML-based configuration system:
   - Mini.nvim plugins in `mini/` directory
 
 ### Deployment System
-The deployment uses a two-stage approach:
-1. `.bin/install.sh`: Installs required tools and dependencies
-2. `.bin/deploy.sh`: Creates symlinks to home directory
-3. Utility scripts in `.bin/utils/` handle specific tool setups:
-   - `setup_base.sh`: Basic system dependencies
-   - `setup_rust_tools.sh`: Rust and Cargo-based CLI tools
-   - `setup_fish.sh`: Fish shell and Fisher plugins
-   - `setup_neovim.sh`: Neovim installation
-   - `setup_tmux.sh`: Tmux configuration
-   - `setup_git.sh`: Git configuration
-   - `setup_directories.sh`: Creates required directories
-   - `setup_symlinks.sh`: Creates dotfile symlinks
+The deployment uses **Nix + Home Manager** for declarative configuration management:
+
+1. **Nix Flake** (`flake.nix`): Defines all dependencies and configurations
+2. **Home Manager**: Manages dotfiles, packages, and user environment
+3. **mise**: Task runner for common operations (defined in `.mise.toml`)
+
+**Quick Start:**
+```bash
+# Build and activate configuration
+mise run nix:switch
+
+# Or manually
+nix build .#homeConfigurations.archie.activationPackage
+./result/activate
+```
 
 ### CI/CD Pipeline (GitHub Actions)
 The repository uses a **hybrid Docker + Nix** CI/CD pipeline combining the best of both approaches:
@@ -95,14 +97,16 @@ verify:
 
 ## Repository Structure
 - `.config/` - Configuration files for various tools
-  - `fish/` - Fish shell configurations 
+  - `fish/` - Fish shell configurations
   - `nvim/` - Neovim configurations with plugin settings in TOML files
   - `hypr/` - Hyprland window manager settings (Wayland)
   - `i3/` - i3 window manager settings (X11)
   - `waybar/` - Waybar settings (for Wayland)
   - `polybar/` - Polybar settings (for X11)
   - `alacritty/` - Terminal emulator settings
-- `.bin/` - Installation and deployment scripts
+- `flake.nix` - Nix flake configuration (entry point)
+- `home.nix` - Home Manager configuration
+- `.mise.toml` - Task definitions and tool versions
 - `llm/` - Context and personality settings for AI language models
 - `polybar-themes/` - Polybar themes (submodule)
 

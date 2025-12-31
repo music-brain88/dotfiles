@@ -5,3 +5,66 @@ uv = "latest"
 
 [env]
 _.file = ".env"
+
+# =============================================================================
+# Nix Tasks
+# =============================================================================
+
+[tasks."nix:build"]
+description = "Build Home Manager configuration"
+run = "nix build .#homeConfigurations.archie.activationPackage"
+
+[tasks."nix:switch"]
+description = "Build and activate Home Manager configuration"
+run = """
+nix build .#homeConfigurations.archie.activationPackage
+./result/activate
+"""
+
+[tasks."nix:check"]
+description = "Run flake checks (format, lint)"
+run = "nix flake check"
+
+[tasks."nix:update"]
+description = "Update all flake inputs"
+run = "nix flake update"
+
+[tasks."nix:gc"]
+description = "Garbage collect old Nix generations"
+run = "nix-collect-garbage -d"
+
+# =============================================================================
+# Docker Tasks
+# =============================================================================
+
+[tasks."docker:build"]
+description = "Build docker image"
+run = "docker build -t arch ."
+
+[tasks."docker:run"]
+description = "Run docker container (16GB mem, 4096 CPU shares)"
+run = "docker run -itd --cpu-shares=4096 -m 16G --name arch arch:latest"
+
+[tasks."docker:start"]
+description = "Start docker container"
+run = "docker start arch"
+
+[tasks."docker:stop"]
+description = "Stop docker container"
+run = "docker stop arch"
+
+[tasks."docker:exec"]
+description = "Execute bash in docker container"
+run = "docker exec -it arch bash"
+
+[tasks."docker:remove"]
+description = "Stop and remove docker container"
+run = "docker stop arch && docker rm arch"
+
+# =============================================================================
+# Utility Tasks
+# =============================================================================
+
+[tasks.backup]
+description = "Backup installed Arch Linux packages"
+run = "sudo pacman -Qne > .backup/pacman/pkglist.txt"
