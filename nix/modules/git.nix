@@ -8,7 +8,7 @@
     delta
     gh
     gh-dash
-    gh-copilot
+    github-copilot-cli           # GitHub Copilot CLI (agentic terminal assistant)
   ];
 
   # Git config symlinks (matching deploy.sh)
