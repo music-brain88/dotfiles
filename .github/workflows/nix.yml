@@ -71,11 +71,17 @@ jobs:
 
       # Use nix-community/cache-nix-action for stable caching
       # Based on GitHub's official actions/cache API
+      # Note: Explicitly specify paths and limit store size to avoid
+      # "path too long" errors during tar extraction (ansible has very long paths)
       - name: Setup Nix cache
         uses: nix-community/cache-nix-action@v6
         with:
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-
+          primary-key: nix-${{ runner.os }}-v2-${{ hashFiles('**/*.nix', 'flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-v2-
+          paths: |
+            /nix
+            ~/.cache/nix
+          gc-max-store-size-linux: 1073741824
 
       - name: Build Home Manager configuration
         run: nix build .#homeConfigurations.archie.activationPackage
