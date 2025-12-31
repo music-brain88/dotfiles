@@ -18,6 +18,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Free up disk space for large Nix builds
+      # Docker image with Nix store can be several GB
+      - name: Free disk space
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+          echo "=== Removing unnecessary tools ==="
+          sudo rm -rf /usr/share/dotnet      # ~6GB
+          sudo rm -rf /usr/local/lib/android # ~10GB
+          sudo rm -rf /opt/ghc               # ~5GB
+          sudo rm -rf /usr/share/swift       # ~1.5GB
+          sudo rm -rf /usr/local/share/boost # ~1.5GB
+          echo "=== Disk space after cleanup ==="
+          df -h
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
