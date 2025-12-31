@@ -21,7 +21,9 @@ RUN pacman -Syu --noconfirm && \
     llvm \
     # 通知関連のパッケージを追加
     mako \
-    libnotify
+    libnotify && \
+    # キャッシュをクリーンアップしてイメージサイズを削減
+    pacman -Scc --noconfirm
 
 # Rust のインストール
 
@@ -34,6 +36,13 @@ WORKDIR /root
 
 # dotfiles のコピー（あなたのリポジトリにある場合）
 COPY . dotfiles/
+
+# Nix のインストール（DeterminateSystems installer - Docker向けに最適化）
+# flake checkはnix.ymlワークフローのcheckジョブで実行するため、ここでは省略
+RUN curl -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --init none --no-confirm
+
+# 環境変数にNixのPATHを追加（DeterminateSystems installerのパス）
+ENV PATH="/nix/var/nix/profiles/default/bin:/root/.nix-profile/bin:${PATH}"
 
 # セットアップスクリプトの実行
 # RUN cd dotfiles && make install

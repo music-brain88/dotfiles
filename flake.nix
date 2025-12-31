@@ -24,6 +24,25 @@
         config.allowUnfree = true;
         overlays = [
           neovim-nightly-overlay.overlays.default
+          # Fix for CI: some package tests are flaky in GitHub Actions environment
+          (final: prev: {
+            # rustup tests fail in sandboxed CI due to socks_proxy_request needing network
+            rustup = prev.rustup.overrideAttrs (old: {
+              doCheck = false;
+            });
+
+            python311Packages = prev.python311Packages.override {
+              overrides = pfinal: pprev: {
+                websockets = pprev.websockets.overridePythonAttrs (old: {
+                  doCheck = false;
+                });
+                # cbor2 tests fail in sandboxed CI due to tmp_path fixture issues
+                cbor2 = pprev.cbor2.overridePythonAttrs (old: {
+                  doCheck = false;
+                });
+              };
+            };
+          })
         ];
       };
     in

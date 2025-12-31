@@ -1,0 +1,90 @@
+name: Nix CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # Build Docker image with Nix pre-installed
+  build-image:
+    name: Build Docker Image
+    uses: ./.github/workflows/build-docker-image.yml
+    permissions:
+      contents: read
+      packages: write
+
+  # Check flake and formatting (lightweight, no container needed)
+  check:
+    name: Nix Check & Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Check flake
+        run: nix flake check --no-build
+
+      - name: Check format
+        run: |
+          nix develop --command nixpkgs-fmt --check flake.nix home.nix nix/
+
+  # Build and verify using custom container with Nix
+  verify:
+    name: Build & Verify in Container
+    runs-on: ubuntu-latest
+    needs: [build-image, check]
+    container:
+      image: ghcr.io/${{ github.repository }}/dotfiles-env:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      # Mount host filesystem to allow disk cleanup from within container
+      options: --privileged -v /:/host
+    steps:
+      # Free up disk space on the HOST by removing unnecessary tools
+      # This is necessary because Docker uses host disk space
+      # GitHub Actions runner has limited disk space (~14GB free)
+      - name: Free disk space on host
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h /host
+          echo "=== Removing unnecessary tools from host ==="
+          rm -rf /host/usr/share/dotnet      # ~6GB
+          rm -rf /host/usr/local/lib/android # ~10GB
+          rm -rf /host/opt/ghc               # ~5GB
+          rm -rf /host/usr/share/swift       # ~1.5GB
+          rm -rf /host/usr/local/share/boost # ~1.5GB
+          echo "=== Disk space after cleanup ==="
+          df -h /host
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # コンテナ内ではcheckoutしたディレクトリの所有者とNix/Gitを実行するユーザーが異なるため、
+      # Gitが「unsafe repository」エラーを出す。これを回避するためにsafe.directoryを設定する。
+      - name: Mark directory as safe for Git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build Home Manager configuration
+        run: |
+          # DeterminateSystems installer sets up PATH automatically
+          export PATH="/nix/var/nix/profiles/default/bin:$PATH"
+          nix build .#homeConfigurations.archie.activationPackage
+
+      # Note: activate is skipped because container runs as root but config is for archie user
+      # See: https://github.com/music-brain88/dotfiles/issues/200
+      - name: Verify build output exists
+        run: |
+          echo "=== Verifying build output ==="
+          ls -la ./result/
+          echo "=== Home Manager build completed successfully ==="
