@@ -41,9 +41,55 @@ jobs:
         run: |
           nix develop --command nixpkgs-fmt --check flake.nix home.nix nix/
 
-  # Build and verify using custom container with Nix
+  # Option A: Build on Ubuntu runner with nix-community/cache-nix-action
+  # This approach uses GitHub's official cache API for stability
   verify:
-    name: Build & Verify in Container
+    name: Build & Verify (Ubuntu)
+    runs-on: ubuntu-latest
+    needs: [check]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Free up disk space on the runner
+      # GitHub Actions runner has limited disk space (~14GB free)
+      - name: Free disk space
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+          echo "=== Removing unnecessary tools ==="
+          sudo rm -rf /usr/share/dotnet      # ~6GB
+          sudo rm -rf /usr/local/lib/android # ~10GB
+          sudo rm -rf /opt/ghc               # ~5GB
+          sudo rm -rf /usr/share/swift       # ~1.5GB
+          sudo rm -rf /usr/local/share/boost # ~1.5GB
+          echo "=== Disk space after cleanup ==="
+          df -h
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      # Use nix-community/cache-nix-action for stable caching
+      # Based on GitHub's official actions/cache API
+      - name: Setup Nix cache
+        uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+
+      - name: Build Home Manager configuration
+        run: nix build .#homeConfigurations.archie.activationPackage
+
+      - name: Verify build output exists
+        run: |
+          echo "=== Verifying build output ==="
+          ls -la ./result/
+          echo "=== Home Manager build completed successfully ==="
+
+  # Option B: Build in Arch Linux container with Docker layer cache
+  # This preserves the Arch Linux environment for testing
+  verify-docker:
+    name: Build & Verify (Arch Linux)
     runs-on: ubuntu-latest
     needs: [build-image, check]
     container:
@@ -56,7 +102,6 @@ jobs:
     steps:
       # Free up disk space on the HOST by removing unnecessary tools
       # This is necessary because Docker uses host disk space
-      # GitHub Actions runner has limited disk space (~14GB free)
       - name: Free disk space on host
         run: |
           echo "=== Disk space before cleanup ==="
@@ -77,9 +122,6 @@ jobs:
       # Gitが「unsafe repository」エラーを出す。これを回避するためにsafe.directoryを設定する。
       - name: Mark directory as safe for Git
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - name: Setup Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: Build Home Manager configuration
         run: |
