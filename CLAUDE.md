@@ -28,6 +28,8 @@ All tasks are defined in `.mise.toml`. Run `mise tasks` to see available command
 
 ## Architecture Overview
 
+For detailed architecture documentation including design philosophy, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ### Neovim Configuration Architecture
 The Neovim setup uses a modular TOML-based configuration system:
 - `init.lua`: Main entry point that loads all TOML configurations using dein.vim
@@ -95,6 +97,15 @@ verify:
 - **Local Development**: Use `nix develop` or Home Manager directly
 - **CI/CD**: Docker container with Nix validates all configurations
 
+### Design Philosophy (Hybrid Approach)
+This repository uses a **Nix + Symlinks hybrid approach**:
+- **Nix**: Package management and version pinning (reproducibility)
+- **Symlinks**: Native config files for each tool (flexibility)
+- Each tool uses its native config format (TOML, fish, conf) - not converted to Nix expressions
+- Rationale: All tools will never share the same config format, so we respect each tool's ecosystem
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed design philosophy.
+
 ## Repository Structure
 - `.config/` - Configuration files for various tools
   - `fish/` - Fish shell configurations
@@ -109,6 +120,22 @@ verify:
 - `.mise.toml` - Task definitions and tool versions
 - `llm/` - Context and personality settings for AI language models
 - `polybar-themes/` - Polybar themes (submodule)
+- `docs/` - Documentation (see Documentation section below)
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Design philosophy, hybrid approach, CI strategy |
+| [docs/NIX.md](docs/NIX.md) | Nix/Home Manager installation and usage guide |
+| [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) | Shortcuts for Fish, Tmux, Hyprland |
+| [docs/NEOVIM.md](docs/NEOVIM.md) | Neovim plugins and keybindings |
+| [docs/STRUCTURE.md](docs/STRUCTURE.md) | Directory structure details |
+
+**Quick Keybindings Reference:**
+- Fish: `Ctrl+t` (file search), `Ctrl+r` (history), `Ctrl+y` (git branch)
+- Tmux: prefix is `Ctrl+g`, split with `|` and `-`, vim-style navigation with `h/j/k/l`
+- Hyprland: `Super` as modifier, `Super+Enter` (terminal), `Super+D` (launcher)
 
 ## Development Environments
 - Main development environments:

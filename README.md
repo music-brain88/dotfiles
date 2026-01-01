@@ -114,7 +114,7 @@ dotfiles/
 └── home.nix          # Home Manager config
 ```
 
-> 📖 詳細は [docs/structure.md](docs/structure.md) を参照してください。
+> 📖 詳細は [docs/STRUCTURE.md](docs/STRUCTURE.md) を参照してください。
 
 ---
 
@@ -122,9 +122,14 @@ dotfiles/
 
 | Document | Description |
 |----------|-------------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | アーキテクチャ設計・設計思想 |
 | [docs/NIX.md](docs/NIX.md) | Nix/Home Manager 詳細ガイド |
-| [docs/structure.md](docs/structure.md) | ディレクトリ構造の詳細 |
+| [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) | キーバインド・ショートカット一覧 |
+| [docs/NEOVIM.md](docs/NEOVIM.md) | Neovim 設定ガイド |
+| [docs/STRUCTURE.md](docs/STRUCTURE.md) | ディレクトリ構造の詳細 |
 | [CLAUDE.md](CLAUDE.md) | Claude Code 向けコンテキスト |
+
+> 📖 詳細は [docs/README.md](docs/README.md) を参照してください。
 
 ---
 

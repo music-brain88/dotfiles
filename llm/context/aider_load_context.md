@@ -64,7 +64,7 @@
 /add       .github/workflows/setup-terminal.yml
 
 ## コンテキストファイル
-/add       llm/context/structure.md
+/add       llm/context/STRUCTURE.md
 /add       llm/context/techStack.md
 /add       llm/context/Philosophy.md
 /add       llm/context/Workflow.md
