@@ -109,6 +109,14 @@ verify:
 - `.mise.toml` - Task definitions and tool versions
 - `llm/` - Context and personality settings for AI language models
 - `polybar-themes/` - Polybar themes (submodule)
+- `docs/` - Documentation (NIX.md, KEYBINDINGS.md, structure.md)
+
+## Keybindings Reference
+For detailed keybindings documentation, see [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md).
+
+**Quick Reference:**
+- Fish: `Ctrl+t` (file search), `Ctrl+r` (history), `Ctrl+y` (git branch)
+- Tmux: prefix is `Ctrl+g`, split with `|` and `-`, vim-style navigation with `h/j/k/l`
 
 ## Development Environments
 - Main development environments:

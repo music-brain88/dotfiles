@@ -117,6 +117,8 @@ Home Manager の設定をモジュール化。
 | File | Description |
 |------|-------------|
 | `NIX.md` | Nix/Home Manager 詳細ガイド |
+| `KEYBINDINGS.md` | キーバインド・ショートカット一覧 |
+| `NEOVIM.md` | Neovim 設定ガイド（キーバインド、プラグイン構成） |
 | `structure.md` | このファイル（ディレクトリ構造） |
 
 ---
@@ -165,4 +167,6 @@ git submodule update
 
 - [README.md](../README.md) - プロジェクト概要とクイックスタート
 - [NIX.md](./NIX.md) - Nix/Home Manager 詳細ガイド
+- [KEYBINDINGS.md](./KEYBINDINGS.md) - キーバインド・ショートカット一覧
+- [NEOVIM.md](./NEOVIM.md) - Neovim 設定ガイド
 - [CLAUDE.md](../CLAUDE.md) - Claude Code 向けコンテキスト
