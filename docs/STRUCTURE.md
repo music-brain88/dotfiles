@@ -120,7 +120,7 @@ Home Manager の設定をモジュール化。
 | `NIX.md` | Nix/Home Manager 詳細ガイド |
 | `KEYBINDINGS.md` | キーバインド・ショートカット一覧 |
 | `NEOVIM.md` | Neovim 設定ガイド（キーバインド、プラグイン構成） |
-| `structure.md` | このファイル（ディレクトリ構造） |
+| `STRUCTURE.md` | このファイル（ディレクトリ構造） |
 
 ---
 

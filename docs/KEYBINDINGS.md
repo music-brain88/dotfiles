@@ -311,5 +311,5 @@ submap = reset
 ## 🔗 Related Documentation
 
 - [README.md](../README.md) - プロジェクト概要
-- [structure.md](./structure.md) - ディレクトリ構造
+- [STRUCTURE.md](./STRUCTURE.md) - ディレクトリ構造
 - [NIX.md](./NIX.md) - Nix/Home Manager ガイド

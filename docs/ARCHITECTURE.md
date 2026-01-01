@@ -290,7 +290,7 @@ CI環境特有の問題（サンドボックス、ネットワーク制限）を
 ## 🔗 Related Documentation
 
 - [NIX.md](./NIX.md) - Nix/Home Manager 使い方ガイド
-- [structure.md](./structure.md) - ディレクトリ構造
+- [STRUCTURE.md](./STRUCTURE.md) - ディレクトリ構造
 - [CLAUDE.md](../CLAUDE.md) - Claude Code向けコンテキスト
 
 ---

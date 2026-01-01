@@ -303,5 +303,5 @@ pum.vim (popup menu)
 ## 🔗 Related Documentation
 
 - [KEYBINDINGS.md](./KEYBINDINGS.md) - 全体のキーバインド一覧
-- [structure.md](./structure.md) - ディレクトリ構造
+- [STRUCTURE.md](./STRUCTURE.md) - ディレクトリ構造
 - [NIX.md](./NIX.md) - Nix/Home Manager ガイド
