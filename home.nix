@@ -60,8 +60,7 @@
       executable = true;
     };
 
-    # Copilot
-    ".copilot/config.json".source = ./.config/copilot/config.json;
+    # Copilot (config.json is managed by copilot-cli itself, not Home Manager)
     ".copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
 
     # Hyprland config
