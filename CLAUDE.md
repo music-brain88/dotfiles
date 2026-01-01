@@ -28,6 +28,8 @@ All tasks are defined in `.mise.toml`. Run `mise tasks` to see available command
 
 ## Architecture Overview
 
+For detailed architecture documentation including design philosophy, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ### Neovim Configuration Architecture
 The Neovim setup uses a modular TOML-based configuration system:
 - `init.lua`: Main entry point that loads all TOML configurations using dein.vim
