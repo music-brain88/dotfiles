@@ -147,8 +147,8 @@ jobs:
         run: docker pull ghcr.io/${{ github.repository }}/dotfiles-env:latest
 
       # Build and verify inside container with host's Nix store mounted
-      # Note: activate is skipped because container runs as root but config is for archie user
-      # See: https://github.com/music-brain88/dotfiles/issues/200
+      # Runs as archie user to match Home Manager configuration
+      # Executes activation to fully test the deployment process
       - name: Build and verify Home Manager configuration in container
         run: |
           docker run --rm \
@@ -161,5 +161,7 @@ jobs:
               nix build .#homeConfigurations.archie.activationPackage
               echo "=== Verifying build output ==="
               ls -la ./result/
-              echo "=== Home Manager build completed successfully ==="
+              echo "=== Running Home Manager activation ==="
+              ./result/activate
+              echo "=== Home Manager activation completed successfully ==="
             '
