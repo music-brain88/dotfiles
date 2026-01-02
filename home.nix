@@ -21,6 +21,7 @@
     ./nix/modules/tmux.nix
     ./nix/modules/neovim.nix
     ./nix/modules/dev-tools.nix
+    ./nix/modules/fonts.nix
   ];
 
   # Environment variables
