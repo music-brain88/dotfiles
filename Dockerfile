@@ -25,20 +25,28 @@ RUN pacman -Syu --noconfirm && \
     # キャッシュをクリーンアップしてイメージサイズを削減
     pacman -Scc --noconfirm
 
-# Rust のインストール
+# archieユーザーの作成（Home Manager設定との整合性のため）
+RUN useradd -m -s /bin/bash archie && \
+    echo "archie ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Rust のインストール（archieユーザーで実行）
+USER archie
+WORKDIR /home/archie
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+ENV PATH="/home/archie/.cargo/bin:${PATH}"
 RUN rustup default stable
 
-# 作業ディレクトリの設定
-WORKDIR /root
-
 # Nix のインストール（DeterminateSystems installer - Docker向けに最適化）
+USER root
 RUN curl -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --init none --no-confirm
 
+# archieユーザーに戻してNixを使えるようにする
+USER archie
+WORKDIR /home/archie
+
 # 環境変数にNixのPATHを追加（DeterminateSystems installerのパス）
-ENV PATH="/nix/var/nix/profiles/default/bin:/root/.nix-profile/bin:${PATH}"
+ENV PATH="/nix/var/nix/profiles/default/bin:/home/archie/.nix-profile/bin:${PATH}"
 
 # nix buildはCI時にランタイムで実行
 # ホストのNixストアをマウントしてmagic-nix-cacheでキャッシュを効かせる
