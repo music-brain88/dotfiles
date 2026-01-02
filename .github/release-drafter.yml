@@ -1,0 +1,96 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+template: |
+  ## 📦 v$RESOLVED_VERSION
+  **Release Date:** $TODAY
+
+  ## 🎉 What's New
+
+  $CHANGES
+
+  **Full Changelog:** https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+
+categories:
+  - title: '🚀 Features'
+    labels:
+      - 'feature'
+      - 'enhancement'
+    collapse-after: 10
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+    collapse-after: 10
+  - title: '🔧 Refactoring'
+    labels:
+      - 'refactor'
+      - 'refactoring'
+    collapse-after: 5
+  - title: '📚 Documentation'
+    labels:
+      - 'documentation'
+      - 'docs'
+    collapse-after: 5
+  - title: '🔨 CI/CD'
+    labels:
+      - 'ci'
+      - 'ci/cd'
+    collapse-after: 5
+  - title: '🧹 Chores'
+    labels:
+      - 'chore'
+      - 'maintenance'
+    collapse-after: 5
+
+# Auto-label PRs based on title patterns (conventional commits)
+autolabeler:
+  - label: 'feature'
+    title:
+      - '/^feat(\(.+\))?:/i'
+      - '/^Feat\//i'
+      - '/^Feature\//i'
+  - label: 'fix'
+    title:
+      - '/^fix(\(.+\))?:/i'
+      - '/^Fix\//i'
+  - label: 'docs'
+    title:
+      - '/^docs(\(.+\))?:/i'
+      - '/^Docs\//i'
+  - label: 'refactor'
+    title:
+      - '/^refactor(\(.+\))?:/i'
+      - '/^Refactor\//i'
+  - label: 'ci'
+    title:
+      - '/^ci(\(.+\))?:/i'
+      - '/^CI\//i'
+  - label: 'chore'
+    title:
+      - '/^chore(\(.+\))?:/i'
+      - '/^Chore\//i'
+      - '/^Backup\//i'
+
+# Version resolver based on labels
+version-resolver:
+  major:
+    labels:
+      - 'major'
+      - 'breaking'
+  minor:
+    labels:
+      - 'feature'
+      - 'enhancement'
+  patch:
+    labels:
+      - 'fix'
+      - 'bugfix'
+      - 'docs'
+      - 'chore'
+      - 'refactor'
+      - 'ci'
+  default: patch
+
+exclude-labels:
+  - 'skip-changelog'
