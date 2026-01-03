@@ -127,6 +127,7 @@ dotfiles/
 | [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) | キーバインド・ショートカット一覧 |
 | [docs/NEOVIM.md](docs/NEOVIM.md) | Neovim 設定ガイド |
 | [docs/STRUCTURE.md](docs/STRUCTURE.md) | ディレクトリ構造の詳細 |
+| [docs/WORKFLOW.md](docs/WORKFLOW.md) | 作業ワークフロー・よく使うコマンド |
 | [CLAUDE.md](CLAUDE.md) | Claude Code 向けコンテキスト |
 
 > 📖 詳細は [docs/README.md](docs/README.md) を参照してください。
