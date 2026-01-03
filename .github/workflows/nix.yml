@@ -43,58 +43,7 @@ jobs:
         run: |
           nix develop --command nixpkgs-fmt --check flake.nix home.nix nix/
 
-  # Option A: Build on Ubuntu runner with nix-community/cache-nix-action
-  # This approach uses GitHub's official cache API for stability
-  verify:
-    name: Build & Verify (Ubuntu)
-    runs-on: ubuntu-latest
-    needs: [check]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # Free up disk space on the runner
-      # GitHub Actions runner has limited disk space (~14GB free)
-      - name: Free disk space
-        run: |
-          echo "=== Disk space before cleanup ==="
-          df -h
-          echo "=== Removing unnecessary tools ==="
-          sudo rm -rf /usr/share/dotnet      # ~6GB
-          sudo rm -rf /usr/local/lib/android # ~10GB
-          sudo rm -rf /opt/ghc               # ~5GB
-          sudo rm -rf /usr/share/swift       # ~1.5GB
-          sudo rm -rf /usr/local/share/boost # ~1.5GB
-          echo "=== Disk space after cleanup ==="
-          df -h
-
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-
-      # Use nix-community/cache-nix-action for stable caching
-      # Based on GitHub's official actions/cache API
-      # Note: Explicitly specify paths and limit store size to avoid
-      # "path too long" errors during tar extraction (ansible has very long paths)
-      - name: Setup Nix cache
-        uses: nix-community/cache-nix-action@v6
-        with:
-          primary-key: nix-${{ runner.os }}-v2-${{ hashFiles('**/*.nix', 'flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-v2-
-          paths: |
-            /nix
-            ~/.cache/nix
-          gc-max-store-size-linux: 1073741824
-
-      - name: Build Home Manager configuration
-        run: nix build .#homeConfigurations.archie.activationPackage
-
-      - name: Verify build output exists
-        run: |
-          echo "=== Verifying build output ==="
-          ls -la ./result/
-          echo "=== Home Manager build completed successfully ==="
-
-  # Option B: Build in Arch Linux container with Docker layer cache
+  # Build in Arch Linux container with Docker layer cache
   # This preserves the Arch Linux environment for testing
   # Note: We manually pull/run Docker instead of using `container:` section
   # because `container:` pulls the image BEFORE any steps run,
@@ -143,7 +92,7 @@ jobs:
           paths: |
             /nix
             ~/.cache/nix
-          gc-max-store-size-linux: 4294967296
+          gc-max-store-size-linux: 6442450944
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
