@@ -128,6 +128,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed design philosophy.
 |----------|-------------|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Design philosophy, hybrid approach, CI strategy |
 | [docs/NIX.md](docs/NIX.md) | Nix/Home Manager installation and usage guide |
+| [docs/SHELL.md](docs/SHELL.md) | Shell boot flow, Fish/Bash configuration |
 | [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) | Shortcuts for Fish, Tmux, Hyprland |
 | [docs/NEOVIM.md](docs/NEOVIM.md) | Neovim plugins and keybindings |
 | [docs/STRUCTURE.md](docs/STRUCTURE.md) | Directory structure details |
