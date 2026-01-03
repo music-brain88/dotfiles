@@ -38,7 +38,9 @@
 | [NIX.md](./NIX.md) | Nix/Home Manager の詳細ガイド | セットアップする人 |
 | [KEYBINDINGS.md](./KEYBINDINGS.md) | Fish, Tmux, Hyprland のショートカット | 日常的に使う人 |
 | [NEOVIM.md](./NEOVIM.md) | Neovim の設定とプラグイン構成 | Neovimを使う人 |
+| [SHELL.md](./SHELL.md) | シェル設定とブートフロー | シェルを理解したい人 |
 | [STRUCTURE.md](./STRUCTURE.md) | ディレクトリ構造の詳細 | 構成を把握したい人 |
+| [WORKFLOW.md](./WORKFLOW.md) | 作業ワークフロー、よく使うコマンド | 効率化したい人 |
 
 ---
 
