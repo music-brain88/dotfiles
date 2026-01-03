@@ -30,7 +30,7 @@ if not string.match(vim.o.runtimepath, '/dein.vim') then
 end
 
 if vim.call('dein#load_state', dein_dir) == 1 then
-  local dein_toml_dir = vim.env.HOME .. '/dotfiles/.config/nvim'
+  local dein_toml_dir = vim.fn.stdpath('config')
   local status_line_dir = '/status_line'
   local mini_dir = '/mini'
 
