@@ -129,5 +129,11 @@
       source = ./.config/ncmpcpp;
       recursive = true;
     };
+
+    # fontconfig
+    ".config/fontconfig" = {
+      source = ./.config/fontconfig;
+      recursive = true;
+    };
   };
 }
