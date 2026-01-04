@@ -94,11 +94,9 @@ jobs:
       # magic-nix-cache doesn't detect builds inside Docker containers
       # because it subscribes to host's Nix daemon events only
       #
-      # gc-max-store-size-linux: 6GB (6442450944 bytes)
-      # - Full Nix store is ~14GB, but GitHub cache limit is 10GB
-      # - 6GB keeps essential packages while staying under limit after compression
-      # - Previous 4GB was too aggressive, removing packages needed for rebuilds
-      # - Increase if cache misses are frequent; decrease if hitting GitHub's 10GB limit
+      # Note: gc-max-store-size-linux is disabled because GC can corrupt
+      # the Nix store structure, causing "Cannot mkdir" errors on restore.
+      # Full store (~14GB) compresses well under GitHub's 10GB cache limit.
       - name: Setup Nix cache
         uses: nix-community/cache-nix-action@v6
         with:
@@ -107,7 +105,6 @@ jobs:
           paths: |
             /nix
             ~/.cache/nix
-          gc-max-store-size-linux: 6442450944
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
