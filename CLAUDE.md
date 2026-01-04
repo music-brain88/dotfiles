@@ -107,14 +107,18 @@ This repository uses a **Nix + Symlinks hybrid approach**:
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed design philosophy.
 
 ## Repository Structure
-- `.config/` - Configuration files for various tools
+- `.config/` - Configuration files for various tools (XDG Base Directory compliant)
+  - `bash/` - Bash settings (bashrc, bash_profile) - Bootstrap for Fish
   - `fish/` - Fish shell configurations
+  - `git/` - Git settings (config, ignore)
+  - `tmux/` - Tmux settings
   - `nvim/` - Neovim configurations with plugin settings in TOML files
   - `hypr/` - Hyprland window manager settings (Wayland)
   - `i3/` - i3 window manager settings (X11)
   - `waybar/` - Waybar settings (for Wayland)
   - `polybar/` - Polybar settings (for X11)
   - `alacritty/` - Terminal emulator settings
+  - `x11/` - X11 settings (xmodmap) - Not managed by Nix
 - `flake.nix` - Nix flake configuration (entry point)
 - `home.nix` - Home Manager configuration
 - `.mise.toml` - Task definitions and tool versions
