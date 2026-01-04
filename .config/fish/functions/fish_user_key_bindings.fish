@@ -15,7 +15,7 @@ function fish_user_key_bindings
   bind \ct skim-file-widget
   # Ctrl + r で履歴を検索する
   bind \cr skim-history-widget
-  # Alt + e でディレクトリを検索する
+  # Alt + d でディレクトリを検索する
   bind \ed skim-cd-widget
 
     #!/bin/fish
