@@ -86,18 +86,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Install Nix on host to prepare shared Nix store
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-
-      # Use nix-community/cache-nix-action for stable caching
-      # magic-nix-cache doesn't detect builds inside Docker containers
-      # because it subscribes to host's Nix daemon events only
-      #
-      # Note: gc-max-store-size-linux is disabled because GC can corrupt
-      # the Nix store structure, causing "Cannot mkdir" errors on restore.
-      # Full store (~14GB) compresses well under GitHub's 10GB cache limit.
-      - name: Setup Nix cache
+      # Restore Nix cache BEFORE installing Nix
+      # This prevents conflicts between fresh Nix install and cached /nix store
+      # Note: nix: false is required because Nix is not installed yet
+      - name: Restore Nix cache
+        id: nix-cache
         uses: nix-community/cache-nix-action@v6
         with:
           primary-key: nix-docker-${{ runner.os }}-${{ hashFiles('**/*.nix', 'flake.lock') }}
@@ -105,6 +98,21 @@ jobs:
           paths: |
             /nix
             ~/.cache/nix
+          nix: false
+
+      # Install Nix on host to prepare shared Nix store
+      # Skip if cache was restored (Nix is already available from cache)
+      - name: Install Nix
+        if: steps.nix-cache.outputs.restored-key == ''
+        uses: DeterminateSystems/nix-installer-action@main
+
+      # Source Nix profile when using cached Nix (not installed fresh)
+      - name: Setup Nix from cache
+        if: steps.nix-cache.outputs.restored-key != ''
+        run: |
+          echo "Using Nix from cache"
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          echo "/nix/var/nix/profiles/default/bin" >> $GITHUB_PATH
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
