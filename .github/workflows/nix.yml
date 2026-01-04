@@ -86,6 +86,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Create /nix directory with proper permissions before cache restore
+      # This is required because runner user cannot create /nix without sudo
+      - name: Prepare Nix directory
+        run: |
+          sudo mkdir -p /nix
+          sudo chown -R $USER:$USER /nix
+
       # Restore Nix cache BEFORE installing Nix
       # This prevents conflicts between fresh Nix install and cached /nix store
       # Note: nix: false is required because Nix is not installed yet
