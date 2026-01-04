@@ -45,7 +45,8 @@
   # Symlinks matching deploy.sh
   home.file = {
     # Bash
-    ".bashrc".source = ./.bashrc;
+    ".bashrc".source = ./.config/bash/bashrc;
+    ".bash_profile".source = ./.config/bash/bash_profile;
 
     # Neovim config (keeping existing TOML-based setup)
     ".config/nvim" = {
