@@ -55,7 +55,9 @@ dotfiles/
 
 | Directory | Description |
 |-----------|-------------|
+| `bash/` | Bash 設定 (bashrc, bash_profile) - Fish へのブートストラップ用 |
 | `fish/` | Fish shell 設定 (config.fish, functions/, conf.d/) |
+| `tmux/` | Tmux 設定 (tmux.conf) |
 | `alacritty/` | Alacritty ターミナル設定 |
 | `starship/` | Starship プロンプト設定 |
 
@@ -86,6 +88,18 @@ dotfiles/
 | `rofi/` | Rofi ランチャー設定 (X11) |
 | `wofi/` | Wofi ランチャー設定 (Wayland) |
 
+### Version Control
+
+| Directory | Description |
+|-----------|-------------|
+| `git/` | Git 設定 (config, ignore, config.local.sample) |
+
+### X11 (Fallback)
+
+| Directory | Description |
+|-----------|-------------|
+| `x11/` | X11 設定 (xmodmap) - Nix 管理対象外 |
+
 ### Media & Misc
 
 | Directory | Description |
@@ -93,6 +107,7 @@ dotfiles/
 | `mpd/` | Music Player Daemon 設定 |
 | `ncmpcpp/` | ncmpcpp (MPD クライアント) 設定 |
 | `picom/` | Picom コンポジター設定 (X11) |
+| `wakatime/` | WakaTime 設定 (config.sample のみ) |
 
 ---
 

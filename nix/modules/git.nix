@@ -12,6 +12,6 @@
   ];
 
   # Git config symlinks (matching deploy.sh)
-  home.file.".gitconfig".source = ../../.gitconfig;
+  home.file.".gitconfig".source = ../../.config/git/config;
   xdg.configFile."git/ignore".source = ../../.config/git/ignore;
 }
