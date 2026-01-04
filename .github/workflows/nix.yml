@@ -103,16 +103,29 @@ jobs:
       # Install Nix on host to prepare shared Nix store
       # Skip if cache was restored (Nix is already available from cache)
       - name: Install Nix
-        if: steps.nix-cache.outputs.restored-key == ''
+        if: steps.nix-cache.outputs.hit != 'true'
         uses: DeterminateSystems/nix-installer-action@main
 
       # Source Nix profile when using cached Nix (not installed fresh)
+      # Falls back to fresh install if cache is corrupted
       - name: Setup Nix from cache
-        if: steps.nix-cache.outputs.restored-key != ''
+        id: setup-cached-nix
+        if: steps.nix-cache.outputs.hit == 'true'
         run: |
-          echo "Using Nix from cache"
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-          echo "/nix/var/nix/profiles/default/bin" >> $GITHUB_PATH
+          if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+            echo "Using Nix from cache"
+            . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+            echo "/nix/var/nix/profiles/default/bin" >> $GITHUB_PATH
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "::warning::Cache appears corrupted, falling back to fresh install"
+            echo "success=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Fallback: Install Nix if cached setup failed
+      - name: Install Nix (fallback)
+        if: steps.nix-cache.outputs.hit == 'true' && steps.setup-cached-nix.outputs.success != 'true'
+        uses: DeterminateSystems/nix-installer-action@main
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
