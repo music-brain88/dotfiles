@@ -91,7 +91,7 @@ jobs:
       - name: Prepare Nix directory
         run: |
           sudo mkdir -p /nix
-          sudo chown -R $USER:$USER /nix
+          sudo chown -R "$(whoami)":"$(whoami)" /nix
 
       # Restore Nix cache BEFORE installing Nix
       # This prevents conflicts between fresh Nix install and cached /nix store
