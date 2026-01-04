@@ -1,6 +1,10 @@
 # dotfiles
 
-![Actions Status](https://github.com/music-brain88/dotfiles/workflows/build/badge.svg)
+[![CI](https://img.shields.io/github/actions/workflow/status/music-brain88/dotfiles/nix.yml?branch=main&label=CI&logo=github)](https://github.com/music-brain88/dotfiles/actions/workflows/nix.yml)
+[![Docker](https://img.shields.io/badge/Docker-Build-2496ED?logo=docker&logoColor=white)](https://github.com/music-brain88/dotfiles/pkgs/container/dotfiles%2Fdotfiles-env)
+[![Nix](https://img.shields.io/badge/Nix-Flake-5277C3?logo=nixos&logoColor=white)](https://nixos.org)
+[![Arch Linux](https://img.shields.io/badge/Arch%20Linux-Verified-1793D1?logo=archlinux&logoColor=white)](https://archlinux.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 🚀 Overview / 概要
 
