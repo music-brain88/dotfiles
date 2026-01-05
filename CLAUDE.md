@@ -69,33 +69,30 @@ The repository uses a **hybrid Docker + Nix** CI/CD pipeline combining the best 
 **Why Hybrid Approach:**
 - **Docker layer caching**: Nix installation and base packages cached in image
 - **Nix reproducibility**: Same declarative configuration for local and CI
-- **Efficient disk usage**: No need for disk cleanup, container has everything pre-installed
-- **Double caching**: Both Docker layers AND magic-nix-cache work together
+- **Double caching**: Docker layers + Nix cache (`cache-nix-action` for Docker builds)
 - **Fast builds**: Nix already installed in container, only build packages needed
 
 **Workflow stages:**
-1. **Build Docker image**: Create container with Nix pre-installed (cached via GitHub Actions)
-2. **Check stage**: Runs `nix flake check` and format verification
-3. **Verify stage**: Run in custom container, build and verify Nix configurations
+1. **build-image**: Build and push Docker image to GHCR (cached via Docker layer cache)
+2. **check**: Runs `nix flake check --no-build` and format verification
+3. **verify-docker**: Build and activate Home Manager configuration in Arch Linux container
 
 **Technical approach:**
 ```yaml
-verify:
-  container:
-    image: ghcr.io/.../dotfiles-env:latest  # Nix pre-installed
-  steps:
-    - nix build .#homeConfigurations.archie.activationPackage
+# Uses manual docker run (not container: section) to allow disk cleanup first
+- run: docker run ... nix build .#homeConfigurations.archie.activationPackage
 ```
 
-**Benefits:**
-- Docker layer cache: Nix installation (once)
-- Nix cache: Package builds (via magic-nix-cache)
-- No disk space cleanup needed
-- Same configuration tested in CI and used locally
+**Caching:**
+- Docker: `type=gha` layer cache
+- Nix (check): `magic-nix-cache`
+- Nix (verify): `cache-nix-action` (magic-nix-cache doesn't work in Docker)
 
 **Environment Strategy:**
 - **Local Development**: Use `nix develop` or Home Manager directly
 - **CI/CD**: Docker container with Nix validates all configurations
+
+See [docs/CICD.md](docs/CICD.md) for detailed pipeline documentation and evolution history.
 
 ### Design Philosophy (Hybrid Approach)
 This repository uses a **Nix + Symlinks hybrid approach**:
@@ -130,7 +127,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed design philosophy.
 
 | Document | Description |
 |----------|-------------|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Design philosophy, hybrid approach, CI strategy |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Design philosophy, hybrid approach |
+| [docs/CICD.md](docs/CICD.md) | CI/CD pipeline details, caching strategy, evolution history |
 | [docs/NIX.md](docs/NIX.md) | Nix/Home Manager installation and usage guide |
 | [docs/SHELL.md](docs/SHELL.md) | Shell boot flow, Fish/Bash configuration |
 | [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) | Shortcuts for Fish, Tmux, Hyprland |

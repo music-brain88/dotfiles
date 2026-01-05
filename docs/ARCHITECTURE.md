@@ -218,14 +218,11 @@ home.packages = with pkgs; [
 
 ## 🔄 CI/CD Architecture
 
-### Problem: GitHub Actions Disk Space Limitations
+> 詳細は [CICD.md](./CICD.md) を参照（Evolution History、Lessons Learned 等）
 
-GitHub Actionsランナーのディスク容量は限られている（ubuntu-latestで約14GB）。
-Nixのフルビルドは10GB以上を消費する可能性がある。
+### Hybrid Docker + Nix Pipeline
 
-### Solution: Hybrid Docker + Nix Pipeline
-
-Nix がプリインストールされた Docker コンテナを使用してディスク容量問題を回避。
+GitHub Actionsのディスク容量制限（約14GB）を回避するため、Nixがプリインストールされた Docker コンテナを使用。
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -251,94 +248,24 @@ Nix がプリインストールされた Docker コンテナを使用してデ�
 └─────────────────────────────────────────────────────┘
 ```
 
-### Workflow Structure
-
-ワークフローは2つのファイルに分離：
-
-| File | Purpose |
-|------|---------|
-| `nix.yml` | メインパイプライン |
-| `build-docker-image.yml` | Docker イメージビルド（`workflow_call`で呼び出し） |
-
 ### Pipeline Stages
 
-1. **build-image**: Docker イメージをビルドしてGHCRにプッシュ（レイヤーキャッシュ）
-2. **check**: 軽量チェック（`nix flake check --no-build`、フォーマット検証）
-3. **verify-docker**: Arch Linux コンテナ内でビルド＆アクティベーション実行
+| Stage | Purpose |
+|-------|---------|
+| **build-image** | Docker イメージをビルドしてGHCRにプッシュ |
+| **check** | `nix flake check --no-build`、フォーマット検証 |
+| **verify-docker** | Arch Linux コンテナ内でビルド＆アクティベーション |
 
-### Why Docker?
-
-**Dockerを採用している主な理由：複数環境でのテストを視野に入れている**
-
-| Target | Status | Purpose |
-|--------|--------|---------|
-| Arch Linux | ✅ Primary | メイン開発環境 |
-| Ubuntu | 🔜 Planned | サーバー環境、WSL |
-| Other distros | 🔜 Planned | 汎用性の確認 |
-
-**Dockerにより：**
-- 異なるディストリビューションでの動作確認が可能
-- Nix環境のベースイメージを共有できる
-- GitHub Actionsのキャッシュ機能と組み合わせて高速化
-
-**Note**: `container:` セクションではなく手動で `docker run` を使用。
-理由：`container:` はステップ実行前にイメージをプルするため、先にディスククリーンアップができない。
-
-### Caching Strategy (Double Cache)
+### Caching Strategy
 
 | Layer | Tool | Purpose |
 |-------|------|---------|
 | Docker | `type=gha` layer cache | Nix installation, base setup |
 | Nix (check) | `magic-nix-cache` | 軽量チェック用 |
-| Nix (verify) | `cache-nix-action` | Docker内ビルド用（`/nix` をマウント） |
+| Nix (verify) | `cache-nix-action` | Docker内ビルド用 |
 
-**Note**: `magic-nix-cache` はホストのNix daemonイベントを購読するため、Dockerコンテナ内では動作しない。
-そのため verify-docker では `nix-community/cache-nix-action` を使用。
-
-### Disk Space Management
-
-両方のビルドジョブでディスククリーンアップを実行：
-
-```bash
-sudo rm -rf /usr/share/dotnet      # ~6GB
-sudo rm -rf /usr/local/lib/android # ~10GB
-sudo rm -rf /opt/ghc               # ~5GB
-sudo rm -rf /usr/share/swift       # ~1.5GB
-sudo rm -rf /usr/local/share/boost # ~1.5GB
-```
-
-### Container Configuration
-
-コンテナは `archie` ユーザーで実行され、Home Manager設定と整合性を保つ：
-
-```dockerfile
-USER archie
-WORKDIR /home/archie
-```
-
-ビルド後、`./result/activate` を実行してアクティベーションもテスト。
-
-### Overlays for CI
-
-```nix
-# flake.nix
-overlays = [
-  (final: prev: {
-    # CIでテストが失敗するパッケージを修正
-    rustup = prev.rustup.overrideAttrs (old: {
-      doCheck = false;  # ネットワークテストを無効化
-    });
-  })
-];
-```
-
-CI環境特有の問題（サンドボックス、ネットワーク制限）を回避。
-
-### Future Improvements
-
-- [ ] 複数ディストリビューションでのテスト（Ubuntu, etc.）
-- [ ] Nix-based CI（Hercules CI等）の検討
-- [ ] キャッシュ最適化
+**Note**: `magic-nix-cache` はDockerコンテナ内では動作しない（Nix daemonイベント購読方式のため）。
+詳細は [CICD.md - Phase 3](./CICD.md#phase-3-magic-nix-cache-の限界-216) を参照。
 
 ---
 
@@ -357,6 +284,7 @@ CI環境特有の問題（サンドボックス、ネットワーク制限）を
 
 ## 🔗 Related Documentation
 
+- [CICD.md](./CICD.md) - CI/CDパイプライン詳細、Evolution History
 - [NIX.md](./NIX.md) - Nix/Home Manager 使い方ガイド
 - [STRUCTURE.md](./STRUCTURE.md) - ディレクトリ構造
 - [WORKFLOW.md](./WORKFLOW.md) - 作業ワークフロー
