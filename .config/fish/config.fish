@@ -33,10 +33,10 @@ if type -q bat
   alias cat='bat'
 end
 
-# set procs alias
-if type -q procs
-  alias ps='procs'
-end
+# procs alias disabled - procs uses -p for --pager, breaks scripts using ps -p
+# if type -q procs
+#   alias ps='procs'
+# end
 
 # set jql alias
 #if type -q jql
