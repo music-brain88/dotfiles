@@ -105,11 +105,14 @@ jobs:
             ~/.cache/nix
           nix: false
 
-      # Remove Nix installer artifacts to force fresh installation
-      # This ensures nix-installer creates profiles correctly
-      # while preserving /nix/store cache for fast builds
+      # Fix /nix ownership and remove installer artifacts for fresh installation
+      # - Restore root ownership (cache restores as runner user)
+      # - Remove receipt.json to force nix-installer to run fresh
+      # - This preserves /nix/store cache while ensuring proper setup
       - name: Prepare for fresh Nix install
-        run: rm -f /nix/receipt.json /nix/nix-installer
+        run: |
+          sudo chown -R root:root /nix
+          sudo rm -f /nix/receipt.json /nix/nix-installer
 
       # Always install Nix to ensure profiles are created correctly
       - name: Install Nix
