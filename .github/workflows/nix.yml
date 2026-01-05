@@ -107,11 +107,54 @@ jobs:
             ~/.cache/nix
           nix: false
 
+      # DEBUG: Inspect /nix directory after cache restore
+      - name: Debug - Inspect /nix after cache restore
+        if: steps.nix-cache.outputs.hit == 'true'
+        run: |
+          echo "=== Cache restore debug info ==="
+          echo "Cache hit: ${{ steps.nix-cache.outputs.hit }}"
+          echo ""
+          echo "=== /nix top-level contents ==="
+          ls -la /nix/ || echo "/nix does not exist"
+          echo ""
+          echo "=== /nix/var/nix/profiles contents ==="
+          ls -la /nix/var/nix/profiles/ || echo "profiles dir does not exist"
+          echo ""
+          echo "=== /nix/var/nix/profiles/default contents ==="
+          ls -la /nix/var/nix/profiles/default/ || echo "default profile does not exist"
+          echo ""
+          echo "=== Looking for nix-daemon.sh anywhere in /nix ==="
+          find /nix -name "nix-daemon.sh" 2>/dev/null || echo "nix-daemon.sh not found"
+          echo ""
+          echo "=== Looking for any profile.d directories ==="
+          find /nix -type d -name "profile.d" 2>/dev/null || echo "No profile.d directories"
+          echo ""
+          echo "=== /nix/receipt.json contents ==="
+          cat /nix/receipt.json 2>/dev/null | head -50 || echo "receipt.json does not exist"
+
       # Install Nix on host to prepare shared Nix store
       # Skip if cache was restored (Nix is already available from cache)
       - name: Install Nix
         if: steps.nix-cache.outputs.hit != 'true'
         uses: DeterminateSystems/nix-installer-action@main
+
+      # DEBUG: Inspect /nix directory after fresh Nix install
+      - name: Debug - Inspect /nix after fresh install
+        if: steps.nix-cache.outputs.hit != 'true'
+        run: |
+          echo "=== Fresh install debug info ==="
+          echo ""
+          echo "=== /nix/var/nix/profiles contents ==="
+          ls -la /nix/var/nix/profiles/ || echo "profiles dir does not exist"
+          echo ""
+          echo "=== /nix/var/nix/profiles/default contents ==="
+          ls -la /nix/var/nix/profiles/default/ || echo "default profile does not exist"
+          echo ""
+          echo "=== Looking for nix-daemon.sh anywhere in /nix ==="
+          find /nix -name "nix-daemon.sh" 2>/dev/null || echo "nix-daemon.sh not found"
+          echo ""
+          echo "=== /nix/receipt.json contents ==="
+          cat /nix/receipt.json 2>/dev/null | head -50 || echo "receipt.json does not exist"
 
       # Source Nix profile when using cached Nix (not installed fresh)
       # Falls back to fresh install if cache is corrupted
@@ -133,6 +176,18 @@ jobs:
       - name: Install Nix (fallback)
         if: steps.nix-cache.outputs.hit == 'true' && steps.setup-cached-nix.outputs.success != 'true'
         uses: DeterminateSystems/nix-installer-action@main
+
+      # DEBUG: Inspect /nix after fallback install
+      - name: Debug - Inspect /nix after fallback install
+        if: steps.nix-cache.outputs.hit == 'true' && steps.setup-cached-nix.outputs.success != 'true'
+        run: |
+          echo "=== Fallback install debug info ==="
+          echo ""
+          echo "=== /nix/var/nix/profiles/default contents ==="
+          ls -la /nix/var/nix/profiles/default/ || echo "default profile does not exist"
+          echo ""
+          echo "=== Looking for nix-daemon.sh anywhere in /nix ==="
+          find /nix -name "nix-daemon.sh" 2>/dev/null || echo "nix-daemon.sh not found"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
