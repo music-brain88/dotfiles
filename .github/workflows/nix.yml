@@ -58,10 +58,10 @@ jobs:
   # because `container:` pulls the image BEFORE any steps run,
   # which prevents disk cleanup from running first.
   #
-  # Strategy: Mount host's Nix store into container for cache sharing
-  # - Host installs Nix and sets up nix-community/cache-nix-action
-  # - Container uses host's /nix store via volume mount
-  # - This enables Nix cache to persist across CI runs
+  # Cache Strategy:
+  # - Cache /nix/store for build artifacts (speeds up builds significantly)
+  # - Always install Nix fresh to ensure profiles are created correctly
+  # - Remove receipt.json before install to force fresh installation
   # Note: magic-nix-cache doesn't work well with Docker containers because
   # it subscribes to Nix daemon events on the host, not inside containers
   verify-docker:
@@ -93,11 +93,9 @@ jobs:
           sudo mkdir -p /nix
           sudo chown -R "$(whoami)":"$(whoami)" /nix
 
-      # Restore Nix cache BEFORE installing Nix
-      # This prevents conflicts between fresh Nix install and cached /nix store
+      # Restore Nix cache for /nix/store build artifacts
       # Note: nix: false is required because Nix is not installed yet
       - name: Restore Nix cache
-        id: nix-cache
         uses: nix-community/cache-nix-action@v6
         with:
           primary-key: nix-docker-${{ runner.os }}-${{ hashFiles('**/*.nix', 'flake.lock') }}
@@ -107,31 +105,17 @@ jobs:
             ~/.cache/nix
           nix: false
 
-      # Install Nix on host to prepare shared Nix store
-      # Skip if cache was restored (Nix is already available from cache)
-      - name: Install Nix
-        if: steps.nix-cache.outputs.hit != 'true'
-        uses: DeterminateSystems/nix-installer-action@main
-
-      # Source Nix profile when using cached Nix (not installed fresh)
-      # Falls back to fresh install if cache is corrupted
-      - name: Setup Nix from cache
-        id: setup-cached-nix
-        if: steps.nix-cache.outputs.hit == 'true'
+      # Fix /nix ownership and remove installer artifacts for fresh installation
+      # - Restore root ownership (cache restores as runner user)
+      # - Remove receipt.json to force nix-installer to run fresh
+      # - This preserves /nix/store cache while ensuring proper setup
+      - name: Prepare for fresh Nix install
         run: |
-          if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
-            echo "Using Nix from cache"
-            . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-            echo "/nix/var/nix/profiles/default/bin" >> $GITHUB_PATH
-            echo "success=true" >> $GITHUB_OUTPUT
-          else
-            echo "::warning::Cache appears corrupted, falling back to fresh install"
-            echo "success=false" >> $GITHUB_OUTPUT
-          fi
+          sudo chown -R root:root /nix
+          sudo rm -f /nix/receipt.json /nix/nix-installer
 
-      # Fallback: Install Nix if cached setup failed
-      - name: Install Nix (fallback)
-        if: steps.nix-cache.outputs.hit == 'true' && steps.setup-cached-nix.outputs.success != 'true'
+      # Always install Nix to ensure profiles are created correctly
+      - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
 
       - name: Log in to GitHub Container Registry
