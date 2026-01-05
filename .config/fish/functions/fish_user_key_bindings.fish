@@ -5,18 +5,18 @@ function fish_user_key_bindings
   # skim-checkout-branchのバインド
   # gitのブランチをskimで選択してチェックアウトする
   # Ctrl + y でブランチを選択する
-  bind \cy skim-checkout-branch
+  bind ctrl-y skim-checkout-branch
 
   # skim-docker-container-name-selectのバインド
   # Alt+d でdockerコンテナ名をskimで選択してログを表示する
-  bind \ed skim-docker-container-name-select
+  bind alt-d skim-docker-container-name-select
 
   # Ctrl + t でファイルを検索する
-  bind \ct skim-file-widget
+  bind ctrl-t skim-file-widget
   # Ctrl + r で履歴を検索する
-  bind \cr skim-history-widget
+  bind ctrl-r skim-history-widget
   # Alt + e でディレクトリを検索する (e = explorer)
-  bind \ee skim-cd-widget
+  bind alt-e skim-cd-widget
 
     #!/bin/fish
   # completion.fish
@@ -139,9 +139,9 @@ end
 
 
   if bind -M insert > /dev/null 2>&1
-    bind -M insert \ct skim-file-widget
-    bind -M insert \cr skim-history-widget
-    bind -M insert \ee skim-cd-widget
+    bind -M insert ctrl-t skim-file-widget
+    bind -M insert ctrl-r skim-history-widget
+    bind -M insert alt-e skim-cd-widget
   end
 
   function __skim_parse_commandline -d 'Parse the current command line token and return split of existing filepath and rest of token'
