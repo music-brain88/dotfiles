@@ -21,6 +21,7 @@
     tokei # code statistics tool
     jql # JSON query language
     oxker # Docker TUI
+    skim # Command-line fuzzy finder
   ];
 
   # Environment variables for Rust

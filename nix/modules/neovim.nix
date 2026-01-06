@@ -64,6 +64,9 @@
       # Clipboard support
       wl-clipboard # Wayland
       xclip # X11
+
+      # denops.vim dependencies
+      deno
     ];
   };
 
