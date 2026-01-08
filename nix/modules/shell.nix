@@ -6,7 +6,6 @@
     fish
     starship
     fishPlugins.done
-    fishPlugins.fzf-fish
     fishPlugins.forgit
     fishPlugins.z
     fishPlugins.bass
