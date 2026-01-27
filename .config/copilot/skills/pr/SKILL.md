@@ -37,7 +37,7 @@ gh pr list --head <current-branch>
 
 ```bash
 git log main..HEAD
-git diff main...HEAD
+git diff main..HEAD
 ```
 
 ### 4. タイトルの決定
