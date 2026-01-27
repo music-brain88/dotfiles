@@ -54,9 +54,12 @@
       recursive = true;
     };
 
-    # Claude Code
-    ".claude/CLAUDE.md".source = ./.config/claude/CLAUDE.md;
-    ".claude/settings.json".source = ./.config/claude/settings.json;
+    # Claude Code (directory-wide symlinks for commands support)
+    ".claude" = {
+      source = ./.config/claude;
+      recursive = true;
+    };
+    # Make statusline-command.sh executable
     ".claude/statusline-command.sh" = {
       source = ./.config/claude/statusline-command.sh;
       executable = true;
@@ -64,6 +67,11 @@
 
     # Copilot (config.json is managed by copilot-cli itself, not Home Manager)
     ".copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
+    # Skills directory for GitHub Copilot Agent Skills support
+    ".copilot/skills" = {
+      source = ./.config/copilot/skills;
+      recursive = true;
+    };
 
     # Hyprland config
     ".config/hypr" = {
