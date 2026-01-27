@@ -66,9 +66,12 @@
     };
 
     # Copilot (config.json is managed by copilot-cli itself, not Home Manager)
-    # prompts/ directory prepared for future CLI prompts support
-    # See: https://github.com/github/copilot-cli/issues/618
     ".copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
+    # Skills directory for Claude Code compatibility
+    ".copilot/skills" = {
+      source = ./.config/copilot/skills;
+      recursive = true;
+    };
 
     # Hyprland config
     ".config/hypr" = {
