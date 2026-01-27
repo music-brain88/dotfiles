@@ -6,6 +6,11 @@
 # If not running interactively, don't do anything
 [ -z "$PS1" ] && return
 
+# Source Nix environment (required before launching Nix-managed fish)
+if [ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
+  . "$HOME/.nix-profile/etc/profile.d/nix.sh"
+fi
+
 # Set up environment variables that need to be inherited by fish
 if [ "$(uname -s)" = 'Linux' ]; then
   # Start ssh-agent if not already running
@@ -15,5 +20,5 @@ if [ "$(uname -s)" = 'Linux' ]; then
   export GPG_TTY=$(tty)
 fi
 
-# Launch fish shell
+# Launch Nix-managed fish shell
 exec fish

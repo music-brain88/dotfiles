@@ -1,3 +1,7 @@
+# Home Managerのhome.sessionVariablesはhm-session-vars.sh(bashスクリプト)に出力されるが、
+# fishはbashスクリプトを自動で読み込まないため、bassプラグインを使ってsourceする
+bass source ~/.nix-profile/etc/profile.d/hm-session-vars.sh
+
 # Locale settings
 set -x LANG en_US.UTF-8
 set -x LC_CTYPE en_US.UTF-8

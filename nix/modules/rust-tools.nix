@@ -8,6 +8,10 @@
     rustup
     cargo-update
 
+    # Build dependencies for native crates (openssl-sys, etc.)
+    openssl.dev
+    pkg-config
+
     # Modern Unix tools written in Rust
     fd # fd-find - fast alternative to find
     ripgrep # rg - fast grep alternative
@@ -28,6 +32,8 @@
   home.sessionVariables = {
     CARGO_HOME = "${config.home.homeDirectory}/.cargo";
     RUSTUP_HOME = "${config.home.homeDirectory}/.rustup";
+    # pkg-config search path for native crates
+    PKG_CONFIG_PATH = "${config.home.homeDirectory}/.nix-profile/lib/pkgconfig";
   };
 
   # Add Cargo bin to PATH
