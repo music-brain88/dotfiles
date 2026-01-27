@@ -67,7 +67,7 @@
 
     # Copilot (config.json is managed by copilot-cli itself, not Home Manager)
     ".copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
-    # Skills directory for Claude Code compatibility
+    # Skills directory for GitHub Copilot Agent Skills support
     ".copilot/skills" = {
       source = ./.config/copilot/skills;
       recursive = true;
