@@ -30,6 +30,9 @@
     VISUAL = "nvim";
     BROWSER = "firefox";
     TERMINAL = "alacritty";
+    # SSL certificates (use system certs instead of Nix store)
+    SSL_CERT_DIR = "/etc/ssl/certs";
+    SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
   };
 
   # XDG base directories

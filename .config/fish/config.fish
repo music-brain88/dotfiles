@@ -1,5 +1,7 @@
 # Home Managerのhome.sessionVariablesはhm-session-vars.sh(bashスクリプト)に出力されるが、
 # fishはbashスクリプトを自動で読み込まないため、bassプラグインを使ってsourceする
+# Reset flag to ensure latest session variables are always loaded after nix:switch
+set -e __HM_SESS_VARS_SOURCED
 bass source ~/.nix-profile/etc/profile.d/hm-session-vars.sh
 
 # Locale settings
