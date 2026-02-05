@@ -68,15 +68,15 @@
       executable = true;
     };
 
-    # Copilot (config.json is managed by copilot-cli itself, not Home Manager)
-    ".copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
-    # Global copilot-instructions for GitHub Copilot (VS Code, etc.)
-    ".github/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
-    # Skills directory for GitHub Copilot Agent Skills support
-    ".copilot/skills" = {
+    # GitHub Copilot CLI (uses ~/.config/.copilot/)
+    ".config/.copilot/config.json".source = ./.config/copilot/config.json;
+    ".config/.copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
+    ".config/.copilot/skills" = {
       source = ./.config/copilot/skills;
       recursive = true;
     };
+    # Global copilot-instructions for GitHub Copilot (VS Code, etc.)
+    ".github/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
 
     # Hyprland config
     ".config/hypr" = {
