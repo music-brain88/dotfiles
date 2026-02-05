@@ -2,6 +2,5 @@
   "banner": "always",
   "model": "claude-opus-4.5",
   "render_markdown": true,
-  "theme": "auto",
-  "skill_directories": ["/home/archie/.copilot/skills"]
+  "theme": "auto"
 }
