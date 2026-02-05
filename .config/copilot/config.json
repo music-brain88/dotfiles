@@ -1,8 +1,7 @@
 {
   "banner": "always",
-  "beep": true,
   "model": "claude-opus-4.5",
   "render_markdown": true,
-  "screen_reader": false,
-  "theme": "auto"
+  "theme": "auto",
+  "skill_directories": ["/home/archie/.copilot/skills"]
 }
