@@ -30,7 +30,8 @@
             github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old:
               let
                 copilotVersion = "0.0.406";
-              in {
+              in
+              {
                 version = copilotVersion;
                 src = prev.fetchzip {
                   url = "https://registry.npmjs.org/@github/copilot/-/copilot-${copilotVersion}.tgz";
