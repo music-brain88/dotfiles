@@ -27,13 +27,16 @@
           # neovim-nightly-overlay.overlays.default
           # Bump github-copilot-cli to latest release (nixpkgs lags behind npm)
           (final: prev: {
-            github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old: {
-              version = "0.0.406";
-              src = prev.fetchzip {
-                url = "https://registry.npmjs.org/@github/copilot/-/copilot-0.0.406.tgz";
-                hash = "sha256-APjQW8YDoIO+Q2D5SkH0KI4u+w5mAF3VfEk/Yda2/54=";
-              };
-            });
+            github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old:
+              let
+                copilotVersion = "0.0.406";
+              in {
+                version = copilotVersion;
+                src = prev.fetchzip {
+                  url = "https://registry.npmjs.org/@github/copilot/-/copilot-${copilotVersion}.tgz";
+                  hash = "sha256-APjQW8YDoIO+Q2D5SkH0KI4u+w5mAF3VfEk/Yda2/54=";
+                };
+              });
           })
           # Fix for CI: some package tests are flaky in GitHub Actions environment
           (final: prev: {
