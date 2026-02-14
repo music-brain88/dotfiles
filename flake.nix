@@ -29,14 +29,16 @@
           (final: prev: {
             github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old:
               let
-                copilotVersion = "0.0.406";
+                copilotVersion = "0.0.409";
               in
               {
                 version = copilotVersion;
                 src = prev.fetchzip {
                   url = "https://registry.npmjs.org/@github/copilot/-/copilot-${copilotVersion}.tgz";
-                  hash = "sha256-APjQW8YDoIO+Q2D5SkH0KI4u+w5mAF3VfEk/Yda2/54=";
+                  hash = "sha256-JcnZesLHH1LFtAE91Dzx0t4cGYj/j3ifDtSrAcvaw0s=";
                 };
+                # npm version may not match internal binary version string
+                doInstallCheck = false;
               });
           })
           # Fix for CI: some package tests are flaky in GitHub Actions environment

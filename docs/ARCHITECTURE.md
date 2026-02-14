@@ -214,6 +214,32 @@ home.packages = with pkgs; [
 
 **採用例**: 大半のCLIツール
 
+### Strategy 4: Initial Seed (Runtime Writable)
+
+**使用場面**: ツールが動的にファイルを読み書きするため、Nixのシンボリックリンク（読み取り専用）では管理できない場合
+
+```nix
+# home.nix
+home.activation.seedCopilotConfig = config.lib.dag.entryAfter [ "writeBoundary" ] ''
+  target="$HOME/.config/.copilot/config.json"
+  if [ ! -f "$target" ] || [ -L "$target" ]; then
+    mkdir -p "$(dirname "$target")"
+    rm -f "$target"
+    cp ${./.config/copilot/config.json} "$target"
+    chmod 644 "$target"
+  fi
+'';
+```
+
+**動作**:
+- ファイルが**存在しない**（新環境） → dotfilesからコピーしてシード
+- ファイルが**シンボリックリンク**（旧状態から移行） → 削除して新しくコピー
+- ファイルが**普通のファイル**（既に使用中） → 何もしない（ツールの変更を尊重）
+
+**リセット**: `rm <target>` して `nix:switch` すれば dotfiles の内容で再シードされる
+
+**採用例**: GitHub Copilot CLI (`config.json`) — CLIがtrusted foldersやモデル設定を書き込む
+
 ---
 
 ## 🔄 CI/CD Architecture
@@ -278,6 +304,7 @@ GitHub Actionsのディスク容量制限（約14GB）を回避するため、Ni
 | 設定ファイルが複雑？ | Symlink | Package Only |
 | 既存の設定がある？ | Symlink | programs.* or Package Only |
 | ツール固有のDSL/形式？ | Symlink（ネイティブ形式を活用） | - |
+| ツールが設定を動的に書き換える？ | Initial Seed（activation script） | Symlink |
 | 設定不要なCLI？ | Package Only | - |
 
 ---
