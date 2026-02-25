@@ -29,13 +29,13 @@
           (final: prev: {
             github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old:
               let
-                copilotVersion = "0.0.410";
+                copilotVersion = "0.0.415";
               in
               {
                 version = copilotVersion;
                 src = prev.fetchzip {
                   url = "https://registry.npmjs.org/@github/copilot/-/copilot-${copilotVersion}.tgz";
-                  hash = "sha256-oJEerl0LHn8EO3KUqt0jz5Fmm8EOX/+3LRF1tf6L2Yk=";
+                  hash = "sha256-QfhDk1beQDZX9nArxmYopaeTSFPVmndISV2MyOu6Nao=";
                 };
                 # npm version may not match internal binary version string
                 doInstallCheck = false;
@@ -86,6 +86,8 @@
           nil # Nix language server
           nixpkgs-fmt # Nix formatter
           nix-tree # Nix dependency tree viewer
+          pkg-config # Build tool for finding libraries
+          lua5_4 # Required by mlua-sys (Neovim plugin builds)
         ];
 
         shellHook = ''
