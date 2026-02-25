@@ -86,8 +86,6 @@
           nil # Nix language server
           nixpkgs-fmt # Nix formatter
           nix-tree # Nix dependency tree viewer
-          pkg-config # Build tool for finding libraries
-          lua5_4 # Required by mlua-sys (Neovim plugin builds)
         ];
 
         shellHook = ''
