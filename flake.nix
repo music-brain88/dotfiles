@@ -29,13 +29,13 @@
           (final: prev: {
             github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old:
               let
-                copilotVersion = "0.0.418";
+                copilotVersion = "0.0.420";
               in
               {
                 version = copilotVersion;
                 src = prev.fetchzip {
                   url = "https://registry.npmjs.org/@github/copilot/-/copilot-${copilotVersion}.tgz";
-                  hash = "sha256-RnOkZkuctq6GW3Ph+ofb6qxKIbBKRbs3JkevlPr2L9M=";
+                  hash = "sha256-daZmPFeSH8RydxHwXvkigD0QjHWKu+7T5ic23PefmMc=";
                 };
                 # npm version may not match internal binary version string
                 doInstallCheck = false;
