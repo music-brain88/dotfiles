@@ -68,10 +68,10 @@
       executable = true;
     };
 
-    # GitHub Copilot CLI (uses ~/.config/.copilot/)
+    # GitHub Copilot CLI (uses ~/.copilot/)
     # NOTE: config.json is seeded via activation script (Copilot CLI writes to it dynamically)
-    ".config/.copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
-    ".config/.copilot/skills" = {
+    ".copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
+    ".copilot/skills" = {
       source = ./.config/copilot/skills;
       recursive = true;
     };
@@ -153,7 +153,7 @@
 
   # Activation scripts for files that need to be writable at runtime
   home.activation.seedCopilotConfig = config.lib.dag.entryAfter [ "writeBoundary" ] ''
-    target="$HOME/.config/.copilot/config.json"
+    target="$HOME/.copilot/config.json"
     if [ ! -f "$target" ] || [ -L "$target" ]; then
       mkdir -p "$(dirname "$target")"
       rm -f "$target"
