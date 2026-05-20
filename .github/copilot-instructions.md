@@ -10,14 +10,15 @@ All routine operations go through `mise` tasks defined in `.mise.toml` — prefe
 |------|---------|
 | Build Home Manager config | `mise run nix:build` |
 | Build + activate | `mise run nix:switch` |
-| Flake check (format + eval) | `mise run nix:check` |
+| Flake check (eval only) | `mise run nix:check` |
+| Format check | `nix develop --command nixpkgs-fmt --check flake.nix home.nix nix/` |
 | Update flake inputs | `mise run nix:update` |
 | GC old generations | `mise run nix:gc` |
 | Dev shell | `nix develop` |
 | Docker build / run / exec | `mise run docker:{build,run,exec,stop,remove}` |
 | Install Neovim plugins | `nvim --headless +"call dein#install()" +qall` |
 
-There is no traditional unit-test suite. CI runs `nix flake check --no-build` plus a Home Manager build inside an Arch Linux Docker container (see `.github/workflows/nix.yml`). To reproduce CI locally: `mise run nix:check` followed by `mise run nix:build`.
+There is no traditional unit-test suite. CI (`.github/workflows/nix.yml`) runs three checks: `nix flake check --no-build`, a `nixpkgs-fmt --check` format verification on `flake.nix home.nix nix/`, and a Home Manager build inside an Arch Linux Docker container. To reproduce CI locally, run the format check command above, then `mise run nix:check` and `mise run nix:build` — note that `mise run nix:check` omits `--no-build`, so it may build derivations CI does not.
 
 ## Architecture — the big picture
 
