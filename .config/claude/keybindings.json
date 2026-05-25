@@ -26,7 +26,7 @@
         "ctrl+_": "chat:undo",
         "ctrl+shift+-": "chat:undo",
         "ctrl+g": null,
-        "ctrl+e": "chat:externalEditor",
+        "ctrl+x ctrl+e": "chat:externalEditor",
         "ctrl+s": "chat:stash",
         "ctrl+v": "chat:imagePaste",
         "ctrl+q": "chat:snippetPicker"
