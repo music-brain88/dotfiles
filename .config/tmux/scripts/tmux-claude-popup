@@ -7,7 +7,7 @@
 # Launch (or re-attach to) a persistent Claude session inside a tmux popup;
 # closing the popup only detaches the client, the session keeps running.
 #
-# Usage: tmux-claude-popup launch [cwd|git-root]
+# Usage: tmux-claude-popup launch [cwd|git-root] [base-dir]
 set -euo pipefail
 
 # popup サイズと起動コマンドは環境変数で上書き可能 / overridable via env vars
