@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# tmux-claude-popup: per-directory persistent Claude Code session launcher.
+#
+# 各ディレクトリ(既定は git リポジトリの root)ごとに永続 tmux セッションを
+# 1 つ用意し、popup から attach する。popup を閉じてもセッションは生き続けるので、
+# 会話履歴・tool state・スクロールバックがそのまま保持される。
+# Launch (or re-attach to) a persistent Claude session inside a tmux popup;
+# closing the popup only detaches the client, the session keeps running.
+#
+# Usage: tmux-claude-popup launch [cwd|git-root] [base-dir]
+set -euo pipefail
+
+# popup サイズと起動コマンドは環境変数で上書き可能 / overridable via env vars
+POPUP_W="${CLAUDE_POPUP_W:-90%}"
+POPUP_H="${CLAUDE_POPUP_H:-90%}"
+CLAUDE_CMD="${CLAUDE_CMD:-claude}"
+
+# セッションの基準ディレクトリを決める / resolve the session's root directory
+# $1: モード (cwd|git-root) / $2: 起点ディレクトリ (pane の cwd)
+resolve_root() {
+  local mode="${1:-git-root}" base="${2:-$PWD}"
+  case "$mode" in
+    cwd)
+      printf '%s' "$base"
+      ;;
+    git-root)
+      # git 管理下ならリポジトリ root、そうでなければ起点 cwd にフォールバック
+      git -C "$base" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$base"
+      ;;
+    *)
+      printf '%s' "$base"
+      ;;
+  esac
+}
+
+main() {
+  if [ "${1:-}" != "launch" ]; then
+    echo "Usage: $0 launch [cwd|git-root] [base-dir]" >&2
+    exit 1
+  fi
+
+  local mode base root session
+  mode="${2:-git-root}"
+
+  # 起点は tmux キーバインドから渡される #{pane_current_path}。
+  # run-shell はサーバの cwd(通常 $HOME)で動くので $PWD は使えない。
+  # 渡された値が実在しなければ tmux に問い合わせ、最後は $PWD にフォールバック。
+  base="${3:-}"
+  if [ -z "$base" ] || [ ! -d "$base" ]; then
+    base="$(tmux display-message -p '#{pane_current_path}' 2>/dev/null || true)"
+  fi
+  if [ -z "$base" ] || [ ! -d "$base" ]; then
+    base="$PWD"
+  fi
+
+  root="$(resolve_root "$mode" "$base")"
+  # パス区切りや特殊文字を吸収するため md5 8 文字をセッション名にする
+  # md5 8 chars keeps the name fixed-length and path-safe
+  session="claude-$(printf '%s' "$root" | md5sum | cut -c1-8)"
+
+  # セッションが無ければ detach 状態で作成 / create detached if it does not exist
+  if ! tmux has-session -t "$session" 2>/dev/null; then
+    tmux new-session -d -s "$session" -c "$root" "$CLAUDE_CMD"
+    # popup 内をクリーンにするため status bar を消す / hide status bar inside popup
+    tmux set-option -t "$session" status off
+  fi
+
+  tmux display-popup -E -w "$POPUP_W" -h "$POPUP_H" \
+    -T " Claude :: $(basename "$root") " \
+    -e COLORTERM=truecolor \
+    "tmux attach-session -t '$session'"
+}
+
+main "$@"
