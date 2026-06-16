@@ -69,6 +69,9 @@
     gnused # GNU sed
     gnugrep # GNU grep
 
+    # PDF / document tools
+    poppler-utils # pdftotext, pdftoppm, pdfinfo etc.
+
     # Compression tools
     p7zip # 7-Zip
     zip
