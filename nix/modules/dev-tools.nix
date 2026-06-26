@@ -1,4 +1,26 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
+
+let
+  # Runtime libraries for Playwright's downloaded Chromium on non-NixOS hosts.
+  playwrightRuntimeLibs = with pkgs; [
+    nss
+    nspr
+    alsa-lib
+    atk
+    at-spi2-atk
+    cups
+    dbus
+    expat
+    libdrm
+    libxkbcommon
+    libgbm
+    gtk3
+    glib
+    pango
+    cairo
+    mesa
+  ];
+in
 
 {
   # Development tools and utilities
@@ -43,6 +65,13 @@
     cmake
     ninja
     meson
+
+    # Browser test tools
+    playwright-driver
+    (writeShellScriptBin "playwright-with-deps" ''
+      export LD_LIBRARY_PATH="${lib.makeLibraryPath playwrightRuntimeLibs}:''${LD_LIBRARY_PATH:-}"
+      exec npx playwright "$@"
+    '')
 
     # Version control
     git-crypt # Git encryption
