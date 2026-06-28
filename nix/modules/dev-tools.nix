@@ -1,4 +1,26 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
+
+let
+  # Runtime libraries for Playwright's downloaded Chromium on non-NixOS hosts.
+  playwrightRuntimeLibs = with pkgs; [
+    nss
+    nspr
+    alsa-lib
+    atk
+    at-spi2-atk
+    cups
+    dbus
+    expat
+    libdrm
+    libxkbcommon
+    libgbm
+    gtk3
+    glib
+    pango
+    cairo
+    mesa
+  ];
+in
 
 {
   # Development tools and utilities
@@ -44,6 +66,13 @@
     ninja
     meson
 
+    # Browser test tools
+    playwright-driver
+    (writeShellScriptBin "playwright-with-deps" ''
+      export LD_LIBRARY_PATH="${lib.makeLibraryPath playwrightRuntimeLibs}:''${LD_LIBRARY_PATH:-}"
+      exec npx playwright "$@"
+    '')
+
     # Version control
     git-crypt # Git encryption
     git-secret # Git secret management
@@ -68,6 +97,9 @@
     gawk # GNU awk
     gnused # GNU sed
     gnugrep # GNU grep
+
+    # PDF / document tools
+    poppler-utils # pdftotext, pdftoppm, pdfinfo etc.
 
     # Compression tools
     p7zip # 7-Zip
