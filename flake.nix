@@ -29,14 +29,37 @@
           (final: prev: {
             github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old:
               let
-                copilotVersion = "1.0.50";
+                copilotVersion = "1.0.65";
               in
               {
                 version = copilotVersion;
+                # 1.0.5x 以降、npm registry の tgz は npm-loader.js のみになり
+                # 本体 (index.js + ネイティブバイナリ) はプラットフォーム別の
+                # GitHub Release アセットに分離された。x86_64-linux 用を使う。
+                # The npm tarball now only ships a loader; the real index.js
+                # and native binaries live in the platform-specific release asset.
                 src = prev.fetchzip {
-                  url = "https://registry.npmjs.org/@github/copilot/-/copilot-${copilotVersion}.tgz";
-                  hash = "sha256-sjPxL9JntpsqrnhNMxaqaCfYLt30+lgt37zRN11CBb8=";
+                  url = "https://github.com/github/copilot-cli/releases/download/v${copilotVersion}/github-copilot-${copilotVersion}-linux-x64.tgz";
+                  hash = "sha256-4Af5u4K5xg76RCLu3jHY1+IxWMosu7d8fmwJy0zgwB4=";
                 };
+                # 同梱ネイティブバイナリ (.node, ripgrep) を patchelf する
+                # Patch the bundled native binaries for the Nix store.
+                nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ prev.autoPatchelfHook ];
+                buildInputs = (old.buildInputs or [ ]) ++ [
+                  prev.stdenv.cc.cc.lib
+                  prev.glib
+                  prev.libsecret
+                ];
+                # GUI/メディア機能用のライブラリは CLI 利用では不要なので無視
+                # These GUI/media libs are only for screen-capture/input features.
+                autoPatchelfIgnoreMissingDeps = [
+                  "libX11.so.6"
+                  "libXtst.so.6"
+                  "libjpeg.so.8"
+                  "libpng16.so.16"
+                  "libpipewire-0.3.so.0"
+                  "libei.so.1"
+                ];
                 # npm version may not match internal binary version string
                 doInstallCheck = false;
               });
