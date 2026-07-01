@@ -31,6 +31,6 @@ jobs:
           args: >-
             --no-progress
             --exclude-path polybar-themes
-            --exclude-mail
+            --exclude-path result
             '**/*.md'
           fail: true
