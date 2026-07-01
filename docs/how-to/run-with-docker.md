@@ -2,7 +2,7 @@
 
 > **Diátaxis:** 🔧 How-to
 
-Dockerコンテナ上でこのdotfilesのHome Manager設定をビルド・確認する手順です。CI(`docs/reference/ci-cd-pipeline.md`)でも同じイメージが使われています。
+Dockerコンテナ上でこのdotfilesのHome Manager設定をビルド・確認する手順です。[CI](../reference/ci-cd-pipeline.md)でも同じイメージが使われています。
 
 ---
 

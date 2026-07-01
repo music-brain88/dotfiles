@@ -122,7 +122,7 @@ Contributions are welcome! / 改善や機能追加の提案は大歓迎です！
 1. Fork this repository
 2. Create feature branch
 3. Make your changes
-4. Test with `home-manager switch --flake .#archie`
+4. Test with `mise run nix:switch`
 5. Submit pull request
 
 ---
