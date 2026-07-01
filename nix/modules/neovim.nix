@@ -26,7 +26,9 @@
       nodePackages.vscode-langservers-extracted # HTML, CSS, JSON, ESLint
       nodePackages.yaml-language-server
       nodePackages.bash-language-server
-      python311Packages.python-lsp-server
+      # NOTE: python3 (デフォルト版) を使うことでバイナリキャッシュに乗せる（3.11 指名はソースビルドに落ちる）
+      # Use default python3 to hit cache.nixos.org; pinning 3.11 forces source builds
+      python3Packages.python-lsp-server
       rust-analyzer
       gopls
       terraform-ls
@@ -59,7 +61,7 @@
       gcc # Compiler for some plugins
 
       # Python support for Neovim
-      python311Packages.pynvim
+      python3Packages.pynvim
 
       # Clipboard support
       wl-clipboard # Wayland
@@ -87,7 +89,7 @@
   # Environment variables for Neovim
   home.sessionVariables = {
     # Point to Nix-managed Python
-    NVIM_PYTHON3_HOST_PROG = "${pkgs.python311.withPackages (ps: [ ps.pynvim ])}/bin/python3";
+    NVIM_PYTHON3_HOST_PROG = "${pkgs.python3.withPackages (ps: [ ps.pynvim ])}/bin/python3";
   };
 
   # Note: Existing Neovim configuration in .config/nvim/ is symlinked via home.nix
