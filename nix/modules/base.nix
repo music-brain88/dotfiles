@@ -20,6 +20,11 @@
     mako
     libnotify
 
+    # Wayland utilities / Wayland ユーティリティ
+    wl-clipboard # wl-copy / wl-paste (clipboard CLI) / クリップボード操作コマンド
+    cliphist # clipboard history / クリップボード履歴
+    hypridle # idle daemon (auto-lock, screen off) / アイドル時の自動ロック・画面消灯
+
     # Additional utilities
     tree
     which

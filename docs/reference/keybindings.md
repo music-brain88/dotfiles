@@ -163,6 +163,8 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 | `Super + Shift + →` | Move window right | ウィンドウを右に移動 |
 | `Super + Shift + ↑` | Move window up | ウィンドウを上に移動 |
 | `Super + Shift + ↓` | Move window down | ウィンドウを下に移動 |
+| `Super + 左ドラッグ` | Move window (mouse) | マウスでウィンドウを移動 |
+| `Super + 右ドラッグ` | Resize window (mouse) | マウスでウィンドウをリサイズ |
 
 ### Window Resize Mode
 
@@ -182,6 +184,9 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 |---------|-------------|------|
 | `Super + 1-9, 0` | Switch to workspace 1-10 | ワークスペース1-10に移動 |
 | `Super + Shift + 1-9, 0` | Move window to workspace 1-10 | ウィンドウをワークスペース1-10に移動 |
+| `Super + Tab` | Toggle previous workspace | 直前のワークスペースとトグル |
+| `Super + S` | Toggle special workspace | スクラッチパッドの表示/非表示 |
+| `Super + Alt + S` | Move window to special workspace | ウィンドウをスクラッチパッドへ送る |
 
 ### Screenshot
 
@@ -195,11 +200,14 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
-| `XF86AudioRaiseVolume` | Volume up (+5%) | 音量アップ |
-| `XF86AudioLowerVolume` | Volume down (-5%) | 音量ダウン |
+| `XF86AudioRaiseVolume` | Volume up (+5%, hold to repeat) | 音量アップ（長押しリピート対応） |
+| `XF86AudioLowerVolume` | Volume down (-5%, hold to repeat) | 音量ダウン（長押しリピート対応） |
 | `XF86AudioMute` | Toggle mute | ミュート切り替え |
-| `XF86MonBrightnessUp` | Brightness up (+5%) | 明るさアップ |
-| `XF86MonBrightnessDown` | Brightness down (-5%) | 明るさダウン |
+| `XF86AudioPlay` | Play / pause (playerctl) | 再生 / 一時停止 |
+| `XF86AudioNext` | Next track | 次のトラック |
+| `XF86AudioPrev` | Previous track | 前のトラック |
+| `XF86MonBrightnessUp` | Brightness up (+5%, hold to repeat) | 明るさアップ（長押しリピート対応） |
+| `XF86MonBrightnessDown` | Brightness down (-5%, hold to repeat) | 明るさダウン（長押しリピート対応） |
 
 ### System Management
 
@@ -208,6 +216,7 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 | `Super + Shift + P` | Package manager (paru) | パッケージマネージャーを開く |
 | `Super + N` | Toggle notifications | 通知のトグル |
 | `Super + Shift + N` | Clear notifications | 通知をクリア |
+| `Super + Shift + V` | Clipboard history (cliphist) | クリップボード履歴から選んでコピー |
 
 ---
 

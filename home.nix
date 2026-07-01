@@ -84,6 +84,12 @@
       recursive = true;
     };
 
+    # systemd user units (Hyprland session target)
+    ".config/systemd/user" = {
+      source = ./.config/systemd/user;
+      recursive = true;
+    };
+
     # i3 config
     ".config/i3" = {
       source = ./.config/i3;

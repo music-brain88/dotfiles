@@ -1,0 +1,10 @@
+# Hyprland セッション用 systemd target
+# graphical-session.target を活性化し、waybar.service 等の
+# WantedBy=graphical-session.target なユニットを起動する
+# Custom target to activate graphical-session.target from Hyprland (non-uwsm setup)
+[Unit]
+Description=Hyprland compositor session
+Documentation=man:systemd.special(7)
+BindsTo=graphical-session.target
+Wants=graphical-session-pre.target
+After=graphical-session-pre.target
