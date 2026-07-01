@@ -1,5 +1,7 @@
 # Architecture / アーキテクチャ設計
 
+> **Diátaxis:** 💡 Explanation
+
 このドキュメントでは、dotfilesリポジトリの設計思想とアーキテクチャについて説明します。
 
 ---
@@ -35,6 +37,25 @@
 - **CI/CDによる自動化**: GitHub Actionsを活用して設定ファイルや開発環境の構築を自動化
 - **ドキュメントの整備**: 設定ファイルやスクリプトの意図や使い方を明確にするためにドキュメントを整備
 - **Rust製ツールの活用**: ripgrep, fd, bat, gituiなどRust製CLIツールを積極的に活用し、作業効率を向上
+
+### Why Nix?（従来のシェルスクリプトとの比較）
+
+従来のシェルスクリプトベースのセットアップには以下の問題がありました:
+
+1. **重複コード**: 同じツールのインストールが複数箇所に存在
+2. **再現性の欠如**: 依存関係のバージョンが環境によって異なる
+3. **複雑な状態管理**: 複数のスクリプトにまたがる状態管理
+4. **ロールバック不可**: 問題が発生した場合、元に戻すのが困難
+5. **CI/CDの複雑化**: 9つの別々のワークフローファイルを管理
+
+Nixを使用することで、以下のメリットが得られます:
+
+✅ **再現可能**: どのマシンでも同じ環境を構築可能
+✅ **宣言的**: 設定ファイルで環境全体を定義
+✅ **アトミック**: アップグレードやロールバックが安全に実行可能
+✅ **依存関係の自動管理**: 必要なパッケージを自動的に解決
+✅ **バージョン固定**: 特定のバージョンを固定して使用可能
+✅ **分離された環境**: 複数のバージョンを共存させることが可能
 
 ### Why Nix + Symlinks?
 
@@ -244,7 +265,7 @@ home.activation.seedCopilotConfig = config.lib.dag.entryAfter [ "writeBoundary" 
 
 ## 🔄 CI/CD Architecture
 
-> 詳細は [CICD.md](./CICD.md) を参照（Evolution History、Lessons Learned 等）
+> 詳細は [cicd-evolution.md](./cicd-evolution.md)（Evolution History、Lessons Learned 等）と [ci-cd-pipeline.md](../reference/ci-cd-pipeline.md)（現在の構成）を参照
 
 ### Hybrid Docker + Nix Pipeline
 
@@ -291,7 +312,7 @@ GitHub Actionsのディスク容量制限（約14GB）を回避するため、Ni
 | Nix (verify) | `cache-nix-action` | Docker内ビルド用 |
 
 **Note**: `magic-nix-cache` はDockerコンテナ内では動作しない（Nix daemonイベント購読方式のため）。
-詳細は [CICD.md - Phase 3](./CICD.md#phase-3-magic-nix-cache-の限界-216) を参照。
+詳細は [cicd-evolution.md - Phase 3](./cicd-evolution.md#phase-3-magic-nix-cache-の限界-216) を参照。
 
 ---
 
@@ -311,11 +332,12 @@ GitHub Actionsのディスク容量制限（約14GB）を回避するため、Ni
 
 ## 🔗 Related Documentation
 
-- [CICD.md](./CICD.md) - CI/CDパイプライン詳細、Evolution History
-- [NIX.md](./NIX.md) - Nix/Home Manager 使い方ガイド
-- [STRUCTURE.md](./STRUCTURE.md) - ディレクトリ構造
-- [WORKFLOW.md](./WORKFLOW.md) - 作業ワークフロー
-- [CLAUDE.md](../CLAUDE.md) - Claude Code向けコンテキスト
+- [cicd-evolution.md](./cicd-evolution.md) - CI/CDの課題・変遷・教訓
+- [ci-cd-pipeline.md](../reference/ci-cd-pipeline.md) - CI/CDパイプライン詳細
+- [install-and-update-packages.md](../how-to/install-and-update-packages.md) - Nix/Home Manager 使い方ガイド
+- [directory-structure.md](../reference/directory-structure.md) - ディレクトリ構造
+- [daily-workflow-commands.md](../how-to/daily-workflow-commands.md) - 作業ワークフロー
+- [CLAUDE.md](../../CLAUDE.md) - Claude Code向けコンテキスト
 
 ---
 

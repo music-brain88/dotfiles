@@ -1,5 +1,7 @@
 # Directory Structure / ディレクトリ構造
 
+> **Diátaxis:** 📖 Reference
+
 このドキュメントでは、dotfilesリポジトリのディレクトリ構造と各コンポーネントの役割を説明します。
 
 ---
@@ -10,7 +12,11 @@
 dotfiles/
 ├── .config/                 # アプリケーション設定ファイル
 ├── .github/                 # GitHub Actions ワークフロー
-├── docs/                    # ドキュメント
+├── docs/                    # ドキュメント (Diátaxis構成)
+│   ├── tutorials/           # 学習向け
+│   ├── how-to/              # 作業向け
+│   ├── reference/           # 逆引き向け
+│   └── explanation/         # 理解向け
 ├── llm/                     # LLM コンテキストファイル
 ├── nix/                     # Nix モジュール
 ├── polybar-themes/          # Polybar テーマ (submodule)
@@ -108,6 +114,7 @@ dotfiles/
 | `ncmpcpp/` | ncmpcpp (MPD クライアント) 設定 |
 | `picom/` | Picom コンポジター設定 (X11) |
 | `wakatime/` | WakaTime 設定 (config.sample のみ) |
+| `fontconfig/` | フォント設定・トラブルシューティング |
 
 ---
 
@@ -127,15 +134,16 @@ Home Manager の設定をモジュール化。
 
 ---
 
-## 📁 docs/ - Documentation
+## 📁 docs/ - Documentation (Diátaxis)
 
-| File | Description |
-|------|-------------|
-| `ARCHITECTURE.md` | アーキテクチャ設計・設計思想 |
-| `NIX.md` | Nix/Home Manager 詳細ガイド |
-| `KEYBINDINGS.md` | キーバインド・ショートカット一覧 |
-| `NEOVIM.md` | Neovim 設定ガイド（キーバインド、プラグイン構成） |
-| `STRUCTURE.md` | このファイル（ディレクトリ構造） |
+Diátaxis (https://diataxis.fr) に沿って4象限に分類。詳細は [docs/README.md](../README.md) を参照。
+
+| Directory | 象限 | Description |
+|-----------|------|-------------|
+| `tutorials/` | 🎓 Tutorial | 学習向け・ステップバイステップガイド |
+| `how-to/` | 🔧 How-to | 作業向け・特定タスクの解決手順 |
+| `reference/` | 📖 Reference | 逆引き向け・技術仕様の一覧 |
+| `explanation/` | 💡 Explanation | 理解向け・設計や背景の解説 |
 
 ---
 
@@ -157,11 +165,15 @@ AI アシスタント向けのコンテキストファイル。
 | File | Description |
 |------|-------------|
 | `workflows/nix.yml` | Nix CI/CD パイプライン |
+| `workflows/build-docker-image.yml` | Docker イメージビルド (nix.yml から呼び出し) |
+| `workflows/docs-lint.yml` | Markdown リンク切れチェック |
+| `workflows/release-drafter.yml` | リリースノート自動生成 |
 
-### Templates
+### Instructions & Templates
 
-| Directory | Description |
-|-----------|-------------|
+| Directory/File | Description |
+|-----------------|-------------|
+| `copilot-instructions.md` | GitHub Copilot 向けコンテキスト |
 | `ISSUE_TEMPLATE/` | Issue テンプレート |
 | `PULL_REQUEST_TEMPLATE.md` | PR テンプレート |
 
@@ -181,9 +193,9 @@ git submodule update
 
 ## 🔗 Related Documentation
 
-- [README.md](../README.md) - プロジェクト概要とクイックスタート
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - アーキテクチャ設計・設計思想
-- [NIX.md](./NIX.md) - Nix/Home Manager 詳細ガイド
-- [KEYBINDINGS.md](./KEYBINDINGS.md) - キーバインド・ショートカット一覧
-- [NEOVIM.md](./NEOVIM.md) - Neovim 設定ガイド
-- [CLAUDE.md](../CLAUDE.md) - Claude Code 向けコンテキスト
+- [README.md](../../README.md) - プロジェクト概要とクイックスタート
+- [architecture.md](../explanation/architecture.md) - アーキテクチャ設計・設計思想
+- [getting-started.md](../tutorials/getting-started.md) - Nix/Home Manager 詳細ガイド
+- [keybindings.md](./keybindings.md) - キーバインド・ショートカット一覧
+- [neovim-config.md](./neovim-config.md) - Neovim 設定ガイド
+- [CLAUDE.md](../../CLAUDE.md) - Claude Code 向けコンテキスト

@@ -52,17 +52,18 @@ The Home Manager username is hard-coded as `archie`; the activation target is `.
 - **Neovim plugin config**: TOML only (dein format), never inline in `init.lua`.
 - **Comments**: bilingual EN/JA for non-obvious or user-facing components — match the existing style in surrounding files.
 - **Commits**: descriptive messages; CI/release notes are generated via `release-drafter`.
-- **Do not** convert existing native configs into Nix expressions — that violates the hybrid design (see `docs/ARCHITECTURE.md`).
+- **Do not** convert existing native configs into Nix expressions — that violates the hybrid design (see `docs/explanation/architecture.md`).
 - **Do not** commit `result/`, `.backup/`, or anything from `.env` (already gitignored).
 
 ## Where to look first
 
 | Topic | File |
 |-------|------|
-| Design philosophy / hybrid rationale | `docs/ARCHITECTURE.md` |
-| CI pipeline + caching strategy | `docs/CICD.md` |
-| Nix/Home Manager usage | `docs/NIX.md` |
-| Shell boot flow (bash → fish) | `docs/SHELL.md` |
-| Neovim plugins & keymaps | `docs/NEOVIM.md` |
-| Directory layout details | `docs/STRUCTURE.md` |
+| Design philosophy / hybrid rationale | `docs/explanation/architecture.md` |
+| CI pipeline + caching strategy | `docs/reference/ci-cd-pipeline.md` |
+| CI/CD evolution history | `docs/explanation/cicd-evolution.md` |
+| Nix/Home Manager usage | `docs/tutorials/getting-started.md`, `docs/how-to/install-and-update-packages.md` |
+| Shell boot flow (bash → fish) | `docs/explanation/shell-boot-flow.md` |
+| Neovim plugins & keymaps | `docs/reference/neovim-config.md` |
+| Directory layout details | `docs/reference/directory-structure.md` |
 | Claude Code context (overlaps heavily with this file) | `CLAUDE.md` |

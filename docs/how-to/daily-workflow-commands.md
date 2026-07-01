@@ -1,46 +1,21 @@
-# Workflow / ワークフロー
+# Daily Workflow Commands / よく使うコマンド
 
-このドキュメントでは、普段の作業内容とワークフローについて説明します。
+> **Diátaxis:** 🔧 How-to
+
+普段の開発でよく使うコマンド・キーバインドと、典型的な作業の流れをまとめています。日々どんな作業をしているかの背景は [daily-workflow-context.md](../explanation/daily-workflow-context.md) を参照してください。
 
 ---
 
 ## 📚 Table of Contents
 
-- [Daily Work / 普段の作業内容](#-daily-work--普段の作業内容)
 - [Frequently Used Commands / よく使うコマンド](#-frequently-used-commands--よく使うコマンド)
 - [Typical Workflow / 典型的なワークフロー](#-typical-workflow--典型的なワークフロー)
-- [Future Improvements / 改善したいこと](#-future-improvements--改善したいこと)
-
----
-
-## 💼 Daily Work / 普段の作業内容
-
-### Editor
-
-| Tool | Description |
-|------|-------------|
-| Neovim | メインエディタ |
-
-### Development Areas / 開発分野
-
-| Area | Description |
-|------|-------------|
-| Web開発 | フロントエンド・バックエンド |
-| 機械学習（ML） | ML関連の開発 |
-
-### Other Activities / その他の業務
-
-| Activity | Description |
-|----------|-------------|
-| 技術記事執筆 | Zennなど（今後増える予定） |
-| アーキテクチャレビュー | コードレビュー・設計レビュー |
-| プロダクト設計 | 全体のアーキテクティング |
 
 ---
 
 ## ⌨️ Frequently Used Commands / よく使うコマンド
 
-> **Note**: 詳細なキーバインドは [KEYBINDINGS.md](./KEYBINDINGS.md) を参照してください。
+> **Note**: 詳細なキーバインドは [keybindings.md](../reference/keybindings.md) を参照してください。
 
 ### Git Operations
 
@@ -142,29 +117,10 @@ CI/CD（GitHub Actions）で自動デプロイ
 
 ---
 
-## 🚀 Future Improvements / 改善したいこと
-
-### Kubernetes関連の効率化
-
-| Goal | Description |
-|------|-------------|
-| デプロイ・運用管理 | Kubernetesを使った効率化 |
-| マニフェスト管理 | 作成・管理を簡単にする仕組み導入 |
-| CI/CD統合 | デプロイをパイプラインに統合して自動化 |
-
-### ドキュメント生成の自動化
-
-| Goal | Description |
-|------|-------------|
-| 自動生成 | rustdoc, Sphinx, mkdocs, TypeDocなど |
-| CI連携 | GitHub Actionsでコード変更時に自動生成・更新 |
-| 自動公開 | Zenn, GitHub Pagesへの自動公開 |
-
----
-
 ## 🔗 Related Documentation
 
-- [README.md](../README.md) - プロジェクト概要
-- [KEYBINDINGS.md](./KEYBINDINGS.md) - キーバインド詳細
-- [NEOVIM.md](./NEOVIM.md) - Neovim設定ガイド
-- [STRUCTURE.md](./STRUCTURE.md) - ディレクトリ構造
+- [README.md](../../README.md) - プロジェクト概要
+- [daily-workflow-context.md](../explanation/daily-workflow-context.md) - 普段の作業内容と今後の展望
+- [keybindings.md](../reference/keybindings.md) - キーバインド詳細
+- [neovim-config.md](../reference/neovim-config.md) - Neovim設定ガイド
+- [directory-structure.md](../reference/directory-structure.md) - ディレクトリ構造

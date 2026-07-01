@@ -1,0 +1,36 @@
+name: Docs Lint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.md'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.md'
+
+jobs:
+  link-check:
+    name: Check Markdown Links
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # lychee validates that linked files/URLs resolve, but it does NOT
+      # validate #anchor fragments against actual headings. Bilingual
+      # headings in this repo (e.g. "## Quick Start / クイックスタート")
+      # produce GitHub-slugified anchors that can shift when a heading
+      # moves to a new file — anchor links must still be checked by hand.
+      - name: Link Checker
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --exclude-path polybar-themes
+            --exclude-path result
+            '**/*.md'
+          fail: true
