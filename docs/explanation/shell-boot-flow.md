@@ -1,5 +1,7 @@
 # Shell Configuration / シェル設定
 
+> **Diátaxis:** 💡 Explanation
+
 このドキュメントでは、シェル環境の構成と設計思想について説明します。
 
 ---
@@ -203,9 +205,9 @@ exec fish
 
 ## 🔗 Related Documentation
 
-- [KEYBINDINGS.md](./KEYBINDINGS.md) - Fish/Tmux/Hyprland のキーバインド
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - 全体のアーキテクチャ設計
-- [NIX.md](./NIX.md) - Nix/Home Manager でのパッケージ管理
+- [keybindings.md](../reference/keybindings.md) - Fish/Tmux/Hyprland のキーバインド
+- [architecture.md](./architecture.md) - 全体のアーキテクチャ設計
+- [install-and-update-packages.md](../how-to/install-and-update-packages.md) - Nix/Home Manager でのパッケージ管理
 
 ---
 

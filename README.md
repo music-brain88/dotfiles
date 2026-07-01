@@ -32,27 +32,17 @@ Nix + Home Manager + mise を使用した、宣言的でモダンな開発環境
 
 ## ⚡ Quick Start / クイックスタート
 
-### 1. Install Nix
-
 ```bash
-# Determinate Systems Installer (推奨)
+# Install Nix (Determinate Systems Installer, 推奨)
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
-```
 
-### 2. Clone & Setup
-
-```bash
+# Clone & activate
 git clone https://github.com/music-brain88/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-
-# Build and activate
 mise run nix:switch
-
-# Install Neovim plugins
-nvim --headless +"call dein#install()" +qall
 ```
 
-> 📖 詳細は [docs/NIX.md](docs/NIX.md) を参照してください。
+> 📖 ステップバイステップの解説は [docs/tutorials/getting-started.md](docs/tutorials/getting-started.md) を参照してください。
 
 ---
 
@@ -65,31 +55,7 @@ nvim --headless +"call dein#install()" +qall
 mise tasks
 ```
 
-### Nix Tasks
-
-| Task | Description |
-|------|-------------|
-| `mise run nix:build` | Home Manager 設定をビルド |
-| `mise run nix:switch` | ビルド＆アクティベート |
-| `mise run nix:check` | Flake チェック実行 |
-| `mise run nix:update` | Flake inputs を更新 |
-| `mise run nix:gc` | ガベージコレクト |
-
-### Docker Tasks
-
-| Task | Description |
-|------|-------------|
-| `mise run docker:build` | Docker イメージをビルド |
-| `mise run docker:run` | コンテナを起動 |
-| `mise run docker:exec` | コンテナ内で bash 実行 |
-| `mise run docker:stop` | コンテナを停止 |
-| `mise run docker:remove` | コンテナを削除 |
-
-### Utility Tasks
-
-| Task | Description |
-|------|-------------|
-| `mise run backup` | Arch Linux パッケージリストをバックアップ |
+> 📖 全タスクの一覧は [docs/reference/mise-tasks.md](docs/reference/mise-tasks.md) を参照してください。
 
 ---
 
@@ -99,10 +65,9 @@ mise tasks
 # Build and run
 mise run docker:build
 mise run docker:run
-
-# Enter container
-mise run docker:exec
 ```
+
+> 📖 詳細は [docs/how-to/run-with-docker.md](docs/how-to/run-with-docker.md) を参照してください。
 
 ---
 
@@ -118,23 +83,21 @@ dotfiles/
 └── home.nix          # Home Manager config
 ```
 
-> 📖 詳細は [docs/STRUCTURE.md](docs/STRUCTURE.md) を参照してください。
+> 📖 詳細は [docs/reference/directory-structure.md](docs/reference/directory-structure.md) を参照してください。
 
 ---
 
 ## 📚 Documentation
 
-| Document | Description |
-|----------|-------------|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | アーキテクチャ設計・設計思想 |
-| [docs/NIX.md](docs/NIX.md) | Nix/Home Manager 詳細ガイド |
-| [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) | キーバインド・ショートカット一覧 |
-| [docs/NEOVIM.md](docs/NEOVIM.md) | Neovim 設定ガイド |
-| [docs/STRUCTURE.md](docs/STRUCTURE.md) | ディレクトリ構造の詳細 |
-| [docs/WORKFLOW.md](docs/WORKFLOW.md) | 作業ワークフロー・よく使うコマンド |
-| [CLAUDE.md](CLAUDE.md) | Claude Code 向けコンテキスト |
+ドキュメントは [Diátaxis](https://diataxis.fr) に沿って4つに分類されています（🎓チュートリアル / 🔧ハウツー / 📖リファレンス / 💡解説）。
 
-> 📖 詳細は [docs/README.md](docs/README.md) を参照してください。
+| Start here | Description |
+|------------|-------------|
+| [docs/tutorials/getting-started.md](docs/tutorials/getting-started.md) | 🎓 はじめてのセットアップ |
+| [docs/explanation/architecture.md](docs/explanation/architecture.md) | 💡 設計思想・アーキテクチャ |
+| [docs/reference/keybindings.md](docs/reference/keybindings.md) | 📖 キーバインド一覧 |
+
+> 📖 全ドキュメントの一覧は [docs/README.md](docs/README.md) を参照してください。
 
 ---
 
@@ -148,6 +111,8 @@ home.username = "your-username";
 home.homeDirectory = "/home/your-username";
 ```
 
+> 📖 詳細は [docs/how-to/customize-your-fork.md](docs/how-to/customize-your-fork.md) を参照してください。
+
 ---
 
 ## 🤝 Contributing
@@ -157,7 +122,8 @@ Contributions are welcome! / 改善や機能追加の提案は大歓迎です！
 1. Fork this repository
 2. Create feature branch
 3. Make your changes
-4. Submit pull request
+4. Test with `home-manager switch --flake .#archie`
+5. Submit pull request
 
 ---
 
