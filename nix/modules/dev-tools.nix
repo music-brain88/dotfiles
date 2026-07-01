@@ -110,7 +110,7 @@
     enable = true;
     enableFishIntegration = true;
 
-    settings = {
+    globalConfig = {
       tools = {
         node = "lts";
         python = "3.11";

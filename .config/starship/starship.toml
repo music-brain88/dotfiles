@@ -245,7 +245,7 @@ style = "bg:#1A73E8 fg:#EEEEEE"
 format = '[[](bg:#1A73E8 fg:#464347)$symbol$account(\($region\))[](bg:#464347 fg:#1A73E8)]($style)'
 
 [git_branch]
-symbol = ""
+symbol = "󰊢 "
 #symbol = " " # alternate
 style = "bg:#96ab5f fg:#111111"
 # truncation_length = 4
@@ -281,9 +281,9 @@ diverged = " ⇕${ahead_count} ${behind_count}"
 conflicted = "  ${count}"
 deleted = "  ${count}"
 renamed = " » ${count}"
-modified = "📝${count}"
+modified = "󰏫 ${count}"
 staged = "  ${count}"
-untracked = " 🐾${count}"
+untracked = " 󱪝 ${count}"
 format = "([[](bg:#E0B25D fg:#464347)$stashed$staged$modified$renamed$untracked$deleted$conflicted$ahead_behind[](bg:#464347 fg:#E0B25D)]($style))"
 
 [golang]
@@ -326,7 +326,7 @@ format = "[[](bg:#4063D8 fg:#464347)$symbol$version[](bg:#464347 fg:#4063D
 
 [kubernetes]
 disabled = false
-symbol = "☸︎  "
+symbol = "󱃾 "
 style = "bg:#3371E3 fg:#EEEEEE"
 format = '[[](bg:#3371E3 fg:#464347)$symbol$context(\($namespace\))[](bg:#464347 fg:#3371E3)]($style)'
 # ARNからクラスター名だけを抽出
