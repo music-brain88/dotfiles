@@ -63,7 +63,8 @@ git worktree prune
 ```
 
 - `git branch -d` は merged 確認済みなので `-d` を使う。**`-D` は使わない**
-- ローカル main が origin より遅れていると `git branch -d` が「not yet merged to HEAD」警告を出すことがあるが、手順 2 で origin へのマージが確認できているので、その場合は `git fetch origin main:main` などでローカル main を更新してから再実行する(それでも `-D` にはエスカレートしない)
+- ローカル main が origin より遅れていると `git branch -d` が「not yet merged to HEAD」警告を出すことがあるが、手順 2 で origin へのマージが確認できているので、その場合はローカル main を更新してから再実行する(それでも `-D` にはエスカレートしない)
+  - 更新方法: main をチェックアウト中のリポジトリでは `git fetch origin main:main` は拒否されるため、`git fetch origin` してから `git merge --ff-only origin/main`(または `git pull --ff-only`)で更新する
 
 ### 7. 結果の報告
 
