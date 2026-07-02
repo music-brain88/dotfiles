@@ -68,9 +68,11 @@
 
     # mise global config (tools available outside project dirs, e.g. claude via node)
     # mise グローバル設定（プロジェクト外でも使うツール。claude は node 経由）
-    ".config/mise" = {
-      source = ./.config/mise;
-      recursive = true;
+    # force: overwrite real files created by `mise use -g` so activation never stalls
+    # force: `mise use -g` が作る実ファイルを上書きして activation の停止を防ぐ
+    ".config/mise/config.toml" = {
+      source = ./.config/mise/config.toml;
+      force = true;
     };
 
     # GitHub Copilot CLI (uses ~/.copilot/)
