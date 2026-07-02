@@ -31,7 +31,7 @@ Organized by [Diátaxis](https://diataxis.fr) (🎓tutorial / 🔧how-to / 📖r
 
 **Quick Keybindings Reference:**
 - Fish: `Ctrl+t` (file search), `Ctrl+r` (history), `Ctrl+y` (git branch)
-- Tmux: prefix is `Ctrl+g`, split with `|` and `-`, vim-style navigation with `h/j/k/l`
+- herdr: prefix is `Ctrl+g`, split with `|` and `-`, vim-style navigation with `h/j/k/l` (tmux from which we migrated is kept during the transition)
 - Hyprland: `Super` as modifier, `Super+Enter` (terminal), `Super+D` (launcher)
 
 ## Development Environments

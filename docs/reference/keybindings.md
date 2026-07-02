@@ -9,7 +9,8 @@
 ## 📚 Table of Contents
 
 - [Fish Shell](#fish-shell)
-- [Tmux](#tmux)
+- [herdr](#herdr)
+- [Tmux](#tmux-deprecated-herdrへ移行中) *(deprecated)*
 - [Hyprland](#hyprland)
 - [Neovim](#neovim) *(separate document)*
 - [Shell Aliases](#shell-aliases)
@@ -50,7 +51,63 @@ Fish shellのキーバインドは `.config/fish/functions/fish_user_key_binding
 
 ---
 
-## 🖥️ Tmux
+## 🤖 herdr
+
+herdrの設定は `.config/herdr/config.toml` で定義されています。keybindは旧tmux設定を踏襲しています。
+
+### Prefix Key
+
+| Key | Description |
+|-----|-------------|
+| `Ctrl+g` | Prefix key (prefixキー) |
+
+### Pane Operations
+
+| Keybind | Description | 説明 |
+|---------|-------------|------|
+| `prefix + \|` / `prefix + v` | Split pane vertically | ペインを縦に分割 |
+| `prefix + -` | Split pane horizontally | ペインを横に分割 |
+| `prefix + h/j/k/l` | Move between panes (Vim-style) | ペイン間を移動 (Vim風) |
+| `prefix + z` | Zoom focused pane | ペインをズーム |
+| `prefix + x` | Close pane | ペインを閉じる |
+| `prefix + r` | Resize mode (then `h/j/k/l`) | リサイズモード (h/j/k/lで調整) |
+
+### Tab (Window) Operations
+
+| Keybind | Description | 説明 |
+|---------|-------------|------|
+| `prefix + c` | New tab | 新規タブ |
+| `prefix + Ctrl+h` / `prefix + p` | Previous tab | 前のタブへ |
+| `prefix + Ctrl+l` / `prefix + n` | Next tab | 次のタブへ |
+| `prefix + 1..9` | Jump to tab | タブへジャンプ |
+
+### Session / Workspace
+
+| Keybind | Description | 説明 |
+|---------|-------------|------|
+| `prefix + q` | Detach (session keeps running) | デタッチ (セッションは維持) |
+| `prefix + w` | Workspace picker | ワークスペース選択 |
+| `prefix + b` | Toggle sidebar | サイドバー表示切替 |
+| `prefix + Shift+r` | Reload config | 設定ファイルをリロード |
+| `prefix + ?` | Show all keybindings | 全keybind一覧を表示 |
+
+### Copy Mode
+
+`prefix + [` でコピーモードに入る。viキーバインドを使用。
+
+| Keybind | Description | 説明 |
+|---------|-------------|------|
+| `v` | Begin selection | 選択開始 |
+| `y` | Copy to clipboard | クリップボードにコピー |
+| `q` / `Esc` | Exit copy mode | コピーモードを抜ける |
+
+マウス操作はネイティブ対応 (クリック・ドラッグ選択・境界ドラッグでリサイズ)。
+
+---
+
+## 🖥️ Tmux (deprecated: herdrへ移行中)
+
+> **Note**: herdrへの併存移行期間中です。移行完了後にこのセクションと設定は削除されます。
 
 Tmuxの設定は `.tmux.conf` で定義されています。
 

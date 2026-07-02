@@ -14,6 +14,12 @@
       url = "github:nix-community/neovim-nightly-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # herdr 用の新しめ nixpkgs: メインの locked nixpkgs には herdr が未収録。
+    # 全体を update せず、この input だけで herdr を供給する (バイナリキャッシュ有効)。
+    # Newer nixpkgs pin for herdr only: the main locked nixpkgs predates herdr.
+    # Avoids a full nixpkgs bump while keeping Hydra's binary cache.
+    nixpkgs-herdr.url = "github:nixos/nixpkgs/nixos-unstable";
   };
 
   outputs = { self, nixpkgs, home-manager, neovim-nightly-overlay, ... }@inputs:
@@ -63,6 +69,11 @@
                 # npm version may not match internal binary version string
                 doInstallCheck = false;
               });
+          })
+          # herdr を専用 pin の nixpkgs から供給 (メインの locked nixpkgs には未収録)
+          # Provide herdr from its dedicated nixpkgs pin (absent from the main lock)
+          (final: prev: {
+            herdr = inputs.nixpkgs-herdr.legacyPackages.${system}.herdr;
           })
           # Fix for CI: some package tests are flaky in GitHub Actions environment
           (final: prev: {
