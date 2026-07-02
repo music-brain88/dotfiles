@@ -19,7 +19,6 @@ dotfiles/
 │   └── explanation/         # 理解向け
 ├── llm/                     # LLM コンテキストファイル
 ├── nix/                     # Nix モジュール
-├── polybar-themes/          # Polybar テーマ (submodule)
 ├── .mise.toml               # タスクランナー設定
 ├── flake.nix                # Nix Flake エントリーポイント
 ├── home.nix                 # Home Manager メイン設定
@@ -78,20 +77,18 @@ dotfiles/
 | Directory | Description |
 |-----------|-------------|
 | `hypr/` | Hyprland 設定 (Wayland) |
-| `i3/` | i3 設定 (X11) |
 
 ### Status Bars
 
 | Directory | Description |
 |-----------|-------------|
 | `waybar/` | Waybar 設定 (Wayland) |
-| `polybar/` | Polybar 設定 (X11) |
 
 ### Launchers
 
 | Directory | Description |
 |-----------|-------------|
-| `rofi/` | Rofi ランチャー設定 (X11) |
+| `rofi/` | Rofi ランチャー設定 |
 | `wofi/` | Wofi ランチャー設定 (Wayland) |
 
 ### Version Control
@@ -100,19 +97,12 @@ dotfiles/
 |-----------|-------------|
 | `git/` | Git 設定 (config, ignore, config.local.sample) |
 
-### X11 (Fallback)
-
-| Directory | Description |
-|-----------|-------------|
-| `x11/` | X11 設定 (xmodmap) - Nix 管理対象外 |
-
 ### Media & Misc
 
 | Directory | Description |
 |-----------|-------------|
 | `mpd/` | Music Player Daemon 設定 |
 | `ncmpcpp/` | ncmpcpp (MPD クライアント) 設定 |
-| `picom/` | Picom コンポジター設定 (X11) |
 | `wakatime/` | WakaTime 設定 (config.sample のみ) |
 | `fontconfig/` | フォント設定・トラブルシューティング |
 
@@ -176,18 +166,6 @@ AI アシスタント向けのコンテキストファイル。
 | `copilot-instructions.md` | GitHub Copilot 向けコンテキスト |
 | `ISSUE_TEMPLATE/` | Issue テンプレート |
 | `PULL_REQUEST_TEMPLATE.md` | PR テンプレート |
-
----
-
-## 📁 polybar-themes/
-
-Polybar テーマ集（Git submodule）。
-
-```bash
-# サブモジュールを初期化
-git submodule init
-git submodule update
-```
 
 ---
 

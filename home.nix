@@ -95,21 +95,9 @@
       recursive = true;
     };
 
-    # i3 config
-    ".config/i3" = {
-      source = ./.config/i3;
-      recursive = true;
-    };
-
     # Waybar config
     ".config/waybar" = {
       source = ./.config/waybar;
-      recursive = true;
-    };
-
-    # Polybar config
-    ".config/polybar" = {
-      source = ./.config/polybar;
       recursive = true;
     };
 
