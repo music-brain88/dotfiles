@@ -8,6 +8,8 @@
 # - Git status: #E0B25D (yellow)
 # - Accent: #FF6AC1 (pink)
 
+set -euo pipefail
+
 input=$(cat)
 
 # Extract JSON values
@@ -19,7 +21,9 @@ project_dir=$(echo "$input" | jq -r '.workspace.project_dir')
 usage=$(echo "$input" | jq '.context_window.current_usage')
 context_info=""
 if [ "$usage" != "null" ]; then
-    current=$(echo "$usage" | jq '.input_tokens + .cache_creation_input_tokens + .cache_read_input_tokens')
+    # // 0 で欠損キーを0扱いにする (set -u で null が算術エラーになるのを防ぐ)
+    # Missing keys fall back to 0 so the arithmetic below never sees "null"
+    current=$(echo "$usage" | jq '(.input_tokens // 0) + (.cache_creation_input_tokens // 0) + (.cache_read_input_tokens // 0)')
     size=$(echo "$input" | jq '.context_window.context_window_size')
     if [ "$size" != "null" ] && [ "$size" -gt 0 ] 2>/dev/null; then
         pct=$((current * 100 / size))
@@ -33,16 +37,16 @@ hostname=$(hostname -s 2>/dev/null || hostname)
 
 # Get directory (show relative to project if in project, otherwise show ~)
 if [ -n "$project_dir" ] && [ "$current_dir" != "$project_dir" ]; then
-    display_dir="${current_dir#$project_dir/}"
+    display_dir="${current_dir#"$project_dir"/}"
     if [ "$display_dir" = "$current_dir" ]; then
-        display_dir=$(echo "$current_dir" | sed "s|^$HOME|~|")
+        display_dir="${current_dir/#"$HOME"/\~}"
     fi
 else
-    display_dir=$(echo "$current_dir" | sed "s|^$HOME|~|")
+    display_dir="${current_dir/#"$HOME"/\~}"
 fi
 
 # Replace ~ with  icon like starship config
-display_dir=$(echo "$display_dir" | sed 's|^~| |')
+display_dir="${display_dir/#\~/ }"
 
 # Get git branch if in a git repo
 git_info=""

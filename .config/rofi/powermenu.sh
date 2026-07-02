@@ -1,22 +1,20 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 theme="full_circle"
 dir="$HOME/dotfiles/.config/rofi/powermenu"
 
-# random colors
-styles=($(ls -p --hide="colors.rasi" $dir/styles))
-color="${styles[$(( $RANDOM % 8 ))]}"
-
 uptime=$(uptime -p | sed -e 's/up //g')
 
-rofi_command="rofi -theme $dir/$theme"
+rofi_command=(rofi -theme "$dir/$theme")
 
 # Options
-shutdown=""
-reboot=""
-lock=""
-suspend=""
-logout=""
+shutdown=""
+reboot=""
+lock=""
+suspend=""
+logout=""
 
 # Confirmation
 confirm_exit() {
@@ -24,7 +22,7 @@ confirm_exit() {
     -i\
     -no-fixed-num-lines\
     -p "Are You Sure? : "\
-    -theme $dir/confirm.rasi
+    -theme "$dir/confirm.rasi"
 }
 
 # Message
@@ -35,9 +33,9 @@ msg() {
 # Variable passed to rofi
 options="$shutdown\n$reboot\n$lock\n$suspend\n$logout"
 
-chosen="$(echo -e "$options" | $rofi_command -p "Uptime: $uptime" -dmenu -selected-row 2)"
-case $chosen in
-    $shutdown)
+chosen="$(echo -e "$options" | "${rofi_command[@]}" -p "Uptime: $uptime" -dmenu -selected-row 2)"
+case "$chosen" in
+    "$shutdown")
     ans=$(confirm_exit &)
     if [[ $ans == "yes" || $ans == "YES" || $ans == "y" || $ans == "Y" ]]; then
       systemctl poweroff
@@ -47,7 +45,7 @@ case $chosen in
       msg
         fi
         ;;
-    $reboot)
+    "$reboot")
     ans=$(confirm_exit &)
     if [[ $ans == "yes" || $ans == "YES" || $ans == "y" || $ans == "Y" ]]; then
       systemctl reboot
@@ -57,14 +55,14 @@ case $chosen in
       msg
         fi
         ;;
-    $lock)
+    "$lock")
     if [[ -f /usr/bin/i3lock ]]; then
       i3lock -i ~/.i3/lock_screen_conv.png
     elif [[ -f /usr/bin/betterlockscreen ]]; then
       betterlockscreen -l
     fi
         ;;
-    $suspend)
+    "$suspend")
     ans=$(confirm_exit &)
     if [[ $ans == "yes" || $ans == "YES" || $ans == "y" || $ans == "Y" ]]; then
       mpc -q pause
@@ -76,14 +74,14 @@ case $chosen in
       msg
         fi
         ;;
-    $logout)
+    "$logout")
     ans=$(confirm_exit &)
     if [[ $ans == "yes" || $ans == "YES" || $ans == "y" || $ans == "Y" ]]; then
-      if [[ "$DESKTOP_SESSION" == "Openbox" ]]; then
+      if [[ "${DESKTOP_SESSION:-}" == "Openbox" ]]; then
         openbox --exit
-      elif [[ "$DESKTOP_SESSION" == "bspwm" ]]; then
+      elif [[ "${DESKTOP_SESSION:-}" == "bspwm" ]]; then
         bspc quit
-      elif [[ "$DESKTOP_SESSION" == "i3" ]]; then
+      elif [[ "${DESKTOP_SESSION:-}" == "i3" ]]; then
         i3-msg exit
       fi
     elif [[ $ans == "no" || $ans == "NO" || $ans == "n" || $ans == "N" ]]; then

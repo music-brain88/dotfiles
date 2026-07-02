@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# ranger 公式の scope.sh ボイラープレート — upstream との diff を最小にするため
+# 未使用変数 (SC2034) と到達不能コード (SC2317) の指摘はファイル単位で抑制する
+# Vendored ranger boilerplate: suppress unused-var/unreachable findings file-wide
+# to keep the diff against upstream minimal.
+# shellcheck disable=SC2034,SC2317
 
 set -o noclobber -o noglob -o nounset -o pipefail
 IFS=$'\n'
