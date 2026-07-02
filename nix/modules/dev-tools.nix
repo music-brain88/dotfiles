@@ -104,10 +104,10 @@ in
     poppler-utils # pdftotext, pdftoppm, pdfinfo etc.
 
     # Compression tools
+    # gzip is in base.nix
     p7zip # 7-Zip
     zip
     unzip
-    gzip
     bzip2
     xz
 

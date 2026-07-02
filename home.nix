@@ -42,9 +42,6 @@
   xdg.dataHome = "${config.home.homeDirectory}/.local/share";
   xdg.cacheHome = "${config.home.homeDirectory}/.cache";
 
-  # Allow unfree packages (if needed)
-  nixpkgs.config.allowUnfree = true;
-
   # Manage dotfiles with Home Manager
   # Symlinks matching deploy.sh
   home.file = {
