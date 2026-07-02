@@ -67,4 +67,6 @@ run = "docker stop arch && docker rm arch"
 
 [tasks.backup]
 description = "Backup installed Arch Linux packages"
-run = "sudo pacman -Qne > .backup/pacman/pkglist.txt"
+# .backup/ は gitignore 済みのため fresh clone に存在しない → mkdir -p が必須
+# .backup/ is gitignored and absent in fresh clones, so mkdir -p is required
+run = "mkdir -p .backup/pacman && sudo pacman -Qne > .backup/pacman/pkglist.txt"

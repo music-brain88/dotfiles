@@ -88,7 +88,6 @@ dotfiles/
 
 | Directory | Description |
 |-----------|-------------|
-| `rofi/` | Rofi ランチャー設定 |
 | `wofi/` | Wofi ランチャー設定 (Wayland) |
 
 ### Version Control

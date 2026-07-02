@@ -107,12 +107,6 @@
       recursive = true;
     };
 
-    # Rofi config
-    ".config/rofi" = {
-      source = ./.config/rofi;
-      recursive = true;
-    };
-
     # Wofi config
     ".config/wofi" = {
       source = ./.config/wofi;

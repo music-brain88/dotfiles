@@ -74,7 +74,6 @@ jobs:
         with:
           args: >-
             --no-progress
-            --exclude-path polybar-themes
             --exclude-path result
             --exclude '^https://nixos\.org'
             '**/*.md'

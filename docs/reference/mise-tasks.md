@@ -46,7 +46,7 @@ mise タスクではないが、あわせてよく使うNix関連コマンド:
 
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
-| `mise run backup` | Arch Linux パッケージリストをバックアップ | `sudo pacman -Qne > .backup/pacman/pkglist.txt` |
+| `mise run backup` | Arch Linux パッケージリストをバックアップ (`.backup/` は gitignore 対象・ローカル用) | `mkdir -p .backup/pacman && sudo pacman -Qne > .backup/pacman/pkglist.txt` |
 
 mise タスクではないが、あわせてよく使うコマンド:
 
