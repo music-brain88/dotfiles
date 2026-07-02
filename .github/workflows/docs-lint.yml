@@ -25,6 +25,10 @@ jobs:
       # headings in this repo (e.g. "## Quick Start / クイックスタート")
       # produce GitHub-slugified anchors that can shift when a heading
       # moves to a new file — anchor links must still be checked by hand.
+      # nixos.org は DDoS 対策で GitHub ランナーの IP を遮断することがあり、
+      # リンクが生きていても Connection failed になるため除外する。
+      # nixos.org intermittently blocks GitHub runner IPs (DDoS protection),
+      # so valid links fail with "Connection failed" — exclude the domain.
       - name: Link Checker
         uses: lycheeverse/lychee-action@v2
         with:
@@ -32,5 +36,6 @@ jobs:
             --no-progress
             --exclude-path polybar-themes
             --exclude-path result
+            --exclude '^https://nixos\.org'
             '**/*.md'
           fail: true
