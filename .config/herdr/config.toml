@@ -1,0 +1,24 @@
+# herdr configuration — tmux から移行 (keybind は旧 tmux.conf を踏襲)
+# Migrated from tmux; keybindings follow the previous tmux.conf.
+#
+# 以下は herdr デフォルトのまま使用 (旧 tmux 設定と一致 or 標準採用):
+# The following stay on herdr defaults (already matching tmux, or adopted as-is):
+#   focus_pane_*     = prefix+h/j/k/l   (tmux と同じ / same as tmux)
+#   split_horizontal = prefix+minus     (tmux と同じ / same as tmux)
+#   copy_mode        = prefix+[  (vi 風 v/y / vi-style v and y)
+#   zoom             = prefix+z
+#   resize_mode      = prefix+r  (モード内 h/j/k/l でリサイズ / resize with h/j/k/l)
+#   reload_config    = prefix+shift+r
+
+[terminal]
+default_shell = "fish"
+
+[ui]
+# 移行前にローカルで設定済みだった値を引き継ぎ / carried over from the pre-migration local config
+agent_panel_sort = "spaces"
+
+[keys]
+prefix = "ctrl+g"                             # tmux: set-option -g prefix C-g
+split_vertical = ["prefix+v", "prefix+|"]     # tmux: bind | split-window -h
+next_tab = ["prefix+n", "prefix+ctrl+l"]      # tmux: bind -r C-l select-window -t :+
+previous_tab = ["prefix+p", "prefix+ctrl+h"]  # tmux: bind -r C-h select-window -t :-

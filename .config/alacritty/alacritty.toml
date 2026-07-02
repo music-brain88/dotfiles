@@ -87,7 +87,9 @@ key = "N"
 mods = "Control|Shift"
 
 [terminal.shell]
-args = ["--login", "--command", "tmux attach || tmux"]
+# herdr は既存セッションへ自動アタッチするため attach || new の分岐は不要
+# herdr auto-attaches to an existing session, no attach-or-new branching needed
+args = ["--login", "--command", "herdr"]
 program = "/usr/bin/fish"
 
 [window]

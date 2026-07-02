@@ -18,7 +18,8 @@
     ./nix/modules/rust-tools.nix
     ./nix/modules/shell.nix
     ./nix/modules/git.nix
-    ./nix/modules/tmux.nix
+    ./nix/modules/tmux.nix # 併存期間中: herdr 移行完了後に削除予定 / kept during herdr migration
+    ./nix/modules/herdr.nix
     ./nix/modules/neovim.nix
     ./nix/modules/dev-tools.nix
     ./nix/modules/fonts.nix
