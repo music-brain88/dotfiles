@@ -15,6 +15,14 @@ on:
     - cron: '0 3 * * 1' # 毎週月曜 03:00 UTC (12:00 JST) / weekly on Monday
   workflow_dispatch: # 手動実行 / manual trigger
 
+# 多重実行防止: schedule と手動実行が重なっても、同じ update ブランチへの
+# push が競合しないよう常に1つだけ走らせる (実行中があれば待機)
+# Prevent overlapping runs (schedule + manual) from racing on the same
+# update branch; queue instead of cancelling.
+concurrency:
+  group: update-flake-lock
+  cancel-in-progress: false
+
 jobs:
   update-flake-lock:
     runs-on: ubuntu-latest
@@ -33,6 +41,11 @@ jobs:
       - name: Update flake.lock
         uses: DeterminateSystems/update-flake-lock@834c491b2ece4de0bbd00d85214bb5e83b4da5c6 # v28
         with:
+          # PAT (secrets.FLAKE_UPDATE_TOKEN) を設定すると作成された PR で CI が自動起動する。
+          # 未設定なら github.token にフォールバック (ヘッダー記載のとおり CI は手動起動)。
+          # With a PAT in secrets.FLAKE_UPDATE_TOKEN the created PR triggers CI
+          # automatically; falls back to github.token otherwise (manual CI kick).
+          token: ${{ secrets.FLAKE_UPDATE_TOKEN || github.token }}
           pr-title: 'build(nix): flake.lock を更新'
           commit-msg: 'build(nix): flake.lock を更新'
           pr-labels: |
