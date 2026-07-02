@@ -43,8 +43,12 @@ herdr worktree create --cwd <repo-root> --branch <branch-name> --base main --foc
 タスク内容が具体的な場合、新しい workspace でエージェントを起動してタスクを渡す:
 
 ```bash
-herdr agent start claude --workspace <workspace-id> --focus -- claude "<タスクの説明>"
+herdr agent start claude-<branch-name 由来のユニーク名> --workspace <workspace-id> --cwd <worktree-path> --focus -- claude "<タスクの説明>"
 ```
+
+- `--cwd` は必須。省略すると呼び出し元シェルの cwd（リポジトリ本体）を引き継ぎ、worktree 外で作業が始まってしまう
+- エージェント名はセッション全体でユニーク制約があるため、固定名 `claude` ではなくブランチ名由来の名前にする
+- 変換ルール: ブランチ名から prefix（`fix/` 等）を除き、`_` と `/` を `-` に置換して `claude-` を前置する（例: `fix/wt_agent_start_options` → `claude-wt-agent-start-options`）
 
 タスクが曖昧な場合は起動せず、workspace の準備完了だけ報告して終わる。
 
