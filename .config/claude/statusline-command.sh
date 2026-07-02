@@ -36,6 +36,8 @@ username=$(whoami)
 hostname=$(hostname -s 2>/dev/null || hostname)
 
 # Get directory (show relative to project if in project, otherwise show ~)
+# NOTE: 置換側の \~ は必須 — 素の ~ だとチルダ展開されて $HOME に戻ってしまう
+# The backslash in the replacement is required: a bare ~ tilde-expands back to $HOME
 if [ -n "$project_dir" ] && [ "$current_dir" != "$project_dir" ]; then
     display_dir="${current_dir#"$project_dir"/}"
     if [ "$display_dir" = "$current_dir" ]; then

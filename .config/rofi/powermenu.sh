@@ -10,11 +10,11 @@ uptime=$(uptime -p | sed -e 's/up //g')
 rofi_command=(rofi -theme "$dir/$theme")
 
 # Options
-shutdown=""
-reboot=""
-lock=""
-suspend=""
-logout=""
+shutdown=""
+reboot=""
+lock=""
+suspend=""
+logout=""
 
 # Confirmation
 confirm_exit() {
@@ -35,6 +35,11 @@ options="$shutdown\n$reboot\n$lock\n$suspend\n$logout"
 
 chosen="$(echo -e "$options" | "${rofi_command[@]}" -p "Uptime: $uptime" -dmenu -selected-row 2)"
 case "$chosen" in
+    "")
+        # 選択なし (Esc等) は何もせず終了 — 空文字が他パターンに誤マッチするのを防ぐ
+        # No selection (e.g. Esc): exit so an empty string never matches a menu entry
+        exit 0
+        ;;
     "$shutdown")
     ans=$(confirm_exit &)
     if [[ $ans == "yes" || $ans == "YES" || $ans == "y" || $ans == "Y" ]]; then
