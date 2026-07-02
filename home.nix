@@ -66,6 +66,13 @@
       executable = true;
     };
 
+    # mise global config (tools available outside project dirs, e.g. claude via node)
+    # mise グローバル設定（プロジェクト外でも使うツール。claude は node 経由）
+    ".config/mise" = {
+      source = ./.config/mise;
+      recursive = true;
+    };
+
     # GitHub Copilot CLI (uses ~/.copilot/)
     # NOTE: config.json is seeded via activation script (Copilot CLI writes to it dynamically)
     ".copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
