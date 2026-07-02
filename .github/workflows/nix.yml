@@ -37,11 +37,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # SHA pin: supply-chain 対策で mutable な @main を使わない (コメントは対応する tag)
+      # SHA-pinned to avoid mutable @main refs; trailing comment shows the tag
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
       - name: Setup Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
+        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
         with:
           use-flakehub: false
 
@@ -116,7 +118,7 @@ jobs:
 
       # Always install Nix to ensure profiles are created correctly
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
