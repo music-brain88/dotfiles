@@ -45,7 +45,9 @@ in
     kubectl # Kubernetes CLI
     k9s # Kubernetes TUI
     helm # Kubernetes package manager
-    terraform # Infrastructure as code
+    # NOTE: terraform は unfree (BUSL) でバイナリキャッシュに乗らないため OpenTofu を使用（コマンド名は tofu）
+    # terraform is unfree (BUSL) and never cached by Hydra; use OpenTofu instead (command: tofu)
+    opentofu # Infrastructure as code (Terraform-compatible)
     ansible # Configuration management
 
     # Database tools
