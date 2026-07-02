@@ -7,7 +7,7 @@ repo = 'Shougo/ddc-ui-native'
 [[plugins]]
 repo = 'Shougo/ddc.vim'
 on_event = 'InsertEnter'
-depends = ['denops.vim', 'pum.vim', 'ddc-ui-native', 'copilot.vim', 'neosnippet.vim']
+depends = ['denops.vim', 'pum.vim', 'ddc-ui-native', 'copilot.vim']
 hook_add = '''
 " Copilot
 " <A-[>: previous completion.
@@ -17,7 +17,7 @@ inoremap <A-]> <Plug>(copilot-next)
 hook_source = '''
   let g:copilot_no_maps = v:true
   call ddc#custom#patch_global('ui', 'native')
-  call ddc#custom#patch_global('sources', ['lsp' ,'around', 'file', 'copilot', 'neosnippet', 'cmdline', 'cmdline-history'])
+  call ddc#custom#patch_global('sources', ['lsp' ,'around', 'file', 'copilot', 'vsnip', 'cmdline', 'cmdline-history'])
   call ddc#custom#patch_global('sourceOptions', #{
         \   _:#{
         \   matchers: ['matcher_fuzzy'],
@@ -32,7 +32,7 @@ hook_source = '''
         \   around:#{
         \   mark: ' Text',
         \  },
-        \   nvim-lsp:#{
+        \   lsp:#{
         \   mark: ' LSP',
         \   dup: 'keep',
         \   keywordPattern: '\k+',
@@ -43,7 +43,7 @@ hook_source = '''
         \   isVolatile: v:true,
         \   forceCompletionPattern: '\S/\S*',
         \  },
-        \   neosnippet: #{
+        \   vsnip: #{
         \   mark: ' Snippet',
         \   dup: v:true,
         \   },
@@ -56,7 +56,7 @@ hook_source = '''
         \ })
 
 " Customize settings for specific filetypes
-call ddc#custom#patch_filetype(['rs', 'toml', 'py'], 'sources', ['lsp', 'around', 'file', 'neosnippet', 'copilot'])
+call ddc#custom#patch_filetype(['rs', 'toml', 'py'], 'sources', ['lsp', 'around', 'file', 'vsnip', 'copilot'])
 call ddc#custom#patch_filetype('markdown', 'sourceParams', #{
 \   around: #{
 \     maxSize: 100,
@@ -94,6 +94,12 @@ on_source = 'ddc.vim'
 
 [[plugins]]
 repo = 'Shougo/ddc-source-lsp'
+on_source = 'ddc.vim'
+
+# vsnip のスニペットを ddc の補完候補に出す (neosnippet source の後継)
+# Surfaces vsnip/friendly-snippets as ddc completion candidates
+[[plugins]]
+repo = 'uga-rosa/ddc-source-vsnip'
 on_source = 'ddc.vim'
 
 [[plugins]]
@@ -140,25 +146,6 @@ repo = 'hrsh7th/vim-vsnip-integ'
 
 [[plugins]]
 repo = 'rafamadriz/friendly-snippets'
-
-[[plugins]]
-repo = 'Shougo/neosnippet.vim'
-rev = 'master'
-on_event = 'InsertEnter'
-depends = ['neosnippet-snippets']
-hook_source = '''
-  imap <C-k>     <Plug>(neosnippet_expand_or_jump)
-  smap <C-k>     <Plug>(neosnippet_expand_or_jump)
-  xmap <C-k>     <Plug>(neosnippet_expand_target)
-  let g:neosnippet#enable_completed_snippet = 1
-  let g:neosnippet#enable_snipmate_compatibility = 1
-
-  let g:neosnippet#snippets_directory = '~/.cache/dein/repos/github.com/Shougo/neosnippet-snippets/neosnippets'
-'''
-
-[[plugins]]
-repo = 'Shougo/neosnippet-snippets'
-rev = 'master'
 #-----------------------------------------------------------------------
 # end of ddc settings
 #-----------------------------------------------------------------------
