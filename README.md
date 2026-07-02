@@ -22,8 +22,8 @@ Nix + Home Manager + mise を使用した、宣言的でモダンな開発環境
 | Shell | Fish + Starship |
 | Terminal | Alacritty |
 | Multiplexer | Tmux |
-| Window Manager | Hyprland (Wayland), i3 (X11) |
-| Status Bar | Waybar (Wayland), Polybar (X11) |
+| Window Manager | Hyprland (Wayland) |
+| Status Bar | Waybar (Wayland) |
 | CLI Tools | Rust-based (eza, ripgrep, fd, bat, delta, etc.) |
 | Package Manager | Nix + Home Manager |
 | Task Runner | mise |

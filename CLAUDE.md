@@ -13,7 +13,7 @@ All tasks are defined in `.mise.toml`. Run `mise tasks` to see available command
 Full design rationale: [docs/explanation/architecture.md](docs/explanation/architecture.md). CI/CD details: [docs/reference/ci-cd-pipeline.md](docs/reference/ci-cd-pipeline.md), evolution/lessons learned: [docs/explanation/cicd-evolution.md](docs/explanation/cicd-evolution.md).
 
 ## Repository Structure
-`.config/` holds native per-tool configs (bash, fish, git, tmux, nvim, hypr, i3, waybar, polybar, alacritty, x11), symlinked in by Nix. `flake.nix` + `home.nix` + `nix/modules/*.nix` define the Nix side. `.mise.toml` defines task runner commands. `llm/` holds AI context/personality files. `polybar-themes/` is a submodule.
+`.config/` holds native per-tool configs (bash, fish, git, tmux, nvim, hypr, waybar, alacritty), symlinked in by Nix. `flake.nix` + `home.nix` + `nix/modules/*.nix` define the Nix side. `.mise.toml` defines task runner commands. `llm/` holds AI context/personality files.
 
 Full breakdown: [docs/reference/directory-structure.md](docs/reference/directory-structure.md).
 

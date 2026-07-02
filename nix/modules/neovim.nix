@@ -65,7 +65,7 @@
 
       # Clipboard support
       wl-clipboard # Wayland
-      xclip # X11
+      xclip # X11 fallback: SSH X-forwarding / WSLg (デスクトップの X11 スタックは撤去済み)
 
       # denops.vim dependencies
       deno
