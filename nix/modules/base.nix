@@ -7,13 +7,13 @@
   # git: git.nix
   # cmake, gnumake: dev-tools.nix
   # htop: dev-tools.nix
+  # pkg-config: rust-tools.nix (paired with openssl.dev for native crates)
   home.packages = with pkgs; [
     # Core utilities (not duplicated elsewhere)
     gnutar
     gzip
 
-    # Build tools (pkg-config, protobuf not in other modules)
-    pkg-config
+    # Build tools (protobuf not in other modules)
     protobuf
 
     # Notification system

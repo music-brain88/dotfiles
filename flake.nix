@@ -9,12 +9,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Neovim plugins and ecosystem
-    neovim-nightly-overlay = {
-      url = "github:nix-community/neovim-nightly-overlay";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     # herdr 用の新しめ nixpkgs: メインの locked nixpkgs には herdr が未収録。
     # 全体を update せず、この input だけで herdr を供給する (バイナリキャッシュ有効)。
     # Newer nixpkgs pin for herdr only: the main locked nixpkgs predates herdr.
@@ -22,15 +16,13 @@
     nixpkgs-herdr.url = "github:nixos/nixpkgs/nixos-unstable";
   };
 
-  outputs = { self, nixpkgs, home-manager, neovim-nightly-overlay, ... }@inputs:
+  outputs = { self, nixpkgs, home-manager, ... }@inputs:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
         overlays = [
-          # neovim-nightly-overlay disabled: waiting for upstream fix for nixpkgs lua argument removal
-          # neovim-nightly-overlay.overlays.default
           # Bump github-copilot-cli to latest release (nixpkgs lags behind npm)
           (final: prev: {
             github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old:
