@@ -19,13 +19,13 @@ function main() {
   if [[ $# -eq 0 ]]; then
     print_keys
   elif [[ $# -eq 1 ]]; then
-    echo $1 ${no}
-    echo $1 ${yes}
-  elif [[ $2 == ${yes} ]]; then
+    echo "$1" "${no}"
+    echo "$1" "${yes}"
+  elif [[ $2 == "${yes}" ]]; then
     eval "${menu[$1]}"
-  elif [[ $2 == ${no} ]]; then
+  elif [[ $2 == "${no}" ]]; then
     print_keys
   fi
 }
 
-main $@
+main "$@"

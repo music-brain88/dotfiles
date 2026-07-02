@@ -37,6 +37,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # shellcheck は ubuntu-latest にプリインストール済み
+      # vendored テーマ (.config/polybar/) は upstream との diff を避けるため除外
+      # shellcheck is preinstalled on ubuntu-latest runners;
+      # vendored theme scripts under .config/polybar/ are excluded.
+      - name: Shellcheck
+        run: |
+          git ls-files '*.sh' ':!.config/polybar/**' | xargs --no-run-if-empty shellcheck
+
       # SHA pin: supply-chain 対策で mutable な @main を使わない (コメントは対応する tag)
       # SHA-pinned to avoid mutable @main refs; trailing comment shows the tag
       - name: Install Nix
