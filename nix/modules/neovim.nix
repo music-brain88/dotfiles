@@ -56,7 +56,7 @@
 
       # Additional tools (not duplicated - others come from specialized modules)
       # ripgrep, fd: rust-tools.nix
-      # fzf, gnumake, unzip, nodejs_20: dev-tools.nix
+      # fzf, gnumake, unzip, nodejs: dev-tools.nix
       # git: git.nix
       gcc # Compiler for some plugins
 

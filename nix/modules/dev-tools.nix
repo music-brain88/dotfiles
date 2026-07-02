@@ -56,8 +56,12 @@ in
     sqlite # SQLite
 
     # Language runtimes
-    nodejs_20 # Node.js
-    python311 # Python 3.11
+    # 方針: Nix はベースライン提供のみ (バージョン指名しない = バイナリキャッシュに乗る)。
+    # プロジェクトごとのバージョン固定は mise (各リポジトリの .mise.toml) で行う。
+    # Policy: Nix provides baseline runtimes only (unpinned = cached by Hydra);
+    # per-project versions are pinned via mise (.mise.toml in each repo).
+    nodejs # Node.js
+    python3 # Python
     go # Go language
     ruby # Ruby
     php # PHP
@@ -140,16 +144,13 @@ in
 
   # Mise (formerly rtx) - polyglot runtime manager
   # Replaces Volta for Node.js version management
+  # NOTE: globalConfig でツールを指定しない — バージョンの source of truth は
+  # 各プロジェクトの .mise.toml (ベースラインは上記 Language runtimes の Nix 側)
+  # No globalConfig tools here: per-project .mise.toml is the source of truth
+  # (baseline runtimes come from Nix above).
   programs.mise = {
     enable = true;
     enableFishIntegration = true;
-
-    globalConfig = {
-      tools = {
-        node = "lts";
-        python = "3.11";
-      };
-    };
   };
 
   # Zoxide - smarter cd command (alternative to z)

@@ -109,6 +109,20 @@ home.file.".config/fish/config.fish".source = ../../.config/fish/config.fish;
 - 設定ファイルの中身
 - プラグインの設定（Neovimのdein.vim等）
 
+### 言語ランタイムのバージョン方針 / Language Runtime Version Policy
+
+Python / Node などの言語ランタイムは、NixとmiseのW管理にならないよう役割を分担する：
+
+| 担当 | 役割 | 例 |
+|------|------|-----|
+| **Nix** | ベースライン提供（バージョン指名しない） | `python3`, `nodejs`（`nix/modules/dev-tools.nix`） |
+| **mise** | プロジェクトごとのバージョン固定 | 各リポジトリの `.mise.toml`（例: `node = "22.15.1"`） |
+
+- Nix側でバージョンを指名しない理由: デフォルト版はHydraのバイナリキャッシュに乗るが、指名するとソースビルドに落ちやすい（`nix/modules/neovim.nix` のpython3コメント参照）
+- miseの `globalConfig` にツールを書かない理由: source of truth を各プロジェクトの `.mise.toml` に一本化するため
+
+Nix provides unpinned baseline runtimes (binary-cache friendly); mise pins versions per project via each repo's `.mise.toml`. No global mise tools, so there is exactly one source of truth per project.
+
 ### なぜこのアプローチ？
 
 #### 1. ツールごとに設定形式が異なる
