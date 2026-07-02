@@ -1,0 +1,5 @@
+# mise global config / mise グローバル設定
+# Tools available in every directory (claude is installed as an npm global under this node)
+# 全ディレクトリで有効なツール（claude はこの node 配下の npm グローバルとしてインストールされる）
+[tools]
+node = "22.15.1"
