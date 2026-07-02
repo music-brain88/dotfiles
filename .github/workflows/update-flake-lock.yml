@@ -1,0 +1,39 @@
+name: Update flake.lock
+
+# flake inputs (nixpkgs, home-manager 等) を定期的に更新して PR を自動作成する。
+# nix.yml の CI (flake check + Docker 内での build & activate) が更新の安全網になる。
+# Periodically bump flake inputs and open a PR; nix.yml CI (flake check +
+# build & activate inside the Arch container) acts as the safety net.
+#
+# NOTE: GITHUB_TOKEN が作成した PR には CI が自動で走らない (GitHub の仕様)。
+# CI を走らせるには PR を close/reopen するか、ブランチに空 push する。
+# PRs created with GITHUB_TOKEN do not trigger workflows; close/reopen the PR
+# (or push to its branch) to kick off CI.
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # 毎週月曜 03:00 UTC (12:00 JST) / weekly on Monday
+  workflow_dispatch: # 手動実行 / manual trigger
+
+jobs:
+  update-flake-lock:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # SHA pin: supply-chain 対策で mutable な @main を使わない (コメントは対応する tag)
+      # SHA-pinned to avoid mutable @main refs; trailing comment shows the tag
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Update flake.lock
+        uses: DeterminateSystems/update-flake-lock@834c491b2ece4de0bbd00d85214bb5e83b4da5c6 # v28
+        with:
+          pr-title: 'build(nix): flake.lock を更新'
+          commit-msg: 'build(nix): flake.lock を更新'
+          pr-labels: |
+            nix
