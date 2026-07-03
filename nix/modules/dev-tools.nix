@@ -115,6 +115,9 @@ in
     bzip2
     xz
 
+    # Formal methods
+    tlaplus18 # TLA+ model checker (TLC) v1.8
+
     # Misc utilities
     screen # Terminal multiplexer
     direnv # Directory-based environment management
