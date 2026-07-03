@@ -43,7 +43,10 @@ herdr worktree create --cwd <repo-root> --branch <branch-name> --base main --foc
 タスク内容が具体的な場合、新しい workspace でエージェントを起動してタスクを渡す:
 
 ```bash
-herdr agent start claude-<branch-name 由来のユニーク名> --workspace <workspace-id> --cwd <worktree-path> --split down --focus -- claude --model claude-sonnet-5 --effort <effort> "<作業指示プロンプト>"
+herdr agent start claude-<branch-name 由来のユニーク名> --workspace <workspace-id> --cwd <worktree-path> --split down --focus -- claude --model claude-sonnet-5 --effort <effort> "$(cat <<'PROMPT'
+<作業指示プロンプト（複数行可）>
+PROMPT
+)"
 ```
 
 - `--cwd` は必須。省略すると呼び出し元シェルの cwd（リポジトリ本体）を引き継ぎ、worktree 外で作業が始まってしまう
