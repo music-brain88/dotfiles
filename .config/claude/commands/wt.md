@@ -43,8 +43,9 @@ herdr worktree create --cwd <repo-root> --branch <branch-name> --base main --foc
 worktree 作成直後に以下を行う:
 
 - `mise trust <worktree-path>` を実行する（mise trust は絶対パス単位で管理されるため、新規 worktree は毎回 untrusted で始まる。忘れると `mise run` が「no tasks defined」で失敗する — #335）
-- allowlist を配置する: `mkdir -p <worktree-path>/.claude && cp <repo-root>/.config/claude/templates/wt-settings.local.json <worktree-path>/.claude/settings.local.json`
-  - 定型で安全な操作（`git`・`gh`・`mise`・`herdr` の実行、司令塔がタスク指示を置くスクラッチパッドの読み取り）を宣言的に許可し、作業者の permission 往復（A類）を設計で消す
+- allowlist を配置する: `mkdir -p <worktree-path>/.claude && cp ~/.claude/templates/wt-settings.local.json <worktree-path>/.claude/settings.local.json`
+  - コピー元は `<repo-root>/.config/claude/templates/...` ではなく `~/.claude/templates/...` を使う。`~/.claude` は Home Manager でこの dotfiles リポジトリの `.config/claude` に directory-wide symlink されているため常に存在するが、`<repo-root>` は `/wt` を呼び出した対象リポジトリ次第で変わり、dotfiles 以外のリポジトリではこのテンプレートを含まない
+  - 定型で安全な操作（`git`・`gh`・`mise`・`herdr` の一部サブコマンド、司令塔がタスク指示を置くスクラッチパッドの読み取り）を宣言的に許可し、作業者の permission 往復（A類）を設計で消す。詳細は allowlist テンプレート本体を参照
 
 ### 4. エージェントの起動（任意）
 
