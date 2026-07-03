@@ -38,12 +38,22 @@ herdr worktree create --cwd <repo-root> --branch <branch-name> --base main --foc
 - ベースブランチはデフォルト `main`。ユーザーが入力内で別のベースを指定した場合はそれに従う
 - 作成結果（worktree のパス、workspace ID）をユーザーに報告する
 
+#### worktree の準備
+
+worktree 作成直後に以下を行う:
+
+- `mise trust <worktree-path>` を実行する（mise trust は絶対パス単位で管理されるため、新規 worktree は毎回 untrusted で始まる。忘れると `mise run` が「no tasks defined」で失敗する — #335）
+- allowlist を配置する: `mkdir -p <worktree-path>/.claude && cp ~/.claude/templates/wt-settings.local.json <worktree-path>/.claude/settings.local.json`
+  - コピー元は `<repo-root>/.config/claude/templates/...` ではなく `~/.claude/templates/...` を使う。`<repo-root>` は `/wt` を呼び出した対象リポジトリ次第で変わり、dotfiles 以外のリポジトリではこのテンプレートを含まないため
+  - `~/.claude` への反映は home-manager 経由(`home.nix` の `home.file ".claude".source = ./.config/claude`)で、`mise run nix:switch` 実行時に `/nix/store` スナップショットへの per-file symlink が生成される方式。テンプレートを追加・変更したら `mise run nix:switch` を実行しないと `~/.claude/templates/` に反映されない。`cp` が `No such file or directory` で失敗したら、まず nix:switch 漏れを疑う
+  - 定型で安全な操作（`git`・`gh`・`mise`・`herdr` の一部サブコマンド、司令塔がタスク指示を置くスクラッチパッドの読み取り）を宣言的に許可し、作業者の permission 往復（A類）を設計で消す。詳細は allowlist テンプレート本体を参照
+
 ### 4. エージェントの起動（任意）
 
 タスク内容が具体的な場合、新しい workspace でエージェントを起動してタスクを渡す:
 
 ```bash
-herdr agent start claude-<branch-name 由来のユニーク名> --workspace <workspace-id> --cwd <worktree-path> --split down --focus -- claude --model claude-sonnet-5 --effort <effort> "$(cat <<'PROMPT'
+herdr agent start claude-<branch-name 由来のユニーク名> --workspace <workspace-id> --cwd <worktree-path> --split down --focus -- claude --model claude-sonnet-5 --effort <effort> --permission-mode auto "$(cat <<'PROMPT'
 <作業指示プロンプト（複数行可）>
 PROMPT
 )"
@@ -54,6 +64,9 @@ PROMPT
 - エージェント名はセッション全体でユニーク制約があるため、固定名 `claude` ではなくブランチ名由来の名前にする
 - 変換ルール: ブランチ名から prefix（`fix/` 等）を除き、`_` と `/` を `-` に置換して `claude-` を前置する（例: `fix/wt_agent_start_options` → `claude-wt-agent-start-options`）
 - 作業者モデルはデフォルト `claude-sonnet-5`（司令塔=メインセッションが計画とレビュー、作業者が実装を担う分業）。ユーザーが入力内で別モデルを指定した場合はそれに従う
+- `--permission-mode auto` で起動する。定型操作は自動承認され、判断が必要な操作だけが blocked として表面化する（`--dangerously-skip-permissions` は使わない — 監督を全て外すのではなく、エスカレーションのレーンを残すのが目的）
+- それでも blocked が発生した場合、司令塔は代理承認できない（Claude Code が禁止している）。司令塔の責務は「即検知して人間に知らせる」まで（#332 の対話プロトコル参照）
+- auto mode での起動自体がハーネス（auto mode 分類器）に「ユーザーの明示許可がない」として拒否されることがある。その場合は AskUserQuestion 等でユーザーに auto mode 起動の許可を明示的に確認してから再実行する
 
 タスクが曖昧な場合は起動せず、workspace の準備完了だけ報告して終わる。
 
