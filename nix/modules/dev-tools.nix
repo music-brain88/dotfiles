@@ -117,6 +117,7 @@ in
 
     # Formal methods
     tlaplus18 # TLA+ model checker (TLC) v1.8
+    z3 # SMT solver — 純述語・設定系の検証用（python バインディング z3-solver は各プロジェクトの venv/uv 側で入れる方針）
 
     # Misc utilities
     screen # Terminal multiplexer
