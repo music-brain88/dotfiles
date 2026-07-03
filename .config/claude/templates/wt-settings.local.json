@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(mise *)",
+      "Bash(herdr *)",
+      "Read(//tmp/claude-*/**)"
+    ]
+  }
+}
