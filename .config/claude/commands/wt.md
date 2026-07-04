@@ -134,18 +134,28 @@ herdr pane send-keys <pane-id> Enter
 
 ```bash
 # gotcha: 対象が既に指定ステータスだと即座に解決してしまうため、working に遷移済みか確認してから仕掛ける
-herdr agent get <agent-name>
+AGENT_NAME=<agent-name>
+herdr agent get "$AGENT_NAME"
 
-herdr agent wait <agent-name> --status blocked > /tmp/wait-blocked.json 2>&1 &
+herdr agent wait "$AGENT_NAME" --status blocked > "/tmp/wait-blocked-${AGENT_NAME}.json" 2>&1 &
 BLOCKED_PID=$!
-herdr agent wait <agent-name> --status idle > /tmp/wait-idle.json 2>&1 &
+herdr agent wait "$AGENT_NAME" --status idle > "/tmp/wait-idle-${AGENT_NAME}.json" 2>&1 &
 IDLE_PID=$!
 
 wait -n "$BLOCKED_PID" "$IDLE_PID"
-kill "$BLOCKED_PID" "$IDLE_PID" 2>/dev/null
+
+# 生き残っている方が「発火しなかった側」。kill -0 で存否確認してから判別する
+if kill -0 "$BLOCKED_PID" 2>/dev/null; then
+  FIRED_STATUS=idle
+  kill "$BLOCKED_PID" 2>/dev/null
+else
+  FIRED_STATUS=blocked
+  kill "$IDLE_PID" 2>/dev/null
+fi
 ```
 
-- `wait -n` は bash 組み込みで、バックグラウンドの2ジョブのうち先に終了した方を検知する。発火したら `herdr agent read <agent-name> --source recent --lines 50` で状況を読み、`blocked` ならユーザーに承認を仰ぎ、`idle` なら完了報告を確認する
+- ログファイル名には `<agent-name>` を含める。複数 worktree を並行監視しているときに固定ファイル名だと内容が上書きされてしまうため
+- `wait -n` は bash 組み込みで、バックグラウンドの2ジョブのうち先に終了した方を検知する。ただし `wait -n` 自身はどちらが終了したかを返さないため、直後に `kill -0 "$BLOCKED_PID"`(シグナルを送らず存否だけ確認する)で生死を見て、生きている方=発火しなかった方、と判別してから後処理する。判別できたら `$FIRED_STATUS` を見て、`blocked` ならユーザーに承認を仰ぎ、`idle` なら `herdr agent read "$AGENT_NAME" --source recent --lines 50` で完了報告を確認する。まだ生きている側の wait は用済みなので kill で片付ける
 - `<agent-name>` は手順4でエージェントに付けたユニーク名。`herdr agent wait` / `herdr agent read` は pane-id ではなく agent 名を直接ターゲットにできるため、監視中に pane-id を引き直す必要がない
 - 定期ポーリング（`herdr pane list` 等を一定間隔で呼び続けるループ）は禁止。コストが高いうえ、このプロトコルが解消したいアンチパターンそのもの
 - gotcha（実機確認済み）: `herdr agent wait` は対象が**既に**指定ステータスだと即座に解決する。作業者がまだ `working` に遷移していない段階で `idle` 待ちを仕掛けると、起動直後の未初期化状態を完了と誤検知しかねない
