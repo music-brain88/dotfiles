@@ -209,8 +209,8 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 | `Super + →` | Focus right | 右のウィンドウにフォーカス |
 | `Super + ↑` | Focus up | 上のウィンドウにフォーカス |
 | `Super + ↓` | Focus down | 下のウィンドウにフォーカス |
-| `Alt + Tab` | Window switcher | ウィンドウ切り替え |
-| `Alt + Shift + Tab` | Window switcher (reverse) | ウィンドウ切り替え（逆順） |
+| `Alt + Tab` | Cycle windows in current workspace | 現在のワークスペース内でウィンドウ切り替え |
+| `Alt + Shift + Tab` | Cycle windows in current workspace (reverse) | 現在のワークスペース内でウィンドウ切り替え（逆順） |
 
 ### Window Movement
 
