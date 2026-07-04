@@ -239,7 +239,7 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
-| `Super + 1-9, 0` | Switch to workspace 1-10 | ワークスペース1-10に移動 |
+| `Super + 1-9, 0` | Switch to workspace 1-10 (press same number again to go back) | ワークスペース1-10に移動（同じ番号を再度押すと直前のワークスペースに戻る） |
 | `Super + Shift + 1-9, 0` | Move window to workspace 1-10 | ウィンドウをワークスペース1-10に移動 |
 | `Super + Tab` | Toggle previous workspace | 直前のワークスペースとトグル |
 | `Super + S` | Toggle special workspace | スクラッチパッドの表示/非表示 |
