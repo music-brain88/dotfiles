@@ -127,12 +127,6 @@
       recursive = true;
     };
 
-    # EWW config
-    ".config/eww" = {
-      source = ./.config/eww;
-      recursive = true;
-    };
-
     # ncmpcpp config
     ".config/ncmpcpp" = {
       source = ./.config/ncmpcpp;
