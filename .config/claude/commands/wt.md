@@ -105,10 +105,63 @@ PROMPT
 - 判断に迷う大きな設計変更はせず、迷った点は最終報告に書く
 
 ## 報告
-完了したら、変更ファイル・PR の URL・確認した動作を簡潔にまとめて報告する
+完了したら、変更ファイル・PR の URL・確認した動作を簡潔にまとめて報告する。指示外の気づき（環境の摩擦・想定外の挙動・自分で編み出した回避策）があれば、解決済みであっても必ず報告する（該当なしなら「なし」と明記する）
 ```
 
 背景と完了条件を具体的に書くほど作業品質が安定する。
+
+### 5. 対話プロトコル（委任後の監視と対話）
+
+エージェント起動後、司令塔（このセッション）と作業者エージェントの間のやり取りは、以下の4本柱からなる対話プロトコルとして運用する（設計の背景は #332 参照）。ここでは (1) 下り=指示 と (2) 上り=イベント を扱う。(3) 上り=内容 は上記の作業指示プロンプトの「## 報告」欄、(4) 供養 は `/wtclean` 側で扱う。
+
+#### (1) 下り=指示
+
+委任時の指示は手順4の heredoc テンプレートで渡す。委任後に追加の指示を送りたい場合は、pane へのテキスト送信と Enter 送信を分けた2段で行う:
+
+```bash
+herdr pane send-text <pane-id> "<追加指示のテキスト>"
+herdr pane send-keys <pane-id> Enter
+```
+
+- `pane send-text` は pane の入力欄にテキストを挿入するだけで、送信（実行）はされない。実機確認済み: `send-text` の直後に `pane read` してもコマンドは未実行のまま入力欄に残っており、続けて `pane send-keys <pane-id> Enter` を送って初めて実行される
+- `<pane-id>` は対象エージェント名から `herdr agent list` で引く（`pane_id` フィールド）
+- 宛先を誤ると、無関係な pane やこの司令塔自身の入力欄にテキストが挿入されてしまう（`agent send` / `pane send-text` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない）。実行前に対象の pane-id / agent 名を必ず確認する
+- pane-id はセッション中に compact されうる非永続 ID（詳細は `.config/claude/skills/herdr/SKILL.md` 参照）。長時間の監視をまたぐ場合は都度 `herdr agent list` で引き直し、古い pane-id を使い回さない
+
+#### (2) 上り=イベント
+
+委任直後、作業者の状態が `working` に遷移したことを確認してから、`blocked`（詰まり）と `idle`（完了）の2状態を同時にバックグラウンドで待ち受ける:
+
+```bash
+# gotcha: 対象が既に指定ステータスだと即座に解決してしまうため、working に遷移済みか確認してから仕掛ける
+AGENT_NAME=<agent-name>
+herdr agent get "$AGENT_NAME"
+
+herdr agent wait "$AGENT_NAME" --status blocked > "/tmp/wait-blocked-${AGENT_NAME}.json" 2>&1 &
+BLOCKED_PID=$!
+herdr agent wait "$AGENT_NAME" --status idle > "/tmp/wait-idle-${AGENT_NAME}.json" 2>&1 &
+IDLE_PID=$!
+
+wait -n "$BLOCKED_PID" "$IDLE_PID"
+
+# 生き残っている方が「発火しなかった側」。kill -0 で存否確認してから判別する
+if kill -0 "$BLOCKED_PID" 2>/dev/null; then
+  FIRED_STATUS=idle
+  kill "$BLOCKED_PID" 2>/dev/null
+else
+  FIRED_STATUS=blocked
+  kill "$IDLE_PID" 2>/dev/null
+fi
+```
+
+- ログファイル名には `<agent-name>` を含める。複数 worktree を並行監視しているときに固定ファイル名だと内容が上書きされてしまうため
+- `wait -n` は bash 組み込みで、バックグラウンドの2ジョブのうち先に終了した方を検知する。ただし `wait -n` 自身はどちらが終了したかを返さないため、直後に `kill -0 "$BLOCKED_PID"`(シグナルを送らず存否だけ確認する)で生死を見て、生きている方=発火しなかった方、と判別してから後処理する。判別できたら `$FIRED_STATUS` を見て、`blocked` ならユーザーに承認を仰ぎ、`idle` なら `herdr agent read "$AGENT_NAME" --source recent --lines 50` で完了報告を確認する。まだ生きている側の wait は用済みなので kill で片付ける
+- `<agent-name>` は手順4でエージェントに付けたユニーク名。`herdr agent wait` / `herdr agent read` は pane-id ではなく agent 名を直接ターゲットにできるため、監視中に pane-id を引き直す必要がない
+- 定期ポーリング（`herdr pane list` 等を一定間隔で呼び続けるループ）は禁止。コストが高いうえ、このプロトコルが解消したいアンチパターンそのもの
+- gotcha（実機確認済み）: `herdr agent wait` は対象が**既に**指定ステータスだと即座に解決する。作業者がまだ `working` に遷移していない段階で `idle` 待ちを仕掛けると、起動直後の未初期化状態を完了と誤検知しかねない
+- `--status done` は使わない。`herdr agent wait` に `done` を渡すとエラーになる（実機確認済みのエラーメッセージ: `done is a UI attention state; use idle for CLI agent completion waits`）。`done` は「人間がまだ見ていない完了」を表す UI 向けの状態で、CLI から作業完了を検知するときは `idle` を使う
+- 似た用途で `herdr wait agent-status <pane-id> --status <...|done|...>` というコマンドもあるが、こちらは pane-id が必須かつ `done` を受け付ける UI 向けのコマンド。CLI 主導のこのプロトコルでは agent 名を直接使える `herdr agent wait <agent-name>` を使う
+- `--timeout`（ミリ秒）は省略可能で、省略すると無期限にブロックする（実機確認済み）。バックグラウンドで放置する分には問題ないが、安全弁として妥当な値を指定してもよい。タイムアウトした場合は同じ2つの wait を仕掛け直す（これは定期ポーリングではなく、イベント待ちの再武装）
 
 ## 引数
 
