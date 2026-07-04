@@ -244,6 +244,8 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 | `Super + Tab` | Toggle previous workspace | 直前のワークスペースとトグル |
 | `Super + S` | Toggle special workspace | スクラッチパッドの表示/非表示 |
 | `Super + Alt + S` | Move window to special workspace | ウィンドウをスクラッチパッドへ送る |
+| `Super + O` | Toggle Obsidian drawer (special workspace) | Obsidian引き出しの表示/非表示 |
+| `Super + A` | Toggle Claude Desktop drawer (special workspace) | Claude Desktop引き出しの表示/非表示 |
 
 ### Screenshot
 
