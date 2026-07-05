@@ -11,13 +11,11 @@ set -euo pipefail
 
 mode="${1:-bring}"
 
-clients_json="$(hyprctl clients -j)"
-
 # mapped なウィンドウを「class: title [ws]」の表示行とアドレスのペアで、
 # 同じ並び順の配列に読み込む(タブ区切り、選択後にアドレスへ逆引きするため)
 # Load mapped windows as "display line \t address" pairs in matching order,
 # so the address can be looked back up once wofi returns the chosen line.
-mapfile -t entries < <(echo "$clients_json" | jq -r '
+mapfile -t entries < <(hyprctl clients -j | jq -r '
   .[] | select(.mapped == true) |
   "\(.class): \(.title) [\(.workspace.name)]\t\(.address)"
 ')
@@ -27,11 +25,17 @@ if [ "${#entries[@]}" -eq 0 ]; then
   exit 0
 fi
 
+# 表示行の先頭にインデックスを振る(同名ウィンドウがあっても選択後に
+# インデックスで一意にアドレスへ逆引きできるようにするため)
+# Prefix each display line with its index, so the address lookup after
+# selection is by position rather than by (possibly duplicate) text match.
 displays=()
 addresses=()
+i=0
 for entry in "${entries[@]}"; do
-  displays+=("${entry%$'\t'*}")
+  displays+=("${i}: ${entry%$'\t'*}")
   addresses+=("${entry##*$'\t'}")
+  i=$((i + 1))
 done
 
 selection="$(printf '%s\n' "${displays[@]}" | wofi --dmenu --prompt "Window")"
@@ -39,23 +43,24 @@ selection="$(printf '%s\n' "${displays[@]}" | wofi --dmenu --prompt "Window")"
 # Escape 等で選択なしなら何もしない / no-op when the user cancels the picker
 [ -z "$selection" ] && exit 0
 
-address=""
-for i in "${!displays[@]}"; do
-  if [ "${displays[$i]}" = "$selection" ]; then
-    address="${addresses[$i]}"
-    break
-  fi
-done
+idx="${selection%%:*}"
+address="${addresses[$idx]:-}"
 
 [ -z "$address" ] && exit 0
 
 case "$mode" in
   bring)
-    active_ws="$(hyprctl activeworkspace -j | jq -r '.id')"
+    # special workspace 上から実行される場合もあるため id ではなく name を使う
+    # Use name, not id, since this may run from a (named) special workspace
+    active_ws="$(hyprctl activeworkspace -j | jq -r '.name')"
     hyprctl dispatch movetoworkspacesilent "${active_ws},address:${address}"
     hyprctl dispatch focuswindow "address:${address}"
     ;;
   go)
     hyprctl dispatch focuswindow "address:${address}"
+    ;;
+  *)
+    echo "Unknown mode: ${mode} (expected 'bring' or 'go')" >&2
+    exit 1
     ;;
 esac
