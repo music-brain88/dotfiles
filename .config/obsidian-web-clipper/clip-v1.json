@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "0.1.0",
+  "name": "Clip-v1",
+  "behavior": "create",
+  "noteNameFormat": "Clip-{{date|date:\"YYYYMMDD\"}}-{{title|safe_name}}",
+  "path": "Zettelkasten/LiteratureNotes",
+  "context": "",
+  "properties": [
+    { "name": "date", "value": "{{date|date:\"YYYY-MM-DD\"}}", "type": "date" },
+    { "name": "created", "value": "{{date|date:\"HH:mm\"}}", "type": "text" },
+    { "name": "type", "value": "literature", "type": "text" },
+    { "name": "source", "value": "web-clip", "type": "text" },
+    { "name": "url", "value": "{{url}}", "type": "text" },
+    { "name": "author", "value": "{{author}}", "type": "text" },
+    { "name": "published", "value": "{{published|date:\"YYYY-MM-DD\"}}", "type": "text" },
+    { "name": "read_at", "value": "", "type": "text" },
+    { "name": "status", "value": "unread", "type": "text" },
+    { "name": "distilled_to", "value": "", "type": "multitext" },
+    { "name": "tags", "value": "note-type/literature,source/web,{{date|date:\"YYYY-MM\"}}", "type": "multitext" },
+    { "name": "aliases", "value": "", "type": "multitext" }
+  ],
+  "triggers": [],
+  "noteContentFormat": "# {{title}}\n\n## Why I Clipped\n<!-- なぜ気になった？一言でOK。クリップ時点の「自分の言葉」がここに残る -->\n\n\n## Summary\n<!-- 記事の要点1-3文。クラウディアが補助可（あくまで叩き台） -->\n\n\n## Highlights\n<!-- ブラウザでハイライトすると自動で入る。読みながら追記もOK -->\n{{highlights}}\n\n## My Thoughts\n<!-- 読了後、自分の考え・批評・疑問。ここを書いたら status: read + read_at 記入 -->\n\n\n## Next Action\n<!-- この記事から派生するアクション（調査開始ならResearch Note作成、なければ空でOK） -->\n- [ ] \n\n---\n\n## Distillation\n<!-- 週次レビュー用。Permanent Noteに蒸留したら status: distilled にして\n     distilled_to にリンクを追加。蒸留対象でなければ read のままでOK -->\n\n### What I Really Understood\n<!-- 記事の要約じゃなく、自分が本当に理解したこと -->\n\n\n---\n\n## Related Notes\n- [[]]\n\n---\n\n## Article\n<!-- クリップした本文（オフライン読了用の原文アーカイブ） -->\n{{content}}\n"
+}
