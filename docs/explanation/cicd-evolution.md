@@ -134,6 +134,20 @@ Docker: nix build 実行
 3. Install Nix（キャッシュがなければインストール）
 ```
 
+### Phase 6: キャッシュ凍結問題 (#368)
+
+**問題**: 21分のジョブのうち16分が毎回のソースビルド（skim / rustup / github-copilot-cli / neovimラッパー）。primary-key は HIT しているのに、ビルド成果物が一向にキャッシュに反映されない。
+
+**根本原因1 — 保存スキップの凍結**: `cache-nix-action` は primary-key が HIT すると post (保存) フェーズで保存自体をスキップする仕様。key は `hashFiles('**/*.nix', 'flake.lock')` から生成されるため、*.nix / flake.lock を触らない限り同じ key が使われ続け、一度不完全な状態で保存されたキャッシュが未来永劫更新されない状態になっていた。
+
+**解決1**: `purge: true` + `purge-primary-key: always` を追加。Post Restore フェーズ（全ステップ完了後）で同じ key の古いキャッシュを毎回削除させ、直後の save 判定を「primary-key に一致するキャッシュなし」にして必ず保存し直させる（purge → save の順序はツール内部の仕様どおり）。purge には `actions: write` 権限が要るため、`verify-docker` ジョブに `permissions` を明示。
+
+**根本原因2 — rustup 等が (見かけ上) 再ビルドされ続ける件**: 2件のヒント。
+1. `flake.nix` のオーバーレイが `rustup`（`doCheck = false`）や `github-copilot-cli`（カスタム `src`）を本家 nixpkgs の派生物と異なるハッシュに変えている。これらは cache.nixos.org 上の「stock」な rustup 等とは別物なので、原理的にバイナリキャッシュから取得できず、初回ビルドは避けられない（`skim` の Hydra カバレッジ欠如は既知の別問題 #369）。
+2. それとは別に、`Dockerfile` はコンテナ内 Nix を `--init none`（デーモンなし）でインストールしている。コンテナの `nix build` はホストの nix-daemon を経由せず `/nix` を直接叩くローカルストアとして使う一方、ホスト側では `nix-installer-action` が起動した nix-daemon が同じ `db.sqlite` をジョブの間ずっと開いたままにしている。SQLite の WAL は「最後の接続が閉じたとき」に自動 checkpoint される仕様のため、コンテナ側プロセスの終了は「最後の接続」にならず、ビルドで新規登録された valid path が `db.sqlite-wal` に取り残ったまま `nix: false` の cache-nix-action（DBマージ処理をしない設定）でキャッシュされてしまう可能性がある。
+
+**対応2（仮説ベース）**: ビルド後・保存前に `sqlite3 /nix/var/nix/db/db.sqlite 'PRAGMA wal_checkpoint(TRUNCATE);'` を明示実行し、WAL の内容を本体ファイルへ確実に反映させてから保存させるステップを追加。ただし nix-installer 側のソース調査（`ProvisionNix` / `MoveUnpackedNix`）では DB を明示的に破棄する処理は見当たらず、この checkpoint 忘れ説は状況証拠からの仮説にとどまる。マージ後のダミーPRでの2回目計測で「26 derivations will be built」の内訳が縮むかどうかを見て検証する（詳細は #368 の PR 本文）。
+
 ---
 
 ## 📝 Lessons Learned
@@ -145,6 +159,8 @@ Docker: nix build 実行
 | **GCは慎重に** | Nix storeのGCはキャッシュ破損のリスクあり。サイズ制限より完全性を優先 |
 | **ステップ順序が重要** | キャッシュ復元は依存するツールのインストール前に行う |
 | **ユーザー一致** | コンテナのユーザーとHome Manager設定のユーザーを一致させる |
+| **同一keyでも凍結に注意** | primary-key HIT時は保存がスキップされる。設計上「毎回更新」したいなら purge-primary-key: always が要る |
+| **オーバーレイはバイナリキャッシュを無効化する** | `overrideAttrs` で派生物を変えると、そのパッケージは本家の binary cache から二度と取得できなくなる |
 
 ---
 
@@ -165,6 +181,7 @@ Docker: nix build 実行
 - [#216](https://github.com/music-brain88/dotfiles/issues/216) - magic-nix-cache問題
 - [#228](https://github.com/music-brain88/dotfiles/issues/228) - GCによるキャッシュ破損
 - [#233](https://github.com/music-brain88/dotfiles/issues/233) - ステップ順序問題
+- [#368](https://github.com/music-brain88/dotfiles/issues/368) - キャッシュ凍結問題・rustup再ビルド調査
 
 ---
 
