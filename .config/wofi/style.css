@@ -1,4 +1,4 @@
-/* Hyprlandのテーマに合わせたWofi設定 */
+/* Hyprlandのテーマに合わせたWofi設定(Catppuccin Mocha, waybarと配色統一) */
 window {
     margin: 5px;
     padding: 5px;
@@ -6,12 +6,12 @@ window {
     border-radius: 12px;
     background-color: rgba(30, 30, 46, 0.95);
     font-family: "JetBrainsMono Nerd Font", "Noto Sans CJK JP";
-    font-size: 14px;
+    font-size: 16px;
 }
 
 #input {
-    margin: 5px;
-    padding: 8px 12px;
+    margin: 6px;
+    padding: 10px 14px;
     border: none;
     color: #cdd6f4;
     background-color: #313244;
@@ -44,15 +44,16 @@ window {
 }
 
 #entry {
-    margin: 2px 0;
-    padding: 8px 12px;
+    margin: 4px 2px;
+    padding: 12px 16px;
     border-radius: 8px;
     background-color: transparent;
     transition: all 0.2s ease;
 }
 
+/* 選択中の行はアクセントカラーの塗りつぶしで一目でわかるようにする */
 #entry:selected {
-    background-color: #313244;
+    background-color: #cba6f7;
     outline: none;
 }
 
@@ -65,12 +66,14 @@ window {
     margin-left: 10px;
 }
 
+/* 選択行の背景(#cba6f7)に対してコントラストが出るよう文字色を反転 */
 #text:selected {
-    color: #cba6f7;
+    color: #1e1e2e;
+    font-weight: bold;
 }
 
 #img {
-    margin-right: 8px;
+    margin-right: 10px;
     border-radius: 4px;
 }
 
