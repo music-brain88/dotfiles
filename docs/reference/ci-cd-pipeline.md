@@ -91,6 +91,17 @@ CI環境特有の問題（サンドボックス、ネットワーク制限）を
 
 詳細は [Evolution History - Phase 3](../explanation/cicd-evolution.md#phase-3-magic-nix-cache-の限界-216) を参照。
 
+### Cache Update Strategy (purge → save)
+
+`cache-nix-action` は primary-key が HIT すると保存自体をスキップする仕様のため、
+何もしないと「一度保存された不完全なキャッシュ」が key が変わるまで凍結する。
+`verify-docker` では `purge: true` + `purge-primary-key: always` を指定し、
+Post Restore フェーズ（全ステップ完了後）で同じ key の古いキャッシュを毎回削除させてから
+保存させることで、実行のたびに最新の `/nix` store 内容で更新されるようにしている。
+purge の実行には `actions: write` 権限が必要（ジョブの `permissions` で付与）。
+
+詳細・rustup再ビルド調査は [Evolution History - Phase 6](../explanation/cicd-evolution.md#phase-6-キャッシュ凍結問題-368) を参照。
+
 ---
 
 ## 🔗 Related Documentation

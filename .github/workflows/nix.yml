@@ -114,6 +114,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: [changes, build-image, check]
     if: needs.changes.outputs.code == 'true'
+    # cache-nix-action の purge (キャッシュ削除 API 呼び出し) には actions: write が要る。
+    # 明示すると他スコープは既定で none になるため、既存の checkout / ghcr pull に
+    # 必要な権限も合わせて列挙する (#368)。
+    # cache-nix-action's purge (a cache-delete API call) needs actions: write.
+    # Declaring `permissions:` resets every other scope to none, so we must
+    # also list what checkout / the ghcr pull already relied on (#368).
+    permissions:
+      contents: read
+      packages: read
+      actions: write
     steps:
       # Free up disk space BEFORE pulling the large Docker image
       - name: Free disk space
@@ -141,6 +151,55 @@ jobs:
 
       # Restore Nix cache for /nix/store build artifacts
       # Note: nix: false is required because Nix is not installed yet
+      #
+      # 同じ primary-key で HIT した場合、cache-nix-action は post (保存) 側で
+      # 保存自体をスキップする仕様がある。*.nix / flake.lock を変更しない限り
+      # key は変わらないため、一度不完全な状態で保存されたキャッシュがそのまま
+      # 凍結し続けていた (#368)。purge-primary-key: always で「同じ key の古い
+      # キャッシュ」を Post Restore フェーズ (= このジョブの全ステップ完了後) で
+      # 必ず削除させ、直後の save 判定を「primary-key に一致するキャッシュなし」
+      # の状態にして、実行のたびに最新の /nix store 内容で保存し直させる。
+      # 削除には actions: write 権限が要る (ジョブ側 permissions で付与済み)。
+      #
+      # purge は push イベントのみで有効化する。理由は2つ:
+      # 1. キャッシュは作成された ref (= refs/heads/main) のスコープでしか
+      #    削除できない (GitHub Actions のキャッシュ削除APIの仕様)。実際に
+      #    #368 のPR自身の pull_request ラン (refs/pull/370/merge) で
+      #    purge-primary-key: always が 404 Not Found で失敗するのを確認済み
+      #    ―― つまり pull_request イベントでは同一リポジトリのPRであっても
+      #    purge は原理的に成功しない。
+      # 2. fork からの pull_request ランでは GITHUB_TOKEN が (permissions
+      #    の宣言に関わらず) read-only に強制されるため、actions: write を
+      #    要求する削除APIはそもそも呼び出す前提が成立しない。
+      # cache-nix-action 自身は削除失敗を内部で catch してログに出すだけで
+      # ジョブを失敗させない (purgeCacheByKey の実装参照)ため安全側ではあるが、
+      # 上記1により pull_request では成功する見込みが全く無い呼び出しなので、
+      # 無駄なAPI呼び出しと403ログを避けるために push イベント限定にする。
+      #
+      # When there's a primary-key hit, cache-nix-action skips saving in its
+      # post (save) phase. Since the key only changes when *.nix/flake.lock
+      # change, a cache saved once in an incomplete state stayed frozen
+      # forever (#368). purge-primary-key: always forces the action to purge
+      # the existing same-key cache during the Post Restore phase (after all
+      # of this job's steps finish), so the subsequent save check always
+      # sees "no cache matching primary-key" and re-saves with this run's
+      # current /nix store contents. Purging needs actions: write (granted
+      # via the job-level `permissions` above).
+      #
+      # purge only runs on push events, for two reasons:
+      # 1. A cache can only be deleted from the ref that owns it
+      #    (refs/heads/main here) — a GitHub Actions cache API restriction.
+      #    We confirmed on this very PR's own pull_request run
+      #    (refs/pull/370/merge) that purge-primary-key: always 404s even
+      #    for a same-repo PR, so purging can never succeed on
+      #    pull_request events regardless of fork vs. same-repo.
+      # 2. On pull_request runs from forks, GITHUB_TOKEN is forced
+      #    read-only regardless of the `permissions` we declare, so the
+      #    delete call couldn't get actions: write anyway.
+      # cache-nix-action already catches delete failures internally and
+      # only logs them (see purgeCacheByKey), so this was never going to
+      # fail the job — but per (1) it can also never succeed here, so we
+      # skip the doomed API call (and its log noise) entirely on PR runs.
       - name: Restore Nix cache
         uses: nix-community/cache-nix-action@v6
         with:
@@ -150,6 +209,8 @@ jobs:
             /nix
             ~/.cache/nix
           nix: false
+          purge: ${{ github.event_name == 'push' }}
+          purge-primary-key: always
 
       # Fix /nix ownership and remove installer artifacts for fresh installation
       # - Restore root ownership (cache restores as runner user)
@@ -193,3 +254,75 @@ jobs:
               ./result/activate
               echo "=== Home Manager activation completed successfully ==="
             '
+
+      # コンテナ内の nix build はホストの nix-daemon を経由しない
+      # (Dockerfile が `--init none` でデーモン無しインストールしているため、
+      # コンテナ側は /nix を直接叩くローカルストアとして nix を使う)。
+      # 一方ホスト側では nix-installer-action が起動した nix-daemon が
+      # 同じ db.sqlite をジョブの間ずっと開いたままにしている。SQLite の
+      # WAL は「最後の接続が閉じたとき」に自動 checkpoint される仕様のため、
+      # コンテナ側プロセスが終了しても「最後の接続」にならず、今回のビルドで
+      # 新規登録された valid path が db.sqlite-wal に取り残ったままになりうる。
+      # cache-nix-action は nix: false だとこの checkpoint 処理をしない
+      # (restore/save 双方で db.sqlite の面倒を見るのは nix: true の場合のみ)
+      # ため、保存前にここで明示的に checkpoint し、次回リストア時に
+      # 「ビルド済みなのに未登録」(→ rustup 等の再ビルド) が起きないようにする。
+      # rustup が cache.nixos.org にあるのに毎回ビルドされる件は、そもそも
+      # flake.nix のオーバーレイ (doCheck = false) で本家と異なる派生物に
+      # なっている分は解消されないが、それ以外の「本来キャッシュ可能なのに
+      # 再ビルドされていた」分はこれで解消されるはず (#368、詳細はPR本文参照)。
+      #
+      # The containerized `nix build` never talks to the host's nix-daemon
+      # (the Dockerfile installs Nix with `--init none`, so the container
+      # uses /nix as a local store directly). Meanwhile the host's
+      # nix-daemon (started by nix-installer-action) keeps its own
+      # connection to the same db.sqlite open for the entire job. SQLite's
+      # WAL is checkpointed automatically "when the last connection
+      # closes" — since the container's exit is never the *last* one, new
+      # valid-path registrations from this run's build can be stranded in
+      # db.sqlite-wal and never reach db.sqlite. cache-nix-action only
+      # handles this checkpoint/merge dance when `nix: true` (not our case,
+      # see the Restore Nix cache step above), so we force a checkpoint
+      # here before the cache is saved. This doesn't help the handful of
+      # packages that are unavoidably rebuilt because flake.nix overlays
+      # them away from the stock nixpkgs derivation (e.g. rustup's
+      # `doCheck = false` override) — only the cache-nix-action install/
+      # gc-max-store-size design change would touch that, and it's out of
+      # scope here (see PR description for the full rustup investigation).
+      # sqlite3 は ubuntu-latest ランナーにプリインストールされているはずだが、
+      # 前提を無条件に信用せず存在チェックする。continue-on-error: true で
+      # このステップの失敗がジョブ全体を止めないようにしている一方、それだけだと
+      # 「sqlite3 が無くて静かにスキップされた」のか「本当に checkpoint が
+      # 成功した」のかが通常のログからは区別しづらい。checkpoint はキャッシュの
+      # 実効性を左右する要なので、欠落/失敗を ::warning:: アノテーションで
+      # 必ず可視化する (Job Summary / Files changed に出るのでログを開かなくても
+      # 気づける)。sqlite3 が無い場合はまず apt でのインストールを試み、
+      # それでも無ければ warning を出して諦める。
+      #
+      # sqlite3 should already be preinstalled on ubuntu-latest runners, but
+      # don't take that for granted — check explicitly. continue-on-error:
+      # true keeps this step from blocking the job, but on its own that
+      # makes "sqlite3 was missing so this silently no-op'd" indistinguishable
+      # from "the checkpoint actually ran". Since the checkpoint is load-
+      # bearing for cache quality, surface any miss/failure as a ::warning::
+      # annotation (visible in the Job Summary / Files changed tab without
+      # opening the raw log). Try installing sqlite3 via apt first if it's
+      # missing; only warn-and-give-up if that also fails.
+      - name: Checkpoint Nix store database before caching
+        continue-on-error: true
+        run: |
+          if ! command -v sqlite3 >/dev/null 2>&1; then
+            echo "::warning::sqlite3 not found on this runner; attempting to install it so the Nix store DB WAL checkpoint can run."
+            sudo apt-get update -qq && sudo apt-get install -y -qq sqlite3 || true
+          fi
+
+          if ! command -v sqlite3 >/dev/null 2>&1; then
+            echo "::warning::sqlite3 is unavailable even after the install attempt - skipping the WAL checkpoint. This run's cache may leave newly built store paths stranded in db.sqlite-wal (see the comment above this step for background)."
+            exit 0
+          fi
+
+          if sudo sqlite3 /nix/var/nix/db/db.sqlite 'PRAGMA wal_checkpoint(TRUNCATE);'; then
+            echo "Checkpointed /nix/var/nix/db/db.sqlite successfully."
+          else
+            echo "::warning::WAL checkpoint of /nix/var/nix/db/db.sqlite failed - this run's cache may not include this run's latest valid-path registrations."
+          fi
