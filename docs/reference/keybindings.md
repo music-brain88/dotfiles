@@ -246,6 +246,10 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 | `Super + Alt + S` | Move window to special workspace | ウィンドウをスクラッチパッドへ送る |
 | `Super + O` | Toggle Obsidian drawer (special workspace) | Obsidian引き出しの表示/非表示 |
 | `Super + A` | Toggle Claude Desktop drawer (special workspace) | Claude Desktop引き出しの表示/非表示 |
+| `Super + Shift + O` | Send active window back to Obsidian drawer | アクティブウィンドウをObsidian引き出しへ送り返す |
+| `Super + Shift + A` | Send active window back to Claude Desktop drawer | アクティブウィンドウをClaude Desktop引き出しへ送り返す |
+| `Super + Y` | Bring: pick a window (wofi) and pull it into the current workspace | Bring: wofiでウィンドウを選び、現在のワークスペースへ引き込む |
+| `Super + Shift + Y` | Go: pick a window (wofi) and jump to where it lives | Go: wofiでウィンドウを選び、そのウィンドウの場所へ飛ぶ |
 
 ### Screenshot
 
