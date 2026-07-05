@@ -37,22 +37,25 @@
     "hyprland/workspaces": {
         "format": "{icon}{windows}",
         "on-click": "activate",
+        // Icons below are written as literal \uXXXX JSON escapes, not raw PUA glyphs pasted
+        // directly -- raw glyphs silently collapsed to empty strings in this file before
+        // (caught in PR #366 review). Look up glyph names at nerdfonts.com/cheat-sheet.
         "format-icons": {
             "1": "1",
             "2": "2",
             "3": "3",
-            "urgent": "",
-            "special": "",
-            "default": ""
+            "urgent": "\uf071", // nf-fa-exclamation_triangle
+            "special": "\uf052", // nf-fa-eject (drawer: shown only while open)
+            "default": "\uf01c" // nf-fa-inbox (depot)
         },
-        "window-rewrite-default": "▪",
+        "window-rewrite-default": "\u25aa", // U+25AA BLACK SMALL SQUARE (not a Nerd Font glyph)
         "window-rewrite": {
-            "class<^firefox$>": "",
-            "class<^code$>": "󰨞",
-            "class<^kitty$>": "",
-            "class<^Alacritty$>": "",
-            "class<^org\\.wezfurlong\\.wezterm$>": "",
-            "class<^spotify$>": ""
+            "class<^firefox$>": "\uf269", // nf-fa-firefox
+            "class<^code$>": "\udb82\ude1e", // nf-md-microsoft_visual_studio_code
+            "class<^kitty$>": "\uf120", // nf-fa-terminal
+            "class<^Alacritty$>": "\uf120", // nf-fa-terminal
+            "class<^org\\.wezfurlong\\.wezterm$>": "\uf120", // nf-fa-terminal
+            "class<^spotify$>": "\uf1bc" // nf-fa-spotify
         },
         "persistent-workspaces": {
             "*": [1, 2, 3]
