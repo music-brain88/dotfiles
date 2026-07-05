@@ -114,6 +114,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: [changes, build-image, check]
     if: needs.changes.outputs.code == 'true'
+    # cache-nix-action の purge (キャッシュ削除 API 呼び出し) には actions: write が要る。
+    # 明示すると他スコープは既定で none になるため、既存の checkout / ghcr pull に
+    # 必要な権限も合わせて列挙する (#368)。
+    # cache-nix-action's purge (a cache-delete API call) needs actions: write.
+    # Declaring `permissions:` resets every other scope to none, so we must
+    # also list what checkout / the ghcr pull already relied on (#368).
+    permissions:
+      contents: read
+      packages: read
+      actions: write
     steps:
       # Free up disk space BEFORE pulling the large Docker image
       - name: Free disk space
@@ -141,6 +151,25 @@ jobs:
 
       # Restore Nix cache for /nix/store build artifacts
       # Note: nix: false is required because Nix is not installed yet
+      #
+      # 同じ primary-key で HIT した場合、cache-nix-action は post (保存) 側で
+      # 保存自体をスキップする仕様がある。*.nix / flake.lock を変更しない限り
+      # key は変わらないため、一度不完全な状態で保存されたキャッシュがそのまま
+      # 凍結し続けていた (#368)。purge-primary-key: always で「同じ key の古い
+      # キャッシュ」を Post Restore フェーズ (= このジョブの全ステップ完了後) で
+      # 必ず削除させ、直後の save 判定を「primary-key に一致するキャッシュなし」
+      # の状態にして、実行のたびに最新の /nix store 内容で保存し直させる。
+      # 削除には actions: write 権限が要る (ジョブ側 permissions で付与済み)。
+      #
+      # When there's a primary-key hit, cache-nix-action skips saving in its
+      # post (save) phase. Since the key only changes when *.nix/flake.lock
+      # change, a cache saved once in an incomplete state stayed frozen
+      # forever (#368). purge-primary-key: always forces the action to purge
+      # the existing same-key cache during the Post Restore phase (after all
+      # of this job's steps finish), so the subsequent save check always
+      # sees "no cache matching primary-key" and re-saves with this run's
+      # current /nix store contents. Purging needs actions: write (granted
+      # via the job-level `permissions` above).
       - name: Restore Nix cache
         uses: nix-community/cache-nix-action@v6
         with:
@@ -150,6 +179,8 @@ jobs:
             /nix
             ~/.cache/nix
           nix: false
+          purge: true
+          purge-primary-key: always
 
       # Fix /nix ownership and remove installer artifacts for fresh installation
       # - Restore root ownership (cache restores as runner user)
@@ -193,3 +224,41 @@ jobs:
               ./result/activate
               echo "=== Home Manager activation completed successfully ==="
             '
+
+      # コンテナ内の nix build はホストの nix-daemon を経由しない
+      # (Dockerfile が `--init none` でデーモン無しインストールしているため、
+      # コンテナ側は /nix を直接叩くローカルストアとして nix を使う)。
+      # 一方ホスト側では nix-installer-action が起動した nix-daemon が
+      # 同じ db.sqlite をジョブの間ずっと開いたままにしている。SQLite の
+      # WAL は「最後の接続が閉じたとき」に自動 checkpoint される仕様のため、
+      # コンテナ側プロセスが終了しても「最後の接続」にならず、今回のビルドで
+      # 新規登録された valid path が db.sqlite-wal に取り残ったままになりうる。
+      # cache-nix-action は nix: false だとこの checkpoint 処理をしない
+      # (restore/save 双方で db.sqlite の面倒を見るのは nix: true の場合のみ)
+      # ため、保存前にここで明示的に checkpoint し、次回リストア時に
+      # 「ビルド済みなのに未登録」(→ rustup 等の再ビルド) が起きないようにする。
+      # rustup が cache.nixos.org にあるのに毎回ビルドされる件は、そもそも
+      # flake.nix のオーバーレイ (doCheck = false) で本家と異なる派生物に
+      # なっている分は解消されないが、それ以外の「本来キャッシュ可能なのに
+      # 再ビルドされていた」分はこれで解消されるはず (#368、詳細はPR本文参照)。
+      #
+      # The containerized `nix build` never talks to the host's nix-daemon
+      # (the Dockerfile installs Nix with `--init none`, so the container
+      # uses /nix as a local store directly). Meanwhile the host's
+      # nix-daemon (started by nix-installer-action) keeps its own
+      # connection to the same db.sqlite open for the entire job. SQLite's
+      # WAL is checkpointed automatically "when the last connection
+      # closes" — since the container's exit is never the *last* one, new
+      # valid-path registrations from this run's build can be stranded in
+      # db.sqlite-wal and never reach db.sqlite. cache-nix-action only
+      # handles this checkpoint/merge dance when `nix: true` (not our case,
+      # see the Restore Nix cache step above), so we force a checkpoint
+      # here before the cache is saved. This doesn't help the handful of
+      # packages that are unavoidably rebuilt because flake.nix overlays
+      # them away from the stock nixpkgs derivation (e.g. rustup's
+      # `doCheck = false` override) — only the cache-nix-action install/
+      # gc-max-store-size design change would touch that, and it's out of
+      # scope here (see PR description for the full rustup investigation).
+      - name: Checkpoint Nix store database before caching
+        continue-on-error: true
+        run: sudo sqlite3 /nix/var/nix/db/db.sqlite 'PRAGMA wal_checkpoint(TRUNCATE);'
