@@ -29,20 +29,37 @@
         "tray"
     ],
 
+    // 3層構造(window-rules.conf 冒頭コメント参照)をバー上でも宣言する
+    // Mirror the three-layer workspace design (see window-rules.conf header) in the bar:
+    //   作業台 ws1〜3 = 数字アイコン(persistent-workspacesで常時表示) / Workbench: numeral icons, always shown
+    //   詰め所 ws4〜  = 共通アイコン(default) / Depot: shared "default" icon
+    //   引き出し special = show-special + special-visible-only で開いている時だけ表示 / Drawer: shown only while open
     "hyprland/workspaces": {
-        "format": "{icon}",
+        "format": "{icon}{windows}",
         "on-click": "activate",
         "format-icons": {
-            "1": "",
-            "2": "",
-            "3": "",
-            "4": "",
-            "5": "",
+            "1": "1",
+            "2": "2",
+            "3": "3",
             "urgent": "",
-            "active": "",
+            "special": "",
             "default": ""
         },
-        "sort-by-number": true,
+        "window-rewrite-default": "▪",
+        "window-rewrite": {
+            "class<^firefox$>": "",
+            "class<^code$>": "󰨞",
+            "class<^kitty$>": "",
+            "class<^Alacritty$>": "",
+            "class<^org\\.wezfurlong\\.wezterm$>": "",
+            "class<^spotify$>": ""
+        },
+        "persistent-workspaces": {
+            "*": [1, 2, 3]
+        },
+        "show-special": true,
+        "special-visible-only": true,
+        "sort-by": "number",
         "on-scroll-up": "hyprctl dispatch workspace e+1",
         "on-scroll-down": "hyprctl dispatch workspace e-1"
     },
