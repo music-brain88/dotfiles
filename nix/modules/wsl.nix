@@ -31,10 +31,15 @@ in
   home.activation.linkObsidianVault = config.lib.dag.entryAfter [ "writeBoundary" ] ''
     ${winEnvSnippet}
     win_home_raw="$(win_env USERPROFILE)"
-    if [ -z "$win_home_raw" ]; then
-      echo "wsl.nix: could not detect %USERPROFILE%; skipping Obsidian vault symlink" >&2
+    win_home=""
+    if [ -n "$win_home_raw" ]; then
+      # wslpath 自体の不在・失敗でも activation を落とさない (警告して skip)
+      # Never abort activation on missing/failing wslpath; warn and skip instead
+      win_home="$(/usr/bin/wslpath "$win_home_raw" 2>/dev/null || true)"
+    fi
+    if [ -z "$win_home" ]; then
+      echo "wsl.nix: could not resolve %USERPROFILE%; skipping Obsidian vault symlink" >&2
     else
-      win_home="$(/usr/bin/wslpath "$win_home_raw")"
       vault="$win_home/Documents/music.brain88"
       link="$HOME/Documents/Obsidian"
       if [ ! -d "$vault" ]; then
@@ -57,10 +62,15 @@ in
   home.activation.deployAlacrittyConfig = config.lib.dag.entryAfter [ "writeBoundary" ] ''
     ${winEnvSnippet}
     appdata_raw="$(win_env APPDATA)"
-    if [ -z "$appdata_raw" ]; then
-      echo "wsl.nix: could not detect %APPDATA%; skipping Alacritty config deploy" >&2
+    appdata=""
+    if [ -n "$appdata_raw" ]; then
+      # 解決失敗のまま進むと target が "/alacritty/..." になり mkdir がルート直下を叩く
+      # An unresolved path would make target "/alacritty/..." and mkdir hit the root dir
+      appdata="$(/usr/bin/wslpath "$appdata_raw" 2>/dev/null || true)"
+    fi
+    if [ -z "$appdata" ]; then
+      echo "wsl.nix: could not resolve %APPDATA%; skipping Alacritty config deploy" >&2
     else
-      appdata="$(/usr/bin/wslpath "$appdata_raw")"
       target="$appdata/alacritty/alacritty.toml"
       mkdir -p "$appdata/alacritty"
       if ! ${pkgs.diffutils}/bin/cmp -s ${alacrittyForWindows} "$target"; then
