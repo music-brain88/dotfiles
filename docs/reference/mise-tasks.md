@@ -15,8 +15,10 @@ mise tasks
 
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
-| `mise run nix:build` | Home Manager 設定をビルド | `nix build .#homeConfigurations.archie.activationPackage` |
-| `mise run nix:switch` | ビルド＆アクティベート | build + `./result/activate` |
+| `mise run nix:build` | Home Manager 設定をビルド (profile 自動判別) | `nix build .#homeConfigurations.<profile>.activationPackage` |
+| `mise run nix:switch` | ビルド＆アクティベート (profile 自動判別) | build + `./result/activate` |
+
+profile は `uname -r` から自動判別される: WSL カーネル (`microsoft` を含む) なら `archie-wsl`、それ以外は `archie`。両マシンでコマンドは同一。
 | `mise run nix:check` | Flake チェック実行 | `nix flake check` |
 | `mise run nix:update` | Flake inputs を更新 | `nix flake update` |
 | `mise run nix:gc` | 古い世代をガベージコレクト | `nix-collect-garbage -d` |

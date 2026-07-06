@@ -11,13 +11,19 @@ _.file = ".env"
 # =============================================================================
 
 [tasks."nix:build"]
-description = "Build Home Manager configuration"
-run = "nix build .#homeConfigurations.archie.activationPackage"
+description = "Build Home Manager configuration (profile auto-detected: archie | archie-wsl)"
+# WSL カーネルなら archie-wsl profile を選ぶ。インターフェースは両マシンで不変
+# Pick the archie-wsl profile on a WSL kernel; same command on both machines
+run = """
+profile=$(uname -r | grep -qi microsoft && echo archie-wsl || echo archie)
+nix build .#homeConfigurations.$profile.activationPackage
+"""
 
 [tasks."nix:switch"]
-description = "Build and activate Home Manager configuration"
+description = "Build and activate Home Manager configuration (profile auto-detected)"
 run = """
-nix build .#homeConfigurations.archie.activationPackage
+profile=$(uname -r | grep -qi microsoft && echo archie-wsl || echo archie)
+nix build .#homeConfigurations.$profile.activationPackage
 ./result/activate
 """
 

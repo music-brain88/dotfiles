@@ -11,6 +11,7 @@
 - [Design Philosophy](#design-philosophy)
 - [Hybrid Approach](#hybrid-approach)
 - [Module Structure](#module-structure)
+- [Per-Host Profiles](#per-host-profiles)
 - [Configuration Strategies](#configuration-strategies)
 - [CI/CD Architecture](#cicd-architecture)
 
@@ -177,9 +178,13 @@ nix/modules/
 ├── rust-tools.nix  # Rustツールチェーン（fd, ripgrep, eza, bat）
 ├── shell.nix       # シェル関連（fish, starship, plugins）
 ├── git.nix         # Git関連（git, delta, gh, copilot-cli）
-├── tmux.nix        # Tmux関連
+├── tmux.nix        # Tmux関連（herdr 移行完了後に削除予定）
+├── herdr.nix       # herdr（agent multiplexer / tmux 後継）
 ├── neovim.nix      # Neovim + LSP + formatters
-└── dev-tools.nix   # 開発ツール（docker, kubectl, awscli）
+├── dev-tools.nix   # 開発ツール（docker, kubectl, awscli）
+├── fonts.nix       # フォント
+├── desktop.nix     # GUI 設定群（hypr, waybar, alacritty 等）— native profile のみ
+└── wsl.nix         # WSL 固有（Obsidian vault symlink, Alacritty 配布）— wsl profile のみ
 ```
 
 ### 分離の基準
@@ -187,6 +192,36 @@ nix/modules/
 1. **関連性**: 同じ目的のパッケージをグループ化
 2. **依存関係**: 依存が少ないものを先に
 3. **オプショナル**: 環境によって不要なものを分離可能に
+
+---
+
+## 🖥 Per-Host Profiles
+
+### 2マシンとアイデンティティ境界
+
+この dotfiles は2台のマシン（ネイティブ Arch Linux = 個人機、Windows 11 + WSL2 = 仕事機）で運用される。
+2つの世界をまたぐ**共有スパイン**と、マシンごとに**分離するアカウント**を明示的に区別する:
+
+| | 個人機 (Arch native) | 仕事機 (Windows + WSL2) |
+|---|---|---|
+| **共有スパイン** | GitHub（dotfiles = コード環境の再現性）/ Obsidian（vault = 知識の一元化、Obsidian Sync 同期） | 同左 |
+| **分離するもの** | 個人の Claude / ClickUp / Google | 仕事の Claude / ClickUp / Google |
+
+### 所有権境界: 「ピクセルは host、プロセスは WSL」
+
+WSL 環境では terminal emulator（Alacritty）は Windows ネイティブアプリのまま使う。
+日本語 IME・HiDPI・クリップボードなど GUI 統合は host OS が最も安定するため、
+dotfiles の所有権は「シェルから内側」に限定し、Windows 側の `alacritty.toml` は
+`nix:switch` 時に配布する成果物として扱う（`nix/modules/wsl.nix`）。
+
+### profile の構造
+
+`flake.nix` の `homeConfigurations` は 2 profile を持ち、`mise run nix:switch` がカーネル名から自動判別する:
+
+- **`archie`**（native）: 共通モジュール + `desktop.nix`（GUI 設定群）
+- **`archie-wsl`**（wsl）: 共通モジュール + `wsl.nix`
+  - `~/Documents/Obsidian` → Windows 側 vault への symlink を activation で生成（Claude Cowork / Obsidian Sync が vault の実体を Windows 側に要請するため）。これによりスキル群（session-log 等）はパス変更なしで両環境動作する
+  - Windows 側 Alacritty 設定を base + `windows.toml` 差分のマージで生成し `%APPDATA%` へ配布（Windows でも fish + herdr が自動起動）
 
 ---
 

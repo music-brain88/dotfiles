@@ -90,21 +90,33 @@
       };
     in
     {
-      # Home Manager configuration
-      homeConfigurations = {
-        # Default configuration for archie
-        "archie" = home-manager.lib.homeManagerConfiguration {
-          inherit pkgs;
+      # Home Manager configurations — per-host profile 分割
+      # 環境差分 (GUI の有無・Windows 連携) は暗黙のドリフトではなく構造で表現する
+      # Per-host profiles: environment differences (GUI, Windows interop)
+      # are expressed in structure, not left to implicit drift.
+      homeConfigurations =
+        let
+          mkHome = profile: home-manager.lib.homeManagerConfiguration {
+            inherit pkgs;
 
-          modules = [
-            ./home.nix
-          ];
+            modules = [
+              ./home.nix
+            ];
 
-          extraSpecialArgs = {
-            inherit inputs;
+            extraSpecialArgs = {
+              inherit inputs profile;
+            };
           };
+        in
+        {
+          # Native Arch Linux (Hyprland) — 既存運用を変えないため名前は archie のまま
+          # Keeps the historical name so the native machine's workflow is unchanged
+          "archie" = mkHome "native";
+
+          # Windows 11 + WSL2 (Arch) — GUI は host 側、シェルから内側を管理する
+          # GUI lives on the Windows host; we own everything from the shell inward
+          "archie-wsl" = mkHome "wsl";
         };
-      };
 
       # Development shell for testing
       devShells.${system}.default = pkgs.mkShell {
