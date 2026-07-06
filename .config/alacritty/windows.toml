@@ -1,0 +1,10 @@
+# Windows 側 Alacritty 用の上書き差分。ビルド時に alacritty.toml へマージされ、
+# nix:switch 時に %APPDATA%\alacritty\alacritty.toml へ配布される (nix/modules/wsl.nix)。
+# Windows-only overrides. Merged over alacritty.toml at build time and deployed
+# to %APPDATA%\alacritty\alacritty.toml on nix:switch (see nix/modules/wsl.nix).
+
+[terminal.shell]
+# 既定の WSL ディストロ (Arch) に入り、native と同じく fish + herdr を起動する
+# Enter the default WSL distro (Arch) and start fish + herdr, same as native
+program = "wsl.exe"
+args = ["--cd", "~", "--", "/usr/bin/fish", "--login", "--command", "herdr"]

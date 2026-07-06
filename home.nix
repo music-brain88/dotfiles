@@ -1,4 +1,4 @@
-{ config, pkgs, inputs, ... }:
+{ config, pkgs, lib, inputs, profile, ... }:
 
 {
   # Home Manager needs a bit of information about you and the paths it should manage
@@ -13,6 +13,8 @@
   programs.home-manager.enable = true;
 
   # Import modular configurations
+  # profile ("native" | "wsl") は flake.nix の extraSpecialArgs から渡される
+  # profile ("native" | "wsl") comes from extraSpecialArgs in flake.nix
   imports = [
     ./nix/modules/base.nix
     ./nix/modules/rust-tools.nix
@@ -23,7 +25,9 @@
     ./nix/modules/neovim.nix
     ./nix/modules/dev-tools.nix
     ./nix/modules/fonts.nix
-  ];
+  ]
+  ++ lib.optionals (profile == "native") [ ./nix/modules/desktop.nix ]
+  ++ lib.optionals (profile == "wsl") [ ./nix/modules/wsl.nix ];
 
   # Environment variables
   home.sessionVariables = {
@@ -85,59 +89,9 @@
     # Global copilot-instructions for GitHub Copilot (VS Code, etc.)
     ".github/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
 
-    # Hyprland config
-    ".config/hypr" = {
-      source = ./.config/hypr;
-      recursive = true;
-    };
-
-    # systemd user units (Hyprland session target)
-    ".config/systemd/user" = {
-      source = ./.config/systemd/user;
-      recursive = true;
-    };
-
-    # Waybar config
-    ".config/waybar" = {
-      source = ./.config/waybar;
-      recursive = true;
-    };
-
-    # Alacritty config
-    ".config/alacritty" = {
-      source = ./.config/alacritty;
-      recursive = true;
-    };
-
-    # Wofi config
-    ".config/wofi" = {
-      source = ./.config/wofi;
-      recursive = true;
-    };
-
-    # Mako config
-    ".config/mako" = {
-      source = ./.config/mako;
-      recursive = true;
-    };
-
-    # MPD config
-    ".config/mpd" = {
-      source = ./.config/mpd;
-      recursive = true;
-    };
-
-    # ncmpcpp config
-    ".config/ncmpcpp" = {
-      source = ./.config/ncmpcpp;
-      recursive = true;
-    };
-
-    # fontconfig
-    ".config/fontconfig" = {
-      source = ./.config/fontconfig;
-      recursive = true;
-    };
+    # GUI 系 (hypr / waybar / alacritty / wofi / mako / mpd / ncmpcpp / fontconfig /
+    # systemd user units) は nix/modules/desktop.nix へ移動 (native profile のみ)
+    # GUI configs moved to nix/modules/desktop.nix (native profile only)
   };
 
   # Activation scripts for files that need to be writable at runtime

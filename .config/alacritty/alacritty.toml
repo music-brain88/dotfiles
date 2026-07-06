@@ -86,6 +86,15 @@ action = "CreateNewWindow"
 key = "N"
 mods = "Control|Shift"
 
+[[keyboard.bindings]]
+# Claude Code 等の改行 (ESC + CR)。Windows では Alt+Enter が既定でフルスクリーン
+# 切替に取られるため明示バインドで上書きし、Linux と同一挙動にする
+# Newline (ESC + CR) for Claude Code etc. Windows binds Alt+Enter to fullscreen
+# by default, so override it explicitly to match Linux behavior
+chars = "\u001b\r"
+key = "Enter"
+mods = "Alt"
+
 [terminal.shell]
 # herdr は既存セッションへ自動アタッチするため attach || new の分岐は不要
 # herdr auto-attaches to an existing session, no attach-or-new branching needed

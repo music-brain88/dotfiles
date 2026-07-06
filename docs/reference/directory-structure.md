@@ -117,9 +117,15 @@ Home Manager の設定をモジュール化。
 | `rust-tools.nix` | Rust 開発ツール (fd, ripgrep, eza, bat, etc.) |
 | `shell.nix` | Fish shell + Starship 設定 |
 | `git.nix` | Git 設定 (aliases, delta, gh) |
-| `tmux.nix` | Tmux 設定とプラグイン |
+| `tmux.nix` | Tmux 設定とプラグイン (herdr 移行完了後に削除予定) |
+| `herdr.nix` | herdr (agent multiplexer / tmux 後継) |
 | `neovim.nix` | Neovim + LSP + formatters |
 | `dev-tools.nix` | 開発ツール (Docker, AWS CLI, kubectl, etc.) |
+| `fonts.nix` | フォント |
+| `desktop.nix` | GUI 設定群 (hypr, waybar, alacritty, wofi, mako, mpd, ncmpcpp, fontconfig) — native profile のみ |
+| `wsl.nix` | WSL 固有: Obsidian vault symlink と Windows 側 Alacritty 設定の配布 — wsl profile のみ |
+
+profile 分割の設計意図は [architecture.md の Per-Host Profiles](../explanation/architecture.md#per-host-profiles) を参照。
 
 ---
 
