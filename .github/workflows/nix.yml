@@ -248,6 +248,8 @@ jobs:
             bash -c '
               git config --global --add safe.directory /workspace
               nix build .#homeConfigurations.archie.activationPackage
+              echo "=== Building WSL profile (build only; activation needs a real WSL host) ==="
+              nix build .#homeConfigurations.archie-wsl.activationPackage -o result-wsl
               echo "=== Verifying build output ==="
               ls -la ./result/
               echo "=== Running Home Manager activation ==="

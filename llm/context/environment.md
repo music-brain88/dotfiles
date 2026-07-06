@@ -1,8 +1,12 @@
 # 🌟 environment.md
 
+## 🧭 アイデンティティ境界（2マシン運用の前提）
 
+- **共有スパイン（マシンをまたいで単一）**: GitHub アカウント（dotfiles）、Obsidian アカウント（vault、Obsidian Sync で同期）
+- **マシンごとに分離**: Claude / ClickUp / Google のアカウント（マシン1 = 個人、マシン2 = 仕事）
+- セッション記録の出自: マシン1 = `context: personal`、マシン2 = `context: work`（session-log スキル参照）
 
-## 💻 マシン1（Arch Linux ネイティブ環境）
+## 💻 マシン1（Arch Linux ネイティブ環境・個人機）
 
 ### OS・ディストリビューション情報
 - **OS**: Arch Linux
@@ -17,12 +21,11 @@
 
 ---
 
-## 🖥 マシン2（Windows + WSL2）                                                                                       
-
+## 🖥 マシン2（Windows + WSL2・仕事機）
 
 ### ホストOS（Windows）
 - **OS**: Windows 11 Pro
-- **WSL2カーネルバージョン**: 5.15.167.4-microsoft-standard-WSL2
+- **WSL2カーネルバージョン**: 6.18.33.2-microsoft-standard-WSL2
 
 ### 開発環境（WSL2）
 - **OS**: Arch Linux
