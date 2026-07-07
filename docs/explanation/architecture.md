@@ -232,7 +232,8 @@ Windows 版 Alacritty はフォールバックとして残し、`alacritty.toml`
   - `~/Documents/Obsidian` → Windows 側 vault への symlink を activation で生成（Claude Cowork / Obsidian Sync が vault の実体を Windows 側に要請するため）。これによりスキル群（session-log 等）はパス変更なしで両環境動作する
   - **vault 配置規約**: Obsidian Sync が同期するのは vault の中身と名前だけで、ローカルの置き場所は各端末で選ぶもの。この dotfiles では「Windows ホストでは `%USERPROFILE%\Documents\music.brain88` に配置する」を運用規約とし、`wsl.nix` はその規約をコード化している（見つからない場合は警告して skip、activation は落ちない）
   - Linux 版 Alacritty（WSLg 経由、パッケージは pacman）を主ターミナルとし、設定を symlink（ConPTY バグ回避、上記「所有権境界」参照）
-    - Windows 側からの起動: `"C:\Program Files\WSL\wslg.exe" --cd ~ -- alacritty`（Store 版 WSL の wslg.exe は System32 ではなく Program Files 配下。コンソールウィンドウなしで起動できる）
+    - Windows 側からの起動: `"C:\Program Files\WSL\wslg.exe" --cd ~ -- env -u WAYLAND_DISPLAY alacritty`（Store 版 WSL の wslg.exe は System32 ではなく Program Files 配下。コンソールウィンドウなしで起動できる）
+    - **X11 (Xwayland) 経由が必須**: winit アプリが Wayland ネイティブで接続すると、ウィンドウのリサイズ・ドラッグで WSLg の Weston が libpixman 内で segfault し全ウィンドウが道連れになる（[microsoft/wslg#1386](https://github.com/microsoft/wslg/issues/1386)、未解決）。`env -u WAYLAND_DISPLAY` で Xwayland 経由に迂回すると安定する（実測で確認済み）
   - フォールバック用に Windows 側 Alacritty 設定も base + `windows.toml` 差分のマージで生成し `%APPDATA%` へ配布（Windows でも fish + herdr が自動起動）
 
 ---
