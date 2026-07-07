@@ -123,7 +123,7 @@ in
     screen # Terminal multiplexer
     direnv # Directory-based environment management
     asciinema # Terminal recorder
-    neofetch # System information
+    fastfetch # System information (neofetch は上流メンテ停止で nixpkgs から削除 / neofetch removed from nixpkgs as unmaintained upstream)
     # tldr is provided by tealdeer in rust-tools.nix
   ];
 
