@@ -37,6 +37,15 @@ in
     recursive = true;
   };
 
+  # Windows 側ショートカットから呼ぶランチャー。Xwayland 固定 (wslg#1386 回避) と
+  # fcitx5 (XIM) の起動をまとめる。alacritty / fcitx5 本体は pacman 管理。
+  # Launcher invoked from the Windows-side shortcut. Pins Xwayland (avoids
+  # wslg#1386) and starts fcitx5 (XIM). alacritty / fcitx5 come from pacman.
+  home.file.".local/bin/wslg-alacritty" = {
+    source = ../../.config/wsl/scripts/wslg-alacritty;
+    executable = true;
+  };
+
   # Obsidian vault: 実体は Windows 側 (Cowork / Obsidian Sync の都合)。
   # WSL からは正規パス ~/Documents/Obsidian を symlink で成立させ、
   # session-log 等のスキルを無変更で両環境動作させる。
@@ -67,6 +76,22 @@ in
         mkdir -p "$HOME/Documents"
         ln -sfn "$vault" "$link"
       fi
+    fi
+  '';
+
+  # fcitx5 の入力メソッド構成 (US キーボード + Mozc) のシード。
+  # fcitx5 は実行時に profile を書き換えるため symlink にせず「無ければコピー」する
+  # (home.nix の seedCopilotConfig と同じパターン)。
+  # Seed the fcitx5 input-method profile (US keyboard + Mozc). fcitx5 rewrites
+  # this file at runtime, so copy-if-absent instead of symlinking
+  # (same pattern as seedCopilotConfig in home.nix).
+  home.activation.seedFcitx5Profile = config.lib.dag.entryAfter [ "writeBoundary" ] ''
+    target="$HOME/.config/fcitx5/profile"
+    if [ ! -f "$target" ] || [ -L "$target" ]; then
+      mkdir -p "$(dirname "$target")"
+      rm -f "$target"
+      cp ${../../.config/fcitx5/profile} "$target"
+      chmod 644 "$target"
     fi
   '';
 

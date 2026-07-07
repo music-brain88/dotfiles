@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# WSLg 上で Alacritty を起動するランチャー (Windows 側ショートカットから呼ぶ)
+# Launcher for Alacritty on WSLg (invoked from the Windows-side shortcut)
+set -euo pipefail
+
+# Xwayland (X11) 経由に固定する。理由は2つ:
+# - winit アプリの Wayland ネイティブ接続はリサイズ・ドラッグで Weston が
+#   libpixman 内で segfault する (microsoft/wslg#1386, 未解決)
+# - fcitx5 は Weston に zwp_input_method_v1 の bind を拒否され Wayland 接続ごと
+#   落ちるため、X11 のみ見える状態で起動する必要がある
+# Pin to Xwayland (X11), for two reasons:
+# - Native Wayland winit connections crash Weston with a libpixman segfault
+#   on resize/drag (microsoft/wslg#1386, open)
+# - Weston denies fcitx5's zwp_input_method_v1 bind, killing its Wayland
+#   connection, so fcitx5 must start with only X11 visible
+unset WAYLAND_DISPLAY
+
+# GPU 直結: mesa 26 は WSL の dxcore 経路でドライバ自動検出に失敗して llvmpipe に
+# 落ちるため、d3d12 を明示指定する (dxcore の既定アダプタ = Intel iGPU が使われる)
+# GPU direct: mesa 26 fails to auto-detect the driver via WSL's dxcore path and
+# falls back to llvmpipe, so pin d3d12 explicitly (uses dxcore's default
+# adapter = the Intel iGPU)
+export MESA_LOADER_DRIVER_OVERRIDE=d3d12
+export GALLIUM_DRIVER=d3d12
+
+# 日本語 IME: fcitx5 が未起動なら daemon として立ち上げる (XIM で提供される)。
+# WAYLAND_DISPLAY を外しても fcitx5 はデフォルトソケット名で Wayland を発見して
+# しまうため、wayland 系アドオンを明示的に無効化する
+# Japanese IME: start fcitx5 as a daemon if not already running (served via XIM).
+# fcitx5 discovers Wayland via the default socket name even without
+# WAYLAND_DISPLAY, so explicitly disable the wayland addons
+if ! pgrep -x fcitx5 >/dev/null 2>&1; then
+  fcitx5 -d --disable=wayland,waylandim >/dev/null 2>&1 </dev/null || true
+fi
+
+# XIM 経由で fcitx5 に接続する (Alacritty は X11 では XIM で IME を扱う)
+# Connect to fcitx5 via XIM (Alacritty uses XIM for IME on X11)
+export XMODIFIERS="@im=fcitx"
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+
+exec alacritty "$@"
