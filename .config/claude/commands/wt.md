@@ -29,6 +29,20 @@
 
 ### 3. worktree + workspace の作成
 
+#### 司令塔の自己命名
+
+worktree を作成する前に、司令塔自身に安定した名前を付ける。作業者からの上り報告(手順5「(3) 上り=内容」参照)の push 先として使うため。
+
+```bash
+herdr agent rename "$HERDR_PANE_ID" "commander-$(basename "$(git rev-parse --show-toplevel)")"
+```
+
+**Constraints:**
+- **MUST**: `$HERDR_PANE_ID` は herdr が各ペインのシェルに注入する環境変数で、司令塔自身の pane を自己識別する(実機確認済み)
+- **MUST**: 名前は `commander-<repo名>`(`git rev-parse --show-toplevel` の basename)とする。複数リポジトリで司令塔が並行稼働しても衝突しない
+- **MUST**: 冪等に実行する(rename が herdr デーモン再起動を跨いで保持されるかは未確認のため、それに依存せず毎回再宣言する設計とする)
+- **MUST NOT**: `herdr agent rename` は司令塔が自分自身(`$HERDR_PANE_ID`)に対してのみ実行する。作業者や他ペインの名前を司令塔側から書き換えない
+
 ```bash
 herdr worktree create --cwd <repo-root> --branch <branch-name> --base main --focus
 ```
@@ -87,7 +101,7 @@ PROMPT
 
 #### 作業指示プロンプトのテンプレート
 
-```
+````
 あなたは worktree <worktree-path>（ブランチ <branch-name>）で作業する実装担当エージェントです。
 
 ## タスク
@@ -111,15 +125,27 @@ PROMPT
 - ライブセッションでの検証時、ユーザーの既存ウィンドウ・既存プロセスは操作しない(読み取りのみ可)
 
 ## 報告
-完了したら、変更ファイル・PR の URL・確認した動作を簡潔にまとめて報告する。指示外の気づき（環境の摩擦・想定外の挙動・自分で編み出した回避策）があれば、解決済みであっても必ず報告する（該当なしなら「なし」と明記する）
+報告の正はこの会話へのテキスト出力(司令塔が `herdr agent read` で回収する)。**`SendMessage` は使わない** — 作業者は自セッションの main のため司令塔という宛先が存在せず、`You are the main conversation` エラーになる。
+
+完了したら、変更ファイル・PR の URL・確認した動作を簡潔にまとめてこの会話に書く。指示外の気づき（環境の摩擦・想定外の挙動・自分で編み出した回避策）があれば、解決済みであっても必ず報告する（該当なしなら「なし」と明記する）。
+
+会話内報告に加えて、完了時に司令塔へ1行の push 報告を送る(フォーマット: `【報告】<branch>: <一行サマリ>（<PR URL>）`。詳細は上記の会話内報告に書き、push は要約1行のみでよい):
+
+```bash
+COMMANDER_PANE=$(herdr agent get commander-<repo名> | jq -r .result.agent.pane_id)
+herdr pane send-text "$COMMANDER_PANE" "【報告】<branch>: <一行サマリ>（<PR URL>）"
+herdr pane send-keys "$COMMANDER_PANE" Enter
 ```
+
+- `commander-<repo名>` が見つからない等、push が失敗した場合はエラーで止まらず、会話内報告のみに縮退して続行する(push はあくまで即時性のための冗長化で、必須経路ではない)
+````
 
 **Constraints:**
 - **SHOULD**: 背景と完了条件を具体的に書く(書くほど作業品質が安定する)
 
 ### 5. 対話プロトコル(委任後の監視と対話)
 
-エージェント起動後、司令塔(このセッション)と作業者エージェントの間のやり取りは、以下の4本柱からなる対話プロトコルとして運用する(設計の背景は #332 参照)。ここでは (1) 下り=指示 と (2) 上り=イベント を扱う。(3) 上り=内容 は上記の作業指示プロンプトの「## 報告」欄、(4) 供養 は `/wtclean` 側で扱う。
+エージェント起動後、司令塔(このセッション)と作業者エージェントの間のやり取りは、以下の4本柱からなる対話プロトコルとして運用する(設計の背景は #332、上り=内容の push 設計は #341 参照)。(4) 供養 は `/wtclean` 側で扱う。
 
 #### (1) 下り=指示
 
@@ -171,6 +197,17 @@ fi
 - **MUST**: 似た用途で `herdr wait agent-status <pane-id> --status <...|done|...>` というコマンドもあるが、こちらは pane-id が必須かつ `done` を受け付ける UI 向けのコマンド。CLI 主導のこのプロトコルでは agent 名を直接使える `herdr agent wait <agent-name>` を使う
 - **MAY**: `--timeout`(ミリ秒)は省略可能で、省略すると無期限にブロックする。バックグラウンドで放置する分には問題ないが、安全弁として妥当な値を指定してもよい
 - **MUST**: タイムアウトした場合は同じ2つの wait を仕掛け直す(これは定期ポーリングではなく、イベント待ちの再武装)
+
+#### (3) 上り=内容
+
+作業者からの報告内容そのもの(進捗・完了・気づき)を受け取るチャネル。主チャネルはあくまで手順5(2)の `herdr agent wait` で、作業者が `idle`/`blocked` に遷移したのを検知してから `herdr agent read "$AGENT_NAME" --source recent --lines 50` で会話内容を読みに行くプル型。
+
+作業者は完了時、上記のプル型に加えて司令塔へ1行の push 報告も送る(作業指示プロンプトの「## 報告」欄に規定。手順4「作業指示プロンプトのテンプレート」参照)。push はこのプロトコルの主チャネルではなく、agent wait が発火する前に司令塔の手が空いていた場合などに拾える即時性のための副次的な冗長化と位置づける。
+
+**Constraints:**
+- **MUST**: `idle`/`blocked` の検知は push の有無に関わらず `herdr agent wait`(手順5(2))で行う。push は agent wait を代替しない
+- **MUST**: 報告フォーマットは `【報告】<branch>: <一行サマリ>（<PR URL>）`。詳細は会話内報告(プル型で回収する側)に書き、push は要約1行のみ
+- **MUST NOT**: push の失敗(`commander-<repo名>` が見つからない等)を理由に作業者の完了報告そのものを止めない。push はベストエフォートで、失敗時は会話内報告のみに縮退する
 
 ### 6. PR のマージ世話
 
@@ -261,6 +298,11 @@ gotcha(実機確認済み): `herdr agent wait` は対象が既に指定ステー
 
 ### BLOCKED は複合ステータス
 2026-07-05 の運用で、PR #348/#350 の `mergeStateStatus: BLOCKED` を「CI待ち」と解釈し、監視スクリプトが90分待機した(#355)。実際のブロック要因は Copilot レビューの未解決 conversation で、このリポジトリのブランチ保護では conversation 未解決はマージ不可。`BLOCKED` は CI実行中と conversation 未解決を区別できない複合ステータスのため、検知時は必ず GraphQL で reviewThreads の未解決数を確認する。
+
+### SendMessage は司令塔に届かない(構造的理由)
+2026-07-04、copilot-quorum #303 の作業者が完了報告のため `SendMessage` を試行し、`You are the main conversation` エラーで失敗した(#341)。Claude Code のセッション間に直接チャネルはなく、作業者は自セッションの main のため司令塔という宛先が存在しない。上り報告は `SendMessage` ではなく、会話内テキスト出力(司令塔が `herdr agent read` で回収するプル型)と、herdr 経由の push(手順5「(3) 上り=内容」参照)の組み合わせで行う。
+
+herdr が使えない環境(worktree だけで完結させたい等)では、作業者が report ファイルをスクラッチパッドに書き、司令塔が Monitor 等でポーリングするファイルベースのフォールバックも考えられる(#341 案C)。ただしポーリングコストがあり、herdr が使える環境では手順5「(3) 上り=内容」の下位互換にとどまるため、標準経路には採用していない。
 
 ## 引数
 
