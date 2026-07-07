@@ -39,7 +39,7 @@ herdr agent rename "$HERDR_PANE_ID" "commander-$(basename "$(git rev-parse --sho
 
 **Constraints:**
 - **MUST**: `$HERDR_PANE_ID` は herdr が各ペインのシェルに注入する環境変数で、司令塔自身の pane を自己識別する(実機確認済み)
-- **MUST**: 名前は `commander-<リポジトリ名>`(`git rev-parse --show-toplevel` の basename)とする。複数リポジトリで司令塔が並行稼働しても衝突しない
+- **MUST**: 名前は `commander-<repo名>`(`git rev-parse --show-toplevel` の basename)とする。複数リポジトリで司令塔が並行稼働しても衝突しない
 - **MUST**: 冪等に実行する(rename が herdr デーモン再起動を跨いで保持されるかは未確認のため、それに依存せず毎回再宣言する設計とする)
 - **MUST NOT**: `herdr agent rename` は司令塔が自分自身(`$HERDR_PANE_ID`)に対してのみ実行する。作業者や他ペインの名前を司令塔側から書き換えない
 
@@ -207,7 +207,7 @@ fi
 **Constraints:**
 - **MUST**: `idle`/`blocked` の検知は push の有無に関わらず `herdr agent wait`(手順5(2))で行う。push は agent wait を代替しない
 - **MUST**: 報告フォーマットは `【報告】<branch>: <一行サマリ>（<PR URL>）`。詳細は会話内報告(プル型で回収する側)に書き、push は要約1行のみ
-- **MUST NOT**: push の失敗(`commander-<repo>` が見つからない等)を理由に作業者の完了報告そのものを止めない。push はベストエフォートで、失敗時は会話内報告のみに縮退する
+- **MUST NOT**: push の失敗(`commander-<repo名>` が見つからない等)を理由に作業者の完了報告そのものを止めない。push はベストエフォートで、失敗時は会話内報告のみに縮退する
 
 ### 6. PR のマージ世話
 
