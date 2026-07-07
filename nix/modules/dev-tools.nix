@@ -52,7 +52,7 @@ in
 
     # Database tools
     postgresql # PostgreSQL client
-    mysql80 # MySQL client
+    mysql84 # MySQL client (8.4 LTS; mysql80 は 2026-04-30 EOL で nixpkgs から削除 / mysql80 removed from nixpkgs after its 2026-04-30 EOL)
     sqlite # SQLite
 
     # Language runtimes
@@ -123,7 +123,7 @@ in
     screen # Terminal multiplexer
     direnv # Directory-based environment management
     asciinema # Terminal recorder
-    neofetch # System information
+    fastfetch # System information (neofetch は上流メンテ停止で nixpkgs から削除 / neofetch removed from nixpkgs as unmaintained upstream)
     # tldr is provided by tealdeer in rust-tools.nix
   ];
 

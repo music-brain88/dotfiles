@@ -40,6 +40,13 @@
                   url = "https://github.com/github/copilot-cli/releases/download/v${copilotVersion}/github-copilot-${copilotVersion}-linux-x64.tgz";
                   hash = "sha256-4Af5u4K5xg76RCLu3jHY1+IxWMosu7d8fmwJy0zgwB4=";
                 };
+                # nixpkgs 側の derivation が npm tarball 前提の sourceRoot = "package" を
+                # 設定するようになったが、GitHub Release アセットはルート直下にファイルを
+                # 置くため上書きして戻す (fetchzip の展開ディレクトリ名は "source")。
+                # The nixpkgs derivation now sets sourceRoot = "package" for the npm
+                # tarball layout; the GitHub release asset is flat, so point back at
+                # the fetchzip output directory ("source").
+                sourceRoot = "source";
                 # 同梱ネイティブバイナリ (.node, ripgrep) を patchelf する
                 # Patch the bundled native binaries for the Nix store.
                 nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ prev.autoPatchelfHook ];
