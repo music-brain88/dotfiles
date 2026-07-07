@@ -8,3 +8,10 @@
 # Enter the default WSL distro (Arch) and start fish + herdr, same as native
 program = "wsl.exe"
 args = ["--cd", "~", "--", "/usr/bin/fish", "--login", "--command", "herdr"]
+
+[window]
+# Windows では DWM 合成 + 透過が OpenGL 描画破損 (背後ウィンドウの写り込み・
+# 文字欠け) を誘発するため透過を無効化する
+# Transparency triggers OpenGL rendering corruption on Windows (ghosting of
+# windows behind, missing glyphs) via DWM composition, so disable it
+opacity = 1.0
