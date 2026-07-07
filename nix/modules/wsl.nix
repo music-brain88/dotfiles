@@ -22,6 +22,21 @@ let
   '';
 in
 {
+  # WSL でも Alacritty は WSLg 経由の Linux 版を主とする。
+  # Windows 版 Alacritty は ConPTY 読み取りの取りこぼしで herdr の画面切り替え時に
+  # 描画破損が起きるため (alacritty/alacritty#8057)、PTY を Linux ネイティブに保つ。
+  # パッケージは native と同じく pacman 管理 (Nix の EGL は WSLg の GL スタックと
+  # 噛み合わないため)。Nix が持つのはこの設定 symlink だけ。
+  # On WSL the primary Alacritty is the Linux build via WSLg. The Windows build
+  # corrupts rendering on herdr screen switches due to dropped ConPTY updates
+  # (alacritty/alacritty#8057), so keep the PTY Linux-native.
+  # The package comes from pacman as on the native machine (nixpkgs' EGL does not
+  # bind to WSLg's GL stack); Nix only owns this config symlink.
+  home.file.".config/alacritty" = {
+    source = ../../.config/alacritty;
+    recursive = true;
+  };
+
   # Obsidian vault: 実体は Windows 側 (Cowork / Obsidian Sync の都合)。
   # WSL からは正規パス ~/Documents/Obsidian を symlink で成立させ、
   # session-log 等のスキルを無変更で両環境動作させる。
@@ -55,10 +70,10 @@ in
     fi
   '';
 
-  # Alacritty は「ピクセルは host」方針で Windows ネイティブのまま。
-  # 設定だけを switch 時に配布してドリフトを防ぐ (live_config_reload で即反映)。
-  # Alacritty stays Windows-native ("pixels belong to the host").
-  # Only the config is deployed on switch to prevent drift (live_config_reload applies it).
+  # Windows 版 Alacritty はフォールバックとして残し、設定だけを switch 時に
+  # 配布してドリフトを防ぐ (live_config_reload で即反映)。
+  # The Windows-native Alacritty is kept as a fallback; only its config is
+  # deployed on switch to prevent drift (live_config_reload applies it).
   home.activation.deployAlacrittyConfig = config.lib.dag.entryAfter [ "writeBoundary" ] ''
     ${winEnvSnippet}
     appdata_raw="$(win_env APPDATA)"

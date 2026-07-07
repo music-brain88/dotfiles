@@ -207,12 +207,21 @@ nix/modules/
 | **共有スパイン** | GitHub（dotfiles = コード環境の再現性）/ Obsidian（vault = 知識の一元化、Obsidian Sync 同期） | 同左 |
 | **分離するもの** | 個人の Claude / ClickUp / Google | 仕事の Claude / ClickUp / Google |
 
-### 所有権境界: 「ピクセルは host、プロセスは WSL」
+### 所有権境界: 「PTY は WSL、ピクセルは WSLg」
 
-WSL 環境では terminal emulator（Alacritty）は Windows ネイティブアプリのまま使う。
-日本語 IME・HiDPI・クリップボードなど GUI 統合は host OS が最も安定するため、
-dotfiles の所有権は「シェルから内側」に限定し、Windows 側の `alacritty.toml` は
-`nix:switch` 時に配布する成果物として扱う（`nix/modules/wsl.nix`）。
+当初は「ピクセルは host」方針で terminal emulator（Alacritty）を Windows ネイティブアプリの
+まま使っていたが、Windows 版 Alacritty は ConPTY 経由の画面更新を取りこぼす未解決バグがあり
+（[alacritty/alacritty#8057](https://github.com/alacritty/alacritty/issues/8057)）、
+herdr の画面切り替えで前画面の文字が残る描画破損が発生した。同じ ConPTY を通す
+Windows Terminal では再現しないため、Alacritty 側の読み取り処理が原因。
+
+このため WSL では **WSLg 経由の Linux 版 Alacritty を主とし、ConPTY を経路から排除する**。
+PTY・emulator・設定がすべて Linux 側に揃い、native Arch と同じ管理形態になる利点もある
+（パッケージは pacman、設定は Nix symlink。nixpkgs の Alacritty は EGL が WSLg の
+GL スタックと噛み合わず起動しないため、GUI アプリは distro 管理という native の流儀を踏襲）。
+トレードオフは GUI 統合（日本語 IME・HiDPI）が WSLg 品質に依存すること。
+Windows 版 Alacritty はフォールバックとして残し、`alacritty.toml` は従来どおり
+`nix:switch` 時に `%APPDATA%` へ配布する（`nix/modules/wsl.nix`）。
 
 ### profile の構造
 
@@ -222,7 +231,8 @@ dotfiles の所有権は「シェルから内側」に限定し、Windows 側の
 - **`archie-wsl`**（wsl）: 共通モジュール + `wsl.nix`
   - `~/Documents/Obsidian` → Windows 側 vault への symlink を activation で生成（Claude Cowork / Obsidian Sync が vault の実体を Windows 側に要請するため）。これによりスキル群（session-log 等）はパス変更なしで両環境動作する
   - **vault 配置規約**: Obsidian Sync が同期するのは vault の中身と名前だけで、ローカルの置き場所は各端末で選ぶもの。この dotfiles では「Windows ホストでは `%USERPROFILE%\Documents\music.brain88` に配置する」を運用規約とし、`wsl.nix` はその規約をコード化している（見つからない場合は警告して skip、activation は落ちない）
-  - Windows 側 Alacritty 設定を base + `windows.toml` 差分のマージで生成し `%APPDATA%` へ配布（Windows でも fish + herdr が自動起動）
+  - Linux 版 Alacritty（WSLg 経由、パッケージは pacman）を主ターミナルとし、設定を symlink（ConPTY バグ回避、上記「所有権境界」参照）
+  - フォールバック用に Windows 側 Alacritty 設定も base + `windows.toml` 差分のマージで生成し `%APPDATA%` へ配布（Windows でも fish + herdr が自動起動）
 
 ---
 
