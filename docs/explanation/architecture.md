@@ -184,7 +184,7 @@ nix/modules/
 ├── dev-tools.nix   # 開発ツール（docker, kubectl, awscli）
 ├── fonts.nix       # フォント
 ├── desktop.nix     # GUI 設定群（hypr, waybar, alacritty 等）— native profile のみ
-└── wsl.nix         # WSL 固有（Obsidian vault symlink, Alacritty 配布）— wsl profile のみ
+└── wsl.nix         # WSL 固有（Obsidian vault symlink, WezTerm/Alacritty 配布）— wsl profile のみ
 ```
 
 ### 分離の基準
@@ -209,10 +209,21 @@ nix/modules/
 
 ### 所有権境界: 「ピクセルは host、プロセスは WSL」
 
-WSL 環境では terminal emulator（Alacritty）は Windows ネイティブアプリのまま使う。
+WSL 環境では terminal emulator は Windows ネイティブアプリ（**WezTerm**）を使う。
 日本語 IME・HiDPI・クリップボードなど GUI 統合は host OS が最も安定するため、
-dotfiles の所有権は「シェルから内側」に限定し、Windows 側の `alacritty.toml` は
-`nix:switch` 時に配布する成果物として扱う（`nix/modules/wsl.nix`）。
+dotfiles の所有権は「シェルから内側」に限定し、設定は `nix:switch` 時に
+Windows 側へ配布する成果物として扱う（`nix/modules/wsl.nix`）。
+
+**emulator の選定経緯（2026-07）**: 当初の Windows 版 Alacritty は ConPTY の画面更新を
+取りこぼす未解決バグ（[alacritty/alacritty#8057](https://github.com/alacritty/alacritty/issues/8057)）
+があり、herdr の画面切り替えで描画破損が発生した。WSLg + Linux 版 Alacritty への移行も
+検証したが、未解決 upstream バグ 3 件への回避策の積み上げとなり体験品質で不採用
+（切り分けと知見は [PR #383](https://github.com/music-brain88/dotfiles/pull/383) 参照）。
+WezTerm は `conpty.dll` / `OpenConsole.exe` を同梱し ConPTY 実装を自前で持つため
+この問題を踏まない。原則（ピクセルは host）はそのままに emulator だけを替える最小修正。
+設定は `wezterm.lua` 1枚が両マシン共通の真実（Lua の実行時 OS 分岐が Alacritty 時代の
+base + windows.toml ビルド時マージを置き換え）。Windows 版 Alacritty は併存期間中
+フォールバックとして設定配布を維持する。
 
 ### profile の構造
 
@@ -222,7 +233,8 @@ dotfiles の所有権は「シェルから内側」に限定し、Windows 側の
 - **`archie-wsl`**（wsl）: 共通モジュール + `wsl.nix`
   - `~/Documents/Obsidian` → Windows 側 vault への symlink を activation で生成（Claude Cowork / Obsidian Sync が vault の実体を Windows 側に要請するため）。これによりスキル群（session-log 等）はパス変更なしで両環境動作する
   - **vault 配置規約**: Obsidian Sync が同期するのは vault の中身と名前だけで、ローカルの置き場所は各端末で選ぶもの。この dotfiles では「Windows ホストでは `%USERPROFILE%\Documents\music.brain88` に配置する」を運用規約とし、`wsl.nix` はその規約をコード化している（見つからない場合は警告して skip、activation は落ちない）
-  - Windows 側 Alacritty 設定を base + `windows.toml` 差分のマージで生成し `%APPDATA%` へ配布（Windows でも fish + herdr が自動起動）
+  - WezTerm 設定（`wezterm.lua`、両マシン共通）を `%USERPROFILE%\.config\wezterm\` へ配布（Windows でも fish + herdr が自動起動）
+  - フォールバック用に Windows 側 Alacritty 設定も base + `windows.toml` 差分のマージで生成し `%APPDATA%` へ配布
 
 ---
 

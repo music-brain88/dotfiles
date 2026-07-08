@@ -55,10 +55,36 @@ in
     fi
   '';
 
-  # Alacritty は「ピクセルは host」方針で Windows ネイティブのまま。
+  # WezTerm は「ピクセルは host」方針で Windows ネイティブ。設定は Lua 1枚が
+  # 両マシン共通の真実で、switch 時に Windows 側へ配布してドリフトを防ぐ
+  # (WezTerm は設定ファイルを自動リロードする)。
+  # WezTerm runs Windows-native ("pixels belong to the host"). One Lua file is
+  # the shared truth for both machines; deploy it on switch to prevent drift
+  # (WezTerm auto-reloads its config file).
+  home.activation.deployWeztermConfig = config.lib.dag.entryAfter [ "writeBoundary" ] ''
+    ${winEnvSnippet}
+    win_home_raw="$(win_env USERPROFILE)"
+    win_home=""
+    if [ -n "$win_home_raw" ]; then
+      win_home="$(/usr/bin/wslpath "$win_home_raw" 2>/dev/null || true)"
+    fi
+    if [ -z "$win_home" ]; then
+      echo "wsl.nix: could not resolve %USERPROFILE%; skipping WezTerm config deploy" >&2
+    else
+      target="$win_home/.config/wezterm/wezterm.lua"
+      mkdir -p "$win_home/.config/wezterm"
+      if ! ${pkgs.diffutils}/bin/cmp -s ${../../.config/wezterm/wezterm.lua} "$target"; then
+        cp -f ${../../.config/wezterm/wezterm.lua} "$target"
+        chmod 644 "$target"
+        echo "wsl.nix: deployed WezTerm config to $target"
+      fi
+    fi
+  '';
+
+  # Alacritty (Windows 版) は WezTerm 移行の併存期間中フォールバックとして残す。
   # 設定だけを switch 時に配布してドリフトを防ぐ (live_config_reload で即反映)。
-  # Alacritty stays Windows-native ("pixels belong to the host").
-  # Only the config is deployed on switch to prevent drift (live_config_reload applies it).
+  # The Windows-native Alacritty stays as a fallback during the WezTerm
+  # transition. Only the config is deployed on switch to prevent drift.
   home.activation.deployAlacrittyConfig = config.lib.dag.entryAfter [ "writeBoundary" ] ''
     ${winEnvSnippet}
     appdata_raw="$(win_env APPDATA)"
