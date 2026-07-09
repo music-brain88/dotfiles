@@ -8,6 +8,7 @@ description: "Claude Code セッションの意思決定・洞察・成果物を
 Claude Code セッションでの意思決定・洞察・成果物を Obsidian の ResearchNotes に昇格させる。
 生ログの全転写ではなく、対話で生まれた判断・設計・学びを厳選して記録する層(層1)を担う。
 層2(Permanent Notes への蒸留)はユーザー自身が週次レビューで行うため、このスキルは踏み込まない。
+ResearchNotes は Zenn 下書きの供給源でもある。週次レビューで「外に出せる知見」を1本選ぶ。
 
 ## 起動方法
 
