@@ -79,6 +79,8 @@ herdr pane read <agent-pane-id> --source recent-unwrapped --lines 500
 - **MUST**: 抽出対象は作業指示テンプレートの「## 報告」内の「気づき」欄(指示外の回避策・環境の摩擦・想定外の挙動)、および permission ブロックやリトライなど、ログ上に残る摩擦の痕跡とする
 - **MUST**: workspace がすでに閉じていて pane が読めない場合はスキップし、その旨を報告に含める
 - **MUST**: 抽出した内容を worktree ごとに要約し、Issue 化する価値がありそうなものは候補としてユーザーに提示する
+- **MAY**: worker の開発過程に記録価値がある場合(非自明な設計判断・戦略が奏功した・規範文書を根拠にした境界判断など)、session-log スキルの流儀で子ノートを作成してよい。命名は `ClaudeCodeSession-YYYYMMDD-Worker-<TopicSlug>.md`(`ClaudeCodeSession-` プレフィックスを維持し .base ビューのフィルタを壊さない)、frontmatter に `parent: "[[<司令塔セッションノート名>]]"` を付け、本文冒頭に親への wikilink を置く
+- **MUST NOT**: 全 worker に子ノートを作らない。記録価値で厳選する(摩擦の抽出だけで足りるものはメモリ/Issue 候補のみ)
 - **MUST**: 提示した候補のうち Issue 化を進めるものは自己更新プロトコル(`/wt` 手順7「自己更新(Self-update)」参照)に渡す。司令塔はそこでフィルター(再発しうる・タスク横断的)を適用し、対象の知見を diff 案付きの Issue として起案する
 - **MUST NOT**: この時点では `gh issue create` は実行しない(ユーザーが必要と判断したものだけ、別途 Issue 化する)
 - **MUST**: 気づきがない、または些末な場合は「知見なし」として次に進む

@@ -90,6 +90,14 @@ machine: <arch-native | wsl>
 - <URL、[[wikilink]] を積極的に(既存ノート名と繋ぐ)>
 ```
 
+### 親子ノート(worker セッションの供養)
+
+/wtclean の供養から worker の開発過程を昇格させる場合は子ノートとする(実例: `ResearchNotes/ClaudeCodeSession-20260710-Worker-ButtonTokenConvergence.md`):
+- 命名: `ResearchNotes/ClaudeCodeSession-YYYYMMDD-Worker-<TopicSlug>.md`
+- frontmatter に `parent: "[[親ノート名]]"` を追加し、本文冒頭の引用ブロックに親への wikilink を置く
+- 視点の分離: 親 = 司令塔(何を委任しどう判断したか)/ 子 = worker(どう作ったか)
+- デイリーノートの New Note Links には親子両方を載せる
+
 ### 3. 記録の原則
 
 - LLM 出力の羅列ではなく、「ユーザーとの対話で生まれた判断・設計・学び」を残す
