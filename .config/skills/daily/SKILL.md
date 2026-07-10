@@ -61,10 +61,12 @@ done
 
 ### 4. カレンダー取得
 
-MCP `mcp__claude_ai_Google_Calendar__list_events` を ToolSearch でロードし、以下の両方を当日 JST で取得する:
+カレンダー取得ツールが利用可能な環境(例: Claude Code の Google Calendar MCP `mcp__claude_ai_Google_Calendar__list_events`)では、以下の両方を当日 JST で取得する:
 
 - `calendarId: <統括カレンダーID>`(`~/.claude/local/daily.local.md` に書かれた統括カレンダー。個人アカウントの reader 権限で読める)
 - `primary`
+
+利用できない環境ではこのステップをスキップし、必要ならユーザーに今日の予定を直接確認する。
 
 OUT_OF_OFFICE(不在)イベントを検知したら、Schedule セクション冒頭に明記する。
 
