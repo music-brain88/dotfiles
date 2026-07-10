@@ -62,7 +62,15 @@ hex2rgb() {
   fi
 }
 
-ARROW=$''
+# Nerd Font グリフは $'\uXXXX' で定義する — 生バイト埋め込みはエディタ/ツール経由で
+# 消失しやすい (実際に一度消えた)。コードポイントは starship.toml と同一
+# Define Nerd Font glyphs via $'\uXXXX' escapes — raw bytes silently vanish through
+# editors/tools (it happened once). Codepoints match starship.toml
+ARROW=$'\ue0b0'        #  powerline right-pointing triangle
+ICON_USER=$'\uf007'    #  user
+ICON_HOST=$'\uf109'    #  laptop
+ICON_HOME=$'\uf46d'    #  home (starship directory.substitutions "~")
+ICON_STAGED=$'\uf00c'  #  check (starship git_status.staged)
 BASE_RGB=$(hex2rgb "#464347")
 
 line=""
@@ -137,10 +145,10 @@ context_gauge_color() {
 line+="\033[22;48;2;${BASE_RGB}m\033[22;38;2;$(hex2rgb "#AFD700")m${ARROW}"
 
 # username (bg:#3388FF fg:#EEEEEE)
-seg "#3388FF" "#EEEEEE" " $(whoami)"
+seg "#3388FF" "#EEEEEE" "$ICON_USER $(whoami)"
 
 # hostname (bg:#AFD700 fg:#111111)
-seg "#AFD700" "#111111" " $(hostname -s 2>/dev/null || hostname)"
+seg "#AFD700" "#111111" "$ICON_HOST $(hostname -s 2>/dev/null || hostname)"
 
 # directory (bg:#6F6A70 fg:#EEEEEE) — プロジェクト相対、~ は  に置換
 # NOTE: 置換側の \~ は必須 — 素の ~ だとチルダ展開されて $HOME に戻ってしまう
@@ -153,7 +161,7 @@ if [ -n "$project_dir" ] && [ "$current_dir" != "$project_dir" ]; then
 else
   display_dir="${current_dir/#"$HOME"/\~}"
 fi
-display_dir="${display_dir/#\~/ }"
+display_dir="${display_dir/#\~/$ICON_HOME }"
 seg "#6F6A70" "#EEEEEE" "$display_dir"
 
 # git branch (bg:#96ab5f fg:#111111) + git status (bg:#E0B25D fg:#000000)
@@ -166,10 +174,10 @@ if git -C "$current_dir" rev-parse --git-dir > /dev/null 2>&1; then
     porcelain=$(git -C "$current_dir" status --porcelain 2>/dev/null || true)
     status_text=""
     if [ -n "$porcelain" ]; then
-      staged=$(grep -c '^[MADRC].' <<<"$porcelain" || true)
+      staged=$(grep -c '^[MADRCT].' <<<"$porcelain" || true)
       modified=$(grep -c '^.[MD]' <<<"$porcelain" || true)
       untracked=$(grep -c '^??' <<<"$porcelain" || true)
-      [ "$staged" -gt 0 ] && status_text+=" ${staged} "
+      [ "$staged" -gt 0 ] && status_text+="$ICON_STAGED ${staged} "
       [ "$modified" -gt 0 ] && status_text+="󰏫 ${modified} "
       [ "$untracked" -gt 0 ] && status_text+="󱪝 ${untracked} "
     fi
