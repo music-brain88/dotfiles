@@ -13,9 +13,53 @@ input=$(cat)
 # ---------- helpers ----------
 
 # "#RRGGBB" -> "R;G;B" (ANSI 24bit 用 / for ANSI true-color sequences)
+#
+# NOTE: Claude Code (>=2.1.78) は statusline の truecolor を chalk (color-convert) の
+# rgb->ansi256 で量子化する (claude-code#35806, NOT_PLANNED)。各チャネルが
+# round(v/255*5) で {0,95,135,175,215,255} に丸められ、中間色が明るい方へズレる。
+# ここでは「丸めた結果が目標色に最も近くなる値」を逆算して出力する事前補正を行う。
+# 上流でバグが直ったら素の hex 変換 (printf '%d;%d;%d' "0x..") に戻すこと。
+# Claude Code quantizes statusline truecolor via color-convert's rgb->ansi256
+# (round(v/255*5) per channel onto the xterm cube). We pre-compensate by emitting
+# the value whose quantized result lands nearest the target. Revert to a plain
+# hex conversion once the upstream bug is fixed.
+CUBE=(0 95 135 175 215 255)  # xterm キューブの実値 / actual xterm cube levels
+EMIT=(0 51 102 153 204 255)  # 確実にインデックス i へ丸まる出力値 / quantizes exactly to index i
+
+nearest_cube_index() {
+  local v=$1 best=0 bd=999 d i
+  for i in "${!CUBE[@]}"; do
+    d=$((v - CUBE[i]))
+    d=${d#-}
+    if ((d < bd)); then
+      bd=$d
+      best=$i
+    fi
+  done
+  echo "$best"
+}
+
 hex2rgb() {
   local h=${1#\#}
-  printf '%d;%d;%d' "0x${h:0:2}" "0x${h:2:2}" "0x${h:4:2}"
+  local r=$((0x${h:0:2})) g=$((0x${h:2:2})) b=$((0x${h:4:2}))
+  local ri gi bi
+  ri=$(nearest_cube_index "$r")
+  gi=$(nearest_cube_index "$g")
+  bi=$(nearest_cube_index "$b")
+  if ((EMIT[ri] == EMIT[gi] && EMIT[gi] == EMIT[bi])); then
+    # 3チャネル等値は chalk のグレースケール分岐 (24段 ramp: 8+10n) に入るので、
+    # キューブ6段より精細なそちらを狙って平均輝度で逆算する
+    # Equal channels hit chalk's grayscale branch (24-step ramp) — finer than the
+    # 6-level cube, so target it via mean luminance instead
+    local m=$(((r + g + b) / 3)) n u
+    n=$(((m - 3) / 10))
+    ((n < 0)) && n=0
+    ((n > 23)) && n=23
+    u=$((8 + (n * 247 + 12) / 24))
+    printf '%d;%d;%d' "$u" "$u" "$u"
+  else
+    printf '%d;%d;%d' "${EMIT[ri]}" "${EMIT[gi]}" "${EMIT[bi]}"
+  fi
 }
 
 ARROW=$''
@@ -26,16 +70,20 @@ line=""
 # 色付きピルを1個追加 / append one colored pill: seg <bg_hex> <fg_hex> <text>
 # 左端: セグメント色の上にベース色の  (内側にえぐれたトゲ)
 # 右端: ベース色の上にセグメント色の  (外へ突き出るトゲ)
+# NOTE: 全 SGR に 22 (通常輝度) を含める — Claude Code が statusline 全体を dim (SGR 2) で
+# 包むため、内側から打ち消す (claude-code#42382 のワークアラウンド)
+# Every SGR includes 22 (normal intensity) to cancel the dim Claude Code wraps around
+# the whole statusline (workaround for claude-code#42382)
 seg() {
   local bg fg
   bg=$(hex2rgb "$1")
   fg=$(hex2rgb "$2")
-  line+="\033[48;2;${bg}m\033[38;2;${BASE_RGB}m${ARROW}\033[38;2;${fg}m $3 \033[48;2;${BASE_RGB}m\033[38;2;${bg}m${ARROW}"
+  line+="\033[22;48;2;${bg}m\033[22;38;2;${BASE_RGB}m${ARROW}\033[22;38;2;${fg}m $3 \033[22;48;2;${BASE_RGB}m\033[22;38;2;${bg}m${ARROW}"
 }
 
 # ピルにせずベース帯に直接載せる (starship の cmd_duration 方式) / plain text on the base band
 plain() {
-  line+="\033[48;2;${BASE_RGB}m\033[38;2;$(hex2rgb "$1")m $2"
+  line+="\033[22;48;2;${BASE_RGB}m\033[22;38;2;$(hex2rgb "$1")m $2"
 }
 
 # ---------- extract JSON fields ----------
@@ -86,7 +134,7 @@ context_gauge_color() {
 # ---------- build segments ----------
 
 # 先頭キャップ: ベース帯の左端 (starship の format 先頭と同じ #AFD700 の三角)
-line+="\033[48;2;${BASE_RGB}m\033[38;2;$(hex2rgb "#AFD700")m${ARROW}"
+line+="\033[22;48;2;${BASE_RGB}m\033[22;38;2;$(hex2rgb "#AFD700")m${ARROW}"
 
 # username (bg:#3388FF fg:#EEEEEE)
 seg "#3388FF" "#EEEEEE" " $(whoami)"
@@ -189,6 +237,6 @@ if [ -n "$seven_day_pct" ]; then
 fi
 
 # ---------- terminate the base band ----------
-line+=" \033[0m\033[38;2;${BASE_RGB}m${ARROW}\033[0m"
+line+=" \033[0m\033[22;38;2;${BASE_RGB}m${ARROW}\033[0m"
 
 printf '%b' "$line"
