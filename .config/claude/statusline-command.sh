@@ -66,11 +66,18 @@ hex2rgb() {
 # 消失しやすい (実際に一度消えた)。コードポイントは starship.toml と同一
 # Define Nerd Font glyphs via $'\uXXXX' escapes — raw bytes silently vanish through
 # editors/tools (it happened once). Codepoints match starship.toml
-ARROW=$'\ue0b0'        #  powerline right-pointing triangle
-ICON_USER=$'\uf007'    #  user
-ICON_HOST=$'\uf109'    #  laptop
-ICON_HOME=$'\uf46d'    #  home (starship directory.substitutions "~")
-ICON_STAGED=$'\uf00c'  #  check (starship git_status.staged)
+# アイコンは実機 (HackGen NF + Claude Code TUI) で欠けず描画できたものだけに絞る:
+# powerline 系 (U+E0B0)、git 系 Material グリフ (astral, \U000FXXXX)、絵文字 (⚡💭, Unicode 6.0 世代まで — 🧠 U+1F9E0 は豆腐化)。
+# BMP 私用領域の FA/Octicons 系と一部 Material (brain/memory/clock/calendar) は
+# クリップしたため不使用
+# Only glyphs verified to render unclipped on this setup (HackGen NF + Claude Code TUI):
+# powerline arrows, git-related Material glyphs, and pre-Unicode-7 emoji. BMP-PUA FA/Octicons and
+# some Material glyphs (brain/memory/clock/calendar) clip here, so they are avoided
+ARROW=$'\ue0b0'           #  powerline right-pointing triangle
+ICON_GIT=$'\U000F02A2'  # md-git (starship git_branch と同一)
+ICON_STAGED=$'\U000F012C'  # md-check
+ICON_MODIFIED=$'\U000F03EB'  # md-pencil (starship git_status.modified と同一)
+ICON_UNTRACKED=$'\U000F1A9D'  # starship git_status.untracked と同一
 BASE_RGB=$(hex2rgb "#464347")
 
 line=""
@@ -145,12 +152,12 @@ context_gauge_color() {
 line+="\033[22;48;2;${BASE_RGB}m\033[22;38;2;$(hex2rgb "#AFD700")m${ARROW}"
 
 # username (bg:#3388FF fg:#EEEEEE)
-seg "#3388FF" "#EEEEEE" "$ICON_USER $(whoami)"
+seg "#3388FF" "#EEEEEE" "$(whoami)"
 
 # hostname (bg:#AFD700 fg:#111111)
-seg "#AFD700" "#111111" "$ICON_HOST $(hostname -s 2>/dev/null || hostname)"
+seg "#AFD700" "#111111" "$(hostname -s 2>/dev/null || hostname)"
 
-# directory (bg:#6F6A70 fg:#EEEEEE) — プロジェクト相対、~ は  に置換
+# directory (bg:#6F6A70 fg:#EEEEEE) — プロジェクト相対、ホームは ~ 表示
 # NOTE: 置換側の \~ は必須 — 素の ~ だとチルダ展開されて $HOME に戻ってしまう
 # The backslash in the replacement is required: a bare ~ tilde-expands back to $HOME
 if [ -n "$project_dir" ] && [ "$current_dir" != "$project_dir" ]; then
@@ -161,14 +168,13 @@ if [ -n "$project_dir" ] && [ "$current_dir" != "$project_dir" ]; then
 else
   display_dir="${current_dir/#"$HOME"/\~}"
 fi
-display_dir="${display_dir/#\~/$ICON_HOME }"
 seg "#6F6A70" "#EEEEEE" "$display_dir"
 
 # git branch (bg:#96ab5f fg:#111111) + git status (bg:#E0B25D fg:#000000)
 if git -C "$current_dir" rev-parse --git-dir > /dev/null 2>&1; then
   branch=$(git -C "$current_dir" branch --show-current 2>/dev/null || true)
   if [ -n "$branch" ]; then
-    seg "#96ab5f" "#111111" "󰊢 $branch"
+    seg "#96ab5f" "#111111" "$ICON_GIT $branch"
 
     # starship の git_status と同じシンボルでカウント表示 / same symbols as starship's git_status
     porcelain=$(git -C "$current_dir" status --porcelain 2>/dev/null || true)
@@ -178,8 +184,8 @@ if git -C "$current_dir" rev-parse --git-dir > /dev/null 2>&1; then
       modified=$(grep -c '^.[MD]' <<<"$porcelain" || true)
       untracked=$(grep -c '^??' <<<"$porcelain" || true)
       [ "$staged" -gt 0 ] && status_text+="$ICON_STAGED ${staged} "
-      [ "$modified" -gt 0 ] && status_text+="󰏫 ${modified} "
-      [ "$untracked" -gt 0 ] && status_text+="󱪝 ${untracked} "
+      [ "$modified" -gt 0 ] && status_text+="$ICON_MODIFIED ${modified} "
+      [ "$untracked" -gt 0 ] && status_text+="$ICON_UNTRACKED ${untracked} "
     fi
     # ahead/behind (upstream がある場合のみ) / only when an upstream exists
     counts=$(git -C "$current_dir" rev-list --left-right --count '@{upstream}...HEAD' 2>/dev/null || true)
@@ -196,7 +202,7 @@ if git -C "$current_dir" rev-parse --git-dir > /dev/null 2>&1; then
 fi
 
 # model (bg:#FF6AC1 fg:#111111) — テーマのアクセントピンク / theme accent pink
-seg "#FF6AC1" "#111111" "󰧑 $model"
+seg "#FF6AC1" "#111111" "⚡ $model"
 
 # context gauge — 使用率で色が変わるピル / pill color follows usage
 if [ -n "$pct" ]; then
@@ -206,7 +212,7 @@ if [ -n "$pct" ]; then
   for ((i = 0; i < 5; i++)); do
     if [ "$i" -lt "$filled" ]; then bar+="▰"; else bar+="▱"; fi
   done
-  seg "$(context_gauge_color "$pct")" "#111111" "󰍛 ${bar} ${pct}%"
+  seg "$(context_gauge_color "$pct")" "#111111" "💭 ${bar} ${pct}%"
 fi
 
 # ---------- base-band session info (cmd_duration 方式) ----------
@@ -237,11 +243,11 @@ fi
 # レートリミット使用率 — 色はコンテキストゲージと同じ閾値を再利用 / reuse the gauge thresholds
 if [ -n "$five_hour_pct" ]; then
   p5=${five_hour_pct%.*}
-  plain "$(context_gauge_color "$p5")" "󰅐 5h:${p5}%"
+  plain "$(context_gauge_color "$p5")" "5h:${p5}%"
 fi
 if [ -n "$seven_day_pct" ]; then
   p7=${seven_day_pct%.*}
-  plain "$(context_gauge_color "$p7")" "󰃭 7d:${p7}%"
+  plain "$(context_gauge_color "$p7")" "7d:${p7}%"
 fi
 
 # ---------- terminate the base band ----------
