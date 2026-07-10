@@ -92,8 +92,16 @@ herdr agent read <pane_id>
 固定ラベルは会話が進むと画面内に複数回出現する。2ターン目以降に単純にラベルだけで
 `--match` すると、直前ターンの古い応答に即マッチしてしまい、新しい応答を待たない。
 2ターン目以降は、応答本文にのみ出現する一意なトークンを相手への質問文で指定させ
-(例: 「回答には一意な合言葉を含めてください」)、そのトークン文字列自体でマッチする。
-トークンを送信文(自分の入力エコー行)に含めないこと — 含めると自己エコーの罠に戻る。
+(例: 「回答には一意な合言葉 `<トークン>` を含めてください」)、**応答側にしか出ない
+プレフィックス(`Agent:` など)とトークンの複合パターン**で `--match --regex` する:
+
+```bash
+herdr wait output <pane_id> --match "Agent:.*<トークン>" --timeout 30000 --regex
+```
+
+トークン単体でのマッチは避ける — トークンだけだと質問文中の記載や入力エコー行にも
+一致しうる。トークン自体は送信文(質問文)に含めてよいが、マッチは必ず応答側の
+プレフィックス込みの複合パターンで行うこと。
 
 ## 5. ユーザー最優先の原則
 
@@ -120,11 +128,11 @@ herdr agent read <pane_id>
 
 | 参加者 | 起動コマンド | 応答マーカー | 終了方法 | 備考 |
 |---|---|---|---|---|
-| Claude Code | `herdr agent start <name> --workspace <ws> --split <right\|down> -- claude` | herdr の `agent_status`(`idle`/`working`)で検知可能。文字列で待つ場合はプロンプト行 `>` | pane 内で `/exit` または pane close | Claude 同士は `wait agent-status` が使える(herdr が正式にエージェント検知する) |
+| Claude Code | `herdr agent start <name> --workspace <ws> --split down（または right） -- claude` | herdr の `agent_status`(`idle`/`working`)で検知可能。文字列で待つ場合はプロンプト行 `>` | pane 内で `/exit` または pane close | Claude 同士は `wait agent-status` が使える(herdr が正式にエージェント検知する) |
 | Copilot CLI | `herdr agent start <name> --workspace <ws> --split down -- copilot` | `● `(行頭。応答本文の先頭に付く) | 入力欄に `/exit` + Enter | herdr はエージェント検知しない(`agent=null`/`agent_status=unknown`)。`wait output` のパターンマッチで代替する |
 | copilot-quorum | `herdr agent start <name> --workspace <ws> --split down -- copilot-quorum --no-quorum` | `Agent:` ラベル行(初回のみ。2ターン目以降は [4](#4-応答待ち-wait-output--応答マーカー) のトークン方式を使う) | `send-keys <pane_id> C-c`(pane ごと片付く。実測確認済み) | 引数なし起動で Agent REPL。`--no-quorum` で合議レビューをスキップ(軽い疎通確認向け)。`/discuss` でアドホック合議、省略時 `--ensemble` で全問合議になる。応答完了は画面上部ステータスが `Planning`→`Ready` に変化し、`System: Agent completed` の直後に `Agent:` ラベルが出る |
 
-### copilot-quorum プローブの実測ログ(2026-07-11, w2W:p3 で実施)
+### copilot-quorum プローブの実測ログ(2026-07-11 JST, w2W:p3 で実施)
 
 ```
 起動: herdr agent start quorum-probe --workspace w2W --split down -- copilot-quorum --no-quorum
