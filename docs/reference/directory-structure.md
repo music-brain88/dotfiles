@@ -101,7 +101,7 @@ dotfiles/
 | Directory | Description |
 |-----------|-------------|
 | `skills/` | ツール中立な共有スキル層。各サブディレクトリに `SKILL.md`(frontmatter は `name`/`description` のみ)。`home.nix` で `.claude/skills/<name>` と `.copilot/skills/<name>` の両方にマウントし、単一ソースからのドリフトを構造的に防ぐ(Issue #404) |
-| `claude/skills/` | Claude Code 専用スキル。`herdr`/`session-log`(環境固有)、`daily`/`wt`/`wtclean`(Claude の人格・herdr 前提)。旧 `claude/commands/` はスキル形式に統合済み(Claude Code はスキルをスラッシュコマンドとしても呼べる) |
+| `claude/skills/` | Claude Code 専用スキル。`herdr`(環境固有)、`wt`/`wtclean`(Claude の人格・herdr 前提)。旧 `claude/commands/` はスキル形式に統合済み(Claude Code はスキルをスラッシュコマンドとしても呼べる) |
 | `copilot/` | GitHub Copilot CLI 設定。実体は `~/.copilot/`(`~/.config/copilot` ではない)。スキルは `skills/` からマウントされる共有分のみで、Copilot 固有のスキルディレクトリは持たない |
 
 ### Media & Misc
