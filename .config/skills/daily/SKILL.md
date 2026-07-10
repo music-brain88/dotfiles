@@ -1,6 +1,9 @@
 ---
 name: daily
-description: "Obsidian デイリーノートの自動作成・更新(朝)と対話型の振り返り(夜)を行う。cowork環境の「クラウディア」ワークフローのターミナル移植。ユーザーが「デイリーノート作って」「振り返りしたい」「/daily」などと言った時に使う。"
+description: |
+  Obsidian デイリーノートの自動作成・更新(朝)と対話型の振り返り(夜)を行う。
+  cowork環境の「クラウディア」ワークフローのターミナル移植。
+  ユーザーが「デイリーノート作って」「振り返りしたい」「/daily」などと言った時に使う。
 ---
 
 # Obsidian デイリーノート (ターミナル版クラウディア)
@@ -58,10 +61,12 @@ done
 
 ### 4. カレンダー取得
 
-MCP `mcp__claude_ai_Google_Calendar__list_events` を ToolSearch でロードし、以下の両方を当日 JST で取得する:
+カレンダー取得ツールが利用可能な環境(例: Claude Code の Google Calendar MCP `mcp__claude_ai_Google_Calendar__list_events`)では、以下の両方を当日 JST で取得する:
 
 - `calendarId: <統括カレンダーID>`(`~/.claude/local/daily.local.md` に書かれた統括カレンダー。個人アカウントの reader 権限で読める)
 - `primary`
+
+利用できない環境ではこのステップをスキップし、必要ならユーザーに今日の予定を直接確認する。
 
 OUT_OF_OFFICE(不在)イベントを検知したら、Schedule セクション冒頭に明記する。
 
