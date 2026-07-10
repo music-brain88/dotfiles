@@ -60,6 +60,7 @@ date: YYYY-MM-DD
 tags:
   - <プロジェクト名やテーマのケバブケース 3〜6個>
 type: research-note
+distilled_to:
 source: Claude Code session (<モデル名>) on <machine>
 context: <personal | work — 出自の判定に従う>
 machine: <arch-native | wsl>
