@@ -1,3 +1,8 @@
+---
+name: wt
+description: "タスクの説明からブランチ名を自動生成し、herdr の worktree + workspace を立ち上げ、必要なら作業担当エージェントに委任する。ユーザーが新しい作業を始めたい・worktree を切りたい・「/wt」と言った時に使う。"
+---
+
 # Worktree 作成 (herdr)
 
 ## Overview
@@ -18,7 +23,7 @@
 
 ### 2. ブランチ名の生成
 
-ユーザーの入力（`$ARGUMENTS`）からブランチ名を生成する。
+ユーザーの入力からブランチ名を生成する。
 
 **Constraints:**
 - **MUST**: conventional commit message のような形式で生成する(`feat/` `fix/` `chore/` `ci/` `docs/` などの type を prefix にする)
@@ -308,7 +313,3 @@ herdr が使えない環境(worktree だけで完結させたい等)では、作
 
 ### 非ASCII・不可視文字(PUA グリフ等)をファイルに書く場合
 Nerd Font の PUA グリフ等をツール呼び出しで直接タイプすると、バイト列が消失して空文字列になったり、意図せず `\uXXXX` テキストに化けたりする(不可視文字はエディタ・diff・レビューUIのどこでも見えず、目視でのミス検出ができない構造的な罠 — #363、PR #366)。該当する書き込みは以下の手順で行う: JSON ファイルへは、コードポイントが BMP 内(U+FFFF 以下)なら `\uXXXX` エスケープをリテラル ASCII 文字列として書いてよいが、U+10000 以上(サロゲートペアが必要。Nerd Fonts 由来の記号で頻出、例: `U+F0A1E`)では `\uXXXX` 単体では表現できず手順が破綻するため、`python3 -c "import json; print(json.dumps('<文字>', ensure_ascii=True))"` 等でサロゲートペアのエスケープを機械生成して貼る。JSON 以外のファイルは Python の `chr()` でコードポイントから機械的に文字列を組み立ててファイル I/O で書き込む。書き込み後は hex dump(`xxd` 等)で機械的に検証する(目視確認は禁止)。コードポイントの正典は `ryanoasis/nerd-fonts` リポジトリの `glyphnames.json`。
-
-## 引数
-
-$ARGUMENTS

@@ -59,7 +59,7 @@
       recursive = true;
     };
 
-    # Claude Code (directory-wide symlinks for commands support)
+    # Claude Code (directory-wide symlinks for skills support)
     ".claude" = {
       source = ./.config/claude;
       recursive = true;
@@ -69,6 +69,21 @@
       source = ./.config/claude/statusline-command.sh;
       executable = true;
     };
+
+    # Tool-neutral shared skills (single source of truth, see .config/skills/)
+    # Claude / Copilot 共有スキル(単一ソース。ドリフト防止 — Issue #404)
+    # Individual per-skill entries override the recursive ".claude" mount above,
+    # same pattern as statusline-command.sh. There is no recursive ".copilot/skills"
+    # mount to override below — Copilot has no skills of its own, so each shared
+    # skill is mounted directly (see the ".copilot/skills/*" entries further down).
+    # 上記の ".claude" recursive マウントを個別スキルごとに上書きする(statusline-command.sh と同じパターン)。
+    # ".copilot/skills" 側は上書き対象となる recursive マウント自体が存在しない
+    # (Copilot 固有のスキルを持たないため、共有スキルを個別に直接マウントするのみ。後述の ".copilot/skills/*" 参照)
+    ".claude/skills/context" = { source = ./.config/skills/context; recursive = true; };
+    ".claude/skills/create-issue" = { source = ./.config/skills/create-issue; recursive = true; };
+    ".claude/skills/pr" = { source = ./.config/skills/pr; recursive = true; };
+    ".claude/skills/release-note" = { source = ./.config/skills/release-note; recursive = true; };
+    ".claude/skills/formal" = { source = ./.config/skills/formal; recursive = true; };
 
     # mise global config (tools available outside project dirs, e.g. claude via node)
     # mise グローバル設定（プロジェクト外でも使うツール。claude は node 経由）
@@ -82,10 +97,13 @@
     # GitHub Copilot CLI (uses ~/.copilot/)
     # NOTE: config.json is seeded via activation script (Copilot CLI writes to it dynamically)
     ".copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
-    ".copilot/skills" = {
-      source = ./.config/copilot/skills;
-      recursive = true;
-    };
+    # Tool-neutral shared skills, same source as ".claude/skills/*" above (Issue #404)
+    # Claude 側と同じソースを共有(単一ソース化)
+    ".copilot/skills/context" = { source = ./.config/skills/context; recursive = true; };
+    ".copilot/skills/create-issue" = { source = ./.config/skills/create-issue; recursive = true; };
+    ".copilot/skills/pr" = { source = ./.config/skills/pr; recursive = true; };
+    ".copilot/skills/release-note" = { source = ./.config/skills/release-note; recursive = true; };
+    ".copilot/skills/formal" = { source = ./.config/skills/formal; recursive = true; };
     # Global copilot-instructions for GitHub Copilot (VS Code, etc.)
     ".github/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
 

@@ -1,20 +1,26 @@
+---
+name: context
+description: |
+  GitHub の Issue / Discussion / PR をコンテキストとして読み込む。
+  ユーザーが「Issue #123 を見て」「PR #45 の内容を確認して」「Discussion #67 を読み込んで」
+  などと言った時に使用する。
+---
+
 # コンテキスト読み込み
 
 GitHub の Issue / Discussion / PR をコンテキストとして読み込みます。
 
 ## 使い方
 
-```
-/context 123           → Issue #123
-/context discussion 45 → Discussion #45
-/context pr 67         → PR #67
-```
+- `123` または `issue 123` → Issue #123
+- `discussion 45` または `d 45` → Discussion #45
+- `pr 67` または `pull 67` → Pull Request #67
 
 ## 手順
 
 ### 1. 引数のパース
 
-`$ARGUMENTS` を解析して、タイプと番号を特定する:
+ユーザーの入力を解析して、タイプと番号を特定する:
 
 - 数字のみ（例: `123`）→ Issue として扱う
 - `discussion N` または `d N` → Discussion #N
@@ -84,7 +90,3 @@ query($owner: String!, $repo: String!, $number: Int!) {
 ### 5. 確認
 
 読み込んだコンテキストの要約を表示し、ユーザーに内容を確認させる。
-
-## 引数
-
-$ARGUMENTS

@@ -1,13 +1,19 @@
+---
+name: create-issue
+description: |
+  GitHub Issue を作成する。
+  ユーザーが「Issue を作成して」「バグ報告したい」「新しい機能を提案したい」
+  などと言った時に使用する。
+---
+
 # Issue 作成
 
 GitHub Issue を作成します。
 
 ## 使い方
 
-```
-/create-issue バグ修正が必要
-/create-issue 新機能: ダークモード対応
-```
+- `バグ修正が必要`
+- `新機能: ダークモード対応`
 
 ## 手順
 
@@ -36,7 +42,7 @@ gh label list --json name,description
 
 ### 4. Issue 内容の作成
 
-ユーザーの入力（`$ARGUMENTS`）を元に:
+ユーザーの入力を元に:
 
 1. **タイトル**: 簡潔で明確なタイトルを提案
 2. **本文**: テンプレートに沿った形式で作成
@@ -71,7 +77,3 @@ gh issue create --title "<title>" --body "<body>" --label "<labels>"
 ```
 
 作成した Issue の URL を表示する。
-
-## 引数
-
-$ARGUMENTS

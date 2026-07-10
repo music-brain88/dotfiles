@@ -1,3 +1,8 @@
+---
+name: wtclean
+description: "マージ済み PR に対応する worktree / workspace / ローカルブランチを安全に掃除する。/wt で作った worktree のライフサイクルの後始末。ユーザーが「worktree を掃除して」「片付けたい」「/wtclean」と言った時に使う。"
+---
+
 # Worktree 掃除 (herdr)
 
 ## Overview
@@ -120,7 +125,3 @@ git worktree prune
 
 ### git branch -d の not yet merged to HEAD 警告
 squash マージ運用ではマージされたブランチのコミットが main の履歴に直接は含まれないため、ローカル main が最新であってもこの警告は出る(ローカル main の遅延が原因とは限らない)。手順2で origin(の同名ブランチ)へのマージは確認できているので、`git branch -d` が upstream 追跡ブランチへのマージ済みと判定すれば、警告付きで削除は成功する。この場合は警告を無視してよい。`-d` が実際に拒否された(削除されなかった)場合のみ、ローカル main を更新してから再実行する(それでも `-D` にはエスカレートしない)。更新方法: main をチェックアウト中のリポジトリでは `git fetch origin main:main` は拒否されるため、`git fetch origin` してから `git merge --ff-only origin/main`(または `git pull --ff-only`)で更新する。それでも拒否される場合は削除を中止してユーザーに報告する。
-
-## 引数
-
-$ARGUMENTS
