@@ -1,3 +1,11 @@
+---
+name: pr
+description: |
+  Pull Request を作成または更新する。
+  ユーザーが「PR を作成して」「プルリクエストを出して」「変更をレビューに出したい」
+  などと言った時に使用する。
+---
+
 # Pull Request 作成
 
 Pull Request を作成または更新します。
@@ -42,7 +50,3 @@ Conventional Commits スタイルでタイトルを決定:
 
 ### 6. PR作成
 `gh pr create` でPRを作成し、作成したPRのURLを表示する。
-
-## 追加情報
-
-$ARGUMENTS

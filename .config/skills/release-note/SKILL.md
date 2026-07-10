@@ -48,9 +48,10 @@ git log <prev-tag>...<target-tag> --oneline --no-merges
 
 各コミットから関連する PR 番号を抽出する。
 
-### 5. PR 詳細の調査
+### 5. PR 詳細の並列調査
 
 各 PR の詳細を `gh pr view <number> --json title,body` で取得する。
+**独立した PR は並列で調査** して効率化すること。
 
 ### 6. 変更規模の確認
 
