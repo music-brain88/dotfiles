@@ -72,9 +72,13 @@
 
     # Tool-neutral shared skills (single source of truth, see .config/skills/)
     # Claude / Copilot 共有スキル(単一ソース。ドリフト防止 — Issue #404)
-    # Individual per-skill entries override the recursive ".claude"/".copilot/skills"
-    # mounts above/below, same pattern as statusline-command.sh.
-    # 上記/下記の recursive マウントを個別スキルごとに上書きする(statusline-command.sh と同じパターン)
+    # Individual per-skill entries override the recursive ".claude" mount above,
+    # same pattern as statusline-command.sh. There is no recursive ".copilot/skills"
+    # mount to override below — Copilot has no skills of its own, so each shared
+    # skill is mounted directly (see the ".copilot/skills/*" entries further down).
+    # 上記の ".claude" recursive マウントを個別スキルごとに上書きする(statusline-command.sh と同じパターン)。
+    # ".copilot/skills" 側は上書き対象となる recursive マウント自体が存在しない
+    # (Copilot 固有のスキルを持たないため、共有スキルを個別に直接マウントするのみ。後述の ".copilot/skills/*" 参照)
     ".claude/skills/context" = { source = ./.config/skills/context; recursive = true; };
     ".claude/skills/create-issue" = { source = ./.config/skills/create-issue; recursive = true; };
     ".claude/skills/pr" = { source = ./.config/skills/pr; recursive = true; };
