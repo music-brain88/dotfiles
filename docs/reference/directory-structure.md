@@ -63,7 +63,8 @@ dotfiles/
 | `bash/` | Bash 設定 (bashrc, bash_profile) - Fish へのブートストラップ用 |
 | `fish/` | Fish shell 設定 (config.fish, functions/, conf.d/) |
 | `tmux/` | Tmux 設定 (tmux.conf) |
-| `alacritty/` | Alacritty ターミナル設定 |
+| `wezterm/` | WezTerm ターミナル設定 (`wezterm.lua`、native Arch と Windows で共通)。native Arch のメインターミナル(Phase 3, #393) |
+| `alacritty/` | Alacritty ターミナル設定 (併存期間中のフォールバック) |
 | `starship/` | Starship プロンプト設定 |
 
 ### Editor
@@ -130,8 +131,8 @@ Home Manager の設定をモジュール化。
 | `neovim.nix` | Neovim + LSP + formatters |
 | `dev-tools.nix` | 開発ツール (Docker, AWS CLI, kubectl, etc.) |
 | `fonts.nix` | フォント |
-| `desktop.nix` | GUI 設定群 (hypr, waybar, alacritty, wofi, mako, mpd, ncmpcpp, fontconfig) — native profile のみ |
-| `wsl.nix` | WSL 固有: Obsidian vault symlink と Windows 側 Alacritty 設定の配布 — wsl profile のみ |
+| `desktop.nix` | GUI 設定群 (hypr, waybar, wezterm, alacritty, wofi, mako, mpd, ncmpcpp, fontconfig) — native profile のみ |
+| `wsl.nix` | WSL 固有: Obsidian vault symlink と Windows 側 WezTerm/Alacritty 設定の配布 — wsl profile のみ |
 
 profile 分割の設計意図は [architecture.md の Per-Host Profiles](../explanation/architecture.md#per-host-profiles) を参照。
 
