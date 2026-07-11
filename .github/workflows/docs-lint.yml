@@ -79,8 +79,13 @@ jobs:
       # moves to a new file — anchor links must still be checked by hand.
       # nixos.org は DDoS 対策で GitHub ランナーの IP を遮断することがあり、
       # リンクが生きていても Connection failed になるため除外する。
+      # nix.dev も同じ NixOS 財団系インフラのため同様の遮断が起きる
+      # (実例: PR #411 で Connection reset by peer、リトライ5回でも回復せず)。
       # nixos.org intermittently blocks GitHub runner IPs (DDoS protection),
       # so valid links fail with "Connection failed" — exclude the domain.
+      # nix.dev shares the same NixOS Foundation infra and hits the same
+      # blocking (seen in PR #411: Connection reset by peer, unrecovered
+      # after 5 retries) — exclude it too.
       #
       # --max-retries / --retry-wait-time: GitHub 側の一時的な 5xx を
       # リトライで吸収する (実例: run 28885785093、rerun 一発で pass — #375)。
@@ -100,6 +105,7 @@ jobs:
             --no-progress
             --exclude-path result
             --exclude '^https://nixos\.org'
+            --exclude '^https://nix\.dev'
             --max-retries 5
             --retry-wait-time 5
             --accept '100..=103,200..=299,500..=599'
