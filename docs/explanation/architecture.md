@@ -183,7 +183,7 @@ nix/modules/
 ├── neovim.nix      # Neovim + LSP + formatters
 ├── dev-tools.nix   # 開発ツール（docker, kubectl, awscli）
 ├── fonts.nix       # フォント
-├── desktop.nix     # GUI 設定群（hypr, waybar, alacritty 等）— native profile のみ
+├── desktop.nix     # GUI 設定群（hypr, waybar, wezterm, alacritty 等）— native profile のみ
 └── wsl.nix         # WSL 固有（Obsidian vault symlink, WezTerm/Alacritty 配布）— wsl profile のみ
 ```
 
@@ -222,8 +222,10 @@ Windows 側へ配布する成果物として扱う（`nix/modules/wsl.nix`）。
 WezTerm は `conpty.dll` / `OpenConsole.exe` を同梱し ConPTY 実装を自前で持つため
 この問題を踏まない。原則（ピクセルは host）はそのままに emulator だけを替える最小修正。
 設定は `wezterm.lua` 1枚が両マシン共通の真実（Lua の実行時 OS 分岐が Alacritty 時代の
-base + windows.toml ビルド時マージを置き換え）。Windows 版 Alacritty は併存期間中
-フォールバックとして設定配布を維持する。
+base + windows.toml ビルド時マージを置き換え）。Windows 側での安定運用確認を経て、
+native Arch (Hyprland) のメインターミナルも Alacritty から WezTerm へ統一した
+（Phase 3, [#393](https://github.com/music-brain88/dotfiles/issues/393)）。
+Alacritty は両マシンとも併存期間中フォールバックとして設定配布を維持する。
 
 ### profile の構造
 

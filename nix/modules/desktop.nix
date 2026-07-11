@@ -22,10 +22,17 @@
       recursive = true;
     };
 
-    # Alacritty config (WSL では Windows 側 Alacritty に配布する。nix/modules/wsl.nix 参照)
-    # Alacritty config (on WSL this is deployed to the Windows side; see nix/modules/wsl.nix)
+    # Alacritty config (併存期間中のフォールバック。WSL では Windows 側 Alacritty に配布する。nix/modules/wsl.nix 参照)
+    # Alacritty config (fallback during the WezTerm migration; on WSL this is deployed to the Windows side, see nix/modules/wsl.nix)
     ".config/alacritty" = {
       source = ../../.config/alacritty;
+      recursive = true;
+    };
+
+    # WezTerm config (native Arch のメインターミナル。wezterm.lua は両マシン共通の真実、Windows 側は wsl.nix が配布)
+    # WezTerm config (primary terminal on native Arch; wezterm.lua is the single source of truth shared with Windows, distributed there by wsl.nix)
+    ".config/wezterm" = {
+      source = ../../.config/wezterm;
       recursive = true;
     };
 

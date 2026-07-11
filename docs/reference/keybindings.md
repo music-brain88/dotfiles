@@ -242,7 +242,7 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
-| `Super + Enter` | Open terminal (Alacritty) | ターミナルを開く |
+| `Super + Enter` | Open terminal (WezTerm) | ターミナルを開く |
 | `Super + D` | Application launcher (Wofi) | アプリランチャー |
 | `Super + Space` | Application launcher (Wofi) | アプリランチャー（代替） |
 | `Super + I` | Open browser (Vivaldi) | ブラウザを開く |
