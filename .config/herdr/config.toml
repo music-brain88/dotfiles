@@ -16,6 +16,28 @@
 #   workspace_picker (prefix+w) = NAVIGATE モード、滞在中はベアキーで見回り操作
 #                                 NAVIGATE mode; bare keys for look-around ops while active
 
+# Neovim の onedarkpro.nvim (onedark) に統一したカラー。基準表・出典は
+# docs/reference/color-palette.md を参照。[theme.custom] で公式に文書化されて
+# いるトークンは panel_bg/accent/red/green/blue/yellow の6つのみで、
+# cyan/magenta 等の完全なトークン一覧は非公開のため、one-dark 組み込みテーマを
+# 土台にして文書化済みトークンのみ上書きしている (詳細は基準表の
+# 「herdr のテーマ設定手段 調査結果」参照)。
+# Colors unified with Neovim's onedarkpro.nvim (onedark). See
+# docs/reference/color-palette.md for the reference table. Only the
+# documented [theme.custom] tokens (panel_bg/accent/red/green/blue/yellow)
+# are overridden on top of the built-in one-dark theme, since the full
+# token set isn't publicly documented.
+[theme]
+name = "one-dark"
+
+[theme.custom]
+red = "#e06c75"
+green = "#98c379"
+yellow = "#e5c07b"
+blue = "#61afef"
+accent = "#c678dd" # onedark purple (cursor/selection/tab-active 等で使われる強調色)
+panel_bg = "#1e2127" # WezTerm background と揃えた値 (据え置き、詳細は基準表の「背景色についての判断」参照)
+
 [terminal]
 default_shell = "fish"
 

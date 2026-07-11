@@ -46,6 +46,7 @@
 - [reference/neovim-config.md](./reference/neovim-config.md) - Neovimの設定ファイル構成とキーバインド
 - [reference/ci-cd-pipeline.md](./reference/ci-cd-pipeline.md) - CI/CDパイプラインの仕様
 - [reference/fontconfig.md](./reference/fontconfig.md) - フォント設定
+- [reference/color-palette.md](./reference/color-palette.md) - カラーパレット基準表 (onedark)
 
 ---
 

@@ -9,3 +9,4 @@
 - [neovim-config.md](./neovim-config.md) — Neovimの設定ファイル構成とキーバインド
 - [ci-cd-pipeline.md](./ci-cd-pipeline.md) — CI/CDパイプラインの仕様
 - [fontconfig.md](./fontconfig.md) — フォント設定
+- [color-palette.md](./color-palette.md) — カラーパレット基準表 (onedark)
