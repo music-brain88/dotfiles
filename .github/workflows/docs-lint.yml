@@ -104,8 +104,8 @@ jobs:
           args: >-
             --no-progress
             --exclude-path result
-            --exclude '^https://nixos\.org'
-            --exclude '^https://nix\.dev'
+            --exclude '^https://nixos\.org(/|$)'
+            --exclude '^https://nix\.dev(/|$)'
             --max-retries 5
             --retry-wait-time 5
             --accept '100..=103,200..=299,500..=599'
