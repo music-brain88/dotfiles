@@ -90,7 +90,7 @@ machine: <arch-native | wsl>
 - <URL、[[wikilink]] を積極的に(既存ノート名と繋ぐ)>
 ```
 
-### 親子ノート(worker セッションの供養)
+#### 親子ノート(worker セッションの供養)
 
 /wtclean の供養から worker の開発過程を昇格させる場合は子ノートとする(実例: `ResearchNotes/ClaudeCodeSession-20260710-Worker-ButtonTokenConvergence.md`):
 - 命名: `ResearchNotes/ClaudeCodeSession-YYYYMMDD-Worker-<TopicSlug>.md`
