@@ -288,6 +288,7 @@ gh api graphql -f query='
 - **MUST**: 未解決の review thread が0件なら、required checks の完了を待つ
 - **MUST**: 複数 PR を直列にマージする場合、1本マージするたびに残りの PR が base 更新で BEHIND に戻る玉突きを前提にループを設計する(全PRを一度に判定してから順にマージ、ではなく「1本マージ→残りのステータスを再取得→次を判定」を繰り返す)
 - **MUST NOT**: `mergeStateStatus` が `CLEAN` になる前にマージを実行しない
+- **MUST NOT**: マージ時に `--delete-branch` を付けない。worktree が生存中はローカルブランチ削除が必ず失敗して紛らわしいため、ブランチ削除(リモート含む)は `/wtclean` の領分とする
 
 ### 7. 自己更新(Self-update)
 
