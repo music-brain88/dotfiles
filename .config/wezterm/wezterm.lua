@@ -9,30 +9,36 @@ local config = wezterm.config_builder()
 local is_windows = wezterm.target_triple:find('windows') ~= nil
 
 -- ---------------------------------------------------------------------------
--- 見た目 / Appearance (Alacritty で使っていた One Dark 系パレットを踏襲)
+-- 見た目 / Appearance
+-- Neovim の onedarkpro.nvim (onedark) に統一したパレット。基準表・出典は
+-- docs/reference/color-palette.md を参照。background は Alacritty 時代から
+-- 意図的に暗くしている値のため据え置き (詳細は基準表の「背景色についての判断」参照)。
+-- Colors unified with Neovim's onedarkpro.nvim (onedark). See
+-- docs/reference/color-palette.md for the reference table and rationale.
+-- background is kept at the intentionally-darker Alacritty-era value.
 -- ---------------------------------------------------------------------------
 config.colors = {
   foreground = '#abb2bf',
   background = '#1e2127',
   ansi = {
-    '#1e2127', -- black
+    '#1e2127', -- black (background に合わせて据え置き / kept in sync with background)
     '#e06c75', -- red
     '#98c379', -- green
-    '#d19a66', -- yellow
+    '#e5c07b', -- yellow (旧 #d19a66 は onedark の orange だった / was onedark's orange)
     '#61afef', -- blue
     '#c678dd', -- magenta
     '#56b6c2', -- cyan
-    '#828791', -- white
+    '#abb2bf', -- white
   },
   brights = {
     '#5c6370', -- bright black
-    '#e06c75', -- bright red
-    '#98c379', -- bright green
-    '#d19a66', -- bright yellow
-    '#61afef', -- bright blue
-    '#c678dd', -- bright magenta
-    '#56b6c2', -- bright cyan
-    '#e6efff', -- bright white
+    '#e9969d', -- bright red
+    '#b3d39c', -- bright green
+    '#edd4a6', -- bright yellow
+    '#8fc6f4', -- bright blue
+    '#d7a1e7', -- bright magenta
+    '#7bc6d0', -- bright cyan
+    '#c8cdd5', -- bright white
   },
 }
 
