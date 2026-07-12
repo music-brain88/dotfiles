@@ -54,7 +54,9 @@ fi
 # Wayland 環境: notify-send 経由で通知デーモン(mako 等)に出す
 # Wayland: notify-send to the running notification daemon (mako).
 if [ -n "${WAYLAND_DISPLAY:-}" ]; then
-  command -v notify-send >/dev/null 2>&1 && notify-send "$title" "$body" || true
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send "$title" "$body" || true
+  fi
 fi
 
 # WSL2 環境: OSC 9 エスケープを /dev/tty へ(未検証経路)
@@ -73,7 +75,9 @@ fi
 # herdr 内なら画面内通知も併発(コアの通知経路とは独立、失敗しても無視)
 # Inside herdr, also fire its in-app notification — best-effort, never fatal.
 if [ "${HERDR_ENV:-}" = "1" ]; then
-  command -v herdr >/dev/null 2>&1 && herdr notification show "$title" --sound "$sound" >/dev/null 2>&1 || true
+  if command -v herdr >/dev/null 2>&1; then
+    herdr notification show "$title" --sound "$sound" >/dev/null 2>&1 || true
+  fi
 fi
 
 exit 0
