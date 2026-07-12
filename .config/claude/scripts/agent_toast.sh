@@ -25,7 +25,7 @@ if command -v jq >/dev/null 2>&1 && [ -n "$hook_json" ]; then
   message="$(printf '%s' "$hook_json" | jq -r '.message // empty' 2>/dev/null || true)"
 fi
 
-cwd_base="$(basename "$PWD" 2>/dev/null || true)"
+cwd_base="$(basename "${PWD:-$(pwd)}" 2>/dev/null || true)"
 pane_id="${HERDR_PANE_ID:-}"
 
 case "$event" in
@@ -59,9 +59,10 @@ if [ -n "${WAYLAND_DISPLAY:-}" ]; then
   fi
 fi
 
-# WSL2 環境: OSC 9 エスケープを /dev/tty へ(未検証経路)
-# WSL2: OSC 9 escape sequence to /dev/tty (UNVERIFIED path — no WSL test rig
-# available at implementation time). Silently give up if /dev/tty can't be opened.
+# WSL2 環境: OSC 777 notify エスケープを /dev/tty へ(未検証経路)
+# WSL2: OSC 777 notify escape sequence to /dev/tty (UNVERIFIED path — no WSL
+# test rig available at implementation time). Silently give up if /dev/tty
+# can't be opened.
 is_wsl=0
 if [ -n "${WSL_DISTRO_NAME:-}" ]; then
   is_wsl=1
@@ -69,7 +70,15 @@ elif grep -qi microsoft /proc/version 2>/dev/null; then
   is_wsl=1
 fi
 if [ "$is_wsl" -eq 1 ]; then
-  { printf '\033]9;%s\007' "$title: $body" > /dev/tty; } 2>/dev/null || true
+  # エスケープシーケンス注入対策: title/body に制御文字(\000-\037, \177)が
+  # 混入していると端末側で意図しないシーケンスとして解釈されうるため、
+  # /dev/tty へ書く前に tr で除去する。
+  # Security: title/body may contain control characters (\000-\037, \177)
+  # that the terminal could interpret as injected escape sequences, so strip
+  # them with tr before writing to /dev/tty.
+  safe_title="$(printf '%s' "$title" | tr -d '\000-\037\177' || true)"
+  safe_body="$(printf '%s' "$body" | tr -d '\000-\037\177' || true)"
+  { printf '\033]777;notify;%s;%s\033\\' "$safe_title" "$safe_body" > /dev/tty; } 2>/dev/null || true
 fi
 
 # herdr 内なら画面内通知も併発(コアの通知経路とは独立、失敗しても無視)

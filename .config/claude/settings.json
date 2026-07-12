@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/scripts/agent_toast.sh notification"
+            "command": "bash $HOME/.claude/scripts/agent_toast.sh notification"
           }
         ]
       }
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/scripts/agent_toast.sh stop"
+            "command": "bash $HOME/.claude/scripts/agent_toast.sh stop"
           }
         ]
       }
