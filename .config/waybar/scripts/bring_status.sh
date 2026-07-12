@@ -12,7 +12,11 @@
 set -euo pipefail
 
 state_file="${XDG_RUNTIME_DIR:-/tmp}/bring_state.json"
-sock="${XDG_RUNTIME_DIR}/hypr/${HYPRLAND_INSTANCE_SIGNATURE}/.socket2.sock"
+# set -u 下でも Hyprland セッション外(env 欠落)で即死しないようデフォルトを与える。
+# ソケット実在チェックは下の起動ガード参照。
+# Default the vars so `set -u` doesn't kill us outside a Hyprland session;
+# the socket existence guard below handles the rest.
+sock="${XDG_RUNTIME_DIR:-/tmp}/hypr/${HYPRLAND_INSTANCE_SIGNATURE:-}/.socket2.sock"
 
 # グリフは raw で書かず ANSI-C の \uXXXX エスケープで書く(不可視文字の罠 — PR #366)
 # Write the glyph as an ANSI-C \uXXXX escape, never raw (invisible-char trap, PR #366)
@@ -35,12 +39,22 @@ emit() {
     return
   fi
 
-  local address class title origin_ws dest_ws cur_ws
-  address="$(jq -r '.address' "$state_file")"
-  class="$(jq -r '.class' "$state_file")"
-  title="$(jq -r '.title' "$state_file")"
-  origin_ws="$(jq -r '.origin_ws' "$state_file")"
-  dest_ws="$(jq -r '.dest_ws' "$state_file")"
+  local state address class title origin_ws dest_ws cur_ws
+
+  # 壊れた・書きかけの状態ファイルは「未借用」と同じ扱いにする
+  # (パース失敗で set -e が常駐スクリプトごと落とすのを防ぐ)
+  # Treat a corrupt/partial state file the same as "nothing borrowed"
+  # (so a parse failure can't take down the resident gauge via set -e)
+  if ! state="$(jq -c . "$state_file" 2>/dev/null)"; then
+    emit_json "" "" ""
+    return
+  fi
+
+  address="$(jq -r '.address' <<<"$state")"
+  class="$(jq -r '.class' <<<"$state")"
+  title="$(jq -r '.title' <<<"$state")"
+  origin_ws="$(jq -r '.origin_ws' <<<"$state")"
+  dest_ws="$(jq -r '.dest_ws' <<<"$state")"
 
   # 参照ウィンドウの現在地(閉じられていたら空文字になる)。
   # hyprctl の一時的な失敗で常駐スクリプトごと死なないよう失敗は空扱いにする
@@ -67,6 +81,15 @@ emit() {
     emit_json "$icon $title" "$class ← ws:$origin_ws(今は ws:$cur_ws)" "stray"
   fi
 }
+
+# 起動ガード: Hyprland セッション外(ソケット不在)では計器盤を非表示にして正常終了。
+# クラッシュ扱いにせず、単に「表示するものがない」として振る舞う。
+# Startup guard: outside a Hyprland session (no socket), hide the gauge and exit
+# cleanly — behave as "nothing to display" rather than crashing.
+if [ ! -S "$sock" ]; then
+  emit_json "" "" ""
+  exit 0
+fi
 
 # 起動直後に現在値を1回出す(Waybar 再起動時に前回の状態を復元するため)
 # Emit once at startup so a Waybar restart restores the current reading
