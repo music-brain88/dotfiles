@@ -8,7 +8,8 @@
     "modules-left": [
         "hyprland/workspaces",
         "hyprland/submap",
-        "hyprland/window"
+        "hyprland/window",
+        "custom/bring"
     ],
     "modules-center": [
         "clock",
@@ -71,6 +72,20 @@
         "format": " {}",
         "max-length": 50,
         "separate-outputs": true
+    },
+
+    // Bring 型の計器盤(#422): bring_window.sh(Super+Y)で借りている参照ウィンドウを表示。
+    // 常駐スクリプトが Hyprland socket2 を購読して随時1行出力する(interval なし)。
+    // 操作はここに持たせない — 表示のみ(操作系は Super+Y / Super+Shift+Y のまま)。
+    // Bring-style gauge (#422): shows the reference window borrowed via Super+Y.
+    // The long-running script subscribes to Hyprland socket2 and streams JSON lines
+    // (no interval). Display only; control stays on the Super+Y keybinds.
+    "custom/bring": {
+        "format": "{}",
+        "return-type": "json",
+        "max-length": 45,
+        "exec": "~/.config/waybar/scripts/bring_status.sh",
+        "escape": true
     },
 
     "hyprland/language": {
