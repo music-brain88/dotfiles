@@ -211,3 +211,23 @@ window#waybar.hidden {
     border-radius: 10px;
     background: #1e1e2e;
 }
+
+/* Bring 計器盤: いま借りている参照ウィンドウ (#422) */
+/* Bring gauge: the reference window currently borrowed (#422) */
+#custom-bring {
+    padding: 0 10px;
+    margin: 5px 0;
+    background: #1e1e2e;
+    border-radius: 10px;
+    color: #cdd6f4;
+}
+
+/* 参照が手元(借りてきた先の ws)にいる / reference is still at hand */
+#custom-bring.active {
+    color: #a6e3a1;
+}
+
+/* 参照がよそへ移動した・迷子 / reference wandered off elsewhere */
+#custom-bring.stray {
+    color: #6c7086;
+}

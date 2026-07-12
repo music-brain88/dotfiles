@@ -53,6 +53,22 @@ case "$mode" in
     # special workspace 上から実行される場合もあるため id ではなく name を使う
     # Use name, not id, since this may run from a (named) special workspace
     active_ws="$(hyprctl activeworkspace -j | jq -r '.name')"
+    # 計器盤(Waybar custom/bring #422)用に「何をどこから借りたか」を記録する。
+    # 移動の dispatch より先に書くことで、socket2 の movewindow イベントが
+    # 購読側に届いた時点で状態ファイルが確定していることを保証する。
+    # Record what was borrowed and from where, for the Waybar gauge (#422).
+    # Written *before* dispatching the move so the state file is already
+    # settled when the movewindow event reaches the socket2 subscriber.
+    # temp + mv で書き込みをアトミックにする(同一ディレクトリ内の rename は
+    # アトミックなので、読み手が書きかけの JSON を観測することがない)
+    # Write via temp + mv so the update is atomic (same-directory rename),
+    # ensuring readers never observe a truncated JSON file.
+    state_file="${XDG_RUNTIME_DIR:-/tmp}/bring_state.json"
+    hyprctl clients -j | jq -c --arg addr "$address" --arg dest "$active_ws" '
+      .[] | select(.address == $addr) |
+      {address, class, title, origin_ws: .workspace.name, dest_ws: $dest}
+    ' > "${state_file}.tmp"
+    mv "${state_file}.tmp" "$state_file"
     hyprctl dispatch movetoworkspacesilent "${active_ws},address:${address}"
     hyprctl dispatch focuswindow "address:${address}"
     ;;
