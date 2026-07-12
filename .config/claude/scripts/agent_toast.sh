@@ -78,7 +78,7 @@ if [ "$is_wsl" -eq 1 ]; then
   # them with tr before writing to /dev/tty.
   safe_title="$(printf '%s' "$title" | tr -d '\000-\037\177' || true)"
   safe_body="$(printf '%s' "$body" | tr -d '\000-\037\177' || true)"
-  { printf '\033]777;notify;%s;%s\033\\' "$safe_title" "$safe_body" > /dev/tty; } 2>/dev/null || true
+  { printf '\033]777;notify;%s;%s\007' "$safe_title" "$safe_body" > /dev/tty; } 2>/dev/null || true
 fi
 
 # herdr 内なら画面内通知も併発(コアの通知経路とは独立、失敗しても無視)
