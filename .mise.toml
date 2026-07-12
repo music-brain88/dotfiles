@@ -76,3 +76,63 @@ description = "Backup installed Arch Linux packages"
 # .backup/ は gitignore 済みのため fresh clone に存在しない → mkdir -p が必須
 # .backup/ is gitignored and absent in fresh clones, so mkdir -p is required
 run = "mkdir -p .backup/pacman && sudo pacman -Qne > .backup/pacman/pkglist.txt"
+
+# =============================================================================
+# GPG Tasks — 複数端末での署名鍵運用 / Multi-machine signing key management
+# 手順の解説: docs/how-to/manage-gpg-keys.md
+# =============================================================================
+
+[tasks."gpg:status"]
+description = "Show GPG signing key expiry and warn when renewal is near"
+run = """
+set -euo pipefail
+key=$(git config user.signingkey)
+gpg --list-keys --keyid-format long "$key"
+# 主キー・サブキーのうち最も早い期限 (epoch秒) を取り出す
+# Pick the soonest expiry (epoch seconds) across primary key and subkeys
+soonest=$(gpg --list-keys --with-colons "$key" | awk -F: '$1=="pub" || $1=="sub" {print $7}' | sort -n | head -1)
+days=$(( ($soonest - $(date +%s)) / 86400 ))
+# 期限が3日以内の場合は警告を表示する
+if [ "$days" -le 3 ]; then
+  echo "WARNING: GPG key $key expires in $days days. Consider extending the expiry and re-exporting the bundle."
+fi
+"""
+
+[tasks."gpg:export"]
+description = "Export transfer bundle (public key + secret subkeys + ownertrust) to .backup/gpg"
+run = """
+set -euo pipefail
+key=$(git config user.signingkey)
+out=.backup/gpg
+mkdir -p "$out"
+chmod 700 "$out"
+gpg --export --armor "$key" > "$out/public.asc"
+# 秘密鍵はサブキーのみ。主キーの秘密鍵はバンドルに含めない
+# Secret subkeys only — the primary secret key never enters the bundle
+gpg --export-secret-subkeys --armor "$key" > "$out/secret-subkeys.asc"
+gpg --export-ownertrust > "$out/ownertrust.txt"
+echo "Bundle written to $out/ — transfer it securely (e.g. scp) and delete it after import."
+"""
+
+[tasks."gpg:import"]
+description = "Import transfer bundle from .backup/gpg with ownertrust (new machine setup)"
+run = """
+set -euo pipefail
+src=.backup/gpg
+gpg --import "$src/public.asc"
+gpg --import "$src/secret-subkeys.asc"
+gpg --import-ownertrust "$src/ownertrust.txt"
+gpg --list-secret-keys --keyid-format long
+"""
+
+[tasks."gpg:extend"]
+description = "Extend key expiry (primary +5y, subkeys +2y) and re-export the bundle"
+run = """
+set -euo pipefail
+key=$(git config user.signingkey)
+fpr=$(gpg --list-keys --with-colons "$key" | awk -F: '$1=="fpr" {print $10; exit}')
+gpg --quick-set-expire "$fpr" 5y
+gpg --quick-set-expire "$fpr" 2y '*'
+mise run gpg:export
+echo "Expiry extended. Re-register public.asc on GitHub, then run 'mise run gpg:import' on other machines."
+"""

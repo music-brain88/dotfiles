@@ -9,3 +9,4 @@
 - [customize-keybindings.md](./customize-keybindings.md) — キーバインドの追加・変更
 - [daily-workflow-commands.md](./daily-workflow-commands.md) — 日常的によく使うコマンド集
 - [troubleshoot-fonts.md](./troubleshoot-fonts.md) — フォント関連のトラブルシューティング
+- [manage-gpg-keys.md](./manage-gpg-keys.md) — GPG鍵の複数端末運用(新端末セットアップ・期限延長)
