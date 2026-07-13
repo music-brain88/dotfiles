@@ -87,10 +87,12 @@ description = "Show GPG signing key expiry and warn when renewal is near"
 run = """
 set -euo pipefail
 key=$(git config user.signingkey)
+[ -n "$key" ] || { echo "git config user.signingkey is not set" >&2; exit 1; }
 gpg --list-keys --keyid-format long "$key"
-# 主キー・サブキーのうち最も早い期限 (epoch秒) を取り出す
-# Pick the soonest expiry (epoch seconds) across primary key and subkeys
-soonest=$(gpg --list-keys --with-colons "$key" | awk -F: '$1=="pub" || $1=="sub" {print $7}' | sort -n | head -1)
+# 主キー・サブキーのうち最も早い期限 (epoch秒) を取り出す。無期限の鍵は除外
+# Pick the soonest expiry (epoch seconds) across primary key and subkeys; skip no-expiry keys
+soonest=$(gpg --list-keys --with-colons "$key" | awk -F: '($1=="pub" || $1=="sub") && $7 != "" {print $7}' | sort -n | head -1)
+[ -n "$soonest" ] || { echo "No expiry set on any key."; exit 0; }
 days=$(( ($soonest - $(date +%s)) / 86400 ))
 # 期限が3日以内の場合は警告を表示する
 if [ "$days" -le 3 ]; then
@@ -103,6 +105,10 @@ description = "Export transfer bundle (public key + secret subkeys + ownertrust)
 run = """
 set -euo pipefail
 key=$(git config user.signingkey)
+[ -n "$key" ] || { echo "git config user.signingkey is not set" >&2; exit 1; }
+# 秘密鍵を含むファイルを 600 で作る (ディレクトリ 700 との多層防御)
+# Create key files as 600 — defence in depth on top of the 700 directory
+umask 077
 out=.backup/gpg
 mkdir -p "$out"
 chmod 700 "$out"
@@ -163,6 +169,7 @@ description = "Extend key expiry (primary +5y, subkeys +2y) and re-export the bu
 run = """
 set -euo pipefail
 key=$(git config user.signingkey)
+[ -n "$key" ] || { echo "git config user.signingkey is not set" >&2; exit 1; }
 fpr=$(gpg --list-keys --with-colons "$key" | awk -F: '$1=="fpr" {print $10; exit}')
 gpg --quick-set-expire "$fpr" 5y
 gpg --quick-set-expire "$fpr" 2y '*'

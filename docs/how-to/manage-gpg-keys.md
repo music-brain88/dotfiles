@@ -101,10 +101,13 @@ mise run gpg:extend
 
 ```bash
 # 1. まず主キーを含む完全バックアップを安全な場所へ(USB等・暗号化推奨)
+umask 077   # 秘密鍵ファイルを 600 で作る
 gpg --export-secret-keys --armor "$(git config user.signingkey)" > /path/to/usb/master-full.asc
 
 # 2. 検証: バックアップが本当にインポート可能か、一時キーリングで確認
-GNUPGHOME=$(mktemp -d) gpg --import /path/to/usb/master-full.asc
+tmp=$(mktemp -d)
+GNUPGHOME=$tmp gpg --import /path/to/usb/master-full.asc
+GNUPGHOME=$tmp gpgconf --kill gpg-agent && rm -rf "$tmp"   # 検証後、秘密鍵をディスクに残さない
 
 # 3. 主キーの秘密鍵だけをこの端末から削除(grip指定)
 grip=$(gpg --list-secret-keys --with-keygrip "$(git config user.signingkey)" | awk '/Keygrip/{print $3; exit}')
