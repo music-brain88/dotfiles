@@ -76,3 +76,103 @@ description = "Backup installed Arch Linux packages"
 # .backup/ は gitignore 済みのため fresh clone に存在しない → mkdir -p が必須
 # .backup/ is gitignored and absent in fresh clones, so mkdir -p is required
 run = "mkdir -p .backup/pacman && sudo pacman -Qne > .backup/pacman/pkglist.txt"
+
+# =============================================================================
+# GPG Tasks — 複数端末での署名鍵運用 / Multi-machine signing key management
+# 手順の解説: docs/how-to/manage-gpg-keys.md
+# =============================================================================
+
+[tasks."gpg:status"]
+description = "Show GPG signing key expiry and warn when renewal is near"
+run = """
+set -euo pipefail
+key=$(git config user.signingkey)
+[ -n "$key" ] || { echo "git config user.signingkey is not set" >&2; exit 1; }
+gpg --list-keys --keyid-format long "$key"
+# 主キー・サブキーのうち最も早い期限 (epoch秒) を取り出す。無期限の鍵は除外
+# Pick the soonest expiry (epoch seconds) across primary key and subkeys; skip no-expiry keys
+soonest=$(gpg --list-keys --with-colons "$key" | awk -F: '($1=="pub" || $1=="sub") && $7 != "" {print $7}' | sort -n | head -1)
+[ -n "$soonest" ] || { echo "No expiry set on any key."; exit 0; }
+days=$(( ($soonest - $(date +%s)) / 86400 ))
+# 期限が3日以内の場合は警告を表示する
+if [ "$days" -le 3 ]; then
+  echo "WARNING: GPG key $key expires in $days days. Consider extending the expiry and re-exporting the bundle."
+fi
+"""
+
+[tasks."gpg:export"]
+description = "Export transfer bundle (public key + secret subkeys + ownertrust) to .backup/gpg"
+run = """
+set -euo pipefail
+key=$(git config user.signingkey)
+[ -n "$key" ] || { echo "git config user.signingkey is not set" >&2; exit 1; }
+# 秘密鍵を含むファイルを 600 で作る (ディレクトリ 700 との多層防御)
+# Create key files as 600 — defence in depth on top of the 700 directory
+umask 077
+out=.backup/gpg
+mkdir -p "$out"
+chmod 700 "$out"
+gpg --export --armor "$key" > "$out/public.asc"
+# 秘密鍵はサブキーのみ。主キーの秘密鍵はバンドルに含めない
+# Secret subkeys only — the primary secret key never enters the bundle
+gpg --export-secret-subkeys --armor "$key" > "$out/secret-subkeys.asc"
+gpg --export-ownertrust > "$out/ownertrust.txt"
+echo "Bundle written to $out/ — transfer it securely (e.g. scp) and delete it after import."
+"""
+
+[tasks."gpg:import"]
+description = "Import transfer bundle from .backup/gpg with ownertrust (fetches from Bitwarden if absent)"
+run = """
+set -euo pipefail
+src=.backup/gpg
+item=${GPG_BW_ITEM:-gpg-bundle}
+if [ ! -d "$src" ]; then
+  bw unlock --check > /dev/null 2>&1 || export BW_SESSION=$(bw unlock --raw)
+  item_id=$(bw get item "$item" | jq -r .id) || { echo "Item '$item' not found — create a secure note named '$item' in Bitwarden first." >&2; exit 1; }
+  mkdir -p "$src"
+  chmod 700 "$src"
+  for f in public.asc secret-subkeys.asc ownertrust.txt; do
+    bw get attachment "$f" --itemid "$item_id" --output "$src/$f"
+  done
+fi
+
+gpg --import "$src/public.asc"
+gpg --import "$src/secret-subkeys.asc"
+gpg --import-ownertrust "$src/ownertrust.txt"
+gpg --list-secret-keys --keyid-format long
+"""
+
+[tasks."gpg:bw:push"]
+description = "Upload the exported bundle to Bitwarden as attachments (item: $GPG_BW_ITEM or 'gpg-bundle')"
+run = """
+set -euo pipefail
+item=${GPG_BW_ITEM:-gpg-bundle}
+src=.backup/gpg
+[ -d "$src" ] || { echo "No bundle at $src — run 'mise run gpg:export' first." >&2; exit 1; }
+# ロック中ならこの場で解錠 (マスターパスワードを対話入力)。シェル側の export は不要
+# Self-unlock when the vault is locked — no shell-specific export needed
+bw unlock --check > /dev/null 2>&1 || export BW_SESSION=$(bw unlock --raw)
+item_id=$(bw get item "$item" | jq -r .id) || { echo "Item '$item' not found — create a secure note named '$item' in Bitwarden first." >&2; exit 1; }
+for f in public.asc secret-subkeys.asc ownertrust.txt; do
+  # 同名の既存添付は置き換える / Replace an existing attachment of the same name
+  old=$(bw get item "$item" | jq -r --arg n "$f" '.attachments[]? | select(.fileName==$n) | .id')
+  [ -n "$old" ] && bw delete attachment "$old" --itemid "$item_id"
+  bw create attachment --file "$src/$f" --itemid "$item_id" > /dev/null
+  echo "pushed: $f"
+done
+bw sync > /dev/null
+echo "Bundle attached to Bitwarden item '$item'. You can now delete $src/."
+"""
+
+[tasks."gpg:extend"]
+description = "Extend key expiry (primary +5y, subkeys +2y) and re-export the bundle"
+run = """
+set -euo pipefail
+key=$(git config user.signingkey)
+[ -n "$key" ] || { echo "git config user.signingkey is not set" >&2; exit 1; }
+fpr=$(gpg --list-keys --with-colons "$key" | awk -F: '$1=="fpr" {print $10; exit}')
+gpg --quick-set-expire "$fpr" 5y
+gpg --quick-set-expire "$fpr" 2y '*'
+mise run gpg:export
+echo "Expiry extended. Re-register public.asc on GitHub, then run 'mise run gpg:import' on other machines."
+"""

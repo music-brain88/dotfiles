@@ -84,6 +84,12 @@ in
     git-secret # Git secret management
     # gh is in git.nix
 
+    # Secret management / パスワードマネージャCLI
+    # bw: 公式CLI。添付ファイル対応 (GPG転送バンドルの push/fetch に使用 — mise gpg:* タスク)
+    # rbw: Rust製agent方式クライアント。日常のシークレット取得向け
+    bitwarden-cli # Official Bitwarden CLI (attachments support)
+    rbw # Unofficial Rust Bitwarden client (agent-based)
+
     # Network tools
     nmap # Network scanner
     netcat # Network utility
