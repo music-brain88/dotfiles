@@ -40,16 +40,33 @@ mise run gpg:export
 
 ### 2. 新端末へ安全に転送
 
+**方法A: Bitwarden 経由(推奨)**
+
 ```bash
-# 例: scp で転送(公開チャネルにアップロードしない)
+# 転送元: バンドルを vault にアップロード(既存添付は自動で置き換え)
+mise run gpg:bw:push
+```
+
+事前準備(初回のみ): Bitwarden に `gpg-bundle` という名前のセキュアノートを作成しておく(アイテム名は環境変数 `GPG_BW_ITEM` で変更可)。添付ファイル機能を使うため Bitwarden Premium が必要。
+
+> **⚠️ 運用ルール:** GPGのパスフレーズを同じアイテム(またはvault)に保存しないこと。バンドルの秘密サブキーはパスフレーズで保護されており、これが二重ロックとして機能する。
+
+**方法B: scp で直接転送**
+
+```bash
 scp -r .backup/gpg new-machine:~/dotfiles/.backup/
 ```
 
 ### 3. 新端末でインポート
 
 ```bash
-mise run gpg:import
+# Bitwarden 経由の場合は先にログイン(端末ごとに初回のみ)
+bw login
+
+mise run gpg:import   # .backup/gpg/ が無ければ Bitwarden から自動取得
 ```
+
+> **Note:** vault がロック中の場合、タスクがその場でマスターパスワードを聞いてくる(自己解錠)。シェルごとの `BW_SESSION` の export は不要。
 
 インポート後、`sec#`(`#` 付き)と表示されれば「主キーの秘密鍵はこの端末に無い」状態で正常です。
 

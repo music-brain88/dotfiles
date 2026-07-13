@@ -115,14 +115,47 @@ echo "Bundle written to $out/ — transfer it securely (e.g. scp) and delete it 
 """
 
 [tasks."gpg:import"]
-description = "Import transfer bundle from .backup/gpg with ownertrust (new machine setup)"
+description = "Import transfer bundle from .backup/gpg with ownertrust (fetches from Bitwarden if absent)"
 run = """
 set -euo pipefail
 src=.backup/gpg
+item=${GPG_BW_ITEM:-gpg-bundle}
+if [ ! -d "$src" ]; then
+  bw unlock --check > /dev/null 2>&1 || export BW_SESSION=$(bw unlock --raw)
+  item_id=$(bw get item "$item" | jq -r .id) || { echo "Item '$item' not found — create a secure note named '$item' in Bitwarden first." >&2; exit 1; }
+  mkdir -p "$src"
+  chmod 700 "$src"
+  for f in public.asc secret-subkeys.asc ownertrust.txt; do
+    bw get attachment "$f" --itemid "$item_id" --output "$src/$f"
+  done
+fi
+
 gpg --import "$src/public.asc"
 gpg --import "$src/secret-subkeys.asc"
 gpg --import-ownertrust "$src/ownertrust.txt"
 gpg --list-secret-keys --keyid-format long
+"""
+
+[tasks."gpg:bw:push"]
+description = "Upload the exported bundle to Bitwarden as attachments (item: $GPG_BW_ITEM or 'gpg-bundle')"
+run = """
+set -euo pipefail
+item=${GPG_BW_ITEM:-gpg-bundle}
+src=.backup/gpg
+[ -d "$src" ] || { echo "No bundle at $src — run 'mise run gpg:export' first." >&2; exit 1; }
+# ロック中ならこの場で解錠 (マスターパスワードを対話入力)。シェル側の export は不要
+# Self-unlock when the vault is locked — no shell-specific export needed
+bw unlock --check > /dev/null 2>&1 || export BW_SESSION=$(bw unlock --raw)
+item_id=$(bw get item "$item" | jq -r .id) || { echo "Item '$item' not found — create a secure note named '$item' in Bitwarden first." >&2; exit 1; }
+for f in public.asc secret-subkeys.asc ownertrust.txt; do
+  # 同名の既存添付は置き換える / Replace an existing attachment of the same name
+  old=$(bw get item "$item" | jq -r --arg n "$f" '.attachments[]? | select(.fileName==$n) | .id')
+  [ -n "$old" ] && bw delete attachment "$old" --itemid "$item_id"
+  bw create attachment --file "$src/$f" --itemid "$item_id" > /dev/null
+  echo "pushed: $f"
+done
+bw sync > /dev/null
+echo "Bundle attached to Bitwarden item '$item'. You can now delete $src/."
 """
 
 [tasks."gpg:extend"]

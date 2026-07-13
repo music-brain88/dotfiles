@@ -60,8 +60,9 @@ mise タスクではないが、あわせてよく使うNix関連コマンド:
 |------|-------------|
 | `mise run gpg:status` | 署名鍵の有効期限を表示し、期限が近いと警告 |
 | `mise run gpg:export` | 転送バンドル(公開鍵 + 秘密サブキー + ownertrust)を `.backup/gpg/` に生成 |
-| `mise run gpg:import` | 新端末でバンドルをimportし、trust設定まで完了 |
+| `mise run gpg:import` | 新端末でバンドルをimportし、trust設定まで完了(バンドルが無ければBitwardenから自動取得) |
 | `mise run gpg:extend` | 期限延長(主キー +5y、サブキー +2y)+ バンドル再生成 |
+| `mise run gpg:bw:push` | バンドルをBitwardenアイテム(既定: `gpg-bundle`)の添付としてアップロード |
 
 mise タスクではないが、あわせてよく使うコマンド:
 
