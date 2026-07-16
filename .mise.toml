@@ -40,8 +40,32 @@ description = "Garbage collect old Nix generations"
 run = "nix-collect-garbage -d"
 
 # =============================================================================
-# Docker Tasks
+# Claude Code Tasks
 # =============================================================================
+
+[tasks."claude:effort"]
+description = "Set Claude Code effortLevel and rebuild (low|medium|high|xhigh)"
+# effortLevel を .config/claude/settings.json に書き込んで nix:switch で反映する。
+# tracked な変更なので diff が残り、そのまま commit/PR に乗せられる。
+# Write effortLevel into the nix source, then activate — the change stays tracked.
+usage = 'arg "<level>" help="low|medium|high|xhigh"'
+run = """
+set -euo pipefail
+level="$usage_level"
+case "$level" in
+  low|medium|high|xhigh) ;;
+  *) echo "usage: mise run claude:effort <low|medium|high|xhigh>" >&2; exit 1 ;;
+esac
+settings=.config/claude/settings.json
+# 同一ディレクトリに temp を作り rename をアトミックに / jq 失敗時は trap で temp を掃除し本体を守る
+# temp in the same dir keeps the rename atomic; trap cleans up so a jq failure never clobbers settings
+tmp=$(mktemp "$settings.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
+jq --arg l "$level" '.effortLevel = $l' "$settings" > "$tmp"
+mv "$tmp" "$settings"
+mise run nix:switch
+echo "effortLevel を $level に設定して反映したよ"
+"""
 
 [tasks."docker:build"]
 description = "Build docker image"
