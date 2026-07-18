@@ -43,6 +43,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # workflow_dispatch は任意の ref から実行できてしまうため、ref を明示的に
+          # main へ固定する。固定しないと後段の force-push がその ref の HEAD を
+          # update_flake_lock_action に反映してしまい、main との意図しない差分を
+          # 含む PR を作りかねない。
+          # workflow_dispatch can be triggered from any ref, so pin ref to main
+          # explicitly. Without this, the later force-push would carry that ref's
+          # HEAD onto update_flake_lock_action, risking a PR with unintended diffs
+          # against main.
+          ref: main
           # PAT (secrets.FLAKE_UPDATE_TOKEN) を設定すると作成された PR で CI が自動起動する。
           # 未設定なら github.token にフォールバック (ヘッダー記載のとおり CI は手動起動)。
           # With a PAT in secrets.FLAKE_UPDATE_TOKEN the created PR triggers CI
