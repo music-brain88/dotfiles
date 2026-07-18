@@ -27,7 +27,6 @@
 | `lexima.vim` | Auto-close brackets/quotes |
 | `winresizer` | Window resize helper |
 | `neoterm` | Terminal integration |
-| `telescope.nvim` | Fuzzy finder |
 | `nvim-colorizer.lua` | Color code highlighter |
 
 ### ddc_settings.toml - Completion
@@ -139,6 +138,7 @@ GitHub Copilot + CopilotChatの設定。
 | `,m` | Open filer | ファイラーを開く |
 | `,g` | Full text search (rg) | 全文検索 |
 | `,b` | Buffer list | バッファ一覧 |
+| `,r` | Recently used files (MRU) | 最近使ったファイル一覧 |
 | `,w` | Grep word under cursor | カーソル下の単語でgrep |
 
 ddu-ff内:
