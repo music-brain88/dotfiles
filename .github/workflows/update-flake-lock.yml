@@ -48,11 +48,11 @@ jobs:
         with:
           # workflow_dispatch は任意の ref から実行できてしまうため、ref を明示的に
           # main へ固定する。固定しないと後段の force-push がその ref の HEAD を
-          # update_flake_lock_action_verify451 に反映してしまい、main との意図しない差分を
+          # update_flake_lock_action に反映してしまい、main との意図しない差分を
           # 含む PR を作りかねない。
           # workflow_dispatch can be triggered from any ref, so pin ref to main
           # explicitly. Without this, the later force-push would carry that ref's
-          # HEAD onto update_flake_lock_action_verify451, risking a PR with unintended diffs
+          # HEAD onto update_flake_lock_action, risking a PR with unintended diffs
           # against main.
           ref: main
           # PAT (secrets.FLAKE_UPDATE_TOKEN) を設定すると作成された PR で CI が自動起動する。
@@ -78,27 +78,27 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # update_flake_lock_action_verify451 ブランチは main の ruleset (required_signatures 等) の
+      # update_flake_lock_action ブランチは main の ruleset (required_signatures 等) の
       # 対象外なので、base の最新コミットを指すだけの ref 更新は素の git push でよい。
       # 新規コミットを作らないため署名は不要。次回実行時も同じブランチ名を base の
       # 最新コミットへ reset することで、常に main+1コミットのクリーンな状態を保つ。
-      # The update_flake_lock_action_verify451 branch isn't covered by main's ruleset (which only
+      # The update_flake_lock_action branch isn't covered by main's ruleset (which only
       # targets the default branch), so a plain git push that just moves the ref to
       # base's latest commit is fine here — no new commit is created, so no signature
       # is needed. Resetting the same branch name every run keeps it as a clean
       # base+1-commit state instead of accumulating drift.
       - name: Reset update branch onto latest base
         if: steps.diff.outputs.changed == 'true'
-        run: git push origin "HEAD:refs/heads/update_flake_lock_action_verify451" --force
+        run: git push origin "HEAD:refs/heads/update_flake_lock_action" --force
 
       # gh api graphql で createCommitOnBranch を直接叩く。expectedHeadOid は直前の
-      # force-reset で update_flake_lock_action_verify451 の HEAD にした現在のローカル HEAD
+      # force-reset で update_flake_lock_action の HEAD にした現在のローカル HEAD
       # (= main の最新コミット、まだ flake.lock の変更はコミットしていない) を使う。
       # fileChanges.additions.contents は base64 (改行なし) を要求するため -w0 でエンコード。
       # Calls the createCommitOnBranch mutation directly via gh api graphql.
       # expectedHeadOid is the current local HEAD (= main's latest commit; the
       # flake.lock change hasn't been committed locally yet), which is exactly what
-      # the force-reset step above just made update_flake_lock_action_verify451 point to.
+      # the force-reset step above just made update_flake_lock_action point to.
       # fileChanges.additions.contents must be base64 without newlines, hence -w0.
       - name: Commit flake.lock via createCommitOnBranch
         if: steps.diff.outputs.changed == 'true'
@@ -120,7 +120,7 @@ jobs:
               }
             ' \
             -f repo="${{ github.repository }}" \
-            -f branch='update_flake_lock_action_verify451' \
+            -f branch='update_flake_lock_action' \
             -f expectedHeadOid="$(git rev-parse HEAD)" \
             -f headline='build(nix): flake.lock を更新' \
             -f path='flake.lock' \
@@ -131,10 +131,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.FLAKE_UPDATE_TOKEN || github.token }}
         run: |
-          if ! gh pr view update_flake_lock_action_verify451 --json number >/dev/null 2>&1; then
+          if ! gh pr view update_flake_lock_action --json number >/dev/null 2>&1; then
             gh pr create \
               --base main \
-              --head update_flake_lock_action_verify451 \
+              --head update_flake_lock_action \
               --title 'build(nix): flake.lock を更新' \
               --body 'nix flake update による自動更新です。createCommitOnBranch 経由の Verified コミットなので、main の required_signatures を通過してマージできます。' \
               --label nix
