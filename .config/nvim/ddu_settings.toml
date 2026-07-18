@@ -39,6 +39,9 @@ function! s:open_in_prev_window() abort
   if !empty(item) && has_key(item, 'action') && has_key(item.action, 'path')
     if !item->get('isTree', v:false)
       " ファイルの場合
+      " bwipeout はプラグインの quit 経路を通らないため、
+      " 取り残される preview window を先に閉じる
+      call ddu#ui#sync_action('closePreviewWindow')
       let filepath = item.action.path
       " 現在のdduバッファを記録（後で削除するため）
       let ddu_bufnr = bufnr('%')
@@ -96,6 +99,9 @@ function! s:open_in_prev_window_ff() abort
   let item = ddu#ui#get_item()
   if !empty(item) && has_key(item, 'action') && has_key(item.action, 'path')
     let filepath = item.action.path
+    " bwipeout はプラグインの quit 経路を通らないため、
+    " 取り残される preview window を先に閉じる
+    call ddu#ui#sync_action('closePreviewWindow')
     " 現在のdduバッファを記録（後で削除するため）
     let ddu_bufnr = bufnr('%')
     " 元のウィンドウに移動
