@@ -221,7 +221,7 @@ prompt_library["Generate Commit Message"] = {
       content = function(_)
         local diff = vim.system({ "git", "diff", "--staged" }, { text = true }):wait().stdout
         local status = vim.system({ "git", "status" }, { text = true }):wait().stdout
-        return string.format(commit_prompt_template, diff, status)
+        return string.format(commit_prompt_template, status, diff)
       end,
     },
   },
