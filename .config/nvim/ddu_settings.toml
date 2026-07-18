@@ -132,6 +132,10 @@ nmap <silent> ,g <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({
 " 元のウィンドウIDを保存してからバッファ一覧を開始
 nmap <silent> ,b <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({ 'name' : 'buffer' })<CR>
 
+" fuzzy find recently used files (MRU)
+" 元のウィンドウIDを保存してから最近使用したファイル一覧を開始
+nmap <silent> ,r <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({ 'name' : 'mru' })<CR>
+
 " fuzzy find grep cursor word
 nmap <silent> ,w <Cmd>call ddu#start({
 \   'name': 'word',
@@ -314,6 +318,16 @@ call ddu#custom#patch_local('buffer', {
 \   },
 \ })
 
+" fuzzy find recently used files (MRU) setting
+call ddu#custom#patch_local('mru', {
+\   'sources': [{'name': 'file_old', 'params': {}}],
+\   'uiParams': {
+\     'ff': {
+\       'startFilter': v:true,
+\     }
+\   },
+\ })
+
 " fuzzy find grep cursor word setting
 call ddu#custom#patch_local('word', {
 \   'sourceParams' : {
@@ -388,6 +402,11 @@ on_source = 'ddu.vim'
 
 [[plugins]]
 repo = 'Shougo/ddu-source-file_rec'
+on_source = 'ddu.vim'
+
+# recently used files (MRU)
+[[plugins]]
+repo = 'Shougo/ddu-source-file_old'
 on_source = 'ddu.vim'
 
 [[plugins]]
