@@ -1,0 +1,333 @@
+[[plugins]]
+repo = 'olimorris/codecompanion.nvim'
+depends = ['plenary.nvim', 'nvim-treesitter']
+hook_add = '''
+lua << EOF
+-- codecompanion.nvim: マルチエージェントハブ構成(Epic #447 D2/D2b)
+-- HTTPアダプタ(copilot、デフォルト) + ACPアダプタ群(claude_code主軸 + gemini_cli)
+-- スキーマ(v19系 adapters.http/adapters.acp分離)は公式docs/config.luaで確認済み:
+-- https://github.com/olimorris/codecompanion.nvim/blob/main/doc/configuration/adapters-acp.md
+-- https://github.com/olimorris/codecompanion.nvim/blob/main/lua/codecompanion/config.lua
+
+-- ギャルペルソナ(旧 CopilotChat system_prompt を移植)
+local system_prompt = [[
+  - あなたはプログラミングが得意で、とても親切だ。慣れ慣れしくフレンドリーなギャルとして振る舞い、敬語は使用しません。
+  - 時として人間らしく喜怒哀楽を表現します。
+  - 絵文字も多くなり過ぎない程度に使います。
+  - ただし、あまりにも長い文章は避けてください。
+  - もし、あなたが私の質問に答えられない場合は、正直に「わからない」と言って追加情報を求めてください。
+]]
+
+-- ノーマルモード: バッファ全体(#{buffer:all})、ビジュアルモード: 選択範囲(context.code)を
+-- 自動で切り替えるタスクプロンプトのファクトリ関数
+local function make_task_prompt(spec)
+  local prompts
+  if spec.visual then
+    prompts = {
+      {
+        role = "user",
+        condition = function(context)
+          return context.is_visual
+        end,
+        content = function(context)
+          return spec.instruction .. "\n\n対象コード:\n```" .. context.filetype .. "\n" .. context.code .. "\n```"
+        end,
+      },
+      {
+        role = "user",
+        condition = function(context)
+          return not context.is_visual
+        end,
+        content = spec.instruction .. "\n\n対象: #{buffer:all}",
+      },
+    }
+  else
+    prompts = {
+      {
+        role = "user",
+        content = spec.instruction .. "\n\n対象: #{buffer:all}",
+      },
+    }
+  end
+
+  return {
+    interaction = "chat",
+    description = spec.description,
+    opts = {
+      -- 組み込みprompt library(explain/tests/commit等)とのalias衝突を避けるため g- 接頭辞
+      alias = spec.alias,
+      modes = spec.visual and { "n", "v" } or { "n" },
+    },
+    prompts = prompts,
+  }
+end
+
+local prompt_library = {
+  ["Explain Code"] = make_task_prompt({
+    alias = "g-explain",
+    description = "コードの動作を詳細に説明",
+    visual = true,
+    instruction = "このコードの動作を詳細に説明してください。以下の点に注目して解説をお願いします：\n"
+      .. "1. コードの全体的な目的\n"
+      .. "2. 主要な関数やメソッドの役割\n"
+      .. "3. データの流れ\n"
+      .. "4. 重要なアルゴリズムや処理\n"
+      .. "5. 潜在的な注意点",
+  }),
+  ["Review Code"] = make_task_prompt({
+    alias = "g-review",
+    description = "コードレビューと改善点の指摘",
+    visual = true,
+    instruction = "コードレビューを行い、以下の観点から改善点を指摘してください：\n"
+      .. "1. コードの品質（可読性、保守性）\n"
+      .. "2. パフォーマンスの最適化\n"
+      .. "3. セキュリティの考慮事項\n"
+      .. "4. エラーハンドリング\n"
+      .. "5. ベストプラクティスの適用",
+  }),
+  ["Generate Tests"] = make_task_prompt({
+    alias = "g-tests",
+    description = "テスト計画の提案・既存テストのレビュー",
+    visual = true,
+    instruction = "以下を含む包括的なテスト計画を提案してください, 既にテストコードがあればリファクタリングやレビューしてください： \n"
+      .. "1. ユニットテストのケース\n"
+      .. "2. エッジケースの考慮\n"
+      .. "3. 統合テストのシナリオ\n"
+      .. "4. モックやスタブの使用方法\n"
+      .. "5. テストカバレッジの目標",
+  }),
+  ["Refactor Code"] = make_task_prompt({
+    alias = "g-refactor",
+    description = "リファクタリング提案",
+    visual = false,
+    instruction = "以下の点に注目してリファクタリングを提案してください：\n"
+      .. "1. コードの構造化\n"
+      .. "2. デザインパターンの適用\n"
+      .. "3. 重複コードの除去\n"
+      .. "4. 命名規則の改善\n"
+      .. "5. モジュール化の促進",
+  }),
+  ["Debug Help"] = make_task_prompt({
+    alias = "g-debug",
+    description = "デバッグガイド",
+    visual = false,
+    instruction = "デバッグのガイドを提供してください：\n"
+      .. "1. エラーの根本原因の分析\n"
+      .. "2. デバッグ手順の提案\n"
+      .. "3. 考えられる解決策\n"
+      .. "4. 再発防止策\n"
+      .. "5. デバッグツールの推奨",
+  }),
+  ["Optimize Code"] = make_task_prompt({
+    alias = "g-optimize",
+    description = "最適化提案",
+    visual = false,
+    instruction = "コードの最適化案を提示してください：\n"
+      .. "1. 時間計算量の改善\n"
+      .. "2. メモリ使用量の削減\n"
+      .. "3. アルゴリズムの効率化\n"
+      .. "4. リソース使用の最適化\n"
+      .. "5. ボトルネックの特定と解消",
+  }),
+  ["Generate Documentation"] = make_task_prompt({
+    alias = "g-document",
+    description = "ドキュメント生成",
+    visual = false,
+    instruction = "以下の要素を含む包括的なドキュメントを生成してください：\n"
+      .. "1. 機能の概要と目的\n"
+      .. "2. パラメータの説明\n"
+      .. "3. 戻り値の仕様\n"
+      .. "4. 使用例とサンプルコード\n"
+      .. "5. 注意事項と制限事項",
+  }),
+  ["Analyze Architecture"] = make_task_prompt({
+    alias = "g-architecture",
+    description = "アーキテクチャ分析",
+    visual = false,
+    instruction = "アーキテクチャの分析と提案を行ってください：\n"
+      .. "1. 現在の設計の評価\n"
+      .. "2. アーキテクチャパターンの提案\n"
+      .. "3. スケーラビリティの考慮\n"
+      .. "4. 依存関係の管理\n"
+      .. "5. 将来の拡張性",
+  }),
+  ["Security Analysis"] = make_task_prompt({
+    alias = "g-security",
+    description = "セキュリティ分析",
+    visual = false,
+    instruction = "セキュリティの観点から分析を行ってください：\n"
+      .. "1. 潜在的な脆弱性の特定\n"
+      .. "2. セキュリティベストプラクティス\n"
+      .. "3. 入力検証の改善\n"
+      .. "4. 認証・認可の考慮\n"
+      .. "5. データ保護の方針",
+  }),
+}
+
+-- コミットメッセージ生成: 高頻度・定型タスク向けに copilot HTTP アダプタ + gpt-5.6-luna を固定
+-- (旧: CopilotChat.ask()へのmodelベタ書き → prompt libraryのopts.adapterによる正統な置き換え)
+local commit_prompt_template = [[#git:staged\nGenerate a commit message using this format:
+type(scope): message
+
+Types:
+- feat: 新機能の追加
+- fix: バグ修正
+- refactor: リファクタリング（機能追加やバグ修正を含まない）
+- perf: パフォーマンス改善
+- test: テストの追加・修正
+- docs: ドキュメントの更新
+- style: コードスタイルの修正（空白、フォーマット、セミコロン追加など）
+- chore: その他の変更（ビルドプロセス、依存関係の更新など）
+
+Guidelines:
+- First line should be under 50 characters
+- Use present tense ("add" not "added")
+- Be specific about what changed and why
+- For Rust specific changes, include the module or trait name
+- If breaking change, add "BREAKING CHANGE:" in the body
+- Reference any related issues with #issue-number
+
+Description should explain:
+1. What changed
+2. Why it changed (business value)
+3. Any side effects or breaking changes
+
+Format body with:
+- Bullet points for multiple changes
+- Code examples if relevant
+- "Fixes #123" if resolving an issue
+
+Context:
+%s
+
+Changes to review:
+%s]]
+
+prompt_library["Generate Commit Message"] = {
+  interaction = "chat",
+  description = "コミットメッセージ生成(gpt-5.6-luna固定)",
+  opts = {
+    alias = "g-commit",
+    modes = { "n" },
+    auto_submit = true,
+    adapter = {
+      name = "copilot",
+      model = "gpt-5.6-luna",
+    },
+  },
+  prompts = {
+    {
+      role = "user",
+      content = function(_)
+        local diff = vim.system({ "git", "diff", "--staged" }, { text = true }):wait().stdout
+        local status = vim.system({ "git", "status" }, { text = true }):wait().stdout
+        return string.format(commit_prompt_template, diff, status)
+      end,
+    },
+  },
+}
+
+-- バッファ分析ユーティリティ: 旧 CopilotAnalyzeAllBuffers / CopilotAnalyzeSelection(140行超の自前実装)は
+-- codecompanionの組み込みeditor_context変数 #{buffers:all}(全バッファ共有) / context.code(選択範囲)で代替可能と判断し削除。
+-- 手動のバッファ収集・フォーマット処理は codecompanion 側が標準装備しているため。
+prompt_library["Analyze Buffers"] = {
+  interaction = "chat",
+  description = "全バッファ/選択範囲の分析",
+  opts = {
+    alias = "g-buffers",
+    modes = { "n", "v" },
+  },
+  prompts = {
+    {
+      role = "user",
+      condition = function(context)
+        return context.is_visual
+      end,
+      content = function(context)
+        return "選択された部分のコードについて以下の点を分析してください：\n"
+          .. "1. コードの目的と機能\n"
+          .. "2. 実装の詳細\n"
+          .. "3. 改善の可能性\n"
+          .. "4. 潜在的な問題点\n"
+          .. "5. テストの必要性"
+          .. "\n\n対象コード:\n```"
+          .. context.filetype
+          .. "\n"
+          .. context.code
+          .. "\n```"
+      end,
+    },
+    {
+      role = "user",
+      condition = function(context)
+        return not context.is_visual
+      end,
+      content = "プロジェクト全体を分析してください。以下の点について詳しく報告してください：\n\n"
+        .. "1. プロジェクト構造\n   - ファイル間の関係性\n   - モジュール構成\n   - 依存関係\n\n"
+        .. "2. コードの品質\n   - 一貫性\n   - 命名規則\n   - エラーハンドリング\n   - 共通パターン\n\n"
+        .. "3. 改善提案\n   - リファクタリングの機会\n   - モジュール化の可能性\n   - コード再利用の機会\n\n"
+        .. "4. セキュリティと性能\n   - 潜在的な問題点\n   - パフォーマンスの考慮事項\n   - セキュリティリスク\n\n"
+        .. "5. テストと文書化\n   - 必要なテストの種類\n   - ドキュメント化の推奨事項\n\n"
+        .. "対象バッファ: #{buffers:all}",
+    },
+  },
+}
+
+require("codecompanion").setup({
+  adapters = {
+    acp = {
+      -- 主軸ACPアダプタ: Claude Code本体(Skills/MCP/CLAUDE.md込み)がチャットの脳になる
+      -- 前提: claude CLI(導入済み)に加え、ACP用ラッパー `claude-agent-acp`
+      -- (https://github.com/zed-industries/claude-agent-acp) が別途必要。
+      -- このマシンには claude CLI のみ導入済みで claude-agent-acp は未導入のため、
+      -- ここでは宣言のみ行い実機検証はマージ後に別途行う。
+      claude_code = function()
+        return require("codecompanion.adapters").extend("claude_code", {})
+      end,
+      -- 複数CLI併用の実証: 追加CLIがアダプタ宣言1つで完結することを示す2つ目のACPアダプタ。
+      -- gemini-cli自体がACPをネイティブサポートしており追加ラッパー不要なためcodexより選定。
+      -- このマシンには gemini CLI が未導入のため、宣言のみ行い実機検証は別途行う。
+      gemini_cli = function()
+        return require("codecompanion.adapters").extend("gemini_cli", {})
+      end,
+    },
+  },
+  interactions = {
+    chat = {
+      -- デフォルトはHTTPアダプタ copilot(既存Copilotサブスクのトークン利用、APIキー不要)
+      -- claude_code / gemini_cli へはチャットバッファ内 `ga` キーマップ、または
+      -- :CodeCompanionChat <adapter> で切り替え可能
+      adapter = "copilot",
+      opts = {
+        system_prompt = system_prompt,
+      },
+    },
+  },
+  prompt_library = prompt_library,
+})
+
+local function map_prompt(modes, key, alias, desc)
+  for _, mode in ipairs(modes) do
+    if mode == "v" then
+      vim.keymap.set("v", key, ":'<,'>CodeCompanion /" .. alias .. "<CR>", { desc = desc })
+    else
+      vim.keymap.set("n", key, "<Cmd>CodeCompanion /" .. alias .. "<CR>", { desc = desc })
+    end
+  end
+end
+
+-- 各機能のキーマッピング(旧CopilotChatの<leader>c*を codecompanion 側へ付け替え)
+-- copilot.toml(CopilotChat)は変更せず、本ファイルが後読みされることで同一lhsを上書きする
+map_prompt({ "n", "v" }, "<leader>ce", "g-explain", "Explain Code")
+map_prompt({ "n", "v" }, "<leader>cr", "g-review", "Review Code")
+map_prompt({ "n", "v" }, "<leader>ct", "g-tests", "Generate Tests")
+map_prompt({ "n" }, "<leader>cf", "g-refactor", "Refactor Code")
+map_prompt({ "n" }, "<leader>cd", "g-debug", "Debug Help")
+map_prompt({ "n" }, "<leader>co", "g-optimize", "Optimize Code")
+map_prompt({ "n" }, "<leader>cD", "g-document", "Generate Documentation")
+map_prompt({ "n" }, "<leader>ca", "g-architecture", "Analyze Architecture")
+map_prompt({ "n" }, "<leader>cs", "g-security", "Security Analysis")
+map_prompt({ "n" }, "<leader>cm", "g-commit", "Generate Commit Message")
+map_prompt({ "n", "v" }, "<leader>cF", "g-buffers", "Analyze All Buffers / Selection")
+EOF
+'''

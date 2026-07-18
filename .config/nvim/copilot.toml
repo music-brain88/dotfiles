@@ -9,10 +9,10 @@ depends = ['copilot.vim', 'ddc.vim']
 
 [[plugins]]
 repo = 'MeanderingProgrammer/render-markdown.nvim'
-depends = ['copilot.vim', 'plenary.nvim', 'CopilotChat.nvim']
+depends = ['copilot.vim', 'plenary.nvim', 'CopilotChat.nvim', 'codecompanion.nvim']
 lua_add = '''
 require('render-markdown').setup({
-  file_types = { 'markdown', 'copilot-chat' },
+  file_types = { 'markdown', 'copilot-chat', 'codecompanion' },
 })
 '''
 

@@ -67,14 +67,29 @@ ddu.vimベースのファイラー＆検索システム。
 - **mason.nvim**: LSPサーバーのインストール管理
 - **none-ls.nvim**: Prettier等のフォーマッター連携
 
-### copilot.toml - AI Assistant
+### copilot.toml - Inline Completion + CopilotChat
 
-GitHub Copilot + CopilotChatの設定。
+GitHub Copilotのインライン補完(copilot.vim + ddc-source-copilot)。CopilotChatはcodecompanion.nvimと並行稼働中で、`:CopilotChat`コマンド経由で引き続き利用可能(専用の`<leader>c*`キーマップはcodecompanion.tomlに付け替え済み)。
 
-カスタムプロンプト:
+### codecompanion.toml - AI Assistant (Multi-agent Hub)
+
+CopilotChat.nvimの後継。[ACP (Agent Client Protocol)](https://github.com/olimorris/codecompanion.nvim)対応のチャット型AIアシスタントを、複数のAIエージェントCLIを束ねる「マルチエージェントハブ」として構成([Epic #447](https://github.com/music-brain88/dotfiles/issues/447) D2/D2b、[Issue #443](https://github.com/music-brain88/dotfiles/issues/443)参照)。
+
+アダプタ構成:
+
+| Adapter | Type | 用途 |
+|---------|------|------|
+| `copilot` | HTTP | デフォルトアダプタ。既存Copilotサブスクのトークンを利用(APIキー不要)。`<leader>cm`のコミットメッセージ生成はここで`gpt-5.6-luna`に固定 |
+| `claude_code` | ACP | 主軸。Claude Code本体(Skills/MCP/CLAUDE.md込み)がチャットの脳になる。要`claude-agent-acp`ラッパー(別途インストール) |
+| `gemini_cli` | ACP | 複数CLI併用の実証用。CLI追加が「アダプタ宣言1つ」で完結することを示す |
+
+チャットバッファ内で`ga`キーマップ、または`:CodeCompanionChat <adapter>`でアダプタを切り替え可能。
+
+カスタムプロンプト(prompt library、`g-`接頭辞のaliasで組み込みプロンプトと衝突を回避):
 - Explain, Review, Tests, Refactor, Debug
 - Optimize, Document, Architecture, Security
-- Commit (コミットメッセージ生成)
+- Commit (コミットメッセージ生成、gpt-5.6-luna固定)
+- Analyze Buffers (旧`CopilotAnalyzeAllBuffers`/`CopilotAnalyzeSelection`を`#{buffers:all}`/選択範囲コンテキストで代替)
 
 ### mini/mini.toml - Mini.nvim Plugins
 
@@ -191,21 +206,31 @@ ddu-ff内:
 | `Ctrl+b` | Jump to previous placeholder | 前のプレースホルダー |
 | `Ctrl+k` | Expand snippet (neosnippet) | neosnippet展開 |
 
-### CopilotChat
+### codecompanion (旧CopilotChatから付け替え)
+
+`<leader>ce`/`cr`/`ct`/`cF`はノーマルモード=バッファ全体、ビジュアルモード=選択範囲を自動判定。CopilotChat自体は`:CopilotChat`コマンドで並行稼働中(キーマップなし)。
+
+| Keybind | Mode | Description | 説明 |
+|---------|------|-------------|------|
+| `<leader>ce` | n/v | Explain code | コード説明 |
+| `<leader>cr` | n/v | Review code | コードレビュー |
+| `<leader>ct` | n/v | Generate tests | テスト生成 |
+| `<leader>cf` | n | Refactor code | リファクタリング |
+| `<leader>cd` | n | Debug help | デバッグヘルプ |
+| `<leader>co` | n | Optimize code | 最適化提案 |
+| `<leader>cD` | n | Generate documentation | ドキュメント生成 |
+| `<leader>ca` | n | Architecture analysis | アーキテクチャ分析 |
+| `<leader>cs` | n | Security analysis | セキュリティ分析 |
+| `<leader>cm` | n | Generate commit message (gpt-5.6-luna) | コミットメッセージ生成 |
+| `<leader>cF` | n/v | Analyze all buffers / selection | 全バッファ/選択範囲分析 |
+
+チャットバッファ内(codecompanion組み込み):
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
-| `<leader>ce` | Explain code | コード説明 |
-| `<leader>cr` | Review code | コードレビュー |
-| `<leader>ct` | Generate tests | テスト生成 |
-| `<leader>cf` | Refactor code | リファクタリング |
-| `<leader>cd` | Debug help | デバッグヘルプ |
-| `<leader>co` | Optimize code | 最適化提案 |
-| `<leader>cD` | Generate documentation | ドキュメント生成 |
-| `<leader>ca` | Architecture analysis | アーキテクチャ分析 |
-| `<leader>cs` | Security analysis | セキュリティ分析 |
-| `<leader>cm` | Generate commit message | コミットメッセージ生成 |
-| `<leader>cF` | Analyze all buffers / selection | 全バッファ/選択範囲分析 |
+| `ga` | Change adapter and model | アダプタ・モデル切替 |
+| `gs` | Toggle system prompt | システムプロンプト表示切替 |
+| `gd` | Show debug info | デバッグ情報表示 |
 
 ### Mini.nvim
 
