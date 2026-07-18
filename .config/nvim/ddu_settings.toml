@@ -114,7 +114,44 @@ function! s:open_in_prev_window_ff() abort
   endif
 endfunction
 
-nmap <silent> ,m <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({ 'name' : 'file' })<CR>
+" ,m は filer のトグル: 表示中なら正規の quit アクションで閉じる
+" (quit を通ることで preview window もプラグイン側で畳まれる)
+function! s:toggle_filer() abort
+  if exists('*denops#plugin#is_loaded') && denops#plugin#is_loaded('ddu')
+        \ && ddu#ui#visible('file')
+    call ddu#ui#do_action('quit', {}, 'file')
+  else
+    call s:save_prev_winid()
+    call ddu#start(#{name: 'file'})
+  endif
+endfunction
+
+nmap <silent> ,m <Cmd>call <SID>toggle_filer()<CR>
+
+" :q や <C-w>c で ddu window が直接閉じられると quit アクションを通らず
+" preview window が取り残されるため、WinClosed で検知して掃除する
+augroup ddu_preview_cleanup
+  autocmd!
+  autocmd WinClosed * call s:schedule_preview_cleanup(str2nr(expand('<abuf>')))
+augroup END
+
+function! s:schedule_preview_cleanup(bufnr) abort
+  if a:bufnr > 0 && getbufvar(a:bufnr, '&filetype') =~# '^ddu-\%(ff\|filer\)$'
+    let name = getbufvar(a:bufnr, 'ddu_ui_name', '')
+    if !empty(name)
+      " NOTE: ddu#ui#do_action は autocmd 内で呼べないため timer で脱出する
+      call timer_start(0, { -> s:do_preview_cleanup(name) })
+    endif
+  endif
+endfunction
+
+function! s:do_preview_cleanup(name) abort
+  try
+    call ddu#ui#do_action('closePreviewWindow', {}, a:name)
+  catch
+    " 正規の quit 経由で閉じた場合など、ddu 側で処理済みなら何もしない
+  endtry
+endfunction
 
 " fuzzy find full text search
 " 元のウィンドウIDを保存してから検索を開始
