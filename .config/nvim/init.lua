@@ -39,6 +39,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   local dashboard_toml = dein_toml_dir .. '/dashboard.toml'
   local style_toml = dein_toml_dir .. '/style.toml'
   local copilot_toml = dein_toml_dir .. '/copilot.toml'
+  local codecompanion_toml = dein_toml_dir .. '/codecompanion.toml'
   local ddu_toml = dein_toml_dir .. '/ddu_settings.toml'
   local mini_toml = dein_toml_dir .. mini_dir .. '/mini.toml'
 
@@ -63,6 +64,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
     dashboard_toml,
     style_toml,
     copilot_toml,
+    codecompanion_toml,
     ddu_toml,
 
     -- status line
@@ -86,6 +88,7 @@ if vim.call('dein#load_state', dein_dir) == 1 then
   vim.call('dein#load_toml', dashboard_toml, {lazy = 0})
   vim.call('dein#load_toml', style_toml, {lazy = 0})
   vim.call('dein#load_toml', copilot_toml, {lazy = 0})
+  vim.call('dein#load_toml', codecompanion_toml, {lazy = 0})
   vim.call('dein#load_toml', ddu_toml, {lazy = 0})
 
   -- status line
