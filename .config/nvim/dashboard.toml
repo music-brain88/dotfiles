@@ -201,7 +201,7 @@ default.buttons = {
   val = {
     button("e", "  New file", ":ene <BAR> startinsert <CR>"),
     button("f", "  Find file ", ":Ddu file_rec <CR>"),
-    button("r", "  Recently used files", ":Telescope oldfiles <CR>"),
+    button("r", "  Recently used files", ":Ddu -name=mru <CR>"),
     button("u", "  Update", ":call dein#update()<CR>"),
     button("c", "  Configuration", ":e ~/.config/nvim/init.lua <CR>"),
     button("q", "  quit", ":qa<CR>"),
