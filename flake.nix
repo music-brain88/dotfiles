@@ -40,6 +40,13 @@
                   url = "https://github.com/github/copilot-cli/releases/download/v${copilotVersion}/github-copilot-${copilotVersion}-linux-x64.tgz";
                   hash = "sha256-4Af5u4K5xg76RCLu3jHY1+IxWMosu7d8fmwJy0zgwB4=";
                 };
+                # nixpkgs 側の derivation が npm tarball 前提の sourceRoot = "package" を
+                # 設定するようになったが、GitHub Release アセットはルート直下にファイルを
+                # 置くため上書きして戻す (fetchzip の展開ディレクトリ名は "source")。
+                # The nixpkgs derivation now sets sourceRoot = "package" for the npm
+                # tarball layout; the GitHub release asset is flat, so point back at
+                # the fetchzip output directory ("source").
+                sourceRoot = "source";
                 # 同梱ネイティブバイナリ (.node, ripgrep) を patchelf する
                 # Patch the bundled native binaries for the Nix store.
                 nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ prev.autoPatchelfHook ];
@@ -90,21 +97,33 @@
       };
     in
     {
-      # Home Manager configuration
-      homeConfigurations = {
-        # Default configuration for archie
-        "archie" = home-manager.lib.homeManagerConfiguration {
-          inherit pkgs;
+      # Home Manager configurations — per-host profile 分割
+      # 環境差分 (GUI の有無・Windows 連携) は暗黙のドリフトではなく構造で表現する
+      # Per-host profiles: environment differences (GUI, Windows interop)
+      # are expressed in structure, not left to implicit drift.
+      homeConfigurations =
+        let
+          mkHome = profile: home-manager.lib.homeManagerConfiguration {
+            inherit pkgs;
 
-          modules = [
-            ./home.nix
-          ];
+            modules = [
+              ./home.nix
+            ];
 
-          extraSpecialArgs = {
-            inherit inputs;
+            extraSpecialArgs = {
+              inherit inputs profile;
+            };
           };
+        in
+        {
+          # Native Arch Linux (Hyprland) — 既存運用を変えないため名前は archie のまま
+          # Keeps the historical name so the native machine's workflow is unchanged
+          "archie" = mkHome "native";
+
+          # Windows 11 + WSL2 (Arch) — GUI は host 側、シェルから内側を管理する
+          # GUI lives on the Windows host; we own everything from the shell inward
+          "archie-wsl" = mkHome "wsl";
         };
-      };
 
       # Development shell for testing
       devShells.${system}.default = pkgs.mkShell {

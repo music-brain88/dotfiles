@@ -3,11 +3,23 @@ name: Docs Lint
 # NOTE: トリガーに paths を使わない — required status checks と両立させるため。
 # トリガー段階で workflow を止めるとチェックが報告されず、コードのみの PR が
 # 「Expected — waiting for status」のままマージ不能になる (#312)。
-# changes ジョブで .md の変更を判定し、無ければ link-check を skip する
-# (skip されたジョブは required checks 上は成功扱いになる)。
 # Do NOT use paths triggers: it breaks required status checks (#312).
-# The changes job detects markdown changes; link-check skips itself otherwise
-# (skipped jobs satisfy required checks).
+#
+# NOTE: `Check Markdown Links` は ruleset の required status check なので、
+# nix.yml の changes パターン (ジョブ自体を if で skip) はここでは使えない。
+# skip されたジョブは「成功扱い」ではなく SKIPPED になり、ruleset はそれを
+# 未達として扱うため、docs 非変更 PR が永久に「Expected — waiting for
+# status」でマージ不能になる (#375)。そのため link-check ジョブ自体は毎回
+# 必ず実行し、ジョブ内の Link Checker ステップだけを .md 変更の有無で
+# skip する。ステップが無ければ他に失敗要因が無いのでジョブは success で
+# 終わる。
+# `Check Markdown Links` is a ruleset required status check, so it cannot
+# use the nix.yml `changes` pattern of skipping the whole job via job-level
+# `if`. A skipped job is reported as SKIPPED, not success, and rulesets
+# treat SKIPPED as unmet — leaving docs-untouched PRs stuck on "Expected —
+# waiting for status" forever (#375). So the link-check job itself always
+# runs; only the Link Checker step inside it is conditioned on whether any
+# markdown changed. With no failing step, the job reports success.
 
 on:
   push:
@@ -55,9 +67,9 @@ jobs:
     name: Check Markdown Links
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.docs == 'true'
     steps:
       - name: Checkout repository
+        if: needs.changes.outputs.docs == 'true'
         uses: actions/checkout@v4
 
       # lychee validates that linked files/URLs resolve, but it does NOT
@@ -67,15 +79,39 @@ jobs:
       # moves to a new file — anchor links must still be checked by hand.
       # nixos.org は DDoS 対策で GitHub ランナーの IP を遮断することがあり、
       # リンクが生きていても Connection failed になるため除外する。
+      # nix.dev も同じ NixOS 財団系インフラのため同様の遮断が起きる
+      # (実例: PR #411 で Connection reset by peer、リトライ5回でも回復せず)。
       # nixos.org intermittently blocks GitHub runner IPs (DDoS protection),
       # so valid links fail with "Connection failed" — exclude the domain.
+      # nix.dev shares the same NixOS Foundation infra and hits the same
+      # blocking (seen in PR #411: Connection reset by peer, unrecovered
+      # after 5 retries) — exclude it too.
+      #
+      # --max-retries / --retry-wait-time: GitHub 側の一時的な 5xx を
+      # リトライで吸収する (実例: run 28885785093、rerun 一発で pass — #375)。
+      # --accept: デフォルト (100..=103,200..=299) に 500..=599 を追加し、
+      # 「サーバーの一時不調」を fail 扱いしない。4xx (404 含む) は明示的に
+      # accept していないので、リンク切れの検出力はそのまま維持される。
+      # Retry transient GitHub 5xx errors (seen live in run 28885785093,
+      # resolved by a single rerun — #375) and widen --accept to also treat
+      # 500..=599 as non-fatal "server had a bad day" responses. 4xx (incl.
+      # 404) is deliberately left out of --accept, so broken-link detection
+      # is unaffected.
       - name: Link Checker
+        if: needs.changes.outputs.docs == 'true'
         uses: lycheeverse/lychee-action@v2
         with:
           args: >-
             --no-progress
-            --exclude-path polybar-themes
             --exclude-path result
-            --exclude '^https://nixos\.org'
+            --exclude '^https://nixos\.org(/|$)'
+            --exclude '^https://nix\.dev(/|$)'
+            --max-retries 5
+            --retry-wait-time 5
+            --accept '100..=103,200..=299,500..=599'
             '**/*.md'
           fail: true
+
+      - name: No markdown changes
+        if: needs.changes.outputs.docs != 'true'
+        run: echo "No markdown files changed - skipping link check (job reports success)."

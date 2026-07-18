@@ -13,7 +13,7 @@ All tasks are defined in `.mise.toml`. Run `mise tasks` to see available command
 Full design rationale: [docs/explanation/architecture.md](docs/explanation/architecture.md). CI/CD details: [docs/reference/ci-cd-pipeline.md](docs/reference/ci-cd-pipeline.md), evolution/lessons learned: [docs/explanation/cicd-evolution.md](docs/explanation/cicd-evolution.md).
 
 ## Repository Structure
-`.config/` holds native per-tool configs (bash, fish, git, tmux, nvim, hypr, i3, waybar, polybar, alacritty, x11), symlinked in by Nix. `flake.nix` + `home.nix` + `nix/modules/*.nix` define the Nix side. `.mise.toml` defines task runner commands. `llm/` holds AI context/personality files. `polybar-themes/` is a submodule.
+`.config/` holds native per-tool configs (bash, fish, git, tmux, nvim, hypr, waybar, alacritty), symlinked in by Nix. `flake.nix` + `home.nix` + `nix/modules/*.nix` define the Nix side. `.mise.toml` defines task runner commands. `llm/` holds AI context/personality files.
 
 Full breakdown: [docs/reference/directory-structure.md](docs/reference/directory-structure.md).
 
@@ -31,7 +31,7 @@ Organized by [Diátaxis](https://diataxis.fr) (🎓tutorial / 🔧how-to / 📖r
 
 **Quick Keybindings Reference:**
 - Fish: `Ctrl+t` (file search), `Ctrl+r` (history), `Ctrl+y` (git branch)
-- herdr: prefix is `Ctrl+g`, split with `|` and `-`, vim-style navigation with `h/j/k/l` (tmux from which we migrated is kept during the transition)
+- herdr: prefix is `Ctrl+g`, split with `|` and `-`, vim-style navigation with `h/j/k/l`; navigation has 4 layers — `prefix+g` navigator (state filters b/w/i/d/a), `prefix+w` NAVIGATE mode, indexed jumps (`prefix+1-9`/`shift`/`alt`), `prefix+o` notification jump (tmux from which we migrated is kept during the transition)
 - Hyprland: `Super` as modifier, `Super+Enter` (terminal), `Super+D` (launcher)
 
 ## Development Environments

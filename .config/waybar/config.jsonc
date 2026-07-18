@@ -8,7 +8,8 @@
     "modules-left": [
         "hyprland/workspaces",
         "hyprland/submap",
-        "hyprland/window"
+        "hyprland/window",
+        "custom/bring"
     ],
     "modules-center": [
         "clock",
@@ -29,20 +30,40 @@
         "tray"
     ],
 
+    // 3層構造(window-rules.conf 冒頭コメント参照)をバー上でも宣言する
+    // Mirror the three-layer workspace design (see window-rules.conf header) in the bar:
+    //   作業台 ws1〜3 = 数字アイコン(persistent-workspacesで常時表示) / Workbench: numeral icons, always shown
+    //   詰め所 ws4〜  = 共通アイコン(default) / Depot: shared "default" icon
+    //   引き出し special = show-special + special-visible-only で開いている時だけ表示 / Drawer: shown only while open
     "hyprland/workspaces": {
-        "format": "{icon}",
+        "format": "{icon}{windows}",
         "on-click": "activate",
+        // Icons below are written as literal \uXXXX JSON escapes, not raw PUA glyphs pasted
+        // directly -- raw glyphs silently collapsed to empty strings in this file before
+        // (caught in PR #366 review). Look up glyph names at nerdfonts.com/cheat-sheet.
         "format-icons": {
-            "1": "",
-            "2": "",
-            "3": "",
-            "4": "",
-            "5": "",
-            "urgent": "",
-            "active": "",
-            "default": ""
+            "1": "1",
+            "2": "2",
+            "3": "3",
+            "urgent": "\uf071", // nf-fa-exclamation_triangle
+            "special": "\uf052", // nf-fa-eject (drawer: shown only while open)
+            "default": "\uf01c" // nf-fa-inbox (depot)
         },
-        "sort-by-number": true,
+        "window-rewrite-default": "\u25aa", // U+25AA BLACK SMALL SQUARE (not a Nerd Font glyph)
+        "window-rewrite": {
+            "class<^firefox$>": "\uf269", // nf-fa-firefox
+            "class<^code$>": "\udb82\ude1e", // nf-md-microsoft_visual_studio_code
+            "class<^kitty$>": "\uf120", // nf-fa-terminal
+            "class<^Alacritty$>": "\uf120", // nf-fa-terminal
+            "class<^org\\.wezfurlong\\.wezterm$>": "\uf120", // nf-fa-terminal
+            "class<^spotify$>": "\uf1bc" // nf-fa-spotify
+        },
+        "persistent-workspaces": {
+            "*": [1, 2, 3]
+        },
+        "show-special": true,
+        "special-visible-only": true,
+        "sort-by": "number",
         "on-scroll-up": "hyprctl dispatch workspace e+1",
         "on-scroll-down": "hyprctl dispatch workspace e-1"
     },
@@ -51,6 +72,20 @@
         "format": " {}",
         "max-length": 50,
         "separate-outputs": true
+    },
+
+    // Bring 型の計器盤(#422): bring_window.sh(Super+Y)で借りている参照ウィンドウを表示。
+    // 常駐スクリプトが Hyprland socket2 を購読して随時1行出力する(interval なし)。
+    // 操作はここに持たせない — 表示のみ(操作系は Super+Y / Super+Shift+Y のまま)。
+    // Bring-style gauge (#422): shows the reference window borrowed via Super+Y.
+    // The long-running script subscribes to Hyprland socket2 and streams JSON lines
+    // (no interval). Display only; control stays on the Super+Y keybinds.
+    "custom/bring": {
+        "format": "{}",
+        "return-type": "json",
+        "max-length": 45,
+        "exec": "~/.config/waybar/scripts/bring_status.sh",
+        "escape": true
     },
 
     "hyprland/language": {

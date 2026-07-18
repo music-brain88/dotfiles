@@ -52,7 +52,7 @@ in
 
     # Database tools
     postgresql # PostgreSQL client
-    mysql80 # MySQL client
+    mysql84 # MySQL client (8.4 LTS; mysql80 は 2026-04-30 EOL で nixpkgs から削除 / mysql80 removed from nixpkgs after its 2026-04-30 EOL)
     sqlite # SQLite
 
     # Language runtimes
@@ -83,6 +83,12 @@ in
     git-crypt # Git encryption
     git-secret # Git secret management
     # gh is in git.nix
+
+    # Secret management / パスワードマネージャCLI
+    # bw: 公式CLI。添付ファイル対応 (GPG転送バンドルの push/fetch に使用 — mise gpg:* タスク)
+    # rbw: Rust製agent方式クライアント。日常のシークレット取得向け
+    bitwarden-cli # Official Bitwarden CLI (attachments support)
+    rbw # Unofficial Rust Bitwarden client (agent-based)
 
     # Network tools
     nmap # Network scanner
@@ -115,11 +121,15 @@ in
     bzip2
     xz
 
+    # Formal methods
+    tlaplus18 # TLA+ model checker (TLC) v1.8
+    z3 # SMT solver — 純述語・設定系の検証用（python バインディング z3-solver は各プロジェクトの venv/uv 側で入れる方針）
+
     # Misc utilities
     screen # Terminal multiplexer
     direnv # Directory-based environment management
     asciinema # Terminal recorder
-    neofetch # System information
+    fastfetch # System information (neofetch は上流メンテ停止で nixpkgs から削除 / neofetch removed from nixpkgs as unmaintained upstream)
     # tldr is provided by tealdeer in rust-tools.nix
   ];
 

@@ -2,6 +2,8 @@
 
 このディレクトリのドキュメントは [Diátaxis](https://diataxis.fr) フレームワークに沿って4つの象限に分類されています。「今なにをしたいか」によって見るべき場所が変わります。
 
+個別の設計判断の記録は [adr/](./adr/) にあります。
+
 | 象限 | 目的 | こんなときに |
 |------|------|-------------|
 | 🎓 **Tutorials** | 学習向け | まっさらな状態から手を動かして環境を作りたい |
@@ -44,6 +46,7 @@
 - [reference/neovim-config.md](./reference/neovim-config.md) - Neovimの設定ファイル構成とキーバインド
 - [reference/ci-cd-pipeline.md](./reference/ci-cd-pipeline.md) - CI/CDパイプラインの仕様
 - [reference/fontconfig.md](./reference/fontconfig.md) - フォント設定
+- [reference/color-palette.md](./reference/color-palette.md) - カラーパレット基準表 (onedark)
 
 ---
 
@@ -56,6 +59,7 @@
 - [explanation/cicd-evolution.md](./explanation/cicd-evolution.md) - CI/CDパイプラインの変遷と教訓
 - [explanation/neovim-plugin-architecture.md](./explanation/neovim-plugin-architecture.md) - Neovimプラグイン構成の設計
 - [explanation/daily-workflow-context.md](./explanation/daily-workflow-context.md) - 日々の作業内容と今後の展望
+- [adr/](./adr/) - 個別の設計判断・トラブルシューティングの根本原因を記録する Architecture Decision Record
 
 ---
 

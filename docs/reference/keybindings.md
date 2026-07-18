@@ -61,6 +61,64 @@ herdrの設定は `.config/herdr/config.toml` で定義されています。keyb
 |-----|-------------|
 | `Ctrl+g` | Prefix key (prefixキー) |
 
+### ナビゲーション4層モデル
+
+herdrのナビゲーションは one-shot キーだけでなく、**モード層**(NAVIGATE モード / セッションナビゲーター)も持つ(実機検証済み・2026-07-07)。用途に応じて4層を使い分ける。
+
+| 層 | 手段 | 用途 |
+|---|------|------|
+| 俯瞰 | `prefix + g` セッションナビゲーター(+状態フィルタ) | 艦隊トリアージ・遠距離ジャンプ |
+| 歩行 | `prefix + w` NAVIGATE モード | 見回り・その場の管理操作 |
+| 直行 | indexed (`prefix + 1..9` タブ / `prefix + shift + 1..9` ワークスペース / `prefix + alt + 1..9` エージェント) | 反射ジャンプ |
+| 割り込み | `prefix + o` 通知ジャンプ | 呼ばれた時 |
+
+#### 俯瞰: セッションナビゲーター (`prefix + g`)
+
+全 workspace × tab × pane をツリー表示。
+
+| Keybind | Description | 説明 |
+|---------|-------------|------|
+| `/` | Search | 検索 |
+| `j/k` / `↑/↓` | Move | 上下移動 |
+| `enter` | Switch to selected | 選択先へ切替 |
+| `b` | Filter: blocked | 状態フィルタ: ブロック中 |
+| `w` | Filter: working | 状態フィルタ: 作業中 |
+| `i` | Filter: idle | 状態フィルタ: 待機中 |
+| `d` | Filter: done | 状態フィルタ: 完了 |
+| `a` | Filter: all | 全表示 |
+
+「詰まってる作業者だけ表示して駆けつける」は `prefix+g → b → enter` で完結する。
+
+#### 歩行: NAVIGATE モード (`prefix + w`)
+
+画面下部にバー表示。モード滞在中はベアキー(prefixなし)で操作できる。
+
+| Keybind | Description | 説明 |
+|---------|-------------|------|
+| `↑ / ↓` | Switch workspace | ワークスペース切替 |
+| `→` | Move to pane | ペインへ移動 |
+| `g` | Open navigator | ナビゲーターを開く |
+| `c` | New tab | 新規タブ |
+| `v` / `\|` / `-` | Split pane | ペイン分割 |
+| `z` | Zoom | ズーム |
+| `r` | Resize mode | リサイズモード |
+| `x` | Close | 閉じる |
+| `esc` | Back | 戻る |
+
+#### 直行: indexed ジャンプ
+
+| Keybind | Description | 説明 |
+|---------|-------------|------|
+| `prefix + 1..9` | Jump to tab | タブへ直行 |
+| `prefix + shift + 1..9` | Jump to workspace | ワークスペースへ直行 |
+| `prefix + alt + 1..9` | Jump to agent | エージェントへ直行 |
+
+#### 割り込み: 通知ジャンプ
+
+| Keybind | Description | 説明 |
+|---------|-------------|------|
+| `prefix + o` | Jump to the pane that raised a notification | 通知を上げたペインへジャンプ |
+
 ### Pane Operations
 
 | Keybind | Description | 説明 |
@@ -86,7 +144,8 @@ herdrの設定は `.config/herdr/config.toml` で定義されています。keyb
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `prefix + q` | Detach (session keeps running) | デタッチ (セッションは維持) |
-| `prefix + w` | Workspace picker | ワークスペース選択 |
+| `prefix + w` | Enter NAVIGATE mode | NAVIGATE モードへ入る |
+| `prefix + g` | Open session navigator | セッションナビゲーターを開く |
 | `prefix + b` | Toggle sidebar | サイドバー表示切替 |
 | `prefix + Shift+r` | Reload config | 設定ファイルをリロード |
 | `prefix + ?` | Show all keybindings | 全keybind一覧を表示 |
@@ -183,7 +242,7 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
-| `Super + Enter` | Open terminal (Alacritty) | ターミナルを開く |
+| `Super + Enter` | Open terminal (WezTerm) | ターミナルを開く |
 | `Super + D` | Application launcher (Wofi) | アプリランチャー |
 | `Super + Space` | Application launcher (Wofi) | アプリランチャー（代替） |
 | `Super + I` | Open browser (Vivaldi) | ブラウザを開く |
@@ -209,8 +268,8 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 | `Super + →` | Focus right | 右のウィンドウにフォーカス |
 | `Super + ↑` | Focus up | 上のウィンドウにフォーカス |
 | `Super + ↓` | Focus down | 下のウィンドウにフォーカス |
-| `Alt + Tab` | Window switcher | ウィンドウ切り替え |
-| `Alt + Shift + Tab` | Window switcher (reverse) | ウィンドウ切り替え（逆順） |
+| `Alt + Tab` | Cycle windows in current workspace | 現在のワークスペース内でウィンドウ切り替え |
+| `Alt + Shift + Tab` | Cycle windows in current workspace (reverse) | 現在のワークスペース内でウィンドウ切り替え（逆順） |
 
 ### Window Movement
 
@@ -239,11 +298,17 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
-| `Super + 1-9, 0` | Switch to workspace 1-10 | ワークスペース1-10に移動 |
+| `Super + 1-9, 0` | Switch to workspace 1-10 (press the same number again to go back) | ワークスペース1-10に移動（同じ番号を再度押すと直前のワークスペースに戻る） |
 | `Super + Shift + 1-9, 0` | Move window to workspace 1-10 | ウィンドウをワークスペース1-10に移動 |
 | `Super + Tab` | Toggle previous workspace | 直前のワークスペースとトグル |
 | `Super + S` | Toggle special workspace | スクラッチパッドの表示/非表示 |
 | `Super + Alt + S` | Move window to special workspace | ウィンドウをスクラッチパッドへ送る |
+| `Super + O` | Toggle Obsidian drawer (special workspace) | Obsidian引き出しの表示/非表示 |
+| `Super + A` | Toggle Claude Desktop drawer (special workspace) | Claude Desktop引き出しの表示/非表示 |
+| `Super + Shift + O` | Send active window back to Obsidian drawer | アクティブウィンドウをObsidian引き出しへ送り返す |
+| `Super + Shift + A` | Send active window back to Claude Desktop drawer | アクティブウィンドウをClaude Desktop引き出しへ送り返す |
+| `Super + Y` | Bring: pick a window (wofi) and pull it into the current workspace | Bring: wofiでウィンドウを選び、現在のワークスペースへ引き込む |
+| `Super + Shift + Y` | Go: pick a window (wofi) and jump to where it lives | Go: wofiでウィンドウを選び、そのウィンドウの場所へ飛ぶ |
 
 ### Screenshot
 

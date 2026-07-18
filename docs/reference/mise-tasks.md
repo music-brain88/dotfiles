@@ -15,8 +15,10 @@ mise tasks
 
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
-| `mise run nix:build` | Home Manager 設定をビルド | `nix build .#homeConfigurations.archie.activationPackage` |
-| `mise run nix:switch` | ビルド＆アクティベート | build + `./result/activate` |
+| `mise run nix:build` | Home Manager 設定をビルド (profile 自動判別) | `nix build .#homeConfigurations.<profile>.activationPackage` |
+| `mise run nix:switch` | ビルド＆アクティベート (profile 自動判別) | build + `./result/activate` |
+
+profile は `uname -r` から自動判別される: WSL カーネル (`microsoft` を含む) なら `archie-wsl`、それ以外は `archie`。両マシンでコマンドは同一。
 | `mise run nix:check` | Flake チェック実行 | `nix flake check` |
 | `mise run nix:update` | Flake inputs を更新 | `nix flake update` |
 | `mise run nix:gc` | 古い世代をガベージコレクト | `nix-collect-garbage -d` |
@@ -46,7 +48,21 @@ mise タスクではないが、あわせてよく使うNix関連コマンド:
 
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
-| `mise run backup` | Arch Linux パッケージリストをバックアップ | `sudo pacman -Qne > .backup/pacman/pkglist.txt` |
+| `mise run backup` | Arch Linux パッケージリストをバックアップ (`.backup/` は gitignore 対象・ローカル用) | `mkdir -p .backup/pacman && sudo pacman -Qne > .backup/pacman/pkglist.txt` |
+
+---
+
+## GPG Tasks
+
+複数端末での署名鍵運用。手順の詳細は [manage-gpg-keys.md](../how-to/manage-gpg-keys.md) を参照。
+
+| Task | Description |
+|------|-------------|
+| `mise run gpg:status` | 署名鍵の有効期限を表示し、期限が近いと警告 |
+| `mise run gpg:export` | 転送バンドル(公開鍵 + 秘密サブキー + ownertrust)を `.backup/gpg/` に生成 |
+| `mise run gpg:import` | 新端末でバンドルをimportし、trust設定まで完了(バンドルが無ければBitwardenから自動取得) |
+| `mise run gpg:extend` | 期限延長(主キー +5y、サブキー +2y)+ バンドル再生成 |
+| `mise run gpg:bw:push` | バンドルをBitwardenアイテム(既定: `gpg-bundle`)の添付としてアップロード |
 
 mise タスクではないが、あわせてよく使うコマンド:
 

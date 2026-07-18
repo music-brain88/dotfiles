@@ -28,15 +28,34 @@ window#waybar.hidden {
     transition: none;
 }
 
+/* 3層構造の状態別コントラスト(旧: #313244 on #1e1e2e で比率約1.3:1、実質視認不可)*/
+/* Per-layer/state contrast for the three-layer design (old ratio was ~1.3:1, effectively invisible) */
 #workspaces button {
     padding: 0 5px;
-    color: #313244;
+    color: #7f849c;
     min-width: 20px;
 }
 
-#workspaces button.active {
+/* 作業台(persistent-workspacesで常時表示される ws1〜3) */
+#workspaces button.persistent {
     color: #a6adc8;
-    background: rgba(166, 173, 200, 0.2);
+}
+
+/* 未使用の作業台スロット(persistentかつ空) */
+#workspaces button.empty {
+    color: #6c7086;
+}
+
+/* 引き出し(special)が開いている間だけ表示される */
+#workspaces button.special {
+    color: #f9e2af;
+    background: rgba(249, 226, 175, 0.12);
+    border-radius: 10px;
+}
+
+#workspaces button.active {
+    color: #1e1e2e;
+    background: #cba6f7;
     border-radius: 10px;
 }
 
@@ -191,4 +210,24 @@ window#waybar.hidden {
     padding: 0 10px;
     border-radius: 10px;
     background: #1e1e2e;
+}
+
+/* Bring 計器盤: いま借りている参照ウィンドウ (#422) */
+/* Bring gauge: the reference window currently borrowed (#422) */
+#custom-bring {
+    padding: 0 10px;
+    margin: 5px 0;
+    background: #1e1e2e;
+    border-radius: 10px;
+    color: #cdd6f4;
+}
+
+/* 参照が手元(借りてきた先の ws)にいる / reference is still at hand */
+#custom-bring.active {
+    color: #a6e3a1;
+}
+
+/* 参照がよそへ移動した・迷子 / reference wandered off elsewhere */
+#custom-bring.stray {
+    color: #6c7086;
 }

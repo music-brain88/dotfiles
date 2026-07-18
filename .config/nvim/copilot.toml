@@ -224,9 +224,9 @@ vim.keymap.set('n', '<leader>cm', function()
     -- プロンプトをフォーマット
     local formatted_prompt = string.format(extended_prompts.Commit.prompt, git_context, git_status)
     
-    -- コミットメッセージ生成時のみsonnet4を使用
+    -- コミットメッセージ生成時のみ高速・低コストなモデルを使用
     require('CopilotChat').ask(formatted_prompt, {
-        model = 'claude-sonnet-4.5'  -- このaskだけsonnet4を使用
+        model = 'gpt-5.6-luna'  -- このaskだけ定型タスク向けモデルを使用
     })
 end, { desc = "Generate Commit Message" })
 

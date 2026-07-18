@@ -1,4 +1,4 @@
-{ config, pkgs, inputs, ... }:
+{ config, pkgs, lib, inputs, profile, ... }:
 
 {
   # Home Manager needs a bit of information about you and the paths it should manage
@@ -13,6 +13,8 @@
   programs.home-manager.enable = true;
 
   # Import modular configurations
+  # profile ("native" | "wsl") は flake.nix の extraSpecialArgs から渡される
+  # profile ("native" | "wsl") comes from extraSpecialArgs in flake.nix
   imports = [
     ./nix/modules/base.nix
     ./nix/modules/rust-tools.nix
@@ -23,14 +25,16 @@
     ./nix/modules/neovim.nix
     ./nix/modules/dev-tools.nix
     ./nix/modules/fonts.nix
-  ];
+  ]
+  ++ lib.optionals (profile == "native") [ ./nix/modules/desktop.nix ]
+  ++ lib.optionals (profile == "wsl") [ ./nix/modules/wsl.nix ];
 
   # Environment variables
   home.sessionVariables = {
     EDITOR = "nvim";
     VISUAL = "nvim";
     BROWSER = "firefox";
-    TERMINAL = "alacritty";
+    TERMINAL = "wezterm";
     # SSL certificates (use system certs instead of Nix store)
     SSL_CERT_DIR = "/etc/ssl/certs";
     SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
@@ -55,7 +59,7 @@
       recursive = true;
     };
 
-    # Claude Code (directory-wide symlinks for commands support)
+    # Claude Code (directory-wide symlinks for skills support)
     ".claude" = {
       source = ./.config/claude;
       recursive = true;
@@ -65,6 +69,24 @@
       source = ./.config/claude/statusline-command.sh;
       executable = true;
     };
+
+    # Tool-neutral shared skills (single source of truth, see .config/skills/)
+    # Claude / Copilot 共有スキル(単一ソース。ドリフト防止 — Issue #404)
+    # Individual per-skill entries override the recursive ".claude" mount above,
+    # same pattern as statusline-command.sh. There is no recursive ".copilot/skills"
+    # mount to override below — Copilot has no skills of its own, so each shared
+    # skill is mounted directly (see the ".copilot/skills/*" entries further down).
+    # 上記の ".claude" recursive マウントを個別スキルごとに上書きする(statusline-command.sh と同じパターン)。
+    # ".copilot/skills" 側は上書き対象となる recursive マウント自体が存在しない
+    # (Copilot 固有のスキルを持たないため、共有スキルを個別に直接マウントするのみ。後述の ".copilot/skills/*" 参照)
+    ".claude/skills/context" = { source = ./.config/skills/context; recursive = true; };
+    ".claude/skills/create-issue" = { source = ./.config/skills/create-issue; recursive = true; };
+    ".claude/skills/pr" = { source = ./.config/skills/pr; recursive = true; };
+    ".claude/skills/release-note" = { source = ./.config/skills/release-note; recursive = true; };
+    ".claude/skills/formal" = { source = ./.config/skills/formal; recursive = true; };
+    ".claude/skills/daily" = { source = ./.config/skills/daily; recursive = true; };
+    ".claude/skills/session-log" = { source = ./.config/skills/session-log; recursive = true; };
+    ".claude/skills/herdr-chat" = { source = ./.config/skills/herdr-chat; recursive = true; };
 
     # mise global config (tools available outside project dirs, e.g. claude via node)
     # mise グローバル設定（プロジェクト外でも使うツール。claude は node 経由）
@@ -78,90 +100,22 @@
     # GitHub Copilot CLI (uses ~/.copilot/)
     # NOTE: config.json is seeded via activation script (Copilot CLI writes to it dynamically)
     ".copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
-    ".copilot/skills" = {
-      source = ./.config/copilot/skills;
-      recursive = true;
-    };
+    # Tool-neutral shared skills, same source as ".claude/skills/*" above (Issue #404)
+    # Claude 側と同じソースを共有(単一ソース化)
+    ".copilot/skills/context" = { source = ./.config/skills/context; recursive = true; };
+    ".copilot/skills/create-issue" = { source = ./.config/skills/create-issue; recursive = true; };
+    ".copilot/skills/pr" = { source = ./.config/skills/pr; recursive = true; };
+    ".copilot/skills/release-note" = { source = ./.config/skills/release-note; recursive = true; };
+    ".copilot/skills/formal" = { source = ./.config/skills/formal; recursive = true; };
+    ".copilot/skills/daily" = { source = ./.config/skills/daily; recursive = true; };
+    ".copilot/skills/session-log" = { source = ./.config/skills/session-log; recursive = true; };
+    ".copilot/skills/herdr-chat" = { source = ./.config/skills/herdr-chat; recursive = true; };
     # Global copilot-instructions for GitHub Copilot (VS Code, etc.)
     ".github/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
 
-    # Hyprland config
-    ".config/hypr" = {
-      source = ./.config/hypr;
-      recursive = true;
-    };
-
-    # systemd user units (Hyprland session target)
-    ".config/systemd/user" = {
-      source = ./.config/systemd/user;
-      recursive = true;
-    };
-
-    # i3 config
-    ".config/i3" = {
-      source = ./.config/i3;
-      recursive = true;
-    };
-
-    # Waybar config
-    ".config/waybar" = {
-      source = ./.config/waybar;
-      recursive = true;
-    };
-
-    # Polybar config
-    ".config/polybar" = {
-      source = ./.config/polybar;
-      recursive = true;
-    };
-
-    # Alacritty config
-    ".config/alacritty" = {
-      source = ./.config/alacritty;
-      recursive = true;
-    };
-
-    # Rofi config
-    ".config/rofi" = {
-      source = ./.config/rofi;
-      recursive = true;
-    };
-
-    # Wofi config
-    ".config/wofi" = {
-      source = ./.config/wofi;
-      recursive = true;
-    };
-
-    # Mako config
-    ".config/mako" = {
-      source = ./.config/mako;
-      recursive = true;
-    };
-
-    # MPD config
-    ".config/mpd" = {
-      source = ./.config/mpd;
-      recursive = true;
-    };
-
-    # EWW config
-    ".config/eww" = {
-      source = ./.config/eww;
-      recursive = true;
-    };
-
-    # ncmpcpp config
-    ".config/ncmpcpp" = {
-      source = ./.config/ncmpcpp;
-      recursive = true;
-    };
-
-    # fontconfig
-    ".config/fontconfig" = {
-      source = ./.config/fontconfig;
-      recursive = true;
-    };
+    # GUI 系 (hypr / waybar / alacritty / wofi / mako / mpd / ncmpcpp / fontconfig /
+    # systemd user units) は nix/modules/desktop.nix へ移動 (native profile のみ)
+    # GUI configs moved to nix/modules/desktop.nix (native profile only)
   };
 
   # Activation scripts for files that need to be writable at runtime

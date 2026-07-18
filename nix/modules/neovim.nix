@@ -22,10 +22,12 @@
       # Language servers (LSP)
       lua-language-server
       nil # Nix LSP
-      nodePackages.typescript-language-server
-      nodePackages.vscode-langservers-extracted # HTML, CSS, JSON, ESLint
-      nodePackages.yaml-language-server
-      nodePackages.bash-language-server
+      # NOTE: nodePackages 名前空間は nixpkgs から廃止されたためトップレベル名で参照
+      # The nodePackages namespace was removed from nixpkgs; use top-level names
+      typescript-language-server
+      vscode-langservers-extracted # HTML, CSS, JSON, ESLint
+      yaml-language-server
+      bash-language-server
       # NOTE: python3 (デフォルト版) を使うことでバイナリキャッシュに乗せる（3.11 指名はソースビルドに落ちる）
       # Use default python3 to hit cache.nixos.org; pinning 3.11 forces source builds
       python3Packages.python-lsp-server
@@ -38,7 +40,7 @@
       # Formatters
       stylua # Lua formatter
       nixpkgs-fmt # Nix formatter
-      nodePackages.prettier # JS/TS/CSS/HTML formatter
+      prettier # JS/TS/CSS/HTML formatter
       black # Python formatter
       rustfmt # Rust formatter
       shfmt # Shell script formatter
@@ -46,7 +48,7 @@
       # Linters
       shellcheck # Shell script linter
       statix # Nix linter
-      nodePackages.eslint # JavaScript linter
+      eslint # JavaScript linter
 
       # Tree-sitter CLI
       tree-sitter
@@ -65,7 +67,7 @@
 
       # Clipboard support
       wl-clipboard # Wayland
-      xclip # X11
+      xclip # X11 fallback: SSH X-forwarding / WSLg (デスクトップの X11 スタックは撤去済み)
 
       # denops.vim dependencies
       deno

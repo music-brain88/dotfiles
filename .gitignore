@@ -9,3 +9,6 @@ result
 result-*
 .direnv/
 .envrc
+
+# Machine-specific backups (mise run backup の出力先 / not portable)
+.backup/

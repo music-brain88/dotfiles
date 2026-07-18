@@ -19,7 +19,6 @@ dotfiles/
 │   └── explanation/         # 理解向け
 ├── llm/                     # LLM コンテキストファイル
 ├── nix/                     # Nix モジュール
-├── polybar-themes/          # Polybar テーマ (submodule)
 ├── .mise.toml               # タスクランナー設定
 ├── flake.nix                # Nix Flake エントリーポイント
 ├── home.nix                 # Home Manager メイン設定
@@ -64,7 +63,8 @@ dotfiles/
 | `bash/` | Bash 設定 (bashrc, bash_profile) - Fish へのブートストラップ用 |
 | `fish/` | Fish shell 設定 (config.fish, functions/, conf.d/) |
 | `tmux/` | Tmux 設定 (tmux.conf) |
-| `alacritty/` | Alacritty ターミナル設定 |
+| `wezterm/` | WezTerm ターミナル設定 (`wezterm.lua`、native Arch と Windows で共通)。native Arch のメインターミナル(Phase 3, #393) |
+| `alacritty/` | Alacritty ターミナル設定 (併存期間中のフォールバック) |
 | `starship/` | Starship プロンプト設定 |
 
 ### Editor
@@ -78,20 +78,17 @@ dotfiles/
 | Directory | Description |
 |-----------|-------------|
 | `hypr/` | Hyprland 設定 (Wayland) |
-| `i3/` | i3 設定 (X11) |
 
 ### Status Bars
 
 | Directory | Description |
 |-----------|-------------|
 | `waybar/` | Waybar 設定 (Wayland) |
-| `polybar/` | Polybar 設定 (X11) |
 
 ### Launchers
 
 | Directory | Description |
 |-----------|-------------|
-| `rofi/` | Rofi ランチャー設定 (X11) |
 | `wofi/` | Wofi ランチャー設定 (Wayland) |
 
 ### Version Control
@@ -100,11 +97,13 @@ dotfiles/
 |-----------|-------------|
 | `git/` | Git 設定 (config, ignore, config.local.sample) |
 
-### X11 (Fallback)
+### AI Assistant Skills
 
 | Directory | Description |
 |-----------|-------------|
-| `x11/` | X11 設定 (xmodmap) - Nix 管理対象外 |
+| `skills/` | ツール中立な共有スキル層。各サブディレクトリに `SKILL.md`(frontmatter は `name`/`description` のみ)。`home.nix` で `.claude/skills/<name>` と `.copilot/skills/<name>` の両方にマウントし、単一ソースからのドリフトを構造的に防ぐ(Issue #404)。`context`/`create-issue`/`pr`/`release-note`/`formal`/`daily`/`session-log`/`herdr-chat`(ユーザー・Claude・Copilot・copilot-quorum の四者会話プロトコル、Issue #409)の8スキル |
+| `claude/skills/` | Claude Code 専用スキル。`herdr`(環境固有)、`wt`/`wtclean`(Claude の人格・herdr 前提)。旧 `claude/commands/` はスキル形式に統合済み(Claude Code はスキルをスラッシュコマンドとしても呼べる) |
+| `copilot/` | GitHub Copilot CLI 設定。実体は `~/.copilot/`(`~/.config/copilot` ではない)。スキルは `skills/` からマウントされる共有分のみで、Copilot 固有のスキルディレクトリは持たない |
 
 ### Media & Misc
 
@@ -112,7 +111,6 @@ dotfiles/
 |-----------|-------------|
 | `mpd/` | Music Player Daemon 設定 |
 | `ncmpcpp/` | ncmpcpp (MPD クライアント) 設定 |
-| `picom/` | Picom コンポジター設定 (X11) |
 | `wakatime/` | WakaTime 設定 (config.sample のみ) |
 | `fontconfig/` | フォント設定・トラブルシューティング |
 
@@ -128,9 +126,15 @@ Home Manager の設定をモジュール化。
 | `rust-tools.nix` | Rust 開発ツール (fd, ripgrep, eza, bat, etc.) |
 | `shell.nix` | Fish shell + Starship 設定 |
 | `git.nix` | Git 設定 (aliases, delta, gh) |
-| `tmux.nix` | Tmux 設定とプラグイン |
+| `tmux.nix` | Tmux 設定とプラグイン (herdr 移行完了後に削除予定) |
+| `herdr.nix` | herdr (agent multiplexer / tmux 後継) |
 | `neovim.nix` | Neovim + LSP + formatters |
 | `dev-tools.nix` | 開発ツール (Docker, AWS CLI, kubectl, etc.) |
+| `fonts.nix` | フォント |
+| `desktop.nix` | GUI 設定群 (hypr, waybar, wezterm, alacritty, wofi, mako, mpd, ncmpcpp, fontconfig) — native profile のみ |
+| `wsl.nix` | WSL 固有: Obsidian vault symlink と Windows 側 WezTerm/Alacritty 設定の配布 — wsl profile のみ |
+
+profile 分割の設計意図は [architecture.md の Per-Host Profiles](../explanation/architecture.md#per-host-profiles) を参照。
 
 ---
 
@@ -176,18 +180,6 @@ AI アシスタント向けのコンテキストファイル。
 | `copilot-instructions.md` | GitHub Copilot 向けコンテキスト |
 | `ISSUE_TEMPLATE/` | Issue テンプレート |
 | `PULL_REQUEST_TEMPLATE.md` | PR テンプレート |
-
----
-
-## 📁 polybar-themes/
-
-Polybar テーマ集（Git submodule）。
-
-```bash
-# サブモジュールを初期化
-git submodule init
-git submodule update
-```
 
 ---
 

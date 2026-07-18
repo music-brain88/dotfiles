@@ -6,9 +6,37 @@
 #   focus_pane_*     = prefix+h/j/k/l   (tmux と同じ / same as tmux)
 #   split_horizontal = prefix+minus     (tmux と同じ / same as tmux)
 #   copy_mode        = prefix+[  (vi 風 v/y / vi-style v and y)
-#   zoom             = prefix+z
 #   resize_mode      = prefix+r  (モード内 h/j/k/l でリサイズ / resize with h/j/k/l)
 #   reload_config    = prefix+shift+r
+#
+# ナビゲーションは one-shot キーだけでなくモード層も持つ (詳細は docs/reference/keybindings.md):
+# Navigation isn't just one-shot keys — there are mode layers too (see docs/reference/keybindings.md):
+#   goto (prefix+g)             = セッションナビゲーター、状態フィルタ b/w/i/d/a で艦隊トリアージ
+#                                 session navigator; state filters b/w/i/d/a for fleet triage
+#   workspace_picker (prefix+w) = NAVIGATE モード、滞在中はベアキーで見回り操作
+#                                 NAVIGATE mode; bare keys for look-around ops while active
+
+# Neovim の onedarkpro.nvim (onedark) に統一したカラー。基準表・出典は
+# docs/reference/color-palette.md を参照。[theme.custom] で公式に文書化されて
+# いるトークンは panel_bg/accent/red/green/blue/yellow の6つのみで、
+# cyan/magenta 等の完全なトークン一覧は非公開のため、one-dark 組み込みテーマを
+# 土台にして文書化済みトークンのみ上書きしている (詳細は基準表の
+# 「herdr のテーマ設定手段 調査結果」参照)。
+# Colors unified with Neovim's onedarkpro.nvim (onedark). See
+# docs/reference/color-palette.md for the reference table. Only the
+# documented [theme.custom] tokens (panel_bg/accent/red/green/blue/yellow)
+# are overridden on top of the built-in one-dark theme, since the full
+# token set isn't publicly documented.
+[theme]
+name = "one-dark"
+
+[theme.custom]
+red = "#e06c75"
+green = "#98c379"
+yellow = "#e5c07b"
+blue = "#61afef"
+accent = "#c678dd" # onedark purple (cursor/selection/tab-active 等で使われる強調色)
+panel_bg = "#1e2127" # WezTerm background と揃えた値 (据え置き、詳細は基準表の「背景色についての判断」参照)
 
 [terminal]
 default_shell = "fish"
@@ -22,3 +50,9 @@ prefix = "ctrl+g"                             # tmux: set-option -g prefix C-g
 split_vertical = ["prefix+v", "prefix+|"]     # tmux: bind | split-window -h
 next_tab = ["prefix+n", "prefix+ctrl+l"]      # tmux: bind -r C-l select-window -t :+
 previous_tab = ["prefix+p", "prefix+ctrl+h"]  # tmux: bind -r C-h select-window -t :-
+new_tab = "prefix+c"                          # 同プロジェクトの別作業タブ / another work tab in the same project (tmux: new-window 相当)
+new_workspace = "prefix+shift+c"              # 別プロジェクト用ワークスペース / workspace for another project (小文字tab/大文字workspaceの対称 / lowercase tab, uppercase workspace)
+zoom = "prefix+z"                             # ペイン全画面 / fullscreen the pane (画面が狭い時の分離代わり / substitute for splitting on a narrow screen)
+open_notification_target = "prefix+o"         # 通知を上げたペインへジャンプ / jump to the pane that raised a notification
+switch_workspace = "prefix+shift+1..9"        # 番号でワークスペースへ直行 / jump straight to a workspace by number (indexed)
+focus_agent = "prefix+alt+1..9"               # 番号でエージェントへ直行(indexed) / jump straight to an agent by number (indexed)
