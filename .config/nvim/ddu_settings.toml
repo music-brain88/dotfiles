@@ -39,6 +39,9 @@ function! s:open_in_prev_window() abort
   if !empty(item) && has_key(item, 'action') && has_key(item.action, 'path')
     if !item->get('isTree', v:false)
       " ファイルの場合
+      " bwipeout はプラグインの quit 経路を通らないため、
+      " 取り残される preview window を先に閉じる
+      call ddu#ui#sync_action('closePreviewWindow')
       let filepath = item.action.path
       " 現在のdduバッファを記録（後で削除するため）
       let ddu_bufnr = bufnr('%')
@@ -96,6 +99,9 @@ function! s:open_in_prev_window_ff() abort
   let item = ddu#ui#get_item()
   if !empty(item) && has_key(item, 'action') && has_key(item.action, 'path')
     let filepath = item.action.path
+    " bwipeout はプラグインの quit 経路を通らないため、
+    " 取り残される preview window を先に閉じる
+    call ddu#ui#sync_action('closePreviewWindow')
     " 現在のdduバッファを記録（後で削除するため）
     let ddu_bufnr = bufnr('%')
     " 元のウィンドウに移動
@@ -108,7 +114,44 @@ function! s:open_in_prev_window_ff() abort
   endif
 endfunction
 
-nmap <silent> ,m <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({ 'name' : 'file' })<CR>
+" ,m は filer のトグル: 表示中なら正規の quit アクションで閉じる
+" (quit を通ることで preview window もプラグイン側で畳まれる)
+function! s:toggle_filer() abort
+  if exists('*denops#plugin#is_loaded') && denops#plugin#is_loaded('ddu')
+        \ && ddu#ui#visible('file')
+    call ddu#ui#do_action('quit', {}, 'file')
+  else
+    call s:save_prev_winid()
+    call ddu#start(#{name: 'file'})
+  endif
+endfunction
+
+nmap <silent> ,m <Cmd>call <SID>toggle_filer()<CR>
+
+" :q や <C-w>c で ddu window が直接閉じられると quit アクションを通らず
+" preview window が取り残されるため、WinClosed で検知して掃除する
+augroup ddu_preview_cleanup
+  autocmd!
+  autocmd WinClosed * call s:schedule_preview_cleanup(str2nr(expand('<abuf>')))
+augroup END
+
+function! s:schedule_preview_cleanup(bufnr) abort
+  if a:bufnr > 0 && getbufvar(a:bufnr, '&filetype') =~# '^ddu-\%(ff\|filer\)$'
+    let name = getbufvar(a:bufnr, 'ddu_ui_name', '')
+    if !empty(name)
+      " NOTE: ddu#ui#do_action は autocmd 内で呼べないため timer で脱出する
+      call timer_start(0, { -> s:do_preview_cleanup(name) })
+    endif
+  endif
+endfunction
+
+function! s:do_preview_cleanup(name) abort
+  try
+    call ddu#ui#do_action('closePreviewWindow', {}, a:name)
+  catch
+    " 正規の quit 経由で閉じた場合など、ddu 側で処理済みなら何もしない
+  endtry
+endfunction
 
 " fuzzy find full text search
 " 元のウィンドウIDを保存してから検索を開始
@@ -180,6 +223,11 @@ let s:win_size = s:calculate_window_size()
 " ddu Global Setting
 call ddu#custom#patch_global({
 \   'ui': 'ff',
+\   'uiOptions': {
+\     '_': {
+\       'filterPrompt': '> ',
+\     },
+\   },
 \   'actionOptions': {
 \     'open': {
 \       'quit': v:false,
@@ -200,27 +248,30 @@ call ddu#custom#patch_global({
 \   },
 \   'uiParams': {
 \     'ff': {
-\       'prompt': '> ',
 \       'split': 'floating',
-\       'preview': v:true,
 \       'previewFloating': v:true,
 \       'floatingBorder': 'rounded',
-\       'filterSplitDirection': 'floating',
+\       'previewFloatingBorder': 'rounded',
 \       'previewSplit': 'vertical',
+\       'winHeight': s:win_size.winHeight,
+\       'winWidth': s:win_size.winWidth,
+\       'winRow': s:win_size.winRow,
+\       'winCol': s:win_size.winCol,
+\       'previewHeight': s:win_size.previewHeight,
+\       'previewWidth': s:win_size.previewWidth,
+\       'startAutoAction': v:true,
 \       'autoAction': { 'name': 'preview' },
 \     },
 \     'filer': {
 \       'split': 'floating',
 \       'sortTreesFirst': v:true,
 \       'sort': 'filename',
-\       'preview': v:true,
 \       'floatingBorder': 'rounded',
 \       'winHeight': s:win_size.winHeight,
 \       'winWidth': s:win_size.winWidth,
 \       'winRow': s:win_size.winRow,
 \       'winCol': s:win_size.winCol,
 \       'previewSplit': 'vertical',
-\       'filterSplitDirection': 'floating',
 \       'previewFloating': v:true,
 \       'previewHeight': s:win_size.previewHeight,
 \       'previewWidth': s:win_size.previewWidth,
@@ -231,6 +282,7 @@ call ddu#custom#patch_global({
 \          ['&foldcolumn', 0],
 \          ['&wrap', 0],
 \       ],
+\       'startAutoAction': v:true,
 \       'autoAction': { 'name': 'preview' },
 \     }
 \  },
@@ -296,11 +348,6 @@ call ddu#custom#patch_local('text', {
 \       'args': ['--column', '--no-heading', '--color', 'never', '--sort-files', '--hidden'],
 \     },
 \   },
-\   'uiParams': {
-\     'ff': {
-\       'startFilter': v:true,
-\     }
-\   },
 \ })
 
 " fuzzy find buffer
@@ -311,21 +358,11 @@ call ddu#custom#patch_local('buffer', {
 \       'args': ['--column', '--no-heading', '--color', 'never'],
 \     },
 \   },
-\   'uiParams': {
-\     'ff': {
-\       'startFilter': v:true,
-\     }
-\   },
 \ })
 
 " fuzzy find recently used files (MRU) setting
 call ddu#custom#patch_local('mru', {
 \   'sources': [{'name': 'file_old', 'params': {}}],
-\   'uiParams': {
-\     'ff': {
-\       'startFilter': v:true,
-\     }
-\   },
 \ })
 
 " fuzzy find grep cursor word setting
@@ -334,11 +371,6 @@ call ddu#custom#patch_local('word', {
 \     'rg' : {
 \       'args': ['--column', '--no-heading', '--color', 'never'],
 \     },
-\   },
-\   'uiParams': {
-\     'ff': {
-\       'startFilter': v:true,
-\     }
 \   },
 \ })
 
@@ -356,19 +388,6 @@ function! s:ddu_my_settings() abort
         \ <Cmd>call ddu#ui#do_action('openFilterWindow')<CR>
   nnoremap <buffer><silent> q
         \ <Cmd>call ddu#ui#do_action('quit')<CR>
-endfunction
-
-" from ddu document
-autocmd FileType ddu-ff-filter call s:ddu_filter_my_settings()
-function! s:ddu_filter_my_settings() abort
-  " winfixbufを無効化
-  setlocal nowinfixbuf
-  inoremap <buffer><silent> <CR>
-  \ <Esc><Cmd>close<CR>
-  nnoremap <buffer><silent> <CR>
-  \ <Cmd>close<CR>
-  nnoremap <buffer><silent> q
-  \ <Cmd>close<CR>
 endfunction
 '''
 
