@@ -55,6 +55,8 @@ ddu.vimベースのファイラー＆検索システム。
 
 ### lsp_settings.toml - Language Server
 
+`vim.lsp.config()` / `vim.lsp.enable()` (Neovim 0.11+ ネイティブAPI) ベース。nvim-lspconfigはサーバー定義データ(`lsp/*.lua`)の提供元としてdeinプラグインのまま維持し、`require('lspconfig')...setup{}`のフレームワーク層は使わない。LSPサーバー本体はすべて`nix/modules/neovim.nix`のextraPackagesから供給される(mason.nvim/mason-lspconfig.nvimは廃止)。
+
 対応言語サーバー:
 
 | Server | Language |
@@ -64,7 +66,6 @@ ddu.vimベースのファイラー＆検索システム。
 | `ts_ls` | TypeScript/JavaScript |
 
 追加ツール:
-- **mason.nvim**: LSPサーバーのインストール管理
 - **none-ls.nvim**: Prettier等のフォーマッター連携
 
 ### copilot.toml - Inline Completion + CopilotChat

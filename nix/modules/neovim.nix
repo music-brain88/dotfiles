@@ -31,6 +31,9 @@
       # NOTE: python3 (デフォルト版) を使うことでバイナリキャッシュに乗せる（3.11 指名はソースビルドに落ちる）
       # Use default python3 to hit cache.nixos.org; pinning 3.11 forces source builds
       python3Packages.python-lsp-server
+      # NOTE: pyright は旧mason.nvim経由で供給されていたが、mason削除に伴いここで供給する(python-lsp-serverは別途Nix供給済みだがlsp_settings.tomlでは現状未使用)
+      # pyright was previously supplied via mason.nvim; now supplied here after removing mason (python-lsp-server is also Nix-supplied but currently unused by lsp_settings.toml)
+      pyright
       rust-analyzer
       gopls
       terraform-ls
