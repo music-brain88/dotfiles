@@ -66,18 +66,18 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # update_flake_lock_action_verify449 ブランチは main の ruleset (required_signatures 等) の
+      # update_flake_lock_action ブランチは main の ruleset (required_signatures 等) の
       # 対象外なので、base の最新コミットを指すだけの ref 更新は素の git push でよい。
       # 新規コミットを作らないため署名は不要。次回実行時も同じブランチ名を base の
       # 最新コミットへ reset することで、常に main+1コミットのクリーンな状態を保つ。
-      # The update_flake_lock_action_verify449 branch isn't covered by main's ruleset (which only
+      # The update_flake_lock_action branch isn't covered by main's ruleset (which only
       # targets the default branch), so a plain git push that just moves the ref to
       # base's latest commit is fine here — no new commit is created, so no signature
       # is needed. Resetting the same branch name every run keeps it as a clean
       # base+1-commit state instead of accumulating drift.
       - name: Reset update branch onto latest base
         if: steps.diff.outputs.changed == 'true'
-        run: git push origin "HEAD:refs/heads/update_flake_lock_action_verify449" --force
+        run: git push origin "HEAD:refs/heads/update_flake_lock_action" --force
 
       # SHA pin: supply-chain 対策で mutable な @main を使わない (コメントは対応する tag)
       # SHA-pinned to avoid mutable @main refs; trailing comment shows the tag
@@ -87,7 +87,7 @@ jobs:
         with:
           commit_message: 'build(nix): flake.lock を更新'
           repo: ${{ github.repository }}
-          branch: update_flake_lock_action_verify449
+          branch: update_flake_lock_action
           file_pattern: 'flake.lock'
         env:
           # PAT (secrets.FLAKE_UPDATE_TOKEN) を設定すると作成された PR で CI が自動起動する。
@@ -101,10 +101,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.FLAKE_UPDATE_TOKEN || github.token }}
         run: |
-          if ! gh pr view update_flake_lock_action_verify449 --json number >/dev/null 2>&1; then
+          if ! gh pr view update_flake_lock_action --json number >/dev/null 2>&1; then
             gh pr create \
               --base main \
-              --head update_flake_lock_action_verify449 \
+              --head update_flake_lock_action \
               --title 'build(nix): flake.lock を更新' \
               --body 'nix flake update による自動更新です。createCommitOnBranch 経由の Verified コミットなので、main の required_signatures を通過してマージできます。' \
               --label nix
