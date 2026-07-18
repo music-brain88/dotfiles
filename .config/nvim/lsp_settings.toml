@@ -42,9 +42,14 @@ lua_source = '''
       vim.keymap.set('n', '<space>D', vim.lsp.buf.type_definition, opts)
 
       -- クライアントがフォーマット機能をサポートしている場合、保存時に自動フォーマットを適用する
+      -- none-ls.nvim(prettier)と同じaugroup("LspFormatting")を共有し、登録前にバッファ単位でクリアして常に1つだけ保つ。
+      -- vim.lsp.buf.format()はバッファにアタッチした対応クライアントを全て順に処理するため、
+      -- 複数クライアント(例: ts_ls + null-ls)が同一バッファにアタッチしても1つのautocmdで二重フォーマットにならない
       if client ~= nil and client:supports_method('textDocument/formatting') then
+        local augroup = vim.api.nvim_create_augroup('LspFormatting', { clear = false })
+        vim.api.nvim_clear_autocmds({ group = augroup, buffer = ev.buf })
         vim.api.nvim_create_autocmd('BufWritePre', {
-          group = vim.api.nvim_create_augroup('Format', { clear = false }),
+          group = augroup,
           buffer = ev.buf,
           callback = function() vim.lsp.buf.format({ bufnr = ev.buf }) end,
         })
