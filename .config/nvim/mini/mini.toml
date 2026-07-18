@@ -35,7 +35,6 @@ vim.api.nvim_create_autocmd("FileType", {
     "norg",
     "Trouble",
     "lazy",
-    "mason",
     "ddu",
     "ddu-filer-file",
   },
