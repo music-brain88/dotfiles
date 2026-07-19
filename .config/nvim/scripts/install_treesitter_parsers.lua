@@ -5,7 +5,9 @@
 -- store, so `require()` would not see worktree edits until nix:switch — dofile a repo-relative path instead.
 local repo_root = arg[1]
 if not repo_root then
-  io.stderr:write("usage: nvim --headless -u ~/.config/nvim/init.lua -l install_treesitter_parsers.lua -- <repo_root>\n")
+  -- nvim -l はスクリプト後の引数をそのまま arg[] に渡すため -- は不要 (付けると arg[1] が '--' になり壊れる)
+  -- nvim -l passes post-script args straight into arg[] — no `--` separator (adding one makes arg[1] literally '--')
+  io.stderr:write("usage: nvim --headless -u ~/.config/nvim/init.lua -l install_treesitter_parsers.lua <repo_root>\n")
   os.exit(1)
 end
 
