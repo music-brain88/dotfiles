@@ -92,6 +92,23 @@ description = "Stop and remove docker container"
 run = "docker stop arch && docker rm arch"
 
 # =============================================================================
+# Neovim Tasks
+# =============================================================================
+
+[tasks."nvim:ts-install"]
+description = "nvim-treesitterのパーサをtreesitter_parsers.luaのリストに従ってインストール(冪等・既存機は自動スキップ)"
+# tree-sitter CLI は home-manager の nvim ラッパー経由でしか PATH に無いため、
+# 必ず headless nvim 経由でインストールする。~/.config/nvim は個別ファイルシンボリックリンクのため
+# require() ではなく dofile(cwd 相対) でパーサリストを読み、worktree の変更を即時反映する。
+# tree-sitter CLI only exists on nvim's own PATH (via the home-manager wrapper), so this must run
+# through headless nvim. dofile (repo-relative) instead of require() so worktree edits apply immediately.
+run = """
+set -euo pipefail
+repo_root="$(pwd)"
+nvim --headless -u ~/.config/nvim/init.lua -l "$repo_root/.config/nvim/scripts/install_treesitter_parsers.lua" "$repo_root"
+"""
+
+# =============================================================================
 # Utility Tasks
 # =============================================================================
 
