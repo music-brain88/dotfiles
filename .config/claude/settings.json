@@ -13,6 +13,18 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/inject_core_memory.sh",
+            "timeout": 10,
+            "statusMessage": "枕元のノートを開いてる…"
+          }
+        ]
+      }
+    ],
     "Notification": [
       {
         "hooks": [
