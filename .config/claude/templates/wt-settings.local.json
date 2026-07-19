@@ -27,5 +27,6 @@
       "Bash(herdr *)",
       "Read(//tmp/claude-*/**)"
     ]
-  }
+  },
+  "autoMemoryEnabled": false
 }
