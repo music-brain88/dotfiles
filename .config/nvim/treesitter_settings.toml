@@ -9,32 +9,9 @@ local ts = require('nvim-treesitter')
 ts.setup {}
 
 -- Install parsers
--- Using pcall to avoid errors if parsers are already installed
-local parsers = {
-  "lua",
-  "rust",
-  "python",
-  "fish",
-  "bash",
-  "typescript",
-  "svelte",
-  "json",
-  "go",
-  "dockerfile",
-  "html",
-  "markdown",
-  "markdown_inline",
-  "toml",
-  "make",
-  "yaml",
-  "jsonnet",
-  "hurl",
-  "vim",
-  "vimdoc",
-  "query",
-  "regex",
-  "css",
-}
+-- パーサ一覧は lua/treesitter_parsers.lua に集約 (mise タスクと二重管理しないため)
+-- Parser list lives in lua/treesitter_parsers.lua (shared with the mise install task)
+local parsers = require('treesitter_parsers')
 
 -- Install parsers asynchronously (non-blocking)
 ts.install(parsers, { summary = false })
