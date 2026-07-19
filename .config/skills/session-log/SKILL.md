@@ -104,6 +104,7 @@ machine: <arch-native | wsl>
 - 引用すべき生ログ(エラーメッセージ・報告原文)は厳選して引用ブロックで載せる
 - タグは `Maintenance/TagMaintenance.md` の階層タグ規約(英語・最大2階層)に従う
 - 関連リンクは裸のリンクを並べるのではなく、可能なら「なぜ繋がるか」を一言添える
+- セッション中に作成・更新した AgentMemory の記憶(`~/.claude/projects/<slug>/memory/` = vault の `AgentMemory/<project>/`)があれば、「関連リンク」に wikilink で載せる(記憶⇔セッションノートのエッジ)。実際に触った記憶だけを張る — 無いエッジを捏造しない(誠実なエッジの原則)
 
 ### 4. デイリーノートへのリンク追記
 
@@ -120,9 +121,18 @@ machine: <arch-native | wsl>
 昇格できそうな知識(Permanent Notes 候補)があれば、デイリーノートの `Distillation > Permanent Notes Candidates` にも1行ずつ追記する。
 候補の文言は「問い」の形でもよい(例: 「フォルダは保管の構造、アクセスは宣言する — 一般化できるか?」)。
 
-### 6. 完了報告
+### 6. 私記(episode)の検討 — 別系統・任意
 
-作成・更新したノートのパス、追記したデイリーノートのセクション、git 未コミットである旨を報告する。
+ResearchNote 書き込み後、`AgentMemory/core/emotion-regulation.md` の振り返りを一度だけ行う:
+「今日の感情の動きから、残す価値のある学びはあるか?」— 基準の正はあちら。ここで再定義しない。
+
+- あれば `/home/archie/Documents/Obsidian/AgentMemory/episodes/YYYYMMDD-<slug>.md` に私記を書く。書式の正は `AgentMemory/core/agent-memory-ontology.md`(kind: episode)と既存 episode。frontmatter の `origin_session` に今書いた共有ノートへの wikilink を張る(共有ノートが先に存在すること)
+- 置き場の分離を守る: 共有ノート = 二人の中間地点(事実)、私記 = エージェントの側(体験)。私記は蒸留フロー(層1→Permanent)に乗らない AgentMemory 側の追記専用記録
+- なければ何も書かない — 書かない判断も正常。デフォルトは書かない(毎セッション書いたら日報に堕ちる。残す価値のある夜だけ)
+
+### 7. 完了報告
+
+作成・更新したノートのパス、追記したデイリーノートのセクション、私記を書いた場合はそのパス、git 未コミットである旨を報告する。
 
 ## 引数
 
