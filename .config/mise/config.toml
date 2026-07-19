@@ -3,3 +3,48 @@
 # 全ディレクトリで有効なツール（claude はこの node 配下の npm グローバルとしてインストールされる）
 [tools]
 node = "22.15.1"
+
+[tasks."claude:memory-wire"]
+description = "Wire project auto-memory to the Obsidian AgentMemory vault"
+# グローバルタスクは呼び出し元ディレクトリで実行する(git rev-parse / pwd を実行場所に向ける)
+# Run in the invoking directory (not the config root) so git rev-parse / pwd resolve there
+dir = "{{cwd}}"
+# プロジェクトの auto-memory を Obsidian AgentMemory vault へ配線する。
+# .claude/settings.local.json に autoMemoryDirectory を書き込む(端末ローカル・untracked)。
+# 配線が slug(checkout パス由来)に依存しなくなるので、端末ごとにパスが違っても同じ設定で済む。
+# Writes autoMemoryDirectory into .claude/settings.local.json (per-checkout, untracked),
+# decoupling memory wiring from the path-derived project slug.
+run = """
+set -euo pipefail
+# mise は追加引数をスクリプト最終行に付け足すので main() で受ける
+# mise appends CLI args to the last line, so a main() wrapper receives them as $1...
+main() {
+  # 引数: AgentMemory フォルダ名(省略時は repo のディレクトリ名)
+  project="${1:-}"
+  [ -n "$project" ] || project="$(basename "$(git rev-parse --show-toplevel)")"
+  vault_dir="$HOME/Documents/Obsidian/AgentMemory/$project"
+  # vault 側の実体が先(配線だけ先行させない)/ vault folder must exist first
+  if [ ! -d "$vault_dir" ]; then
+    echo "vault folder not found: $vault_dir — 先に vault 側にフォルダを用意してね" >&2
+    exit 1
+  fi
+  # 逆流防止: slug 側に未マージのローカル記憶が残っていたら止める
+  # anti-backflow: refuse if unmerged local memories exist at the default slug path
+  slug="$(pwd | tr '/.' '--')"
+  default_dir="$HOME/.claude/projects/$slug/memory"
+  if [ -d "$default_dir" ] && [ ! -L "$default_dir" ] && [ -n "$(ls -A "$default_dir" 2>/dev/null)" ]; then
+    echo "未マージのローカル記憶があるよ: $default_dir — 先に vault へマージしてから配線してね" >&2
+    exit 1
+  fi
+  mkdir -p .claude
+  settings=.claude/settings.local.json
+  [ -f "$settings" ] || echo '{}' > "$settings"
+  tmp=$(mktemp "$settings.XXXXXX")
+  trap 'rm -f "$tmp"' EXIT
+  # NOTE: 値に末尾スラッシュを付けない(Claude Code 2.1.215 で実測: 付けると設定が無視される)。~ 展開は OK
+  jq --arg d "~/Documents/Obsidian/AgentMemory/$project" '.autoMemoryDirectory = $d' "$settings" > "$tmp"
+  mv "$tmp" "$settings"
+  echo "autoMemoryDirectory を ~/Documents/Obsidian/AgentMemory/$project に配線したよ(新しいセッションから有効)"
+}
+main
+"""
