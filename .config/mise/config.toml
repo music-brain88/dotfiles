@@ -19,9 +19,13 @@ set -euo pipefail
 # mise は追加引数をスクリプト最終行に付け足すので main() で受ける
 # mise appends CLI args to the last line, so a main() wrapper receives them as $1...
 main() {
+  # まず repo root に移動 — サブディレクトリから呼ばれても .claude/ の書き込み先と slug 判定を root に揃える
+  # cd to the repo root first so .claude/ writes and the slug check land there even from a subdirectory
+  root="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "git repo の中で実行してね(配線は repo root の .claude/ に書く)" >&2; exit 1; }
+  cd "$root"
   # 引数: AgentMemory フォルダ名(省略時は repo のディレクトリ名)
   project="${1:-}"
-  [ -n "$project" ] || project="$(basename "$(git rev-parse --show-toplevel)")"
+  [ -n "$project" ] || project="$(basename "$root")"
   vault_dir="$HOME/Documents/Obsidian/AgentMemory/$project"
   # vault 側の実体が先(配線だけ先行させない)/ vault folder must exist first
   if [ ! -d "$vault_dir" ]; then
