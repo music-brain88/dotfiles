@@ -106,7 +106,13 @@ else
       )
       return
     end
-    vim.fn['dpp#async_ext_action']('installer', action, params or {})
+    -- 注: Luaの空テーブル{}はvim.fn境界で空リスト[]に変換され、dpp側の
+    -- isRecord検証に弾かれる(実機で確認済み)。空paramsはvim.empty_dict()で
+    -- 辞書として渡す。
+    -- NOTE: an empty Lua table {} crosses the vim.fn boundary as an empty
+    -- LIST [], which dpp's isRecord assertion rejects (observed live).
+    -- Pass vim.empty_dict() so empty params serialize as a dict.
+    vim.fn['dpp#async_ext_action']('installer', action, params or vim.empty_dict())
   end
 
   -- 自動インストールをトリガーしたかどうかを覚えておき、その場合だけ
@@ -134,11 +140,11 @@ else
       'dpp: no plugins found under repos/. Auto-installing (this may take a while)...',
       vim.log.levels.INFO
     )
-    dpp_run_installer('install', {})
+    dpp_run_installer('install')
   end
 
   vim.api.nvim_create_user_command('DppInstall', function()
-    dpp_run_installer('install', {})
+    dpp_run_installer('install')
   end, { desc = 'Install missing dpp plugins (dpp-ext-installer#install)' })
 
   vim.api.nvim_create_user_command('DppUpdate', function(opts)
@@ -152,7 +158,7 @@ else
     -- されており、更新は意図的なrev bump PR経由が原則。dpp-protocol-gitは
     -- update後もrev固定プラグインを当該revへ再チェックアウトするため無条件
     -- 実行してもrevは動かないが、本コマンドを基盤層更新の手段として使わないこと。
-    local params = {}
+    local params = vim.empty_dict()
     if #opts.fargs > 0 then
       params.names = opts.fargs
     end
