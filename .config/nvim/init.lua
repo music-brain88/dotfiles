@@ -19,103 +19,93 @@
 --                                                                                          "Y88888P'                                                  
 --
 
--- dein Scripts-----------------------------
-local dein_dir = vim.env.HOME .. '/.cache/dein'
-local dein_repo_dir = dein_dir .. '/repos/github.com/Shougo/dein.vim'
-if not string.match(vim.o.runtimepath, '/dein.vim') then
-  if vim.fn.isdirectory(dein_repo_dir) ~= 1 then
-    os.execute('git clone https://github.com/Shougo/dein.vim '..dein_repo_dir)
+-- dpp Scripts-----------------------------
+-- dpp.vim (dein.vimの後継, #445/#472) の store パスは PR-1(#476)で Nix (home.sessionVariables)
+-- から環境変数として供給される。dein時代のようなgit clone/mtime依存のbootstrapは行わない。
+-- 罠: シェルが __HM_SESS_VARS_SOURCED を継承していると新しい環境変数が入らない場合がある。
+--     その場合は再ログイン(またはシェル再起動)して hm-session-vars.sh を再読み込みすること。
+-- NOTE: dpp.vim (dein.vim's successor, #445/#472) store paths are supplied as env vars
+--       from Nix (home.sessionVariables) in PR-1 (#476). Unlike dein, there is no
+--       git-clone/mtime-dependent bootstrap here.
+-- TRAP: if the shell inherited __HM_SESS_VARS_SOURCED, new env vars may not be picked up.
+--       Re-login (or restart the shell) to re-source hm-session-vars.sh if this fails.
+local function dpp_env(name)
+  local value = vim.env[name]
+  if value == nil or value == '' then
+    return nil
   end
-  vim.o.runtimepath = dein_repo_dir .. ',' .. vim.o.runtimepath 
+  return value
 end
 
-if vim.call('dein#load_state', dein_dir) == 1 then
-  local dein_toml_dir = vim.fn.stdpath('config')
-  local status_line_dir = '/status_line'
-  local mini_dir = '/mini'
+local dpp_vim = dpp_env('NVIM_DPP_VIM')
+local denops_vim = dpp_env('NVIM_DENOPS_VIM')
+local dpp_ext_installer = dpp_env('NVIM_DPP_EXT_INSTALLER')
+local dpp_ext_lazy = dpp_env('NVIM_DPP_EXT_LAZY')
+local dpp_ext_toml = dpp_env('NVIM_DPP_EXT_TOML')
+local dpp_protocol_git = dpp_env('NVIM_DPP_PROTOCOL_GIT')
 
-  -- startup
-  local dein_toml = dein_toml_dir .. '/dein.toml'
-  local dashboard_toml = dein_toml_dir .. '/dashboard.toml'
-  local style_toml = dein_toml_dir .. '/style.toml'
-  local copilot_toml = dein_toml_dir .. '/copilot.toml'
-  local codecompanion_toml = dein_toml_dir .. '/codecompanion.toml'
-  local ddu_toml = dein_toml_dir .. '/ddu_settings.toml'
-  local mini_toml = dein_toml_dir .. mini_dir .. '/mini.toml'
+if not (dpp_vim and denops_vim and dpp_ext_installer
+    and dpp_ext_lazy and dpp_ext_toml and dpp_protocol_git) then
+  vim.api.nvim_err_writeln(
+    'dpp.vim: NVIM_DPP_*/NVIM_DENOPS_VIM environment variables are not set. '
+      .. 'Re-login (or open a new shell) so home-manager session variables '
+      .. 'are re-sourced, then restart Neovim. Starting with no plugins.'
+  )
+else
+  -- NOTE: dpp#min#load_state() snapshots the *current* 'runtimepath' into
+  -- g:dpp._init_runtimepath the first time it is called, and dpp#make_state()
+  -- persists that snapshot (not the live rtp) into the generated startup.vim.
+  -- So every store path we want available on *every* future session (not
+  -- just this bootstrap run) must be prepended before the first
+  -- dpp#min#load_state() call below — adding them only in the "state missing"
+  -- branch would bake a denops-less runtimepath into state on first install
+  -- and break DenopsReady on every subsequent normal startup.
+  -- 注: dpp#min#load_state() は初回呼び出し時点の'runtimepath'をそのまま
+  -- g:dpp._init_runtimepathへ記録し、dpp#make_state()はその(live rtpではなく)
+  -- スナップショットをstartup.vimへ焼き込む。そのため今後の全セッションで
+  -- 必要なstoreパスは、下のdpp#min#load_state()呼び出しより前に追加しないと、
+  -- 初回install時にdenops抜きのruntimepathがstateに焼き込まれ、以後の通常
+  -- 起動でDenopsReadyが発火しなくなる。
+  vim.opt.runtimepath:prepend(dpp_vim)
+  vim.opt.runtimepath:prepend(denops_vim)
+  vim.opt.runtimepath:prepend(dpp_ext_installer)
+  vim.opt.runtimepath:prepend(dpp_ext_lazy)
+  vim.opt.runtimepath:prepend(dpp_ext_toml)
+  vim.opt.runtimepath:prepend(dpp_protocol_git)
 
+  local dpp_base = vim.env.HOME .. '/.cache/dpp'
+  local dpp_config_path = vim.fn.stdpath('config') .. '/dpp/config.ts'
 
-  -- status line
-  local lualine_toml = dein_toml_dir .. status_line_dir .. '/lualine.toml'
-  local bufferline_toml = dein_toml_dir .. status_line_dir .. '/bufferline.toml'
-  local gitsigns_toml = dein_toml_dir .. status_line_dir .. '/gitsigns.toml'
+  if vim.fn['dpp#min#load_state'](dpp_base) ~= 0 then
+    -- state未生成(初回起動 or state破棄後): denops起動後にmake_state()で
+    -- state(startup.vim/state.vim)を生成する。
+    vim.api.nvim_create_autocmd('User', {
+      pattern = 'DenopsReady',
+      once = true,
+      callback = function()
+        vim.fn['dpp#make_state'](dpp_base, dpp_config_path)
+      end,
+    })
+  end
 
-  -- Lazy load
-  local dein_toml_lazy = dein_toml_dir .. '/dein_lazy.toml'
-  local lsp_setting_toml_lazy = dein_toml_dir .. '/lsp_settings.toml'
-  local ddc_toml_lazy = dein_toml_dir .. '/ddc_settings.toml'
-  -- Treesitter (no longer supports lazy loading since 2025 rewrite)
-  local treesitter_settings = dein_toml_dir .. '/treesitter_settings.toml'
-
-  vim.call('dein#begin', dein_dir, {
-    vim.fn.expand('<sfile>'),
-
-    -- startup
-    dein_toml,
-    dashboard_toml,
-    style_toml,
-    copilot_toml,
-    codecompanion_toml,
-    ddu_toml,
-
-    -- status line
-    lualine_toml,
-    gitsigns_toml,
-
-    -- mini
-    mini_toml,
-
-    -- treesitter (not lazy)
-    treesitter_settings,
-
-    -- lazy
-    dein_toml_lazy,
-    lsp_setting_toml_lazy,
-    ddc_toml_lazy,
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'Dpp:makeStatePost',
+    callback = function()
+      vim.notify('dpp#make_state() done. Restart Neovim to load plugins.')
+    end,
   })
 
-  -- startup
-  vim.call('dein#load_toml', dein_toml, {lazy = 0})
-  vim.call('dein#load_toml', dashboard_toml, {lazy = 0})
-  vim.call('dein#load_toml', style_toml, {lazy = 0})
-  vim.call('dein#load_toml', copilot_toml, {lazy = 0})
-  vim.call('dein#load_toml', codecompanion_toml, {lazy = 0})
-  vim.call('dein#load_toml', ddu_toml, {lazy = 0})
-
-  -- status line
-  vim.call('dein#load_toml', lualine_toml, {lazy = 0})
-  vim.call('dein#load_toml', bufferline_toml, {lazy = 0})
-  vim.call('dein#load_toml', gitsigns_toml, {lazy = 0})
-
-  -- mini
-  vim.call('dein#load_toml', mini_toml, {lazy = 0})
-
-  -- Treesitter (not lazy - required by nvim-treesitter 2025 rewrite)
-  vim.call('dein#load_toml', treesitter_settings, {lazy = 0})
-
-  -- Lazy load
-  vim.call('dein#load_toml', dein_toml_lazy, {lazy = 1})
-  vim.call('dein#load_toml', lsp_setting_toml_lazy, {lazy = 1})
-  vim.call('dein#load_toml', ddc_toml_lazy, {lazy = 1})
-
-  vim.call('dein#end')
-  vim.call('dein#save_state')
+  -- TOML/config.ts編集時にstateを自動再生成する(check_files)
+  vim.api.nvim_create_autocmd('BufWritePost', {
+    pattern = { '*.toml', '*.lua', '*.vim', '*.ts' },
+    callback = function()
+      if #vim.fn['dpp#check_files']() > 0 then
+        vim.fn['dpp#make_state']()
+      end
+    end,
+  })
 end
-
-vim.api.nvim_set_var('dein#auto_recache', 1)
-vim.api.nvim_set_var('dein#enable_notification', 1)
--- vim.api.nvim_set_var('dein#install_github_api_token', 'github token')
-
---End dein Scripts-----------------------------
+--End dpp Scripts-----------------------------
 
 
 vim.o.termguicolors = true
