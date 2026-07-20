@@ -89,7 +89,7 @@ export class Config extends BaseConfig {
     //   - 合成方法: セット定義×環境プロファイルをどう掛け合わせて最終的な
     //     TOMLパスリスト(+ lazyフラグ)を組み立てるか
     //
-    // TODO(human): Implement the "set x environment" composition here.
+    // (English mirror of the TODO above) Implement the "set x environment" composition here.
     //
     // Right now the "provisional flat load list" below just loads a single
     // fixed list of 14 files — there is no notion of "what counts as a
