@@ -27,7 +27,9 @@ if (!dppVimPath) {
       "dpp#make_state(). See init.lua's bootstrap guard for details.",
   );
 }
-const { BaseConfig } = await import(`file://${dppVimPath}/denops/dpp/base/config.ts`);
+const { BaseConfig } = await import(
+  `file://${dppVimPath}/denops/dpp/base/config.ts`
+);
 
 // Minimal structural types for readability only (Deno does not type-check
 // this file at Neovim-startup time, so these are not imported from the
@@ -71,48 +73,44 @@ export class Config extends BaseConfig {
 
     const [context, options] = await contextBuilder.get(denops);
 
-    const nvimConfigDir = await denops.call("stdpath", "config") as string;
+    const nvimConfigDir = (await denops.call("stdpath", "config")) as string;
 
+    // Docker 環境でENV DOTFILES_PROFILE=minimalを指定した場合、ここで読み込むTOMLを最小化することで
+    // dpp#make_state()の結果を最小化することができる。dpp#check_files()は
+    // TOMLの読み込み結果を見てstate.vimを生成するので、ここで読み込むTOMLを
+    // 最小化すればstate.vimも最小化される。
+    if (Deno.env.get("DOTFILES_PROFILE") === "minimal") {
+      return {
+        plugins: [],
+        stateLines: [],
+        checkFiles: [],
+      };
+    }
     // ------------------------------------------------------------------
-    // TODO(human): セット×環境の対応構造をここに実装する
+    // 設計決定(2026-07-20, Learn by Doing): 環境は1つ、プロファイルは宣言で
     //
-    // 現状は下の「暫定フラットロードリスト」が14ファイルを固定の1本の
-    // リストとして読み込んでいるだけで、「何をセットとして切るか」も
-    // 「環境(Arch native / WSL2 / Docker等)で何を変えるか」も存在しない。
+    // 「セット×環境」のマトリクスは採用しない。分ける理由が現状ないため、
+    // ロードリストは下の1本(フラット)を正とする。環境差は検出(推測)せず、
+    // 環境の側が DOTFILES_PROFILE で自己申告する(上の minimal 早期return)。
+    // Docker は Dockerfile の ENV で minimal を宣言する。将来プロファイルが
+    // 増えたら、この窓(環境変数1個)を広げる — 検出ロジックは足さない。
     //
-    // 検討点:
-    //   - セットの切り方: 現行の暗黙グループ(startup/status_line/mini/
-    //     treesitter/lazy)をそのまま「セット」の単位にするか、機能軸
-    //     (ai/finder/lsp等)で切り直すか
-    //   - 環境判定: Deno.env / denops.call('has', ...) 等で Arch native
-    //     と WSL2 をどう見分けるか(WSL2判定は $WSL_DISTRO_NAME 等が候補)
-    //   - 合成方法: セット定義×環境プロファイルをどう掛け合わせて最終的な
-    //     TOMLパスリスト(+ lazyフラグ)を組み立てるか
-    //
-    // (English mirror of the TODO above) Implement the "set x environment" composition here.
-    //
-    // Right now the "provisional flat load list" below just loads a single
-    // fixed list of 14 files — there is no notion of "what counts as a
-    // set" nor "what changes per environment" (Arch native / WSL2 / Docker).
-    //
-    // Points to consider:
-    //   - How to cut sets: keep the current implicit groups (startup/
-    //     status_line/mini/treesitter/lazy) as the unit, or re-cut along
-    //     functional lines (ai/finder/lsp/...)?
-    //   - Environment detection: how to distinguish Arch native vs WSL2
-    //     (e.g. via Deno.env or denops.call('has', ...); $WSL_DISTRO_NAME
-    //     is one candidate signal)?
-    //   - Composition: how to combine set definitions x environment
-    //     profiles into the final TOML path list (+ lazy flag)?
+    // Design decision (2026-07-20, Learn by Doing): one environment,
+    // profiles are declared — not detected.
+    // The "set x environment" matrix was intentionally NOT adopted: there is
+    // currently no reason to split. The single flat list below is canonical.
+    // Environments self-declare via DOTFILES_PROFILE (see the minimal
+    // early-return above); Docker declares minimal in its Dockerfile ENV.
+    // If more profiles appear, widen this one declaration window — do not
+    // add detection heuristics.
     // ------------------------------------------------------------------
 
-    // 暫定フラットロードリスト: 現行init.luaと同じ14ファイル・同じ順序・
+    // フラットロードリスト: 現行init.luaと同じ14ファイル・同じ順序・
     // 同じlazy区分(startup/status_line/mini/treesitter は非遅延、
-    // lazyグループのみ lazy=true)。上の設計課題が実装されるまでのつなぎ。
-    // Provisional flat load list: same 14 files, same order, same lazy
-    // grouping as the current init.lua (startup/status_line/mini/
-    // treesitter are non-lazy; only the lazy group is lazy=true). A
-    // stopgap until the design task above is implemented.
+    // lazyグループのみ lazy=true)。
+    // Flat load list: same 14 files, same order, same lazy grouping as the
+    // former init.lua (startup/status_line/mini/treesitter are non-lazy;
+    // only the lazy group is lazy=true).
     const tomlFiles: { path: string; lazy: boolean }[] = [
       // startup
       { path: `${nvimConfigDir}/dpp.toml`, lazy: false },
@@ -129,7 +127,6 @@ export class Config extends BaseConfig {
 
       // mini
       { path: `${nvimConfigDir}/mini/mini.toml`, lazy: false },
-
       // treesitter (not lazy - nvim-treesitter 2025 rewrite dropped lazy support)
       { path: `${nvimConfigDir}/treesitter_settings.toml`, lazy: false },
 
@@ -141,25 +138,25 @@ export class Config extends BaseConfig {
 
     let plugins: Plugin[] = [];
     for (const { path, lazy } of tomlFiles) {
-      const toml = await dpp.extAction(
+      const toml = (await dpp.extAction(
         denops,
         context,
         options,
         "toml",
         "load",
         { path, options: { lazy } },
-      ) as Toml | undefined;
+      )) as Toml | undefined;
       plugins = [...plugins, ...(toml?.plugins ?? [])];
     }
 
-    const lazyResult = await dpp.extAction(
+    const lazyResult = (await dpp.extAction(
       denops,
       context,
       options,
       "lazy",
       "makeState",
       { plugins },
-    ) as LazyMakeStateResult | undefined;
+    )) as LazyMakeStateResult | undefined;
 
     return {
       plugins: lazyResult?.plugins ?? plugins,
