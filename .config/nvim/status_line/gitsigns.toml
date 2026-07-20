@@ -1,7 +1,9 @@
 [[plugins]]
 repo = 'lewis6991/gitsigns.nvim'
 on_event = 'BufEnter'
-depends = ['lualine']
+# NOTE: registered plugin name is 'lualine.nvim' (repo basename), not
+# 'lualine' (see status_line/lualine.toml for the same class of fix).
+depends = ['lualine.nvim']
 lua_add = '''
 vim.cmd 'set signcolumn=yes'
 require('gitsigns').setup {
