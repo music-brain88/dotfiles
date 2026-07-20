@@ -76,9 +76,80 @@ else
   local dpp_base = vim.env.HOME .. '/.cache/dpp'
   local dpp_config_path = vim.fn.stdpath('config') .. '/dpp/config.ts'
 
+  -- dpp_base/repos配下にクローン済みプラグインが1つもない状態を検知する。
+  -- 初回起動(bootstrap直後)だけでなく、repos/を手動やキャッシュ掃除などで
+  -- out-of-bandに消してしまったケースも同じ条件で拾える。
+  -- Detects "no cloned plugins under dpp_base/repos yet" — covers both the
+  -- initial bootstrap and repos/ having been wiped out of band (e.g. manual
+  -- cache cleanup), not just first launch.
+  local function dpp_repos_missing()
+    return vim.fn.isdirectory(dpp_base .. '/repos') == 0
+      or #vim.fn.glob(dpp_base .. '/repos/*', 0, 1) == 0
+  end
+
+  -- dpp#async_ext_action() はdenops経由で動くため、denops未起動時に呼ぶと
+  -- 失敗する。:DppInstall/:DppUpdate/自動インストールの全呼び出し口はここを通す。
+  -- dpp#async_ext_action() talks to denops; calling it before denops is up
+  -- fails. Every entry point below (:DppInstall/:DppUpdate/auto-install)
+  -- routes through this guard.
+  local function dpp_run_installer(action, params)
+    if vim.fn['denops#server#status']() ~= 'running' then
+      vim.notify(
+        'dpp: denops server is not running yet. '
+          .. 'Wait for it to finish starting (see DenopsReady) and retry.',
+        vim.log.levels.WARN
+      )
+      return
+    end
+    vim.fn['dpp#async_ext_action']('installer', action, params or {})
+  end
+
+  -- 自動インストールをトリガーしたかどうかを覚えておき、その場合だけ
+  -- installer完了時に「再起動してね」通知を出す(手動:DppUpdateの度に
+  -- 出るのは煩わしいため)。
+  -- Remembers whether *this* run triggered the auto-install, so the
+  -- "restart Neovim" notice only fires for that path — not on every manual
+  -- :DppUpdate.
+  local dpp_auto_install_pending = false
+
+  local function dpp_auto_install_if_missing()
+    if not dpp_repos_missing() then
+      return
+    end
+    dpp_auto_install_pending = true
+    vim.notify(
+      'dpp: no plugins found under repos/. Auto-installing (this may take a while)...',
+      vim.log.levels.INFO
+    )
+    dpp_run_installer('install', {})
+  end
+
+  vim.api.nvim_create_user_command('DppInstall', function()
+    dpp_run_installer('install', {})
+  end, { desc = 'Install missing dpp plugins (dpp-ext-installer#install)' })
+
+  vim.api.nvim_create_user_command('DppUpdate', function(opts)
+    -- NOTE (Decision Log D2): base-layer plugins (denops/ddc/ddu core, UI
+    -- layer) are rev-pinned in TOML; bump them via an intentional rev-bump
+    -- PR, not this command. dpp-protocol-git re-checks-out `rev`-pinned
+    -- plugins after update, so an unqualified :DppUpdate does not move
+    -- them in practice — but this command must not become the mechanism
+    -- used to bump base-layer revs.
+    -- 注(Decision Log D2): 基盤層(denops/ddc/ddu本体・UI層)はTOMLでrev固定
+    -- されており、更新は意図的なrev bump PR経由が原則。dpp-protocol-gitは
+    -- update後もrev固定プラグインを当該revへ再チェックアウトするため無条件
+    -- 実行してもrevは動かないが、本コマンドを基盤層更新の手段として使わないこと。
+    local params = {}
+    if #opts.fargs > 0 then
+      params.names = opts.fargs
+    end
+    dpp_run_installer('update', params)
+  end, { nargs = '*', desc = 'Update dpp plugins (all, or the given plugin names)' })
+
   if vim.fn['dpp#min#load_state'](dpp_base) ~= 0 then
     -- state未生成(初回起動 or state破棄後): denops起動後にmake_state()で
-    -- state(startup.vim/state.vim)を生成する。
+    -- state(startup.vim/state.vim)を生成する。make_state成功後もrepos/が
+    -- 空なことがある(#479実害)ため、Dpp:makeStatePost側で欠損チェックする。
     vim.api.nvim_create_autocmd('User', {
       pattern = 'DenopsReady',
       once = true,
@@ -86,12 +157,36 @@ else
         vim.fn['dpp#make_state'](dpp_base, dpp_config_path)
       end,
     })
+  else
+    -- state生成済み(通常起動): make_state()は走らずDpp:makeStatePostも
+    -- 発火しないため、repos/欠損はここでdenops起動後に一度だけチェックする。
+    vim.api.nvim_create_autocmd('User', {
+      pattern = 'DenopsReady',
+      once = true,
+      callback = dpp_auto_install_if_missing,
+    })
   end
 
   vim.api.nvim_create_autocmd('User', {
     pattern = 'Dpp:makeStatePost',
     callback = function()
       vim.notify('dpp#make_state() done. Restart Neovim to load plugins.')
+      dpp_auto_install_if_missing()
+    end,
+  })
+
+  -- installer install/updateの完了通知(Dpp:ext:installer:updateDone)。
+  -- 自動インストールをトリガーした時だけ再起動を促す。
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'Dpp:ext:installer:updateDone',
+    callback = function()
+      if dpp_auto_install_pending then
+        dpp_auto_install_pending = false
+        vim.notify(
+          'dpp: initial plugin install finished. Restart Neovim to load them.',
+          vim.log.levels.INFO
+        )
+      end
     end,
   })
 

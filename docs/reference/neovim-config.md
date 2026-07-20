@@ -9,6 +9,7 @@
 ## 📚 Table of Contents
 
 - [TOML File Structure](#toml-file-structure)
+- [Plugin Management (dpp)](#plugin-management-dpp)
 - [Keybindings](#keybindings)
 - [Related Files](#related-files)
 
@@ -102,6 +103,35 @@ CopilotChat.nvimの後継。[ACP (Agent Client Protocol)](https://github.com/oli
 | `mini.comment` | コメントトグル (`gc`) |
 | `mini.splitjoin` | 引数の分割・結合 |
 | `mini.surround` | テキストを囲む操作 |
+
+---
+
+## 🔌 Plugin Management (dpp)
+
+> dein→dpp移行([#478](https://github.com/music-brain88/dotfiles/pull/478))のフォローアップ([#479](https://github.com/music-brain88/dotfiles/issues/479))。dpp.vimは「本体ミニマル＋拡張分離」の設計思想のため、dein時代と異なりプラグインの取得(インストール・更新)は`dpp-ext-installer`経由の明示的なアクション呼び出しが必要。
+
+### コマンド
+
+| Command | Description |
+|---------|-------------|
+| `:DppInstall` | 未インストールのプラグインを一括インストール(`dpp-ext-installer#install`のラッパー) |
+| `:DppUpdate` | 全プラグインを更新(`dpp-ext-installer#update`のラッパー) |
+| `:DppUpdate {plugin...}` | 指定したプラグインのみ更新(スペース区切りで複数指定可) |
+
+両コマンドとも、denopsサーバー起動前(`DenopsReady`前)に実行すると警告を出して中断する(`denops#server#status() != 'running'`をガード)。
+
+### 初回起動時の自動インストール
+
+`init.lua`は`~/.cache/dpp/repos/`配下にクローン済みプラグインが1つもない状態を検知すると、`:DppInstall`相当の処理を通知付きで自動発動する。検知タイミングは以下の2箇所:
+
+- `Dpp:makeStatePost`(state生成直後。主に初回起動でここに引っかかる)
+- `DenopsReady`(state生成済みの通常起動時。`repos/`がキャッシュ掃除等で out-of-band に消失していた場合の保険)
+
+自動インストールが完了すると`Dpp:ext:installer:updateDone`イベントで検知し、「Neovimを再起動してプラグインを読み込んでください」と通知する(自動インストールをトリガーした場合のみ表示。手動`:DppUpdate`のたびには出さない)。
+
+### 更新方針(Decision Log D2: 基盤層はrev固定)
+
+denops/ddc/ddu本体・UI層などの基盤層プラグインはTOMLで`rev`を固定しており、dpp-protocol-gitがそのrev指定を尊重するため`:DppUpdate`を無条件に実行してもバージョンは動かない。ただし基盤層プラグインの更新自体は`:DppUpdate`に頼らず、**意図的なrev bump PR**を経由するのが原則([Epic #447](https://github.com/music-brain88/dotfiles/issues/447) Decision Log D2)。`:DppUpdate`は非基盤層プラグイン(rev未指定)の追従更新に使う。
 
 ---
 
