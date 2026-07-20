@@ -162,8 +162,14 @@ export class Config extends BaseConfig {
       plugins: lazyResult?.plugins ?? plugins,
       stateLines: lazyResult?.stateLines ?? [],
       // TOML編集後の次回起動でdpp#check_files()がstate再生成を検知できるよう、
-      // 読み込んだ全TOMLパスを登録する(init.luaのBufWritePost hook経由)。
-      checkFiles: tomlFiles.map(({ path }) => path),
+      // 読み込んだ全TOMLパスに加え、このconfig.ts自身も登録する
+      // (init.luaのBufWritePost hook経由)。
+      // Register all loaded TOML paths plus this config.ts itself so
+      // dpp#check_files() detects edits to either and rebuilds the state.
+      checkFiles: [
+        ...tomlFiles.map(({ path }) => path),
+        `${nvimConfigDir}/dpp/config.ts`,
+      ],
     };
   }
 }

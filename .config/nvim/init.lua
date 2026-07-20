@@ -100,7 +100,10 @@ else
     pattern = { '*.toml', '*.lua', '*.vim', '*.ts' },
     callback = function()
       if #vim.fn['dpp#check_files']() > 0 then
-        vim.fn['dpp#make_state']()
+        -- Pass the same explicit args as the initial DenopsReady make_state —
+        -- argless make_state depends on dpp defaults and may target the wrong
+        -- base/config. 初回生成時と同じ引数を明示して同一のstateを再生成する。
+        vim.fn['dpp#make_state'](dpp_base, dpp_config_path)
       end
     end,
   })
