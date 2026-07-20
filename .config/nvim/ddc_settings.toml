@@ -7,7 +7,9 @@ repo = 'Shougo/ddc-ui-native'
 [[plugins]]
 repo = 'Shougo/ddc.vim'
 on_event = 'InsertEnter'
-depends = ['denops.vim', 'pum.vim', 'ddc-ui-native', 'copilot.vim']
+# NOTE: 'denops.vim' removed from depends — it is structurally always
+# available via init.lua bootstrap (see dpp.toml), not a dpp-tracked plugin.
+depends = ['pum.vim', 'ddc-ui-native', 'copilot.vim']
 hook_add = '''
 " Copilot
 " <A-[>: previous completion.
@@ -18,58 +20,22 @@ hook_source = '''
   let g:copilot_no_maps = v:true
   call ddc#custom#patch_global('ui', 'native')
   call ddc#custom#patch_global('sources', ['lsp' ,'around', 'file', 'copilot', 'vsnip', 'cmdline', 'cmdline-history'])
-  call ddc#custom#patch_global('sourceOptions', #{
-        \   _:#{
-        \   matchers: ['matcher_fuzzy'],
-        \   sorters: ['sorter_fuzzy'],
-        \ },
-        \   copilot: #{
-        \     mark: ' Copilot',
-        \     matchers: [],
-        \     minAutoCompleteLength: 0,
-        \     isVolatile: v:true,
-        \   },
-        \   around:#{
-        \   mark: ' Text',
-        \  },
-        \   lsp:#{
-        \   mark: ' LSP',
-        \   dup: 'keep',
-        \   keywordPattern: '\k+',
-        \   forceCompletionPattern: '\.\w*|:\w*',
-        \  },
-        \   file: #{
-        \   mark: ' File',
-        \   isVolatile: v:true,
-        \   forceCompletionPattern: '\S/\S*',
-        \  },
-        \   vsnip: #{
-        \   mark: ' Snippet',
-        \   dup: v:true,
-        \   },
-        \   cmdline: #{
-        \   mark: ' Cmdline',
-        \   },
-        \   cmdline_history: #{
-        \   mark: ' Cmdline History',
-        \  },
-        \ })
+  call ddc#custom#patch_global('sourceOptions', #{   _:#{   matchers: ['matcher_fuzzy'],   sorters: ['sorter_fuzzy'], },   copilot: #{     mark: ' Copilot',     matchers: [],     minAutoCompleteLength: 0,     isVolatile: v:true,   },   around:#{   mark: ' Text',  },   lsp:#{   mark: ' LSP',   dup: 'keep',   keywordPattern: '\k+',   forceCompletionPattern: '\.\w*|:\w*',  },   file: #{   mark: ' File',   isVolatile: v:true,   forceCompletionPattern: '\S/\S*',  },   vsnip: #{   mark: ' Snippet',   dup: v:true,   },   cmdline: #{   mark: ' Cmdline',   },   cmdline_history: #{   mark: ' Cmdline History',  }, })
 
 " Customize settings for specific filetypes
 call ddc#custom#patch_filetype(['rs', 'toml', 'py'], 'sources', ['lsp', 'around', 'file', 'vsnip', 'copilot'])
-call ddc#custom#patch_filetype('markdown', 'sourceParams', #{
-\   around: #{
-\     maxSize: 100,
-\   },
-\ })
+call ddc#custom#patch_filetype('markdown', 'sourceParams', #{   around: #{     maxSize: 100,   }, })
 
 
 " Mappings
 " <TAB>: completion.
-inoremap <silent><expr> <TAB>
-\ pumvisible() ? '<C-n>' :
-\ (col('.') <= 1 || getline('.')[col('.') - 2] =~# '\s') ?
-\ '<TAB>' : ddc#map#manual_complete()
+" NOTE: '||' escaped as '<Bar><Bar>' (:h :map-bar) — under dein's script-file
+" hook execution an unescaped '|' inside a :map-family {rhs} happened not to
+" matter in practice, but dpp's execute({list},'') hook runner terminates
+" the :inoremap command at the first unescaped '|' (verified empirically:
+" without this the TAB mapping silently fails to register). Same {rhs},
+" same behavior — only the pipe is escaped, not the logic.
+inoremap <silent><expr> <TAB> pumvisible() ? '<C-n>' : (col('.') <= 1 <Bar><Bar> getline('.')[col('.') - 2] =~# '\s') ? '<TAB>' : ddc#map#manual_complete()
 
 " <S-TAB>: completion back.
 inoremap <expr><S-TAB> pumvisible() ? '<C-p>' : '<C-h>'

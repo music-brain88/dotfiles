@@ -1,6 +1,8 @@
 [[plugins]]
 repo = 'akinsho/bufferline.nvim'
-depends = ['nvim-tree/nvim-web-devicons']
+# NOTE: depends must use dpp's registered name, not the "owner/repo" slug
+# (see status_line/lualine.toml for the same fix and rationale).
+depends = ['nvim-web-devicons']
 hook_add = '''
 set mouse+=a
 lua << EOF

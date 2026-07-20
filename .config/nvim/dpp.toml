@@ -1,5 +1,10 @@
-[[plugins]]
-repo = 'vim-denops/denops.vim'
+# NOTE: denops.vim is no longer declared as a plugin entry here.
+# It is Nix-managed (PR-1, #476) and added to 'runtimepath' directly by
+# init.lua's bootstrap via $NVIM_DENOPS_VIM, so dpp-ext-installer must not
+# treat it as a clone target (see #472 D6 discussion, "denops.vim entry").
+# denops.vim はここではプラグインとして宣言しない。PR-1(#476)でNix管理化され
+# init.luaのbootstrapが$NVIM_DENOPS_VIM経由で直接runtimepathへ追加するため、
+# dpp-ext-installerのclone対象にしてはいけない(#472 D6「denops.vimエントリ」参照)。
 
 [[plugins]]
 repo = 'Shougo/pum.vim'
@@ -37,9 +42,12 @@ depends = ['context_filetype.vim']
 repo = 'Shougo/context_filetype.vim'
 
 # terminal plugin
+# NOTE: 'if = "has(\'nvim\')"' removed (D6) — this config targets Neovim only,
+# so the condition was always true. Purely declarative TOML per #472.
+# 'if' キーは削除(D6) — このconfigはNeovim専用構成のため常にtrueだった。
+# #472 に合わせて宣言的なTOMLへ。
 [[plugins]]
 repo = 'kassio/neoterm'
-if = "has('nvim')"
 hook_add = '''
 nnoremap <silent> ,rc :TREPLSendFile<cr>
 nnoremap <silent> ,rl :TREPLSendLine<cr>

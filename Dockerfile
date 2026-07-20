@@ -1,5 +1,7 @@
 FROM archlinux:base
 
+ENV DOTFILES_PROFILE=minimal
+
 # システムの更新と必要なパッケージのインストール
 RUN pacman -Syu --noconfirm && \
     pacman -S --noconfirm \

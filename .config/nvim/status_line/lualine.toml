@@ -1,7 +1,13 @@
 # ステータスライン周り
 [[plugins]]
 repo = 'nvim-lualine/lualine.nvim'
-depends = ['nvim-tree/nvim-web-devicons']
+# NOTE: depends must reference dpp's registered plugin name (repo basename:
+# "nvim-web-devicons"), not the full "owner/repo" slug — dein matched either
+# form, dpp only matches by name (verified via headless make_state test).
+# depends は dpp が登録するプラグイン名(repoのbasename: "nvim-web-devicons")
+# を参照する必要がある。dein は "owner/repo" 形式でもマッチしたが、dpp は
+# 名前一致のみ(headless make_stateでの検証で確認)。
+depends = ['nvim-web-devicons']
 lua_add = '''
   vim.cmd 'set termguicolors'
 
