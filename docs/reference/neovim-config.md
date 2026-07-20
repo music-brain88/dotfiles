@@ -116,7 +116,7 @@ CopilotChat.nvimの後継。[ACP (Agent Client Protocol)](https://github.com/oli
 |---------|-------------|
 | `:DppInstall` | 未インストールのプラグインを一括インストール(`dpp-ext-installer#install`のラッパー) |
 | `:DppUpdate` | 全プラグインを更新(`dpp-ext-installer#update`のラッパー) |
-| `:DppUpdate {plugin...}` | 指定したプラグインのみ更新(スペース区切りで複数指定可) |
+| `:DppUpdate [plugin ...]` | 指定したプラグインのみ更新(スペース区切りで複数指定可・省略時は全プラグイン) |
 
 両コマンドとも、denopsサーバー起動前(`DenopsReady`前)に実行すると警告を出して中断する(`denops#server#status() != 'running'`をガード)。
 

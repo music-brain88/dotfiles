@@ -82,9 +82,14 @@ else
   -- Detects "no cloned plugins under dpp_base/repos yet" — covers both the
   -- initial bootstrap and repos/ having been wiped out of band (e.g. manual
   -- cache cleanup), not just first launch.
+  -- 判定は実クローンの有無(.git の存在)で行う。repos/<host>/<owner>/<repo>
+  -- の3階層構造のため、途中のプレースホルダディレクトリだけが残っていても
+  -- 「未インストール」と正しく判定できる。
+  -- The check looks for actual clones (.git present). repos/ nests as
+  -- <host>/<owner>/<repo>, so leftover placeholder directories alone still
+  -- correctly count as "not installed".
   local function dpp_repos_missing()
-    return vim.fn.isdirectory(dpp_base .. '/repos') == 0
-      or #vim.fn.glob(dpp_base .. '/repos/*', 0, 1) == 0
+    return #vim.fn.glob(dpp_base .. '/repos/*/*/*/.git', 0, 1) == 0
   end
 
   -- dpp#async_ext_action() はdenops経由で動くため、denops未起動時に呼ぶと
@@ -113,6 +118,14 @@ else
   local dpp_auto_install_pending = false
 
   local function dpp_auto_install_if_missing()
+    -- minimalプロファイル(Docker等)はプラグイン宣言が空で repos/ が空なのが
+    -- 正常状態。自動インストールすると毎起動で空振りの通知が出るためスキップ。
+    -- Under the minimal profile (e.g. Docker) an empty plugin set — and thus
+    -- an empty repos/ — is the normal state. Skip auto-install to avoid a
+    -- no-op install + notification on every startup.
+    if vim.env.DOTFILES_PROFILE == 'minimal' then
+      return
+    end
     if not dpp_repos_missing() then
       return
     end
