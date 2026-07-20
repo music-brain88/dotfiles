@@ -117,8 +117,7 @@ endfunction
 " ,m は filer のトグル: 表示中なら正規の quit アクションで閉じる
 " (quit を通ることで preview window もプラグイン側で畳まれる)
 function! s:toggle_filer() abort
-  if exists('*denops#plugin#is_loaded') && denops#plugin#is_loaded('ddu')
-        \ && ddu#ui#visible('file')
+  if exists('*denops#plugin#is_loaded') && denops#plugin#is_loaded('ddu') && ddu#ui#visible('file')
     call ddu#ui#do_action('quit', {}, 'file')
   else
     call s:save_prev_winid()
@@ -155,20 +154,7 @@ endfunction
 
 " fuzzy find full text search
 " 元のウィンドウIDを保存してから検索を開始
-nmap <silent> ,g <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({
-\   'name': 'text',
-\   'sources': [{
-\     'name': 'rg',
-\     'options': {
-\       'matchers': [],
-\       'volatile': v:true
-\      },
-\   }],
-\   'uiParams': {'ff': {
-\     'ignoreEmpty': v:false,
-\     'autoResize': v:false,
-\   }},
-\ })<CR>
+nmap <silent> ,g <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({   'name': 'text',   'sources': [{     'name': 'rg',     'options': {       'matchers': [],       'volatile': v:true      },   }],   'uiParams': {'ff': {     'ignoreEmpty': v:false,     'autoResize': v:false,   }}, })<CR>
 
 
 " fuzzy find buffer
@@ -180,22 +166,10 @@ nmap <silent> ,b <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({ 'name
 nmap <silent> ,r <Cmd>call <SID>save_prev_winid()<CR><Cmd>call ddu#start({ 'name' : 'mru' })<CR>
 
 " fuzzy find grep cursor word
-nmap <silent> ,w <Cmd>call ddu#start({
-\   'name': 'word',
-\   'sources':[
-\     {'name': 'rg', 'params': { 'input': expand('<cword>')}}
-\   ],
-\ })<CR>
+nmap <silent> ,w <Cmd>call ddu#start({   'name': 'word',   'sources':[     {'name': 'rg', 'params': { 'input': expand('<cword>')}}   ], })<CR>
 
 " filer用のプレビューコマンド定義
-let g:filer_preview_command = "
-\ if [[ -f {} ]]; then
-\   (bat --style=numbers --color=always {} || cat {}) 2>/dev/null | head -200;
-\ elif [[ -d {} ]]; then
-\   ls -la {};
-\ else
-\   echo {} is not a file or directory;
-\ fi"
+let g:filer_preview_command = " if [[ -f {} ]]; then   (bat --style=numbers --color=always {} || cat {}) 2>/dev/null | head -200; elif [[ -d {} ]]; then   ls -la {}; else   echo {} is not a file or directory; fi"
 
 
 " 画面サイズの計算を行う関数
@@ -208,171 +182,55 @@ function! s:calculate_window_size() abort
   let l:win_col = (l:columns - l:win_width) / 2
   let l:preview_width = float2nr(l:win_width * 0.5)
 
-  return {
-    \ 'winHeight': l:win_height,
-    \ 'winWidth': l:win_width,
-    \ 'winRow': l:win_row,
-    \ 'winCol': l:win_col,
-    \ 'previewHeight': l:win_height,
-    \ 'previewWidth': l:preview_width,
-  \ }
+  return { 'winHeight': l:win_height, 'winWidth': l:win_width, 'winRow': l:win_row, 'winCol': l:win_col, 'previewHeight': l:win_height, 'previewWidth': l:preview_width, }
 endfunction
 
 let s:win_size = s:calculate_window_size()
 
 " ddu Global Setting
-call ddu#custom#patch_global({
-\   'ui': 'ff',
-\   'uiOptions': {
-\     '_': {
-\       'filterPrompt': '> ',
-\     },
-\   },
-\   'actionOptions': {
-\     'open': {
-\       'quit': v:false,
-\     },
-\   },
-\   'sourceOptions': {
-\     '_': {
-\       'matchers': ['matcher_substring'],
-\     },
-\     'file': {
-\       'columns': ['icon_filename'],
-\     },
-\   },
-\   'kindOptions': {
-\     'file': {
-\       'defaultAction': 'open',
-\     },
-\   },
-\   'uiParams': {
-\     'ff': {
-\       'split': 'floating',
-\       'previewFloating': v:true,
-\       'floatingBorder': 'rounded',
-\       'previewFloatingBorder': 'rounded',
-\       'previewSplit': 'vertical',
-\       'winHeight': s:win_size.winHeight,
-\       'winWidth': s:win_size.winWidth,
-\       'winRow': s:win_size.winRow,
-\       'winCol': s:win_size.winCol,
-\       'previewHeight': s:win_size.previewHeight,
-\       'previewWidth': s:win_size.previewWidth,
-\       'startAutoAction': v:true,
-\       'autoAction': { 'name': 'preview' },
-\     },
-\     'filer': {
-\       'split': 'floating',
-\       'sortTreesFirst': v:true,
-\       'sort': 'filename',
-\       'floatingBorder': 'rounded',
-\       'winHeight': s:win_size.winHeight,
-\       'winWidth': s:win_size.winWidth,
-\       'winRow': s:win_size.winRow,
-\       'winCol': s:win_size.winCol,
-\       'previewSplit': 'vertical',
-\       'previewFloating': v:true,
-\       'previewHeight': s:win_size.previewHeight,
-\       'previewWidth': s:win_size.previewWidth,
-\       'previewFloatingBorder': 'rounded',
-\       'previewWindowOptions': [
-\          ['&signcolumn', 'no'],
-\          ['&number', 0],
-\          ['&foldcolumn', 0],
-\          ['&wrap', 0],
-\       ],
-\       'startAutoAction': v:true,
-\       'autoAction': { 'name': 'preview' },
-\     }
-\  },
-\ })
+call ddu#custom#patch_global({   'ui': 'ff',   'uiOptions': {     '_': {       'filterPrompt': '> ',     },   },   'actionOptions': {     'open': {       'quit': v:false,     },   },   'sourceOptions': {     '_': {       'matchers': ['matcher_substring'],     },     'file': {       'columns': ['icon_filename'],     },   },   'kindOptions': {     'file': {       'defaultAction': 'open',     },   },   'uiParams': {     'ff': {       'split': 'floating',       'previewFloating': v:true,       'floatingBorder': 'rounded',       'previewFloatingBorder': 'rounded',       'previewSplit': 'vertical',       'winHeight': s:win_size.winHeight,       'winWidth': s:win_size.winWidth,       'winRow': s:win_size.winRow,       'winCol': s:win_size.winCol,       'previewHeight': s:win_size.previewHeight,       'previewWidth': s:win_size.previewWidth,       'startAutoAction': v:true,       'autoAction': { 'name': 'preview' },     },     'filer': {       'split': 'floating',       'sortTreesFirst': v:true,       'sort': 'filename',       'floatingBorder': 'rounded',       'winHeight': s:win_size.winHeight,       'winWidth': s:win_size.winWidth,       'winRow': s:win_size.winRow,       'winCol': s:win_size.winCol,       'previewSplit': 'vertical',       'previewFloating': v:true,       'previewHeight': s:win_size.previewHeight,       'previewWidth': s:win_size.previewWidth,       'previewFloatingBorder': 'rounded',       'previewWindowOptions': [          ['&signcolumn', 'no'],          ['&number', 0],          ['&foldcolumn', 0],          ['&wrap', 0],       ],       'startAutoAction': v:true,       'autoAction': { 'name': 'preview' },     }  }, })
 
 "-----------------------------------------------------------------------
 " ddu filer settings
 "-----------------------------------------------------------------------
-call ddu#custom#patch_local('file', {
-\   'ui': 'filer',
-\   'sources': [{'name': 'file', 'params': {}}],
-\   'actionOptions': {
-\     'narrow': {
-\       'quit': v:false,
-\     },
-\   },
-\ })
+call ddu#custom#patch_local('file', {   'ui': 'filer',   'sources': [{'name': 'file', 'params': {}}],   'actionOptions': {     'narrow': {       'quit': v:false,     },   }, })
 
 autocmd FileType ddu-filer call s:ddu_filer_my_settings()
 function! s:ddu_filer_my_settings() abort
   " winfixbufを無効化
   setlocal nowinfixbuf
   " Change action, Is cursor item drectory or not.
-  nnoremap <buffer><silent> <CR>
-        \ <Cmd>call <SID>open_in_prev_window()<CR>
-  nnoremap <buffer><silent><expr> h
-        \ ddu#ui#get_item()->get('isTree', v:false) ?
-        \ "<Cmd>call ddu#ui#do_action('collapseItem')<CR>" :
-        \ "<Cmd>call ddu#ui#do_action('preview')<CR>"
+  nnoremap <buffer><silent> <CR> <Cmd>call <SID>open_in_prev_window()<CR>
+  nnoremap <buffer><silent><expr> h ddu#ui#get_item()->get('isTree', v:false) ? "<Cmd>call ddu#ui#do_action('collapseItem')<CR>" : "<Cmd>call ddu#ui#do_action('preview')<CR>"
   " Move to higher path
-  nnoremap <buffer><silent> ..
-        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'narrow', 'params': {'path': '..'}})<CR>
-  nnoremap <buffer><silent> c
-        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'copy'})<CR>
-  nnoremap <buffer><silent> d
-        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'delete'})<CR>
-  nnoremap <buffer><silent> mv
-        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'move'})<CR>
-  nnoremap <buffer><silent> r
-        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'rename'})<CR>
-  nnoremap <buffer><silent> t
-        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'newFile'})<CR>
-  nnoremap <buffer><silent> mk
-        \ <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'newDirectory'})<CR>
-  nnoremap <buffer><silent> <Space>
-        \ <Cmd>call ddu#ui#sync_action('toggleSelectItem')<CR>
-  nnoremap <buffer> o
-        \ <Cmd>call ddu#ui#sync_action('expandItem', {'mode': 'toggle'})<CR>
-  nnoremap <buffer><silent> q
-        \ <Cmd>call ddu#ui#sync_action('quit')<CR>
+  nnoremap <buffer><silent> .. <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'narrow', 'params': {'path': '..'}})<CR>
+  nnoremap <buffer><silent> c <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'copy'})<CR>
+  nnoremap <buffer><silent> d <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'delete'})<CR>
+  nnoremap <buffer><silent> mv <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'move'})<CR>
+  nnoremap <buffer><silent> r <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'rename'})<CR>
+  nnoremap <buffer><silent> t <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'newFile'})<CR>
+  nnoremap <buffer><silent> mk <Cmd>call ddu#ui#sync_action('itemAction', {'name': 'newDirectory'})<CR>
+  nnoremap <buffer><silent> <Space> <Cmd>call ddu#ui#sync_action('toggleSelectItem')<CR>
+  nnoremap <buffer> o <Cmd>call ddu#ui#sync_action('expandItem', {'mode': 'toggle'})<CR>
+  nnoremap <buffer><silent> q <Cmd>call ddu#ui#sync_action('quit')<CR>
   " プレビューのトグル
-  nnoremap <buffer><silent> p
-        \ <Cmd>call ddu#ui#do_action('preview')<CR>
+  nnoremap <buffer><silent> p <Cmd>call ddu#ui#do_action('preview')<CR>
 endfunction
 "-----------------------------------------------------------------------
 " end ddu filer settings
 "-----------------------------------------------------------------------
 
 " fuzzy find full text search setting
-call ddu#custom#patch_local('text', {
-\   'sourceParams' : {
-\     'rg' : {
-\       'args': ['--column', '--no-heading', '--color', 'never', '--sort-files', '--hidden'],
-\     },
-\   },
-\ })
+call ddu#custom#patch_local('text', {   'sourceParams' : {     'rg' : {       'args': ['--column', '--no-heading', '--color', 'never', '--sort-files', '--hidden'],     },   }, })
 
 " fuzzy find buffer
-call ddu#custom#patch_local('buffer', {
-\   'sources': [{'name': 'buffer', 'params': {}}],
-\   'sourceParams' : {
-\     'rg' : {
-\       'args': ['--column', '--no-heading', '--color', 'never'],
-\     },
-\   },
-\ })
+call ddu#custom#patch_local('buffer', {   'sources': [{'name': 'buffer', 'params': {}}],   'sourceParams' : {     'rg' : {       'args': ['--column', '--no-heading', '--color', 'never'],     },   }, })
 
 " fuzzy find recently used files (MRU) setting
-call ddu#custom#patch_local('mru', {
-\   'sources': [{'name': 'file_old', 'params': {}}],
-\ })
+call ddu#custom#patch_local('mru', {   'sources': [{'name': 'file_old', 'params': {}}], })
 
 " fuzzy find grep cursor word setting
-call ddu#custom#patch_local('word', {
-\   'sourceParams' : {
-\     'rg' : {
-\       'args': ['--column', '--no-heading', '--color', 'never'],
-\     },
-\   },
-\ })
+call ddu#custom#patch_local('word', {   'sourceParams' : {     'rg' : {       'args': ['--column', '--no-heading', '--color', 'never'],     },   }, })
 
 " from ddu document
 autocmd FileType ddu-ff call s:ddu_my_settings()
@@ -380,14 +238,10 @@ function! s:ddu_my_settings() abort
   " winfixbufを無効化
   setlocal nowinfixbuf
   " <CR> を s:open_in_prev_window_ff() に変更して、元のウィンドウでファイルを開く
-  nnoremap <buffer><silent> <CR>
-        \ <Cmd>call <SID>open_in_prev_window_ff()<CR>
-  nnoremap <buffer><silent> <Space>
-        \ <Cmd>call ddu#ui#do_action('toggleSelectItem')<CR>
-  nnoremap <buffer><silent> i
-        \ <Cmd>call ddu#ui#do_action('openFilterWindow')<CR>
-  nnoremap <buffer><silent> q
-        \ <Cmd>call ddu#ui#do_action('quit')<CR>
+  nnoremap <buffer><silent> <CR> <Cmd>call <SID>open_in_prev_window_ff()<CR>
+  nnoremap <buffer><silent> <Space> <Cmd>call ddu#ui#do_action('toggleSelectItem')<CR>
+  nnoremap <buffer><silent> i <Cmd>call ddu#ui#do_action('openFilterWindow')<CR>
+  nnoremap <buffer><silent> q <Cmd>call ddu#ui#do_action('quit')<CR>
 endfunction
 '''
 
