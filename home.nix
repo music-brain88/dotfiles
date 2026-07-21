@@ -87,6 +87,7 @@
     ".claude/skills/daily" = { source = ./.config/skills/daily; recursive = true; };
     ".claude/skills/session-log" = { source = ./.config/skills/session-log; recursive = true; };
     ".claude/skills/herdr-chat" = { source = ./.config/skills/herdr-chat; recursive = true; };
+    ".claude/skills/qbq" = { source = ./.config/skills/qbq; recursive = true; };
 
     # mise global config (tools available outside project dirs, e.g. claude via node)
     # mise グローバル設定（プロジェクト外でも使うツール。claude は node 経由）
@@ -110,6 +111,7 @@
     ".copilot/skills/daily" = { source = ./.config/skills/daily; recursive = true; };
     ".copilot/skills/session-log" = { source = ./.config/skills/session-log; recursive = true; };
     ".copilot/skills/herdr-chat" = { source = ./.config/skills/herdr-chat; recursive = true; };
+    ".copilot/skills/qbq" = { source = ./.config/skills/qbq; recursive = true; };
     # Global copilot-instructions for GitHub Copilot (VS Code, etc.)
     ".github/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
 
