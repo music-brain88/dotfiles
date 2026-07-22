@@ -39,7 +39,9 @@ ResearchNotes は Zenn 下書きの供給源でもある。週次レビューで
 ## 前提情報
 
 - Vault: `/home/archie/Documents/Obsidian/Zettelkasten/`(ファイル直接読み書き。Obsidian MCP は使わない。WSL ではこのパスは Windows 側 vault への symlink — nix/modules/wsl.nix が管理)
-- **出自の判定**: vault は全マシン共有(Obsidian Sync)なので、どこで書いたかを frontmatter に刻む。`uname -r` に `microsoft` を含む → 仕事機なので `context: work` / `machine: wsl`。それ以外(native Arch)→ `context: personal` / `machine: arch-native`
+- **出自の判定**: vault は全マシン共有(Obsidian Sync)なので、出自を frontmatter に刻む。`machine` と `context` は別の軸として判定する:
+  - **machine**(どこで書いたか): `uname -r` に `microsoft` を含む → `machine: wsl`。それ以外(native Arch)→ `machine: arch-native`
+  - **context**(何の文脈か): マシンではなく、セッションの主対象リポジトリの owner で判定する(`git remote get-url origin`)。勤務先系 org のリポジトリ → `context: work`、それ以外(個人リポジトリ・第三者 OSS の clone)→ `context: personal`。具体的な org リストの正は `Zettelkasten/MOC-ObsidianWorkflow.md` の「出自判定宣言」(アクセスパターン宣言と同様、食い違う場合はそちらを優先)。リポジトリに紐付かないセッションは内容で判断する(迷ったら personal)
 - **パス・運用ルールの単一の真実**: `Zettelkasten/MOC-ObsidianWorkflow.md` の「アクセスパターン宣言」。本スキルの記載と食い違う場合はそちらを優先し、差分を報告する
 - 保存先: `ResearchNotes/ClaudeCodeSession-YYYYMMDD-<TopicSlug>.md`(TopicSlug は PascalCase の英語)
 - デイリーノート: `DailyNotes/YYYY-MM-DD.md`(フラット構造・年月フォルダなし)
