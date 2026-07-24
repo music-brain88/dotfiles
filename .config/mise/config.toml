@@ -1,6 +1,6 @@
 # mise global config / mise グローバル設定
-# Tools available in every directory (claude is installed as an npm global under this node)
-# 全ディレクトリで有効なツール（claude はこの node 配下の npm グローバルとしてインストールされる）
+# Tools available in every directory. claude is managed by its native installer (~/.local/bin/claude), not an npm global under this node — node is kept here for other tools.
+# 全ディレクトリで有効なツール。claude は native installer(~/.local/bin/claude)管理であり、この node 配下の npm グローバルではない — node は他ツールのために残している
 [tools]
 node = "22.15.1"
 
