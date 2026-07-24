@@ -31,6 +31,22 @@ mise タスクではないが、あわせてよく使うNix関連コマンド:
 
 ---
 
+## Claude Code Tasks
+
+| Task | Description | Equivalent Command |
+|------|-------------|---------------------|
+| `mise run claude:effort <level>` | Claude Code の effortLevel を設定してNix経由で反映 (`low\|medium\|high\|xhigh\|ultracode`) | `.config/claude/settings.json` を jq で書き換え + `nix:switch` |
+
+`ultracode` は effortLevel の値ではなく、独立した boolean 設定キー。xhigh 相当の effort に加えて、常設の dynamic-workflow(マルチエージェント)オーケストレーションをセッション全体で有効にする。`mise run claude:effort ultracode` を実行すると `effortLevel = "xhigh"` と `ultracode = true` が書き込まれる。通常レベル(low/medium/high/xhigh)に戻すと `ultracode` キー自体を削除し、設定ファイルを最小に保つ。
+
+mise タスクではないが、あわせて使うグローバルタスク(`.config/mise/config.toml` 定義、リポジトリを問わずどのディレクトリからでも実行可):
+
+| Task | Description |
+|------|-------------|
+| `mise run claude:memory-wire [project]` | プロジェクトの auto-memory を Obsidian AgentMemory vault へ配線 (`.claude/settings.local.json` に `autoMemoryDirectory` を書き込む、端末ローカル・untracked) |
+
+---
+
 ## Docker Tasks
 
 | Task | Description | Equivalent Command |
