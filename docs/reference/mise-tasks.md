@@ -35,7 +35,7 @@ mise タスクではないが、あわせてよく使うNix関連コマンド:
 
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
-| `mise run claude:effort <level>` | Claude Code の effortLevel を設定してNix経由で反映 (`low\|medium\|high\|xhigh\|ultracode`) | `.config/claude/settings.json` を jq で書き換え + `nix:switch` |
+| `mise run claude:effort <level>` | Claude Code の effort 設定(effortLevel/ultracode)を更新してNix経由で反映 (`low` / `medium` / `high` / `xhigh` / `ultracode`) | `.config/claude/settings.json` を jq で書き換え + `nix:switch` |
 
 `ultracode` は effortLevel の値ではなく、独立した boolean 設定キー。xhigh 相当の effort に加えて、常設の dynamic-workflow(マルチエージェント)オーケストレーションをセッション全体で有効にする。`mise run claude:effort ultracode` を実行すると `effortLevel = "xhigh"` と `ultracode = true` が書き込まれる。通常レベル(low/medium/high/xhigh)に戻すと `ultracode` キー自体を削除し、設定ファイルを最小に保つ。
 

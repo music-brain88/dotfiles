@@ -44,7 +44,7 @@ run = "nix-collect-garbage -d"
 # =============================================================================
 
 [tasks."claude:effort"]
-description = "Set Claude Code effortLevel and rebuild (low|medium|high|xhigh|ultracode)"
+description = "Set Claude Code effort settings (effortLevel/ultracode) and rebuild (low|medium|high|xhigh|ultracode)"
 # effortLevel を .config/claude/settings.json に書き込んで nix:switch で反映する。
 # tracked な変更なので diff が残り、そのまま commit/PR に乗せられる。
 # Write effortLevel into the nix source, then activate — the change stays tracked.
