@@ -32,6 +32,8 @@
 - [how-to/customize-keybindings.md](./how-to/customize-keybindings.md) - キーバインドの追加・変更
 - [how-to/daily-workflow-commands.md](./how-to/daily-workflow-commands.md) - 日常的によく使うコマンド集
 - [how-to/troubleshoot-fonts.md](./how-to/troubleshoot-fonts.md) - フォント関連のトラブルシューティング
+- [how-to/manage-gpg-keys.md](./how-to/manage-gpg-keys.md) - GPG鍵の複数端末運用
+- [how-to/install-unmanaged-tools.md](./how-to/install-unmanaged-tools.md) - Nix管理外ツールの導入(Claude Code・OS層・化石の掃除)
 
 ---
 
@@ -47,6 +49,7 @@
 - [reference/ci-cd-pipeline.md](./reference/ci-cd-pipeline.md) - CI/CDパイプラインの仕様
 - [reference/fontconfig.md](./reference/fontconfig.md) - フォント設定
 - [reference/color-palette.md](./reference/color-palette.md) - カラーパレット基準表 (onedark)
+- [reference/tool-management-map.md](./reference/tool-management-map.md) - ツール管轄マップ(どのツールをどの層が管理するか)
 
 ---
 
@@ -88,6 +91,7 @@
 | ファイル構成を知りたい | [reference/directory-structure.md](./reference/directory-structure.md) |
 | CI/CDでハマった問題を知りたい | [explanation/cicd-evolution.md](./explanation/cicd-evolution.md) |
 | フォントがおかしいときは | [how-to/troubleshoot-fonts.md](./how-to/troubleshoot-fonts.md) |
+| このツールはどの層で管理されてる？ | [reference/tool-management-map.md](./reference/tool-management-map.md) |
 
 ---
 
