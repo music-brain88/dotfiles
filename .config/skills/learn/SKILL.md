@@ -93,5 +93,5 @@ description: |
 
 dotfiles Issue #492。hexhive の /qbq セッション(2026-07-25)で「教師プロンプトの置き場所」を
 「開発ループへの理解ゲートの組み込み」に再定義して合意した設計の実装。
-理論的背景は Loop Engineering(HuaShu, Orange Books v260615)—
+理論的背景は Loop Engineering —
 生成は安く判断は希少、comprehension rot への防御として人間のチェックポイントを恒久機能にする。
