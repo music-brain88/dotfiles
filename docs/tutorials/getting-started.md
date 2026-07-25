@@ -13,6 +13,16 @@
 
 ---
 
+## 0. Prerequisites / 前提
+
+リポジトリの clone に `git` が必要です。Arch Linux の場合は OS のパッケージマネージャで導入します:
+
+```bash
+sudo pacman -S git
+```
+
+> **Note:** Window Manager や GUI 層(Hyprland, WezTerm など)も Nix ではなく OS 側(pacman / paru)で導入します。どのツールがどの層の管理かは [tool-management-map.md](../reference/tool-management-map.md) を参照してください。
+
 ## 1. Install Nix
 
 **Option A: Official Nix Installer**
@@ -66,7 +76,7 @@ nix build .#homeConfigurations.archie.activationPackage
 ./result/activate
 ```
 
-同じことは `mise run nix:switch` でも実行できます。タスクの一覧は [mise-tasks.md](../reference/mise-tasks.md) を参照してください。
+> **Note:** タスクランナーの mise 自体も Nix が導入します(`programs.mise`)。そのため**初回だけ**は上記のように home-manager を直接実行します。switch が完走した後は、同じことが `mise run nix:switch` で実行できます。タスクの一覧は [mise-tasks.md](../reference/mise-tasks.md) を参照してください。
 
 ### Flake URL の構文について
 
@@ -97,11 +107,22 @@ home-manager switch --flake /path/to/dotfiles#archie
 nvim --headless +"call dein#install()" +qall
 ```
 
+## 6. Install Claude Code (Optional)
+
+Claude Code は Nix 管理外(native installer 管理)なので、別途導入します:
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+以降の更新は自動です。詳細な確認手順や npm 版からの移行は [install-unmanaged-tools.md](../how-to/install-unmanaged-tools.md) を参照してください。
+
 ---
 
 ## Next Steps
 
 - 自分用にユーザー名などをカスタマイズしたい → [customize-your-fork.md](../how-to/customize-your-fork.md)
+- どのツールがどの層で管理されているか知りたい → [tool-management-map.md](../reference/tool-management-map.md)
 - パッケージを追加・更新したい → [install-and-update-packages.md](../how-to/install-and-update-packages.md)
 - うまく動かないときは → [troubleshoot-nix.md](../how-to/troubleshoot-nix.md)
 - キーバインドを知りたい → [keybindings.md](../reference/keybindings.md)

@@ -36,10 +36,10 @@ Nix + Home Manager + mise を使用した、宣言的でモダンな開発環境
 # Install Nix (Determinate Systems Installer, 推奨)
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 
-# Clone & activate
+# Clone & activate (初回は home-manager を直接実行。mise は switch で入るため 2 回目以降は mise run nix:switch)
 git clone https://github.com/music-brain88/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-mise run nix:switch
+nix run home-manager/master -- switch --flake .#archie
 ```
 
 > 📖 ステップバイステップの解説は [docs/tutorials/getting-started.md](docs/tutorials/getting-started.md) を参照してください。

@@ -10,3 +10,4 @@
 - [ci-cd-pipeline.md](./ci-cd-pipeline.md) — CI/CDパイプラインの仕様
 - [fontconfig.md](./fontconfig.md) — フォント設定
 - [color-palette.md](./color-palette.md) — カラーパレット基準表 (onedark)
+- [tool-management-map.md](./tool-management-map.md) — ツール管轄マップ(どのツールをどの層が管理するか)
