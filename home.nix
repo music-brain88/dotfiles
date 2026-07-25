@@ -89,8 +89,8 @@
     ".claude/skills/herdr-chat" = { source = ./.config/skills/herdr-chat; recursive = true; };
     ".claude/skills/qbq" = { source = ./.config/skills/qbq; recursive = true; };
 
-    # mise global config (tools available outside project dirs, e.g. claude via node)
-    # mise グローバル設定（プロジェクト外でも使うツール。claude は node 経由）
+    # mise global config (tools available outside project dirs; claude is NOT here — it uses its native installer)
+    # mise グローバル設定（プロジェクト外でも使うツール。claude は native installer 管理で node 経由ではない）
     # force: overwrite real files created by `mise use -g` so activation never stalls
     # force: `mise use -g` が作る実ファイルを上書きして activation の停止を防ぐ
     ".config/mise/config.toml" = {

@@ -33,7 +33,7 @@ claude --version
 過去の手順(npm グローバル)で導入した端末が残っている場合の移行手順です。native 版を先に入れ、動作確認してから npm 版を消します。
 
 ```bash
-# 1. native 版を導入(claude が既にあるなら install サブコマンドでも可)
+# 1. native 版を導入(npm 版の claude からでも install サブコマンドで移行できる)
 claude install stable
 
 # 2. native 版の動作確認

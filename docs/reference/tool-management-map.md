@@ -10,7 +10,7 @@
 
 | Layer              | Manager                 | 定義場所                                                             | 更新方法                                   |
 | ------------------ | ----------------------- | -------------------------------------------------------------------- | ------------------------------------------ |
-| Nix (Home Manager) | flake.nix + nix/modules | `home.nix`, `nix/modules/*.nix`                                      | `nix flake update` → `mise run nix:switch` |
+| Nix (Home Manager) | flake.nix + nix/modules | `home.nix`, `nix/modules/*.nix`                                      | `mise run nix:update` → `mise run nix:switch` |
 | OS (Arch)          | pacman / paru           | 宣言なし(`mise run backup` でリスト退避)                             | `sudo pacman -Syu` / `paru -Syu`           |
 | mise               | mise                    | `.config/mise/config.toml`(グローバル) / 各リポジトリの `.mise.toml` | 宣言変更 → `mise install`                  |
 | Native installer   | ツール自身              | なし(`~/.local/bin` + `~/.local/share/<tool>`)                       | 自動更新                                   |
