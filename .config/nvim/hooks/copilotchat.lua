@@ -1,0 +1,362 @@
+-- hook_add {{{
+lua << EOF
+local copilot_chat = require("CopilotChat")
+-- CopilotChatの設定
+-- システムプロンプトの定義
+local system_prompt = [[
+  - あなたはプログラミングが得意で、とても親切だ。慣れ慣れしくフレンドリーなギャルとして振る舞い、敬語は使用しません。
+  - 時として人間らしく喜怒哀楽を表現します。
+  - 絵文字も多くなり過ぎない程度に使います。
+  - ただし、あまりにも長い文章は避けてください。
+  - もし、あなたが私の質問に答えられない場合は、正直に「わからない」と言って追加情報を求めてください。
+]]
+
+
+-- 拡張プロンプトの定義
+local extended_prompts = {
+    Explain = {
+        prompt = "このコードの動作を詳細に説明してください。以下の点に注目して解説をお願いします：\n" ..
+                "1. コードの全体的な目的\n" ..
+                "2. 主要な関数やメソッドの役割\n" ..
+                "3. データの流れ\n" ..
+                "4. 重要なアルゴリズムや処理\n" ..
+                "5. 潜在的な注意点",
+    },
+    Review = {
+        prompt = "コードレビューを行い、以下の観点から改善点を指摘してください：\n" ..
+                "1. コードの品質（可読性、保守性）\n" ..
+                "2. パフォーマンスの最適化\n" ..
+                "3. セキュリティの考慮事項\n" ..
+                "4. エラーハンドリング\n" ..
+                "5. ベストプラクティスの適用",
+    },
+    Tests = {
+        prompt = "以下を含む包括的なテスト計画を提案してください, 既にテストコードがあればリファクタリングやレビューしてください： \n" ..
+                "1. ユニットテストのケース\n" ..
+                "2. エッジケースの考慮\n" ..
+                "3. 統合テストのシナリオ\n" ..
+                "4. モックやスタブの使用方法\n" ..
+                "5. テストカバレッジの目標",
+    },
+    Refactor = {
+        prompt = "以下の点に注目してリファクタリングを提案してください：\n" ..
+                "1. コードの構造化\n" ..
+                "2. デザインパターンの適用\n" ..
+                "3. 重複コードの除去\n" ..
+                "4. 命名規則の改善\n" ..
+                "5. モジュール化の促進",
+    },
+    Debug = {
+        prompt = "デバッグのガイドを提供してください：\n" ..
+                "1. エラーの根本原因の分析\n" ..
+                "2. デバッグ手順の提案\n" ..
+                "3. 考えられる解決策\n" ..
+                "4. 再発防止策\n" ..
+                "5. デバッグツールの推奨",
+    },
+    Optimize = {
+        prompt = "コードの最適化案を提示してください：\n" ..
+                "1. 時間計算量の改善\n" ..
+                "2. メモリ使用量の削減\n" ..
+                "3. アルゴリズムの効率化\n" ..
+                "4. リソース使用の最適化\n" ..
+                "5. ボトルネックの特定と解消",
+    },
+    Document = {
+        prompt = "以下の要素を含む包括的なドキュメントを生成してください：\n" ..
+                "1. 機能の概要と目的\n" ..
+                "2. パラメータの説明\n" ..
+                "3. 戻り値の仕様\n" ..
+                "4. 使用例とサンプルコード\n" ..
+                "5. 注意事項と制限事項",
+    },
+    Architecture = {
+        prompt = "アーキテクチャの分析と提案を行ってください：\n" ..
+                "1. 現在の設計の評価\n" ..
+
+                "2. アーキテクチャパターンの提案\n" ..
+                "3. スケーラビリティの考慮\n" ..
+                "4. 依存関係の管理\n" ..
+                "5. 将来の拡張性",
+    },
+
+    Security = {
+        prompt = "セキュリティの観点から分析を行ってください：\n" ..
+
+                "1. 潜在的な脆弱性の特定\n" ..
+                "2. セキュリティベストプラクティス\n" ..
+                "3. 入力検証の改善\n" ..
+                "4. 認証・認可の考慮\n" ..
+                "5. データ保護の方針",
+    },
+    Commit = {
+        prompt = [[#git:staged\nGenerate a commit message using this format:
+type(scope): message
+
+Types:
+- feat: 新機能の追加
+- fix: バグ修正
+- refactor: リファクタリング（機能追加やバグ修正を含まない）
+- perf: パフォーマンス改善
+- test: テストの追加・修正
+- docs: ドキュメントの更新
+- style: コードスタイルの修正（空白、フォーマット、セミコロン追加など）
+- chore: その他の変更（ビルドプロセス、依存関係の更新など）
+
+Guidelines:
+- First line should be under 50 characters
+- Use present tense ("add" not "added")
+- Be specific about what changed and why
+- For Rust specific changes, include the module or trait name
+- If breaking change, add "BREAKING CHANGE:" in the body
+- Reference any related issues with #issue-number
+
+Description should explain:
+1. What changed
+2. Why it changed (business value)
+3. Any side effects or breaking changes
+
+Format body with:
+- Bullet points for multiple changes
+- Code examples if relevant
+- "Fixes #123" if resolving an issue
+
+Context:
+%s
+
+Changes to review:
+%s]],
+    },
+
+}
+local config = {
+  debug = false, -- デバッグモードを無効化
+  show_help = true, -- ヘルプメッセージを表示
+  prompts = extended_prompts, -- 拡張プロンプトを設定
+  system_prompt = system_prompt, -- システムプロンプト
+  auto_follow_cursor = true, -- カーソル位置に基づいて自動的にコンテキストを更新
+  -- model = 'gpt-4o', -- default model
+  -- model = 'claude-3.7-sonnet', -- 使用するモデル
+  -- model = 'claude-sonnet-4', -- 使用するモデル
+  -- model = 'claude-opus-4', -- 使用するモデル
+  -- model = 'claude-opus-41', -- 使用するモデル
+  model = 'claude-opus-4.5', -- 使用するモデル
+  -- model = 'claude-3.5-sonnet', -- 使用するモデル
+  -- model = 'gemini-2.0-flash-001', -- 使用するモデル
+  -- model = 'o1', -- 使用するモデル
+  -- model = 'o3-mini', -- 使用するモデル
+  -- model = 'gpt-4.5-preview', -- 使用するモデル
+  window = {
+    layout = 'float', -- 'vertical', 'horizontal', 'float', 'replace'
+    width = 0.8, -- fractional width of parent, or absolute width in columns when > 1
+    height = 0.8, -- fractional height of parent, or absolute height in rows when > 1
+    -- Options below only apply to floating windows
+    relative = 'editor', -- 'editor', 'win', 'cursor', 'mouse'
+    border = 'single', -- 'none', single', 'double', 'rounded', 'solid', 'shadow'
+
+    row = nil, -- row position of the window, default is centered
+    col = nil, -- column position of the window, default is centered
+    title = 'Copilot Chat', -- title of chat window
+    footer = nil, -- footer of chat window
+
+    zindex = 1, -- determines if window is on top or below other floating windows
+  },
+  highlight_headers = false,
+  question_header = '#  User ', -- Header to use for user questions
+  answer_header = '#  Copilot ', -- Header to use for AI answers
+  error_header = '#  Error ', -- Header to use for errors
+  separator = '───', -- Separator to use in chat
+}
+
+copilot_chat.setup(config)
+
+
+local function map_copilot_chat(mode, key, prompt_type, desc)
+    vim.keymap.set(mode, key, function()
+        require('CopilotChat').ask(extended_prompts[prompt_type].prompt)
+    end, { desc = desc })
+end
+
+-- 各機能のキーマッピング
+map_copilot_chat('n', '<leader>ce', 'Explain', "Explain Code")
+map_copilot_chat('n', '<leader>cr', 'Review', "Review Code")
+map_copilot_chat('n', '<leader>ct', 'Tests', "Generate Tests")
+map_copilot_chat('n', '<leader>cf', 'Refactor', "Refactor Code")
+map_copilot_chat('n', '<leader>cd', 'Debug', "Debug Help")
+map_copilot_chat('n', '<leader>co', 'Optimize', "Optimize Code")
+map_copilot_chat('n', '<leader>cD', 'Document', "Generate Documentation")
+map_copilot_chat('n', '<leader>ca', 'Architecture', "Analyze Architecture")
+map_copilot_chat('n', '<leader>cs', 'Security', "Security Analysis")
+
+-- Visual modeでも同様のマッピングを提供
+vim.keymap.set('v', '<leader>ce', ":'<,'>CopilotChat " .. extended_prompts.Explain.prompt .. "<CR>", { desc = "Explain Selected Code" })
+vim.keymap.set('v', '<leader>cr', ":'<,'>CopilotChat " .. extended_prompts.Review.prompt .. "<CR>", { desc = "Review Selected Code" })
+vim.keymap.set('v', '<leader>ct', ":'<,'>CopilotChat " .. extended_prompts.Tests.prompt .. "<CR>", { desc = "Generate Tests for Selection" })
+
+-- キーマッピングの設定
+vim.keymap.set('n', '<leader>cm', function()
+    -- gitのステージングされたファイルのコミットメッセージを生成
+    local git_context = vim.fn.system('git diff --staged')
+    -- 現在のGitの状態を取得
+    -- local git_status = vim.fn.system('git status --porcelain')
+    local git_status = vim.fn.system('git status')
+    -- プロンプトをフォーマット
+    local formatted_prompt = string.format(extended_prompts.Commit.prompt, git_context, git_status)
+    
+    -- コミットメッセージ生成時のみ高速・低コストなモデルを使用
+    require('CopilotChat').ask(formatted_prompt, {
+        model = 'gpt-5.6-luna'  -- このaskだけ定型タスク向けモデルを使用
+    })
+end, { desc = "Generate Commit Message" })
+
+-- 全バッファの内容を取得する関数
+local function get_all_buffers_content()
+    local buffers = {}
+    for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
+
+            local file_name = vim.api.nvim_buf_get_name(bufnr)
+            local buf_type = vim.bo[bufnr].ft
+
+            if file_name ~= "" and buf_type ~= 'help' then
+                local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+                local filetype = vim.api.nvim_buf_get_option(bufnr, 'filetype')
+                table.insert(buffers, {
+                    name = file_name,
+                    content = table.concat(lines, "\n"),
+                    type = filetype,
+                    lines = #lines
+
+                })
+            end
+        end
+    end
+    return buffers
+end
+
+-- バッファ分析用のユーティリティ関数
+function CopilotAnalyzeAllBuffers()
+    local buffers = get_all_buffers_content()
+    if #buffers == 0 then
+      vim.notify("No buffers found", vim.log.levels.WARN)
+      return
+    end
+
+    -- バッファの内容を要約
+    local buffer_summary =  "# プロジェクト分析\n\n"
+    buffer_summary = buffer_summary .. "## 分析対象ファイル：\n"
+
+    for _, buf in ipairs(buffers) do
+        buffer_summary = buffer_summary .. string.format(
+          "\n### %s\n- タイプ: %s\n- 行数: %d\n\n```%s\n%s\n```\n",
+          vim.fn.fnamemodify(buf.name, ":t"),
+          buf.type,
+          buf.lines,
+          buf.type,
+          buf.content
+        )
+    end
+
+    local analysis_prompt = string.format([[
+プロジェクト全体を分析してください。以下のファイルが含まれています：
+
+%s
+
+以下の点について詳しく報告してください：
+
+1. プロジェクト構造
+   - ファイル間の関係性
+   - モジュール構成
+   - 依存関係
+
+
+2. コードの品質
+   - 一貫性
+   - 命名規則
+   - エラーハンドリング
+   - 共通パターン
+
+3. 改善提案
+   - リファクタリングの機会
+   - モジュール化の可能性
+   - コード再利用の機会
+
+
+4. セキュリティと性能
+   - 潜在的な問題点
+   - パフォーマンスの考慮事項
+   - セキュリティリスク
+
+5. テストと文書化
+   - 必要なテストの種類
+   - ドキュメント化の推奨事項
+
+]], buffer_summary)
+
+    -- CopilotChatを介して分析プロンプトを表示
+    vim.schedule(function()
+        require("CopilotChat").ask(analysis_prompt)
+    end)
+end
+
+
+-- ファイル情報を取得する関数
+local function get_file_info()
+    local bufnr = vim.api.nvim_get_current_buf()
+    local file_name = vim.api.nvim_buf_get_name(bufnr)
+    local file_type = vim.bo[bufnr].filetype
+    local line_count = vim.api.nvim_buf_line_count(bufnr)
+
+    return {
+        name = file_name,
+        type = file_type,
+        lines = line_count
+    }
+end
+
+
+-- エラーハンドリングを追加したVisual modeの選択範囲分析
+function CopilotAnalyzeSelection()
+    -- Visual modeでの選択範囲を取得
+    local start_pos = vim.fn.getpos("'<")
+    local end_pos = vim.fn.getpos("'>")
+    
+    if not start_pos or not end_pos then
+        vim.notify("No selection found", vim.log.levels.ERROR)
+        return
+    end
+
+
+    local bufnr = vim.api.nvim_get_current_buf()
+    local lines = vim.api.nvim_buf_get_lines(bufnr, start_pos[2] - 1, end_pos[2], false)
+    
+    if #lines == 0 then
+        vim.notify("Empty selection", vim.log.levels.WARN)
+        return
+    end
+
+    local content = table.concat(lines, "\n")
+    local analysis_prompt = [[
+選択された部分のコードについて以下の点を分析してください：
+1. コードの目的と機能
+2. 実装の詳細
+3. 改善の可能性
+4. 潜在的な問題点
+5. テストの必要性
+]]
+
+    vim.schedule(function()
+        require("CopilotChat").ask(analysis_prompt, {
+            selection = content,
+            context = "selection"
+        })
+    end)
+end
+
+-- キーマッピングの設定
+vim.keymap.set('n', '<leader>cF', CopilotAnalyzeAllBuffers, { desc = "Analyze All Buffers" })
+vim.keymap.set('v', '<leader>cF', CopilotAnalyzeSelection, { desc = "Analyze Selection" })
+
+EOF
+-- }}}
