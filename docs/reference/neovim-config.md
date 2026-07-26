@@ -133,6 +133,19 @@ CopilotChat.nvimの後継。[ACP (Agent Client Protocol)](https://github.com/oli
 
 denops/ddc/ddu本体・UI層などの基盤層プラグインはTOMLで`rev`を固定しており、dpp-protocol-gitがそのrev指定を尊重するため`:DppUpdate`を無条件に実行してもバージョンは動かない。ただし基盤層プラグインの更新自体は`:DppUpdate`に頼らず、**意図的なrev bump PR**を経由するのが原則([Epic #447](https://github.com/music-brain88/dotfiles/issues/447) Decision Log D2)。`:DppUpdate`は非基盤層プラグイン(rev未指定)の追従更新に使う。
 
+### state鮮度管理(明示的な再生成、[#466](https://github.com/music-brain88/dotfiles/issues/466))
+
+dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein時代のようなmtime自動チェックは一切行わない。鮮度チェックは`dpp#check_files()`(`state.vim`のmtimeと、`config.ts`が`checkFiles`に登録した全TOML + `config.ts`自身のmtimeを比較)を**自分で呼ぶ**必要がある。差分があれば`dpp#make_state()`で再生成する。本リポジトリでは以下4つの経路で再生成のタイミングをカバーしている:
+
+| 経路 | 発火タイミング | 用途 |
+|------|----------------|------|
+| `BufWritePost` autocmd | `*.toml`/`*.lua`/`*.vim`/`*.ts`保存直後 | nvim内でTOML/config.tsを直接編集した場合 |
+| 起動時`DenopsReady` autocmd | 通常起動でstate読み込み成功後、denops起動完了時 | worktree + PRマージ→pullでTOMLが変わる(nvim内では編集しない)本リポジトリの主力フロー |
+| `:DppMakeState`コマンド | 手動実行時 | `check_files()`の差分有無に関わらず強制再生成したい時 |
+| `mise run nvim:state` | 手動実行時(headless) | `nix:switch`後やpull後、nvimを開かずCLIから明示的に反映したい時 |
+
+起動時経路をVimEnter直後ではなく`DenopsReady`後にしているのは、`dpp#make_state()`がdenops経由(`dpp#denops#_notify`)のため、denops起動前に呼ぶと失敗するから。`BufWritePost`とこの起動時経路は同じ`dpp_check_files_and_make_state()`(`init.lua`内のローカル関数)を共有しており、二重実装を避けている。
+
 ---
 
 ## ⌨️ Keybindings

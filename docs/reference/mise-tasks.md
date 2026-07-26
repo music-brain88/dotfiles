@@ -60,6 +60,17 @@ mise タスクではないが、あわせて使うグローバルタスク(`.con
 
 ---
 
+## Neovim Tasks
+
+| Task | Description | Equivalent Command |
+|------|-------------|---------------------|
+| `mise run nvim:ts-install` | `treesitter_parsers.lua` のリストに従い nvim-treesitter のパーサをインストール(冪等) | headless nvim 経由で `ts.install()` |
+| `mise run nvim:state` | dpp state(`startup.vim`/`state.vim`)を headless で強制再生成(`check_files()` の差分有無を問わない)。pull後・`nix:switch` 後の明示反映用([#466](https://github.com/music-brain88/dotfiles/issues/466)) | headless nvim 経由で `dpp#make_state()` |
+
+state 鮮度管理の4経路(BufWritePost / 起動時 check_files / `:DppMakeState` / `mise run nvim:state`)の使い分けは [neovim-config.md](neovim-config.md#plugin-management-dpp) を参照。
+
+---
+
 ## Utility Tasks
 
 | Task | Description | Equivalent Command |
