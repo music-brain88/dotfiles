@@ -94,11 +94,13 @@ else
 
   -- dpp#async_ext_action()/dpp#make_state()はいずれもdenops経由で動くため、
   -- denops未起動時に呼ぶと失敗する。:DppInstall/:DppUpdate/:DppMakeState/
-  -- 自動インストール/起動時check_filesの全呼び出し口はここを通す。
+  -- 自動インストール/check_files(BufWritePost・起動時DenopsReadyの両方)の
+  -- 全呼び出し口はここを通す。
   -- dpp#async_ext_action()/dpp#make_state() both talk to denops; calling
   -- either before denops is up fails. Every entry point below
-  -- (:DppInstall/:DppUpdate/:DppMakeState/auto-install/startup check_files)
-  -- routes through this guard.
+  -- (:DppInstall/:DppUpdate/:DppMakeState/auto-install/check_files — both
+  -- the BufWritePost and startup DenopsReady paths) routes through this
+  -- guard.
   local function dpp_require_denops_ready()
     if vim.fn['denops#server#status']() == 'running' then
       return true
@@ -197,6 +199,14 @@ else
   -- avoid duplicating the same logic twice.
   local function dpp_check_files_and_make_state()
     if #vim.fn['dpp#check_files']() == 0 then
+      return
+    end
+    -- BufWritePost経由だと起動直後の早すぎるタイミングで発火しうるため、
+    -- 起動時DenopsReady経由(常に通過済み)と同じくここでもガードする。
+    -- The BufWritePost path can fire very early during startup, before
+    -- denops is up — guard here too, same as the startup DenopsReady path
+    -- (which always passes this check already).
+    if not dpp_require_denops_ready() then
       return
     end
     vim.notify(
