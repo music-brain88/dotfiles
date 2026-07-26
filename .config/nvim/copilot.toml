@@ -2,11 +2,6 @@
 repo = 'github/copilot.vim'
 on_event = 'InsertEnter'
 
-
-[[plugins]]
-repo = 'Shougo/ddc-source-copilot'
-depends = ['copilot.vim', 'ddc.vim']
-
 [[plugins]]
 repo = 'MeanderingProgrammer/render-markdown.nvim'
 depends = ['copilot.vim', 'plenary.nvim', 'CopilotChat.nvim', 'codecompanion.nvim']
