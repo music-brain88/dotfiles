@@ -193,6 +193,7 @@ herdr pane send-keys <pane-id> Enter
 - **MUST**: pane へのテキスト送信と Enter 送信を分けた2段で行う(詳細: Troubleshooting「send-text は単体では実行されない」参照)
 - **MUST**: `<pane-id>` は対象エージェント名から `herdr agent list` で引く(`pane_id` フィールド)
 - **MUST**: 実行前に対象の pane-id / agent 名を必ず確認する(宛先を誤ると、無関係な pane やこの司令塔自身の入力欄にテキストが挿入されてしまう。`agent send` / `pane send-text` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない)
+- **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は send-text を使わない(ハイライトされている選択肢の Enter 確定にしかならず、誤確定の実害が出ている。詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)
 - **MUST**: 長時間の監視をまたぐ場合は都度 `herdr agent list` で引き直し、古い pane-id を使い回さない(詳細: Troubleshooting「pane-id は非永続」参照)
 
 #### (2) 上り=イベント
@@ -330,6 +331,15 @@ auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザ�
 
 ### send-text は単体では実行されない
 `pane send-text` は pane の入力欄にテキストを挿入するだけで、送信(実行)はされない。実機確認済み: `send-text` の直後に `pane read` してもコマンドは未実行のまま入力欄に残っており、続けて `pane send-keys <pane-id> Enter` を送って初めて実行される。
+
+### AskUserQuestion メニュー表示中の誤確定事故
+2026-07-26、#494/#466 の並行 worktree 運用(worker 2体 + 司令塔)で、作業者への追加指示のつもりで送った `send-text` + Enter が、表示中だった AskUserQuestion メニューの選択肢1「GPG エージェントをリセットして再試行」を誤確定させた。作業者が `gpgconf --kill gpg-agent` を実行し、ユーザーが直前に温めたパスフレーズキャッシュが消える実害が出た(#498)。手順5(1)の Constraint の通り、送信前に必ず `herdr agent read` で pane の状態を確認し、メニュー表示中は send-text を使わない(選択肢の Enter 確定のみで応答するか、メニューの解除を待つ)。
+
+### send-keys Enter が chat 入力を submit できないことがある
+2026-07-26、#494/#466 の並行運用で、pane の入力欄にテキストが置かれたまま `pane send-keys <pane-id> Enter` が繰り返し効かず、作業者が再開できなくなった(同じ pane でメニューの選択肢確定には Enter が効いていたため、原因切り分けに時間を要した)。これは上記「send-text は単体では実行されない」(send-text だけでは実行されず別途 Enter が要る、という話)とは別の話 — real Enter を送っても Claude Code の chat 入力側で submit されないケースがある、という話。回避策(実機確認済み): `herdr pane run <pane-id> ""` — `pane run` はテキストと real Enter を1リクエストで送るため、空文字を渡せば real Enter のみを送って pending テキストを submit できる。下り=指示の標準手順(`send-text` + `send-keys` の2段)を `pane run` ベースに変える案もあるが、今回は採用を見送り、詰まった場合の回避策としてここに留める(#498)。
+
+### GPG 署名コミットは worker pane から pinentry を出せない
+worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
 
 ### pane-id は非永続
 pane-id はセッション中に compact されうる非永続 ID(詳細は `.config/claude/skills/herdr/SKILL.md` 参照)。
