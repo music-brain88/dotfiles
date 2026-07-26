@@ -122,6 +122,25 @@ repo_root="$(pwd)"
 nvim --headless -u ~/.config/nvim/init.lua -l "$repo_root/.config/nvim/scripts/install_treesitter_parsers.lua" "$repo_root"
 """
 
+[tasks."nvim:state"]
+description = "dpp state(startup.vim/state.vim)をheadlessで強制再生成する(pull後・nix:switch後の明示反映用、#466)"
+# check_files()の差分有無に関わらず無条件でdpp#make_state()を呼ぶ、:DppMakeStateのheadless版。
+# nvim:ts-installと同様に~/.config/nvim/init.luaをそのままheadless nvimへ渡し、通常のdpp/denops
+# bootstrapを経由させる。DenopsReady後にmake_state()を呼び、Dpp:makeStatePostでqall。denopsが
+# 上がらない/make_stateが完走しない事故はtimer_startの120秒cquit(exit 1)で打ち切る。
+# Unconditionally calls dpp#make_state() regardless of check_files() diffs — the headless
+# equivalent of :DppMakeState. Like nvim:ts-install, loads ~/.config/nvim/init.lua as-is so the
+# normal dpp/denops bootstrap runs. Calls make_state() once DenopsReady fires, then qalls on
+# Dpp:makeStatePost. A 120s timer_start cquit (exit 1) guards against denops never starting or
+# make_state never completing.
+run = """
+set -euo pipefail
+nvim --headless -u ~/.config/nvim/init.lua \
+  -c "lua vim.api.nvim_create_autocmd('User', { pattern = 'DenopsReady', once = true, callback = function() vim.fn['dpp#make_state'](vim.env.HOME .. '/.cache/dpp', vim.fn.stdpath('config') .. '/dpp/config.ts') end })" \
+  -c "lua vim.api.nvim_create_autocmd('User', { pattern = 'Dpp:makeStatePost', once = true, callback = function() vim.cmd('qall') end })" \
+  -c "lua vim.fn.timer_start(120000, function() vim.cmd('cquit 1') end)"
+"""
+
 # =============================================================================
 # Utility Tasks
 # =============================================================================

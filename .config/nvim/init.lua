@@ -92,18 +92,27 @@ else
     return #vim.fn.glob(dpp_base .. '/repos/*/*/*/.git', 0, 1) == 0
   end
 
-  -- dpp#async_ext_action() はdenops経由で動くため、denops未起動時に呼ぶと
-  -- 失敗する。:DppInstall/:DppUpdate/自動インストールの全呼び出し口はここを通す。
-  -- dpp#async_ext_action() talks to denops; calling it before denops is up
-  -- fails. Every entry point below (:DppInstall/:DppUpdate/auto-install)
+  -- dpp#async_ext_action()/dpp#make_state()はいずれもdenops経由で動くため、
+  -- denops未起動時に呼ぶと失敗する。:DppInstall/:DppUpdate/:DppMakeState/
+  -- 自動インストール/起動時check_filesの全呼び出し口はここを通す。
+  -- dpp#async_ext_action()/dpp#make_state() both talk to denops; calling
+  -- either before denops is up fails. Every entry point below
+  -- (:DppInstall/:DppUpdate/:DppMakeState/auto-install/startup check_files)
   -- routes through this guard.
+  local function dpp_require_denops_ready()
+    if vim.fn['denops#server#status']() == 'running' then
+      return true
+    end
+    vim.notify(
+      'dpp: denops server is not running yet. '
+        .. 'Wait for it to finish starting (see DenopsReady) and retry.',
+      vim.log.levels.WARN
+    )
+    return false
+  end
+
   local function dpp_run_installer(action, params)
-    if vim.fn['denops#server#status']() ~= 'running' then
-      vim.notify(
-        'dpp: denops server is not running yet. '
-          .. 'Wait for it to finish starting (see DenopsReady) and retry.',
-        vim.log.levels.WARN
-      )
+    if not dpp_require_denops_ready() then
       return
     end
     -- 注: Luaの空テーブル{}はvim.fn境界で空リスト[]に変換され、dpp側の
@@ -165,6 +174,41 @@ else
     dpp_run_installer('update', params)
   end, { nargs = '*', desc = 'Update dpp plugins (all, or the given plugin names)' })
 
+  -- 手動でstateを強制再生成するコマンド(dpp移行設計書の手動再生成手順の実体、#466)。
+  -- check_files()の差分有無に関わらず無条件でmake_state()を呼ぶ。
+  -- Manually force-regenerates state (the concrete command behind the dpp
+  -- migration design doc's documented manual-regen procedure, #466).
+  -- Unconditionally calls make_state() regardless of check_files() diffs.
+  vim.api.nvim_create_user_command('DppMakeState', function()
+    if not dpp_require_denops_ready() then
+      return
+    end
+    vim.fn['dpp#make_state'](dpp_base, dpp_config_path)
+  end, { desc = 'Manually regenerate dpp state (dpp#make_state)' })
+
+  -- check_files()で差分を検知した時だけmake_state()を呼ぶ共通処理。
+  -- BufWritePost(nvim内でTOML/config.tsを編集した直後)と起動時DenopsReady
+  -- (worktree+PRマージ→pullでTOMLが変わるがnvim内では編集しない運用の穴を
+  -- 埋める、#466)の双方から呼ぶことで二重実装を避ける。
+  -- Shared check-and-regenerate: calls make_state() only when check_files()
+  -- reports a diff. Called from both BufWritePost (editing TOML/config.ts
+  -- inside nvim) and startup DenopsReady (covers the worktree+PR-merge→pull
+  -- flow where TOML changes without ever being edited inside nvim, #466) to
+  -- avoid duplicating the same logic twice.
+  local function dpp_check_files_and_make_state()
+    if #vim.fn['dpp#check_files']() == 0 then
+      return
+    end
+    vim.notify(
+      'dpp: config files changed since the last state build. Regenerating state...',
+      vim.log.levels.INFO
+    )
+    -- Pass the same explicit args as the initial DenopsReady make_state —
+    -- argless make_state depends on dpp defaults and may target the wrong
+    -- base/config. 初回生成時と同じ引数を明示して同一のstateを再生成する。
+    vim.fn['dpp#make_state'](dpp_base, dpp_config_path)
+  end
+
   if vim.fn['dpp#min#load_state'](dpp_base) ~= 0 then
     -- state未生成(初回起動 or state破棄後): denops起動後にmake_state()で
     -- state(startup.vim/state.vim)を生成する。make_state成功後もrepos/が
@@ -178,11 +222,23 @@ else
     })
   else
     -- state生成済み(通常起動): make_state()は走らずDpp:makeStatePostも
-    -- 発火しないため、repos/欠損はここでdenops起動後に一度だけチェックする。
+    -- 発火しないため、repos/欠損とcheck_filesの差分はここでdenops起動後に
+    -- 一度だけチェックする。VimEnter直後ではなくDenopsReady後にしているのは、
+    -- dpp#make_state()がdenops経由(dpp#denops#_notify)のため。denops起動前に
+    -- 呼ぶと失敗する。
+    -- Startup with state already present: make_state() doesn't run and
+    -- Dpp:makeStatePost never fires, so check repos/ and check_files() diffs
+    -- here, once, after denops comes up. This runs on DenopsReady rather
+    -- than VimEnter/an immediate defer because dpp#make_state() talks to
+    -- denops (dpp#denops#_notify) — calling it before denops is running
+    -- fails.
     vim.api.nvim_create_autocmd('User', {
       pattern = 'DenopsReady',
       once = true,
-      callback = dpp_auto_install_if_missing,
+      callback = function()
+        dpp_check_files_and_make_state()
+        dpp_auto_install_if_missing()
+      end,
     })
   end
 
@@ -212,14 +268,7 @@ else
   -- TOML/config.ts編集時にstateを自動再生成する(check_files)
   vim.api.nvim_create_autocmd('BufWritePost', {
     pattern = { '*.toml', '*.lua', '*.vim', '*.ts' },
-    callback = function()
-      if #vim.fn['dpp#check_files']() > 0 then
-        -- Pass the same explicit args as the initial DenopsReady make_state —
-        -- argless make_state depends on dpp defaults and may target the wrong
-        -- base/config. 初回生成時と同じ引数を明示して同一のstateを再生成する。
-        vim.fn['dpp#make_state'](dpp_base, dpp_config_path)
-      end
-    end,
+    callback = dpp_check_files_and_make_state,
   })
 end
 --End dpp Scripts-----------------------------
