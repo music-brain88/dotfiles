@@ -4,63 +4,7 @@ on_event = 'BufEnter'
 # ddc-source-lsp の capabilities 登録に require('ddc_source_lsp') を使うため、
 # 遅延読み込みされるddc-source-lspを先にrtpへ乗せておく(dein依存解決で強制ソース)
 depends = ['ddc-source-lsp']
-lua_source = '''
-  -- グローバルな診断用のキーマッピング
-  vim.keymap.set('n', 'ge', vim.diagnostic.open_float)
-  vim.keymap.set('n', 'g[', vim.diagnostic.goto_prev)
-  vim.keymap.set('n', 'g]', vim.diagnostic.goto_next)
-
-
-  -- デバッグログを有効にする場合はコメントを解除
-  -- vim.lsp.set_log_level("debug")
-
-  -- ddc-source-lsp (Shougoスタック) が推奨するcapabilitiesを全サーバーに登録
-  -- https://github.com/Shougo/ddc-source-lsp
-  vim.lsp.config('*', {
-    capabilities = require('ddc_source_lsp').make_client_capabilities(),
-  })
-
-  -- LSPがアタッチされた時の処理
-  vim.api.nvim_create_autocmd('LspAttach', {
-    group = vim.api.nvim_create_augroup('UserLspConfig', {}),
-    callback = function(ev)
-      local client = vim.lsp.get_client_by_id(ev.data.client_id)
-
-      -- バッファローカルなキーマッピングの設定
-      local opts = { buffer = ev.buf }
-      vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)
-      vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
-      vim.keymap.set('n', 'gh', vim.lsp.buf.hover, opts)
-      vim.keymap.set('n', 'gs', vim.lsp.buf.signature_help, opts)
-      vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, opts)
-      vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, opts)
-      vim.keymap.set('n', '<space>wl', function()
-        print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
-      end, opts)
-      vim.keymap.set('n', '<space>rn', vim.lsp.buf.rename, opts)
-      vim.keymap.set({ 'n', 'v' }, '<space>ca', vim.lsp.buf.code_action, opts)
-      vim.keymap.set('n', '<space>D', vim.lsp.buf.type_definition, opts)
-
-      -- クライアントがフォーマット機能をサポートしている場合、保存時に自動フォーマットを適用する
-      -- none-ls.nvim(prettier)と同じaugroup("LspFormatting")を共有し、登録前にバッファ単位でクリアして常に1つだけ保つ。
-      -- vim.lsp.buf.format()はバッファにアタッチした対応クライアントを全て順に処理するため、
-      -- 複数クライアント(例: ts_ls + null-ls)が同一バッファにアタッチしても1つのautocmdで二重フォーマットにならない
-      if client ~= nil and client:supports_method('textDocument/formatting') then
-        local augroup = vim.api.nvim_create_augroup('LspFormatting', { clear = false })
-        vim.api.nvim_clear_autocmds({ group = augroup, buffer = ev.buf })
-        vim.api.nvim_create_autocmd('BufWritePre', {
-          group = augroup,
-          buffer = ev.buf,
-          callback = function() vim.lsp.buf.format({ bufnr = ev.buf }) end,
-        })
-      end
-    end,
-  })
-
-  -- 有効化する言語サーバー
-  -- (いずれもnix/modules/neovim.nixのextraPackagesから供給)
-  vim.lsp.enable({ 'rust_analyzer', 'pyright', 'ts_ls' })
-'''
+hooks_file = '$XDG_CONFIG_HOME/nvim/hooks/lspconfig.lua'
 
 [[plugins]]
 repo = 'nvimtools/none-ls.nvim'

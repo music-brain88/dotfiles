@@ -1,0 +1,65 @@
+-- lua_source {{{
+local ts = require('nvim-treesitter')
+
+-- Setup (optional, default values work fine)
+ts.setup {}
+
+-- Install parsers
+-- パーサ一覧は lua/treesitter_parsers.lua に集約 (mise タスクと二重管理しないため)
+-- Parser list lives in lua/treesitter_parsers.lua (shared with the mise install task)
+local parsers = require('treesitter_parsers')
+
+-- Install parsers asynchronously (non-blocking)
+ts.install(parsers, { summary = false })
+
+-- Filetypes to disable treesitter highlighting
+local disabled_filetypes = { "vue" }
+
+-- Enable treesitter features via FileType autocmd
+vim.api.nvim_create_autocmd('FileType', {
+  group = vim.api.nvim_create_augroup('TreesitterSetup', { clear = true }),
+  pattern = '*',
+  callback = function(event)
+    local ft = event.match
+    -- Skip disabled filetypes
+    for _, disabled in ipairs(disabled_filetypes) do
+      if ft == disabled then return end
+    end
+
+    -- Enable treesitter highlighting
+    pcall(vim.treesitter.start, event.buf)
+  end,
+})
+
+-- Treesitter folding (new API)
+vim.opt.foldmethod = "expr"
+vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+-- Unfold all blocks when opening a file
+vim.opt.foldlevel = 99
+
+-- Treesitter based indentation (experimental)
+vim.api.nvim_create_autocmd('FileType', {
+  group = vim.api.nvim_create_augroup('TreesitterIndent', { clear = true }),
+  pattern = '*',
+  callback = function()
+    vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+  end,
+})
+
+-- Incremental selection keymaps
+vim.keymap.set('n', 'gnn', function()
+  require('nvim-treesitter.incremental_selection').init_selection()
+end, { desc = 'Treesitter: Init selection' })
+
+vim.keymap.set('x', 'grn', function()
+  require('nvim-treesitter.incremental_selection').node_incremental()
+end, { desc = 'Treesitter: Node incremental' })
+
+vim.keymap.set('x', 'grc', function()
+  require('nvim-treesitter.incremental_selection').scope_incremental()
+end, { desc = 'Treesitter: Scope incremental' })
+
+vim.keymap.set('x', 'grm', function()
+  require('nvim-treesitter.incremental_selection').node_decremental()
+end, { desc = 'Treesitter: Node decremental' })
+-- }}}
