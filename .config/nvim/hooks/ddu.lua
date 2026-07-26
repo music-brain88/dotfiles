@@ -194,7 +194,7 @@ autocmd FileType ddu-filer call s:ddu_filer_my_settings()
 function! s:ddu_filer_my_settings() abort
   " winfixbufを無効化
   setlocal nowinfixbuf
-  " Change action, Is cursor item drectory or not.
+  " Change action, Is cursor item directory or not.
   nnoremap <buffer><silent> <CR> <Cmd>call <SID>open_in_prev_window()<CR>
   nnoremap <buffer><silent><expr> h ddu#ui#get_item()->get('isTree', v:false) ? "<Cmd>call ddu#ui#do_action('collapseItem')<CR>" : "<Cmd>call ddu#ui#do_action('preview')<CR>"
   " Move to higher path

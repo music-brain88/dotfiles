@@ -33,7 +33,7 @@ local col = function(strlist, opts)
 
   -- column spacing
   local padding = 6
-  -- fill lines up to the maximim length with 'fillchar'
+  -- fill lines up to the maximum length with 'fillchar'
   local fillchar = " "
   -- columns padding char (for testing)
   local padchar = " "
@@ -68,7 +68,7 @@ local values = {}
 -- process all the lines
 for i = 1, maxlen(strlist) do
   local str = ""
-  -- process all the columns but last, because we dont wand extra padding
+  -- process all the columns but last, because we don't want extra padding
   -- after last column
   for column = 1, #strlist - 1 do
     local maxstr = maxlen(strlist[column])
@@ -175,7 +175,7 @@ local filer = {
 local lsp_nav1 = {
   "         LSP         ",
   "",
-  "ge  show diagnostic openf loat",
+  "ge  show diagnostic open float",
   "g[  goto diagnostic to prev",
   "g]  goto diagnostic to next",
   "gd  goto definition",
