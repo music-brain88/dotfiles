@@ -133,18 +133,6 @@ in
     ];
   };
 
-  # Install dein.vim (Neovim plugin manager used in existing config)
-  # The existing TOML-based plugin configuration will continue to work
-  home.file.".cache/dein" = {
-    source = pkgs.fetchFromGitHub {
-      owner = "Shougo";
-      repo = "dein.vim";
-      rev = "3.1";
-      sha256 = "sha256-qKhuqDMkjvz7i79kHidiA0tlEl/ktPK5J8CfN74SzAM=";
-    };
-    recursive = true;
-  };
-
   # Note: Python environment is managed in dev-tools.nix to avoid conflicts
 
   # Environment variables for Neovim
@@ -153,11 +141,9 @@ in
     NVIM_PYTHON3_HOST_PROG = "${pkgs.python3.withPackages (ps: [ ps.pynvim ])}/bin/python3";
 
     # dpp.vim store paths, exposed for init.lua (via vim.env) to read.
-    # NOTE: dpp is installed but NOT wired into init.lua yet — dein remains
-    #       the active plugin manager. Wiring is PR-2 (see #445/#471).
+    # dpp is the active plugin manager, wired into init.lua (PR-2, see #445/#471/#472).
     # dpp.vim の store パス。init.lua 側が vim.env 経由で読める命名にしている。
-    # 注: dpp は導入のみでまだ init.lua には配線していない — アクティブなプラグイン
-    #     マネージャは引き続き dein。配線は PR-2(#445/#471 参照)で行う。
+    # dpp がアクティブなプラグインマネージャとして init.lua に配線済み(PR-2、#445/#471/#472 参照)。
     NVIM_DPP_VIM = "${dppVim}";
     NVIM_DENOPS_VIM = "${denopsVim}";
     NVIM_DPP_EXT_INSTALLER = "${dppExtInstaller}";
@@ -167,6 +153,5 @@ in
   };
 
   # Note: Existing Neovim configuration in .config/nvim/ is symlinked via home.nix
-  # The TOML-based dein.vim setup remains unchanged for now
-  # This provides a path for gradual migration to Nix-managed plugins if desired
+  # The TOML-based plugin configuration (dpp.vim) is managed there.
 }
