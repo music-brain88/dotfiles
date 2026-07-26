@@ -79,12 +79,14 @@ on_source = 'ddc.vim'
 # NOTE: copilot.toml(非遅延グループ)から移動 (#494)。dpp-ext-toml の lazy は
 # ファイル単位(config.ts の options.lazy)で決まるため、非遅延ファイルに置くと
 # depends の ddc.vim が起動時に昇格し(rtp/hook_source が startup.vim に焼き込まれ
-# sourced: true になる)、on_source 連鎖が永遠に発火しなくなる。
+# sourced: true になる)、このファイル内の on_source = 'ddc.vim' 依存ソース全体で
+# 連鎖が永遠に発火しなくなる。
 # Moved from copilot.toml (non-lazy group) — dpp-ext-toml's lazy flag is
 # decided per file (config.ts's options.lazy), so keeping this in a non-lazy
 # file promotes its lazy ddc.vim dependency at startup (baked into
 # startup.vim's rtp/hook_source, marked sourced: true) and permanently
-# breaks the on_source chain for every ddc source below.
+# breaks the on_source chain for every on_source = 'ddc.vim' source in this
+# file, not just this block.
 [[plugins]]
 repo = 'Shougo/ddc-source-copilot'
 on_source = 'ddc.vim'
