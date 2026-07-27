@@ -27,7 +27,7 @@ cowork 環境で運用している「クラウディア」ワークフロー(Obs
 - デイリーノート: `DailyNotes/YYYY-MM-DD.md`
 - テンプレート: `Template/Daily-v3.md`
 - GitHub ユーザー: `music-brain88`
-- 環境固有の値(統括カレンダー ID・レビュー対象 org 一覧)は `~/.claude/local/daily.local.md`(git 管理外)から読み込む。ファイルが無ければユーザーに値を確認して作成する
+- 環境固有の値(統括カレンダー ID・レビュー対象 org 一覧・ClickUp 対象スペース一覧)は `~/.claude/local/daily.local.md`(git 管理外)から読み込む。ファイルが無ければユーザーに値を確認して作成する
 
 ## 手順(朝モード)
 
@@ -74,16 +74,25 @@ OUT_OF_OFFICE(不在)イベントを検知したら、Schedule セクション�
 
 会議の隙間から集中できる時間帯を計算する。不在日の場合は「終日 terminal 開発デー」等、実態に合わせて記述する。
 
-### 6. ClickUp セクション(CTOROOM/AI Sprint)
+### 6. ClickUp セクション
 
-ターミナルからは会社 ClickUp に未接続のため、「cowork 側クラウディアで取得」と注記を残す(空欄のまま壊さない)。
+ClickUp MCP(`mcp__claude_ai_ClickUp__*`)が利用可能な環境では、`~/.claude/local/daily.local.md` の「ClickUp 対象スペース」一覧から未完了タスクを自動取得する:
+
+1. `clickup_resolve_assignees` で `"me"` を数値ユーザー ID に解決する
+2. `clickup_filter_tasks` を `assignees` + `space_ids`(対象スペース)+ `include_closed: false` で呼ぶ
+3. done 系ステータス(`done` / `✅done` 等)は `include_closed: false` でも返ってくることがあるため除外する
+4. スペースごとに対応するセクション(対応関係は daily.local.md に記載)へ、リスト名でグルーピングして記入する
+   - タスク名は ClickUp タスク URL へのリンクにする
+   - 期限超過は「期限 M/D 超過⚠️」、priority urgent は 🔥、進行中・レビュー中などのステータスも付記する
+
+MCP が利用できない環境では従来どおり「cowork 側クラウディアで取得」と注記を残す(空欄のまま壊さない)。
 
 ### 7. ファイル組み立て
 
 以下のセクション構成を維持する:
 
 ```
-Tasks (Carry Over / CTOROOM / AI / GitHub Review Requests)
+Tasks (Carry Over / ClickUp スペース別セクション(daily.local.md 参照) / GitHub Review Requests)
 Schedule
 Meeting Notes
 Available Time
