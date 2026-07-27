@@ -89,6 +89,7 @@
     ".claude/skills/herdr-chat" = { source = ./.config/skills/herdr-chat; recursive = true; };
     ".claude/skills/qbq" = { source = ./.config/skills/qbq; recursive = true; };
     ".claude/skills/learn" = { source = ./.config/skills/learn; recursive = true; };
+    ".claude/skills/distill" = { source = ./.config/skills/distill; recursive = true; };
 
     # mise global config (tools available outside project dirs; claude is NOT here — it uses its native installer)
     # mise グローバル設定（プロジェクト外でも使うツール。claude は native installer 管理で node 経由ではない）
@@ -114,6 +115,7 @@
     ".copilot/skills/herdr-chat" = { source = ./.config/skills/herdr-chat; recursive = true; };
     ".copilot/skills/qbq" = { source = ./.config/skills/qbq; recursive = true; };
     ".copilot/skills/learn" = { source = ./.config/skills/learn; recursive = true; };
+    ".copilot/skills/distill" = { source = ./.config/skills/distill; recursive = true; };
     # Global copilot-instructions for GitHub Copilot (VS Code, etc.)
     ".github/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
 
