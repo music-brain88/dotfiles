@@ -13,7 +13,9 @@ description: |
 `/session-log` が層1(セッション → ResearchNotes)の捕獲を担うのに対し、本スキルは層2
 (ResearchNotes / LiteratureNotes → PermanentNotes)の蒸留を担う。
 軽量蒸留(本スキル)とフル `/learn` 理解ゲートの2段階のうち、標準ルートがこちら。
-設計の正は vault の `ProjectNotes/Obsidian蒸留パイプライン設計書.md`(§2 設計原則・§5 蒸留セッション SOP)。
+背景となる設計は vault の `ProjectNotes/Obsidian蒸留パイプライン設計書.md`(§2 設計原則・§5 蒸留セッション SOP)。
+**運用ルール・パスの単一の真実は `Zettelkasten/MOC-ObsidianWorkflow.md`**(下記「前提情報」参照)であり、
+本スキルの記載と食い違う場合はそちらを優先する(session-log と同じ構造)。
 
 ## 起動方法
 
@@ -22,9 +24,25 @@ description: |
   - 引数あり: 指定ノートをそのまま対象にし、候補選定はスキップして手順2から始める
     (`/wtclean` の収穫ステップなど、対象が既に決まっている呼び出し元を想定)
 
+## 実行環境トリアージ
+
+本スキルは手順の宣言であり、特定の実行環境に依存しない。書き込み手段は以下の優先順で選ぶ:
+
+| 環境 | 書き込み手段 |
+|---|---|
+| ローカル CLI エージェント(Claude Code・Copilot CLI 等) | ファイル直接読み書き |
+| Claude Desktop / claude.ai(クラウディア) | Filesystem MCP(許可ディレクトリに vault が必要) |
+| 書き込み手段なし(モバイル・MCP未接続) | 転記内容をノート全文として chat に markdown で出力し、ユーザーが後で取り込む |
+
+いずれの場合も手順・フォーマット・記録の原則は同一。
+
+## 実行環境フォールバック
+
+- AskUserQuestion が使えない環境(Copilot CLI 等)では、番号付き選択肢のテキスト提示で代替する
+
 ## 前提情報
 
-- Vault: `/home/archie/Documents/Obsidian/Zettelkasten/`(ファイル直接読み書き。Obsidian MCP は使わない。WSL でのパス解決は `nix/modules/wsl.nix` の symlink に依存)
+- Vault: `/home/archie/Documents/Obsidian/Zettelkasten/`(WSL でのパス解決は `nix/modules/wsl.nix` の symlink に依存。書き込み手段は上記「実行環境トリアージ」に従う)
 - **パス・運用ルールの単一の真実**: `Zettelkasten/MOC-ObsidianWorkflow.md` の「蒸留状態の宣言」と「エージェント向けの宣言」。本スキルの記載と食い違う場合はそちらを優先し、差分を報告する
 - 蒸留キューの定義(MOC 側が正): `distilled_to` が空 **かつ** `triage: candidate` のノート。対象は ResearchNotes・LiteratureNotes(Clip) 共通
 - キューの検索方法: Obsidian の Base ビュー(`ResearchNotes.base` 等)は GUI 専用のため、エージェントは `ResearchNotes/` `LiteratureNotes/` 配下の frontmatter を Grep で横断検索してキューを求める
