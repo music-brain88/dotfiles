@@ -27,7 +27,7 @@ cowork 環境で運用している「クラウディア」ワークフロー(Obs
 - デイリーノート: `DailyNotes/YYYY-MM-DD.md`
 - テンプレート: `Template/Daily-v3.md`
 - GitHub ユーザー: `music-brain88`
-- 環境固有の値(統括カレンダー ID・レビュー対象 org 一覧・ClickUp 対象スペース一覧)は `~/.claude/local/daily.local.md`(git 管理外)から読み込む。ファイルが無ければユーザーに値を確認して作成する
+- 環境固有の値(統括カレンダー ID・レビュー対象 org 一覧・ClickUp 対象スペース一覧・Meeting Notes リンク除外リスト)は `~/.claude/local/daily.local.md`(git 管理外)から読み込む。ファイルが無ければユーザーに値を確認して作成する
 
 ## 手順(朝モード)
 
@@ -69,6 +69,13 @@ done
 利用できない環境ではこのステップをスキップし、必要ならユーザーに今日の予定を直接確認する。
 
 OUT_OF_OFFICE(不在)イベントを検知したら、Schedule セクション冒頭に明記する。
+
+取得した当日の会議から、Meeting Notes セクションの wiki リンクを自動生成する:
+
+- リンクのみ作り、ファイルは作らない(クリックした瞬間に実体化する — New Note Links と同じ運用)
+- `~/.claude/local/daily.local.md` の「Meeting Notes リンク除外リスト」に載っている定例(デイリー・朝会等)はスキップする。OUT_OF_OFFICE / FOCUS_TIME イベントも常にスキップ
+- 命名規則: `[[Zettelkasten/MeetingNotes/<会議名>-YYYYMMDD]]`。会議名は Obsidian のファイル名に使えない文字(`:` `/` `\` `[` `]` 等)を除去またはハイフン化する
+- 1on1 のみ既存慣習 `1on1メモ-YYYYMMDD-<相手>` を踏襲する
 
 ### 5. Available Time
 
