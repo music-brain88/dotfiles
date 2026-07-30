@@ -26,7 +26,8 @@ description: |
 
 ### 1. Discovery — お題の決定
 
-1. 学習台帳(下記 Persistence)を読み、未消化項目があれば最優先で提示する
+1. 学習台帳(下記 Persistence)を読む。現在リポに対応する台帳(frontmatter の `repos` で解決)の
+   未消化項目を最優先で提示し、他プロジェクト台帳の未消化は次点で提示する
 2. 引数がなければ、直近の会話・`git log`・マージ済み PR から学習価値のある
    設計判断を 2〜3 個選び、AskUserQuestion で選ばせる
 3. お題が決まったら、理解すべき項目の Markdown チェックリストを作って提示する。
@@ -58,9 +59,17 @@ description: |
 
 ### 5. Persistence — 学習台帳への書き戻し
 
-- 置き場: `/home/archie/Documents/Obsidian/Zettelkasten/ProjectNotes/LearningLedger.md`(なければ作成)
+- 置き場: `/home/archie/Documents/Obsidian/Zettelkasten/ProjectNotes/LearningLedger-<project>.md`
+  (プロジェクト毎に 1 本。なければ作成。project スラグの正は vault の TagMaintenance)
+- **project の粒度はプロダクト単位でありリポ単位ではない** — 疎結合な複数リポが 1 プロダクトを
+  成す場合も台帳は 1 本。リポ・PR 粒度はトピックの「出自:」行が担う
+- 各台帳の frontmatter は ProjectNotes 標準に加え `repos`(構成リポの `owner/name` リスト)を持つ。
+  現在リポから台帳への解決は `git remote get-url origin` の `owner/name` で ProjectNotes 配下の
+  `repos:` を Grep する(ローカルのディレクトリ名は正にしない)
+- 候補キュー(未着手トピック)は出自プロジェクトの台帳に置く
 - パス・運用ルールの単一の真実は `Zettelkasten/MOC-ObsidianWorkflow.md` の
-  「アクセスパターン宣言」。本スキルの記載と食い違う場合はそちらを優先し、差分を報告する
+  「LearningLedger の設計宣言」。本スキルの記載と食い違う場合はそちらを優先し、差分を報告する。
+  org 名を含むリポ→プロジェクト対応は vault 側のみに書く(本スキルには書かない)
 - 形式: トピックごとに 1 セクション。セッション終了時に必ず書き戻す
 
   ```markdown
