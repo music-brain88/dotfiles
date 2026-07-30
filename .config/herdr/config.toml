@@ -41,6 +41,17 @@ panel_bg = "#1e2127" # WezTerm background と揃えた値 (据え置き、詳細
 [terminal]
 default_shell = "fish"
 
+# Kitty graphics protocol (実験的機能、herdr >= 0.7.4)。herdr-browser 等の
+# 画像描画プラグインに必要。WezTerm 側も enable_kitty_graphics = true が必要
+# (wezterm.lua 側で設定済み)。Alacritty は非対応のためフォールバックでは描画されない。
+# Kitty graphics protocol (experimental, herdr >= 0.7.4). Required by plugins
+# that render images, such as herdr-browser. Also needs WezTerm's
+# enable_kitty_graphics = true (set in wezterm.lua). Alacritty doesn't support
+# it, so the fallback terminal won't render these panes. See
+# docs/reference/herdr-browser.md.
+[experimental]
+kitty_graphics = true
+
 [ui]
 # 移行前にローカルで設定済みだった値を引き継ぎ / carried over from the pre-migration local config
 agent_panel_sort = "spaces"
