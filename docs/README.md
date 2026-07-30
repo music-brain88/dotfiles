@@ -50,6 +50,7 @@
 - [reference/fontconfig.md](./reference/fontconfig.md) - フォント設定
 - [reference/color-palette.md](./reference/color-palette.md) - カラーパレット基準表 (onedark)
 - [reference/tool-management-map.md](./reference/tool-management-map.md) - ツール管轄マップ(どのツールをどの層が管理するか)
+- [reference/herdr-browser.md](./reference/herdr-browser.md) - herdr-browser プラグインの概要・要件・インストール手順
 
 ---
 
