@@ -104,6 +104,8 @@ plain() {
 # ---------- extract JSON fields ----------
 
 model=$(echo "$input" | jq -r '.model.display_name // "?"')
+# 推論エフォート (モデルが effort 非対応なら欠落する) / reasoning effort, absent when unsupported by the model
+effort_level=$(echo "$input" | jq -r '.effort.level // empty')
 current_dir=$(echo "$input" | jq -r '.workspace.current_dir // ""')
 project_dir=$(echo "$input" | jq -r '.workspace.project_dir // ""')
 cost_usd=$(echo "$input" | jq -r '.cost.total_cost_usd // empty')
@@ -144,6 +146,35 @@ context_gauge_color() {
   fi
   # それ以外は緑系にする / green-ish for < 40%
   echo "#96ab5f"
+}
+
+# エフォートレベルに応じたピル色を返す / return pill color for an effort level
+# 引数: $1 = effort level ("low"|"medium"|"high"|"xhigh"|"max")
+# 出力: "#RRGGBB" を echo する / echo a "#RRGGBB" hex color
+# NOTE: 未知のレベルでも必ず何か echo すること — 空だと hex2rgb "" が
+# $((0x))=0 経由で "8;8;8" (ほぼ黒) を返し、黒地に黒文字の読めないピルになる
+# Always echo something even for unknown levels — an empty arg makes hex2rgb
+# return "8;8;8" (near-black) via bash's $((0x))=0, i.e. an unreadable pill
+effort_color() {
+  if [ "$1" = "low" ]; then
+    echo "#3388ff"
+    return
+  fi
+  if [ "$1" = "medium" ]; then
+    echo "#96ab5f"
+    return
+  fi
+  if [ "$1" = "high" ]; then
+    echo "#ff6a00"
+    return
+  fi
+  if [ "$1" = "xhigh" ]; then
+    echo "#ff3322"
+    return
+  fi
+  # max は赤の先の白熱にする。未知レベルのフォールバックも兼ねる
+  # white-hot beyond red for max; doubles as the unknown-level fallback
+  echo "#EEEEEE"
 }
 
 # ---------- build segments ----------
@@ -203,6 +234,12 @@ fi
 
 # model (bg:#FF6AC1 fg:#111111) — テーマのアクセントピンク / theme accent pink
 seg "#FF6AC1" "#111111" "⚡ $model"
+
+# effort (bg: レベル別色 fg:#111111) — model の右隣にエフォートを表示
+# effort pill right after the model; hidden when the model has no effort support
+if [ -n "$effort_level" ]; then
+  seg "$(effort_color "$effort_level")" "#111111" "$effort_level"
+fi
 
 # context gauge — 使用率で色が変わるピル / pill color follows usage
 if [ -n "$pct" ]; then
