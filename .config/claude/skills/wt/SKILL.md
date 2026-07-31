@@ -58,6 +58,7 @@ herdr worktree create --cwd <repo-root> --branch <branch-name> --base main --foc
 - **MUST**: worktree 作成前に `git fetch origin && git merge --ff-only origin/main` でローカル main を最新化する(特にマージ直後に続けて次の worktree を切る連続運用で必須。詳細: `/wtclean` Troubleshooting「git branch -d の not yet merged to HEAD 警告」参照)
 - **MUST**: ベースブランチはデフォルト `main`。ユーザーが入力内で別のベースを指定した場合はそれに従う
 - **MUST**: 作成結果(worktree のパス、workspace ID)をユーザーに報告する
+- **MUST**: 応答 JSON の `result.root_pane.pane_id`(worktree 専用 workspace のルート pane)を控えておく。手順4でエージェント用 pane を割る際の split 元として使う
 
 #### worktree の準備
 
@@ -72,10 +73,10 @@ worktree 作成直後に以下を行う:
 
 ### 4. エージェントの起動(任意)
 
-タスク内容が具体的な場合、新しい workspace でエージェントを起動してタスクを渡す。pane の用意とエージェント起動は分離された2段構成になっている。まず司令塔自身の pane から下に pane を割り、作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
+タスク内容が具体的な場合、新しい workspace でエージェントを起動してタスクを渡す。pane の用意とエージェント起動は分離された2段構成になっている。まず worktree 専用 workspace のルート pane(手順3で控えた `result.root_pane.pane_id`)から下に pane を割り、作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
 
 ```bash
-herdr pane split --pane "$HERDR_PANE_ID" --direction down --cwd <worktree-path>
+herdr pane split --pane <root-pane-id> --direction down --cwd <worktree-path>
 ```
 
 新しい pane-id は応答 JSON の `result.pane.pane_id` から取得する。続けて作業指示をファイルに書き、エージェントを起動する:
@@ -89,7 +90,8 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 ```
 
 **Constraints:**
-- **MUST**: pane の用意は `herdr pane split` で行う。`--cwd` は必須。省略すると司令塔 pane の cwd(リポジトリ本体)を引き継ぎ、worktree 外で作業が始まってしまう
+- **MUST**: pane の用意は `herdr pane split` で行う。split 元の `--pane` には手順3の `result.root_pane.pane_id`(worktree 専用 workspace のルート pane)を使う。司令塔自身の pane(`$HERDR_PANE_ID`)を split 元にすると、worker pane が司令塔の workspace 側に作られてしまい、worker を worktree 専用 workspace に置く設計(旧構文の `--workspace` 指定が担っていた部分)が壊れる
+- **MUST**: `--cwd` は必須。省略すると split 元 pane の cwd を引き継ぎ、worktree 外で作業が始まってしまう
 - **MUST**: `pane split` の `--direction down` で pane を上下分割にする(省略時はデフォルトの `right` で左右分割になってしまう)
 - **MUST NOT**: `herdr agent start` に `--workspace` / `--cwd` / `--split` / `--focus` を渡さない。herdr 0.7.5 で廃止され `unknown option` エラーになる。pane はあらかじめ `pane split` で用意し、`agent start` には `--pane <pane split で得た pane-id>` を渡す
 - **MUST**: `--kind claude` が実行ファイルの正典を与えるため、`--` 以降には実行ファイル名(`claude`)を含めず、引数のみを渡す
@@ -194,7 +196,7 @@ herdr agent prompt <agent-name> "<追加指示のテキスト>"
 **Constraints:**
 - **MUST**: `<agent-name>` は手順4でエージェントに付けたユニーク名をそのまま使う。pane-id の引き直しは不要
 - **MUST**: 実行前に対象の agent 名を必ず確認する(宛先を誤ると、無関係なエージェントに指示が届いてしまう。`agent prompt` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない)
-- **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は `agent prompt` を使わない(chat 入力欄への送信になり、ハイライトされている選択肢を誤確定させる実害が出ている。詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)。メニューの選択肢確定自体は従来どおり `herdr pane send-keys <pane-id> Enter` で行う(pane-id は `herdr agent get <agent-name>` で都度引く。詳細: Troubleshooting「pane-id は非永続」参照)
+- **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は `agent prompt` を使わない(chat 入力欄への送信になるため、ハイライトされている選択肢を誤確定させる罠がある。`send-text` + Enter でこの誤確定による実害が実際に出ており(詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)、`agent prompt` も同じくメニュー表示中の pane に送信する以上、予防的に避ける)。メニューの選択肢確定自体は従来どおり `herdr pane send-keys <pane-id> Enter` で行う(pane-id は `herdr agent get <agent-name>` で都度引く。詳細: Troubleshooting「pane-id は非永続」参照)
 - **MAY**: `--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すると、送信と応答待ちを1コマンドに畳められる(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)
 
 #### (2) 上り=イベント
