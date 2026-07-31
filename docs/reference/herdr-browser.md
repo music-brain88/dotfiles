@@ -42,6 +42,35 @@ herdr の pane 内に実ブラウザ (Chromium) を描画し、Chrome DevTools P
 3. `herdr plugin install ogulcancelik/herdr-browser --yes` — プラグイン本体をインストールする
 4. WezTerm 上で browser pane を開き、描画を実機確認する (例: `herdr plugin pane open --plugin official.browser --entrypoint browser --placement split --direction right --focus`)
 
+## device-auth 承認フロー
+
+`aws sso login --profile <x>` / `gh auth login -w` / `gcloud auth login` 等の device-auth 系 CLI は、承認用の URL を `$BROWSER` 環境変数 (aws cli v2 は Python `webbrowser` 経由、gh / gcloud も同様) 経由で開く。運用方針「terminal が主・ブラウザは副」に沿って、この承認 1 クリックのためだけに GUI ブラウザが開く摩擦を消すため、`$BROWSER` を herdr-browser の pane へ直行させるラッパースクリプトに差し替えている ([Issue #523](https://github.com/music-brain88/dotfiles/issues/523))。
+
+- ラッパー本体: [`.config/herdr/scripts/device_auth_browser.sh`](../../.config/herdr/scripts/device_auth_browser.sh)
+- `nix/modules/herdr.nix` が `~/.local/bin/device_auth_browser` へ symlink 配置し、`home.nix` の `sessionVariables.BROWSER` からそのパスを指す
+- `$BROWSER` はスペース区切りで引数付き指定を解釈しないツールがあるため、単一実行ファイルのラッパーにしてある(`herdr plugin pane open ...` のような複数引数コマンドを直接 `$BROWSER` には書けない)
+
+### 挙動
+
+1. **herdr 環境判定**: `HERDR_ENV=1`、または `herdr status server --json` でサーバソケットに到達可能なら herdr 内とみなす。どちらでもなければ (herdr 外・SSH 接続先など) 従来の GUI ブラウザ (`xdg-open` 等) へフォールバックする
+2. **プラグイン導入済み判定**: `herdr` / `jq` / `bun` が揃っているか、`herdr plugin list --plugin official.browser --json` の結果から `plugin_root` を解決できるかを確認する。`plugin_root` はハードコードせず毎回 CLI から解決する。いずれか欠けていれば GUI へフォールバックする
+3. **pane への navigate**: プラグインの CLI (`bun run <plugin_root>/src/cli.ts views`) で既存 view (可視 pane に紐づくもの) の有無を確認する
+   - 既存 view があれば `bun run <plugin_root>/src/cli.ts open <url>` を実行する(`ensureView()` が既存 view を自動選択して navigate する。`--view` フラグは `connect` 専用で `open` には無い)
+   - 既存 view が無ければ `herdr plugin pane open --plugin official.browser --entrypoint browser --placement overlay --focus --env HERDR_BROWSER_INITIAL_URL=<url>` で新規 pane を overlay 配置(承認だけの一時利用に向く transient/popup 的配置)で開き、初期 URL を渡す
+   - navigate 自体が失敗した場合も GUI ブラウザへフォールバックする
+
+2 回目以降の承認は、pane 専用の Chrome プロファイル (`~/.local/state/herdr/plugins/official.browser/chrome-profiles/`、0700) に SSO セッションが残るためワンクリックで完了する想定。新規ログインでパスワード入力が必要になるケース(セッション切れの初回など)は、pane 内のブラウザで直接入力するかどうかは別途検討事項として残っている。
+
+### 実機確認手順 (マージ後)
+
+このラッパーの実装自体はコードレビューのみで完結しており、実際の承認フローの動作確認にはユーザーの認証情報が必要なため、マージ・`mise run nix:switch` によるライブ反映後にユーザー自身が以下を確認する。
+
+1. `mise run nix:switch` で `$BROWSER` 差し替えと symlink を反映する
+2. herdr-browser プラグインが未導入なら [マージ後のインストール手順](#マージ後のインストール手順) を先に実行する
+3. herdr 内 (WezTerm) のシェルから `aws sso login --profile <x>` を実行し、承認 URL が herdr-browser の pane (overlay) 内で開くこと・承認クリックがそのまま完結することを確認する
+4. `gh auth login -w` でも同様に pane 内で承認が完結することを確認する
+5. herdr 外 (例: 素の Alacritty や SSH 接続先) から同じコマンドを実行し、従来どおり GUI ブラウザ (Firefox 等) が開くことを確認する
+
 ## 運用上の注意
 
 - **CDP はローカル限定**: CDP エンドポイントはそのブラウザビューへの完全な制御権を持つ。ループバック (127.0.0.1) に限定し、ネットワークに公開しないこと (プラグイン README にも明記されている運用上の要件)
@@ -52,5 +81,6 @@ herdr の pane 内に実ブラウザ (Chromium) を描画し、Chrome DevTools P
 ## 関連
 
 - [Issue #520](https://github.com/music-brain88/dotfiles/issues/520) - 導入の背景とセキュリティレビュー結果
+- [Issue #523](https://github.com/music-brain88/dotfiles/issues/523) - device-auth 承認フローの $BROWSER ラッパー
 - [reference/nix-modules.md](./nix-modules.md) - Nixモジュール構成 (bun は dev-tools.nix)
 - [explanation/architecture.md](../explanation/architecture.md) - Nix + Symlink ハイブリッドの設計思想

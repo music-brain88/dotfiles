@@ -33,7 +33,12 @@
   home.sessionVariables = {
     EDITOR = "nvim";
     VISUAL = "nvim";
-    BROWSER = "firefox";
+    # device-auth 系 CLI (aws sso login / gh auth login -w / gcloud auth login 等) の
+    # 承認 URL を herdr-browser pane に直行させるラッパー。herdr 外では内部で GUI
+    # ブラウザ (xdg-open 等) にフォールバックする (Issue #523)。
+    # Routes device-auth approval URLs into a herdr-browser pane; falls back to the
+    # GUI browser internally outside herdr (Issue #523).
+    BROWSER = "${config.home.homeDirectory}/.local/bin/device_auth_browser";
     TERMINAL = "wezterm";
     # SSL certificates (use system certs instead of Nix store)
     SSL_CERT_DIR = "/etc/ssl/certs";

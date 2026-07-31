@@ -10,4 +10,11 @@
 
   # herdr config symlink (keybind は旧 tmux 設定互換 / tmux-compatible keybindings)
   home.file.".config/herdr/config.toml".source = ../../.config/herdr/config.toml;
+
+  # device-auth 承認 URL を herdr-browser pane に直行させる $BROWSER ラッパー (Issue #523)
+  # $BROWSER wrapper that routes device-auth approval URLs into a herdr-browser pane (Issue #523)
+  home.file.".local/bin/device_auth_browser" = {
+    source = ../../.config/herdr/scripts/device_auth_browser.sh;
+    executable = true;
+  };
 }
