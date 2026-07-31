@@ -156,7 +156,7 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 **丸投げ禁止**: 相談には必ず「選択肢(A/B...) + 自分の推奨」をセットで送る。判断材料を示さず「どうしましょう」とだけ聞かない。
 
 ```bash
-herdr agent prompt "commander-<repo名>" "【相談】<branch>: <選択肢A/B + 自分の推奨>"
+herdr agent prompt "commander-<repo名>" "【相談】<branch>: <選択肢A/B + 自分の推奨>" || true
 ```
 
 相談を送ったら、司令塔からの回答(pane に届く追加指示)を待つ。回答が届くまで、相談した論点については実装を進めない。
@@ -171,7 +171,7 @@ herdr agent prompt "commander-<repo名>" "【相談】<branch>: <選択肢A/B + 
 会話内報告に加えて、完了時に司令塔へ1行の push 報告を送る(フォーマット: `【報告】<branch>: <一行サマリ>（<PR URL>）`。詳細は上記の会話内報告に書き、push は要約1行のみでよい):
 
 ```bash
-herdr agent prompt "commander-<repo名>" "【報告】<branch>: <一行サマリ>（<PR URL>）"
+herdr agent prompt "commander-<repo名>" "【報告】<branch>: <一行サマリ>（<PR URL>）" || true
 ```
 
 - `commander-<repo名>` が見つからない等、push が失敗した場合はエラーで止まらず、会話内報告のみに縮退して続行する(push はあくまで即時性のための冗長化で、必須経路ではない)
