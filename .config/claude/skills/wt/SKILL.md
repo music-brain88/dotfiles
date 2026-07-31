@@ -197,6 +197,7 @@ herdr agent prompt <agent-name> "<追加指示のテキスト>"
 - **MUST**: `<agent-name>` は手順4でエージェントに付けたユニーク名をそのまま使う。pane-id の引き直しは不要
 - **MUST**: 実行前に対象の agent 名を必ず確認する(宛先を誤ると、無関係なエージェントに指示が届いてしまう。`agent prompt` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない)
 - **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は `agent prompt` を使わない(chat 入力欄への送信になるため、ハイライトされている選択肢を誤確定させる罠がある。`send-text` + Enter でこの誤確定による実害が実際に出ており(詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)、`agent prompt` も同じくメニュー表示中の pane に送信する以上、予防的に避ける)。メニューの選択肢確定自体は従来どおり `herdr pane send-keys <pane-id> Enter` で行う(pane-id は `herdr agent get <agent-name>` で都度引く。詳細: Troubleshooting「pane-id は非永続」参照)
+- **MUST**: レビュー差し戻し等、委任後に追加の作業ラウンドを送る前に、`herdr pane read` で pane 下部ステータスラインの context 使用率(💭 n%)を確認する。50% を超えている場合は追加ラウンドを送らず、(a) 司令塔が直接対応する、(b) 新 worker へ引き継ぐ(引き継ぎブリーフ = 元ブリーフ + ここまでの成果物参照(PR URL / コミット)+ 残作業のみ)、のいずれかを選ぶ。ユーザーより先に司令塔が検知すべきシグナルであり、閾値超過を検知したら対応方針とあわせてユーザーに報告する(詳細: Troubleshooting「レビュー差し戻しラウンドによる worker context の逼迫」参照)
 - **MAY**: `--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すると、送信と応答待ちを1コマンドに畳められる(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)
 
 #### (2) 上り=イベント
@@ -360,6 +361,9 @@ herdr が使えない環境(worktree だけで完結させたい等)では、作
 
 ### 相談待ち idle と完了 idle の判別
 作業者は【相談】送信後も司令塔からの回答を待つ間 `idle` に遷移するため、`herdr agent wait` の `idle` 発火だけでは完了と断定できない(#394)。判別・応答の手順は手順5「(2) 上り=イベント」の「相談 idle の判別」参照。
+
+### レビュー差し戻しラウンドによる worker context の逼迫
+本業リポジトリの PR(2026-07-27)で、差し戻し2ラウンド後に worker が context 60% に到達し、ユーザーが先に検知した。差し戻しは元実装の全文脈を保持した worker に送るのが品質上望ましい一方、ラウンドごとに context は単調に増える。50% を目安に「直接対応 or 引き継ぎ」へ切り替える(上記手順5(1) の Constraint)。ステータスラインの使用率は `herdr pane read --source visible` の末尾行で機械的に読める。
 
 ### commander-<repo名> の名前衝突
 同リポジトリの過去セッション pane が名前を保持していると `herdr agent rename` が
