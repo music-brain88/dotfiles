@@ -72,18 +72,28 @@ worktree 作成直後に以下を行う:
 
 ### 4. エージェントの起動(任意)
 
-タスク内容が具体的な場合、新しい workspace でエージェントを起動してタスクを渡す:
+タスク内容が具体的な場合、新しい workspace でエージェントを起動してタスクを渡す。pane の用意とエージェント起動は分離された2段構成になっている。まず司令塔自身の pane から下に pane を割り、作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
 
 ```bash
-herdr agent start claude-<branch-name 由来のユニーク名> --workspace <workspace-id> --cwd <worktree-path> --split down --focus -- claude --model claude-sonnet-5 --effort <effort> --permission-mode auto "$(cat <<'PROMPT'
+herdr pane split --pane "$HERDR_PANE_ID" --direction down --cwd <worktree-path>
+```
+
+新しい pane-id は応答 JSON の `result.pane.pane_id` から取得する。続けて作業指示をファイルに書き、エージェントを起動する:
+
+```bash
+cat > <司令塔のスクラッチパッドディレクトリ>/task-<branch-name>.md <<'PROMPT'
 <作業指示プロンプト（複数行可）>
 PROMPT
-)"
+
+herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --pane <new-pane-id> -- --model claude-sonnet-5 --effort <effort> --permission-mode auto "<司令塔のスクラッチパッドディレクトリ>/task-<branch-name>.md を読み、その内容全体をあなたへの作業指示として忠実に実行してください。"
 ```
 
 **Constraints:**
-- **MUST**: `--cwd` は必須。省略すると呼び出し元シェルの cwd(リポジトリ本体)を引き継ぎ、worktree 外で作業が始まってしまう
-- **MUST**: `--split down` で pane を上下分割にする(省略時はデフォルトの `right` で左右分割になってしまう)
+- **MUST**: pane の用意は `herdr pane split` で行う。`--cwd` は必須。省略すると司令塔 pane の cwd(リポジトリ本体)を引き継ぎ、worktree 外で作業が始まってしまう
+- **MUST**: `pane split` の `--direction down` で pane を上下分割にする(省略時はデフォルトの `right` で左右分割になってしまう)
+- **MUST NOT**: `herdr agent start` に `--workspace` / `--cwd` / `--split` / `--focus` を渡さない。herdr 0.7.5 で廃止され `unknown option` エラーになる。pane はあらかじめ `pane split` で用意し、`agent start` には `--pane <pane split で得た pane-id>` を渡す
+- **MUST**: `--kind claude` が実行ファイルの正典を与えるため、`--` 以降には実行ファイル名(`claude`)を含めず、引数のみを渡す
+- **MUST**: 作業指示プロンプトは `AGENT_ARG` に直接 inline しない。複数行 heredoc をそのまま渡すと `invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(詳細: Troubleshooting「長文プロンプトの inline 渡しが拒否される」参照)。作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書き、起動プロンプトは「<パス> を読み、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする
 - **MUST**: エージェント名はセッション全体でユニーク制約があるため、固定名 `claude` ではなくブランチ名由来の名前にする。変換ルール: ブランチ名から prefix(`fix/` 等)を除き、`_` と `/` を `-` に置換して `claude-` を前置する(例: `fix/wt_agent_start_options` → `claude-wt-agent-start-options`)
 - **MUST**: 作業者モデルはデフォルト `claude-sonnet-5`(司令塔=メインセッションが計画とレビュー、作業者が実装を担う分業)。ユーザーが入力内で別モデルを指定した場合はそれに従う
 - **MUST**: `--permission-mode auto` で起動する。定型操作は自動承認され、判断が必要な操作だけが blocked として表面化する
@@ -131,6 +141,7 @@ PROMPT
 - ライブセッションでの検証時、名前ベースの `pgrep` で見つけた PID を kill しない
 - ライブセッションでの検証時、起動・生成が確認できない場合は検証を中止して報告する(推測で続行しない)
 - ライブセッションでの検証時、ユーザーの既存ウィンドウ・既存プロセスは操作しない(読み取りのみ可)
+- GPG 署名で詰まった場合、`gpgconf --kill gpg-agent` 等で gpg-agent を殺さない(キャッシュ破壊で他作業者を巻き込む)。署名の失敗は「## 相談」の手順で司令塔へエスカレーションする
 
 ## 相談
 実装の方向を左右する判断で確信が持てないときは、最終報告まで抱え込まず、その場で司令塔へ相談を push する。判断に迷う点のうち、実装の方向を左右しない小さなものは上記「## 制約」の通り最終報告に書けばよい。
@@ -143,11 +154,7 @@ PROMPT
 **丸投げ禁止**: 相談には必ず「選択肢(A/B...) + 自分の推奨」をセットで送る。判断材料を示さず「どうしましょう」とだけ聞かない。
 
 ```bash
-COMMANDER_PANE=$(herdr agent get "commander-<repo名>" | jq -r .result.agent.pane_id)
-if [ -n "$COMMANDER_PANE" ] && [ "$COMMANDER_PANE" != "null" ]; then
-  herdr pane send-text "$COMMANDER_PANE" "【相談】<branch>: <選択肢A/B + 自分の推奨>"
-  herdr pane send-keys "$COMMANDER_PANE" Enter
-fi
+herdr agent prompt "commander-<repo名>" "【相談】<branch>: <選択肢A/B + 自分の推奨>"
 ```
 
 相談を送ったら、司令塔からの回答(pane に届く追加指示)を待つ。回答が届くまで、相談した論点については実装を進めない。
@@ -162,11 +169,7 @@ fi
 会話内報告に加えて、完了時に司令塔へ1行の push 報告を送る(フォーマット: `【報告】<branch>: <一行サマリ>（<PR URL>）`。詳細は上記の会話内報告に書き、push は要約1行のみでよい):
 
 ```bash
-COMMANDER_PANE=$(herdr agent get "commander-<repo名>" | jq -r .result.agent.pane_id)
-if [ -n "$COMMANDER_PANE" ] && [ "$COMMANDER_PANE" != "null" ]; then
-  herdr pane send-text "$COMMANDER_PANE" "【報告】<branch>: <一行サマリ>（<PR URL>）"
-  herdr pane send-keys "$COMMANDER_PANE" Enter
-fi
+herdr agent prompt "commander-<repo名>" "【報告】<branch>: <一行サマリ>（<PR URL>）"
 ```
 
 - `commander-<repo名>` が見つからない等、push が失敗した場合はエラーで止まらず、会話内報告のみに縮退して続行する(push はあくまで即時性のための冗長化で、必須経路ではない)
@@ -182,62 +185,47 @@ fi
 
 #### (1) 下り=指示
 
-委任時の指示は手順4の heredoc テンプレートで渡す。委任後に追加の指示を送りたい場合は、pane へのテキスト送信と Enter 送信を分けた2段で行う。作業者からの【相談】(手順4テンプレート「## 相談」参照)への回答もこの手順で送る(詳細な判別・応答フローは下記(2)「相談 idle の判別」参照):
+委任時の指示は手順4のファイル渡し方式(スクラッチパッドへのファイル書き込み+1行の起動プロンプト)で渡す。委任後に追加の指示を送りたい場合は、`herdr agent prompt <agent-name> "<追加指示のテキスト>"` の1コマンドで送る。agent 名を直接ターゲットにできるため pane-id の引き直しが不要になる。作業者からの【相談】(手順4テンプレート「## 相談」参照)への回答もこの手順で送る(詳細な判別・応答フローは下記(2)「相談 idle の判別」参照):
 
 ```bash
-herdr pane send-text <pane-id> "<追加指示のテキスト>"
-herdr pane send-keys <pane-id> Enter
+herdr agent prompt <agent-name> "<追加指示のテキスト>"
 ```
 
 **Constraints:**
-- **MUST**: pane へのテキスト送信と Enter 送信を分けた2段で行う(詳細: Troubleshooting「send-text は単体では実行されない」参照)
-- **MUST**: `<pane-id>` は対象エージェント名から `herdr agent list` で引く(`pane_id` フィールド)
-- **MUST**: 実行前に対象の pane-id / agent 名を必ず確認する(宛先を誤ると、無関係な pane やこの司令塔自身の入力欄にテキストが挿入されてしまう。`agent send` / `pane send-text` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない)
-- **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は send-text を使わない(ハイライトされている選択肢の Enter 確定にしかならず、誤確定の実害が出ている。詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)
-- **MUST**: 長時間の監視をまたぐ場合は都度 `herdr agent list` で引き直し、古い pane-id を使い回さない(詳細: Troubleshooting「pane-id は非永続」参照)
+- **MUST**: `<agent-name>` は手順4でエージェントに付けたユニーク名をそのまま使う。pane-id の引き直しは不要
+- **MUST**: 実行前に対象の agent 名を必ず確認する(宛先を誤ると、無関係なエージェントに指示が届いてしまう。`agent prompt` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない)
+- **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は `agent prompt` を使わない(chat 入力欄への送信になり、ハイライトされている選択肢を誤確定させる実害が出ている。詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)。メニューの選択肢確定自体は従来どおり `herdr pane send-keys <pane-id> Enter` で行う(pane-id は `herdr agent get <agent-name>` で都度引く。詳細: Troubleshooting「pane-id は非永続」参照)
+- **MAY**: `--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すると、送信と応答待ちを1コマンドに畳められる(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)
 
 #### (2) 上り=イベント
 
-委任直後、作業者の状態が `working` に遷移したことを確認してから、`blocked`(詰まり)と `idle`(完了)の2状態を同時にバックグラウンドで待ち受ける(詳細: Troubleshooting「wait の即時解決」参照):
+委任直後、作業者の状態が `working` に遷移したことを確認してから、`herdr agent wait` で状態遷移を待ち受ける(詳細: Troubleshooting「wait の即時解決」参照)。`--until` を省略した場合のデフォルトで `idle` / `done` / `blocked` のいずれかにマッチして戻ってくるため、1コマンドで済む:
 
 ```bash
 # gotcha: 対象が既に指定ステータスだと即座に解決してしまうため、working に遷移済みか確認してから仕掛ける
 AGENT_NAME=<agent-name>
 herdr agent get "$AGENT_NAME"
 
-herdr agent wait "$AGENT_NAME" --status blocked > "/tmp/wait-blocked-${AGENT_NAME}.json" 2>&1 &
-BLOCKED_PID=$!
-herdr agent wait "$AGENT_NAME" --status idle > "/tmp/wait-idle-${AGENT_NAME}.json" 2>&1 &
-IDLE_PID=$!
-
-wait -n "$BLOCKED_PID" "$IDLE_PID"
-
-# 生き残っている方が「発火しなかった側」。kill -0 で存否確認してから判別する
-if kill -0 "$BLOCKED_PID" 2>/dev/null; then
-  FIRED_STATUS=idle
-  kill "$BLOCKED_PID" 2>/dev/null
-else
-  FIRED_STATUS=blocked
-  kill "$IDLE_PID" 2>/dev/null
-fi
+herdr agent wait "$AGENT_NAME" > "/tmp/wait-${AGENT_NAME}.json"
 ```
+
+発火後、出力 JSON に含まれるステータスを確認して分岐する。`blocked` ならユーザーに承認を仰ぎ、`idle` / `done` なら `herdr agent read "$AGENT_NAME" --source recent --lines 50` で完了報告を確認する(`idle` の場合は完了と断定せず下記「相談 idle の判別」も併せて行う)。
 
 **Constraints:**
 - **MUST**: ログファイル名には `<agent-name>` を含める。複数 worktree を並行監視しているときに固定ファイル名だと内容が上書きされてしまうため
-- **MUST**: `wait -n` は先に終了した方を検知する。ただし `wait -n` 自身はどちらが終了したかを返さないため、直後に `kill -0 "$BLOCKED_PID"`(シグナルを送らず存否だけ確認する)で生死を見て、生きている方=発火しなかった方、と判別してから後処理する。判別できたら `$FIRED_STATUS` を見て、`blocked` ならユーザーに承認を仰ぎ、`idle` なら `herdr agent read "$AGENT_NAME" --source recent --lines 50` で完了報告を確認する
 - **MUST**: `<agent-name>` は手順4でエージェントに付けたユニーク名。`herdr agent wait` / `herdr agent read` は pane-id ではなく agent 名を直接ターゲットにできるため、監視中に pane-id を引き直す必要がない
 - **MUST NOT**: 定期ポーリング(`herdr pane list` 等を一定間隔で呼び続けるループ)は禁止。コストが高いうえ、このプロトコルが解消したいアンチパターンそのもの
-- **MUST NOT**: `--status done` は使わない(詳細: Troubleshooting「herdr agent wait は done を拒否する」参照)
-- **MUST**: 似た用途で `herdr wait agent-status <pane-id> --status <...|done|...>` というコマンドもあるが、こちらは pane-id が必須かつ `done` を受け付ける UI 向けのコマンド。CLI 主導のこのプロトコルでは agent 名を直接使える `herdr agent wait <agent-name>` を使う
+- **MUST**: 特定のステータスだけを待ちたい場合は `--until <STATUS>` を明示する(繰り返し指定可、例: `--until blocked --until idle`)。`done` は herdr 0.7.5 以降 `--until` / デフォルトの両方で受理される(詳細: Troubleshooting「herdr agent wait の done 受理」参照)
+- **MUST**: 似た用途で `herdr wait agent-status <pane-id> --status <...|done|...>` というコマンドもあるが、こちらは pane-id が必須の UI 向けのコマンド。CLI 主導のこのプロトコルでは agent 名を直接使える `herdr agent wait <agent-name>` を使う
 - **MAY**: `--timeout`(ミリ秒)は省略可能で、省略すると無期限にブロックする。バックグラウンドで放置する分には問題ないが、安全弁として妥当な値を指定してもよい
-- **MUST**: タイムアウトした場合は同じ2つの wait を仕掛け直す(これは定期ポーリングではなく、イベント待ちの再武装)
+- **MUST**: タイムアウトした場合は同じ wait を仕掛け直す(これは定期ポーリングではなく、イベント待ちの再武装)
 
 **相談 idle の判別:**
 
 作業者は【相談】送信後も司令塔からの回答を待つ間 `idle` に遷移する(手順4テンプレート「## 相談」参照)。そのため `idle` 発火は「完了」と「相談待ち」のどちらもありうる。
 
 - **MUST**: `idle` 発火時は完了と断定せず、`herdr agent read "$AGENT_NAME" --source recent --lines 50` で直近ログを確認する。末尾付近に `【相談】` があれば「相談待ちの idle」、なければ「完了の idle」と判定する
-- **MUST**: 「相談待ちの idle」と判定したら、上記(1)「下り=指示」の手順(pane send-text + send-keys Enter の2段)で回答を返す。回答後は作業者が再び `working` に遷移したことを確認したうえで、`blocked`/`idle` の2状態待ちを仕掛け直す(詳細: Troubleshooting「相談待ち idle と完了 idle の判別」参照)
+- **MUST**: 「相談待ちの idle」と判定したら、上記(1)「下り=指示」の手順(`herdr agent prompt <agent-name> "<回答>"`)で回答を返す。回答後は作業者が再び `working` に遷移したことを確認したうえで、`herdr agent wait` を仕掛け直す(詳細: Troubleshooting「相談待ち idle と完了 idle の判別」参照)
 
 #### (3) 上り=内容
 
@@ -326,6 +314,9 @@ mise trust は絶対パス単位で管理されるため、新規 worktree は�
 ### auto mode 起動の拒否
 auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザーの明示許可がない」として拒否されることがある。その場合は AskUserQuestion 等でユーザーに auto mode 起動の許可を明示的に確認してから再実行する。
 
+### 長文プロンプトの inline 渡しが拒否される
+`herdr agent start` の `--` 以降(`AGENT_ARG`)に複数行 heredoc の作業指示プロンプトをそのまま渡すと、`invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(2026-07-30、#520 で実機確認)。回避策: 作業指示を司令塔自身のスクラッチパッドディレクトリにファイルとして書き、起動プロンプトは「<パス> を読み、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする(手順4参照)。allowlist テンプレート(手順3「worktree の準備」参照)は「司令塔がタスク指示を置くスクラッチパッドの読み取り」を既に許可しており、この方式と整合している。
+
 ### ライブセッション検証時の誤 kill 事故
 2026-07-05、作業者エージェントが検証用に起動したはずの Alacritty が実際にはマップされておらず、直後に `pgrep -af alacritty` で拾った PID をテスト用ウィンドウと誤認して kill し、ユーザーが元から開いていた既存の Alacritty(workspace 2)を誤終了させた(#354、PR #353)。自分が起動したプロセスは起動時の `$!` で PID を捕捉して追跡し、事後に名前ベースの `pgrep` で「自分のものらしきプロセス」を探して kill するのは禁止。
 
@@ -336,7 +327,11 @@ auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザ�
 2026-07-26、#494/#466 の並行 worktree 運用(worker 2体 + 司令塔)で、作業者への追加指示のつもりで送った `send-text` + Enter が、表示中だった AskUserQuestion メニューの選択肢1「GPG エージェントをリセットして再試行」を誤確定させた。作業者が `gpgconf --kill gpg-agent` を実行し、ユーザーが直前に温めたパスフレーズキャッシュが消える実害が出た(#498)。手順5(1)の Constraint の通り、送信前に必ず `herdr agent read` で pane の状態を確認し、メニュー表示中は send-text を使わない(選択肢の Enter 確定のみで応答するか、メニューの解除を待つ)。
 
 ### send-keys Enter が chat 入力を submit できないことがある
-2026-07-26、#494/#466 の並行運用で、pane の入力欄にテキストが置かれたまま `pane send-keys <pane-id> Enter` が繰り返し効かず、作業者が再開できなくなった(同じ pane でメニューの選択肢確定には Enter が効いていたため、原因切り分けに時間を要した)。これは上記「send-text は単体では実行されない」(send-text だけでは実行されず別途 Enter が要る、という話)とは別の話 — real Enter を送っても Claude Code の chat 入力側で submit されないケースがある、という話。回避策(実機確認済み): `herdr pane run <pane-id> ""` — `pane run` はテキストと real Enter を1リクエストで送るため、空文字を渡せば real Enter のみを送って pending テキストを submit できる。下り=指示の標準手順(`send-text` + `send-keys` の2段)を `pane run` ベースに変える案もあるが、今回は採用を見送り、詰まった場合の回避策としてここに留める(#498)。
+2026-07-26、#494/#466 の並行運用で、pane の入力欄にテキストが置かれたまま `pane send-keys <pane-id> Enter` が繰り返し効かず、作業者が再開できなくなった(同じ pane でメニューの選択肢確定には Enter が効いていたため、原因切り分けに時間を要した)。これは上記「send-text は単体では実行されない」(send-text だけでは実行されず別途 Enter が要る、という話)とは別の話 — real Enter を送っても Claude Code の chat 入力側で submit されないケースがある、という話。
+
+当時の回避策(`herdr pane run <pane-id> ""` で空文字+real Enter を送り pending テキストを submit する)は herdr 0.7.5 では効かないケースが確認されている(2026-07-30、#520)。0.7.5 で新設された `herdr agent prompt <agent-name> <text>` はこの罠自体を踏まない上位互換の解で、入力欄に別テキストが残った状態でも正しく処理される。手順5(1)の標準手順は `agent prompt` に置換済み(詳細はそちらを参照)。`--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すれば送信と応答待ちを1コマンドに畳められる。
+
+なお AskUserQuestion メニューの選択肢確定(ハイライト行の Enter)は、この submit 不全とは別の経路のため、従来どおり `pane send-keys <pane-id> Enter` で機能する。効かないのはあくまで chat 入力の submit。
 
 ### GPG 署名コミットは worker pane から pinentry を出せない
 worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
@@ -347,8 +342,11 @@ pane-id はセッション中に compact されうる非永続 ID(詳細は `.co
 ### wait の即時解決
 gotcha(実機確認済み): `herdr agent wait` は対象が既に指定ステータスだと即座に解決する。作業者がまだ `working` に遷移していない段階で `idle` 待ちを仕掛けると、起動直後の未初期化状態を完了と誤検知しかねない。
 
-### herdr agent wait は done を拒否する
-`herdr agent wait` に `done` を渡すとエラーになる(実機確認済みのエラーメッセージ: `done is a UI attention state; use idle for CLI agent completion waits`)。`done` は「人間がまだ見ていない完了」を表す UI 向けの状態で、CLI から作業完了を検知するときは `idle` を使う。
+### herdr agent wait の done 受理(0.7.5)
+`done` は「人間がまだ見ていない完了」を表す UI 向けの状態。かつては `herdr agent wait` に `done` を渡すとエラーになっていた(実機確認済みのエラーメッセージ: `done is a UI attention state; use idle for CLI agent completion waits`)。herdr 0.7.5 では `--status` オプション自体が廃止されて `--until <STATUS>`(繰り返し指定可)に変わり、`done` も `--until done` および `--until` 省略時のデフォルトの両方で受理されるようになった(2026-07-30、#520 で実機確認)。手順5(2)は `idle` / `done` / `blocked` のいずれかにマッチするデフォルト待ちを前提にしている。
+
+### 旧 agent wait 構文の移行漏れが「blocked 誤判定」として表面化した
+2026-07-30、#520 の運用で `--status blocked` / `--status idle` を2本バックグラウンドで張る旧構文のまま監視を仕掛けたところ、`--status` が `unknown option` で即座に両方とも失敗終了し、`wait -n` がその即死を「先に終了した方」として即解決、`kill -0` 判別ロジックが `FIRED_STATUS=blocked` と誤判定した。作業者自体は新構文で正常に稼働していたため、監視側だけが空振りして誤った状態を報告するという紛らわしい形で表面化した。CLI 側の破壊的変更を SOP が追随できていないことの検知パターンとして記録しておく — 監視が異常終了せず不自然に即決着した場合は、CLI のオプション互換性を疑う。
 
 ### BLOCKED は複合ステータス
 2026-07-05 の運用で、PR #348/#350 の `mergeStateStatus: BLOCKED` を「CI待ち」と解釈し、監視スクリプトが90分待機した(#355)。実際のブロック要因は Copilot レビューの未解決 conversation で、このリポジトリのブランチ保護では conversation 未解決はマージ不可。`BLOCKED` は CI実行中と conversation 未解決を区別できない複合ステータスのため、検知時は必ず GraphQL で reviewThreads の未解決数を確認する。
