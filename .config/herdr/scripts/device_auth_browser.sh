@@ -38,12 +38,27 @@ fallback_gui() {
   exit 1
 }
 
-# herdr 環境判定: HERDR_ENV=1 か、herdr サーバのソケットに到達可能か
-# Detect herdr: either HERDR_ENV=1, or the herdr server socket answers.
+# SSH セッション判定: ソケット到達性だけで herdr 内と誤判定しないためのガード。
+# 同一ホストに SSH で入った別セッションでも herdr のソケットには到達できてしまう
+# ため、SSH 由来のセッションは HERDR_ENV=1 (herdr --remote 等で明示的に立って
+# いる場合) でない限り、無条件に GUI へフォールバックさせる。
+# SSH detection: guards against a false "inside herdr" from socket reachability
+# alone. A plain SSH session into the same host can still reach the local herdr
+# socket, so an SSH-originated session must always fall back to the GUI browser
+# unless HERDR_ENV=1 is explicitly set (e.g. via herdr --remote).
+is_ssh=0
+if [ -n "${SSH_CONNECTION:-}" ] || [ -n "${SSH_TTY:-}" ]; then
+  is_ssh=1
+fi
+
+# herdr 環境判定: HERDR_ENV=1 か、(SSH 経由でない場合に限り) herdr サーバの
+# ソケットに到達可能か
+# Detect herdr: either HERDR_ENV=1, or — only outside SSH — the herdr server
+# socket answers.
 in_herdr=0
 if [ "${HERDR_ENV:-}" = "1" ]; then
   in_herdr=1
-elif command -v herdr >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+elif [ "$is_ssh" -eq 0 ] && command -v herdr >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
   server_status="$(herdr status server --json 2>/dev/null || true)"
   if [ "$(printf '%s' "$server_status" | jq -r '.status // empty' 2>/dev/null || true)" = "running" ]; then
     in_herdr=1
