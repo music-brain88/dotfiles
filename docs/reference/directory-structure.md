@@ -99,6 +99,13 @@ dotfiles/
 
 ### AI Assistant Skills
 
+スキルは配線経路によって2層に分かれる:
+
+- **tool-neutral 層**(`skills/`): エージェント横断の共有 SOP(例: `learn`、`session-log`、`distill`)。`home.nix` で `.claude/skills/<name>` と `.copilot/skills/<name>` の両方へのマウントに解決され、単一ソースからドリフトしない(Issue #404)
+- **Claude 専用層**(`claude/skills/`): harness 固有の運用スキル(例: `wt`、`wtclean`、`herdr`)。これらは `.claude` 全体の recursive マウント(`home.nix` の `".claude"` エントリ)でそのまま配布され、tool-neutral 層のような個別スキル単位の上書きマウントは持たない(個別の `.claude/skills/<name>` エントリが `home.nix` に存在するのは、あくまで tool-neutral 層の共有スキルを上書きするためのもの)
+
+新しいスキルを追加する際は「特定 harness(Claude Code)の機能に依存するか」で配置を判断する — 依存しなければ tool-neutral 層、依存すれば Claude 専用層に置く。
+
 | Directory | Description |
 |-----------|-------------|
 | `skills/` | ツール中立な共有スキル層。各サブディレクトリに `SKILL.md`(frontmatter は `name`/`description` のみ)。`home.nix` で `.claude/skills/<name>` と `.copilot/skills/<name>` の両方にマウントし、単一ソースからのドリフトを構造的に防ぐ(Issue #404)。スキルの一覧は `.config/skills/` 配下が正(列挙は追加のたびに腐るためここには書かない) |
