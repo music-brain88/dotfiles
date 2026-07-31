@@ -79,7 +79,7 @@ fi
 # Confirm the plugin is installed and resolve plugin_root — never hardcode it.
 plugin_list_json="$(herdr plugin list --plugin "$PLUGIN_ID" --json 2>/dev/null || true)"
 plugin_root="$(printf '%s' "$plugin_list_json" |
-  jq -r --arg id "$PLUGIN_ID" '.result.plugins[]? | select(.id == $id) | .plugin_root // empty' 2>/dev/null || true)"
+  jq -r --arg id "$PLUGIN_ID" '.result.plugins[]? | select(.plugin_id == $id) | .plugin_root // empty' 2>/dev/null || true)"
 
 if [ -z "$plugin_root" ] || [ ! -f "$plugin_root/src/cli.ts" ]; then
   fallback_gui
