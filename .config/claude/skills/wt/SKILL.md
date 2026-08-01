@@ -73,7 +73,25 @@ worktree 作成直後に以下を行う:
 
 ### 4. エージェントの起動(任意)
 
-タスク内容が具体的な場合、新しい workspace でエージェントを起動してタスクを渡す。pane の用意とエージェント起動は分離された2段構成になっている。まず worktree 専用 workspace のルート pane(手順3で控えた `result.root_pane.pane_id`)から下に pane を割り、作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
+タスク内容が具体的な場合、新しい workspace でエージェントを起動してタスクを渡す。
+
+#### GPG パスフレーズキャッシュの事前チェック
+
+worker はコミット時に GPG 署名で詰まりやすい(worker pane は tty を持たず pinentry を表示できない構造的制約。詳細: Troubleshooting「GPG 署名コミットは worker pane から pinentry を出せない」参照)。委任前にキャッシュの有無を確認し、冷えていれば温めておく。
+
+```bash
+gpg-connect-agent 'keyinfo --list' /bye
+```
+
+**Constraints:**
+- **MUST**: 署名鍵の keygrip は次の手順で特定する: `git config user.signingkey` で鍵IDを取得し、`gpg --list-secret-keys --with-keygrip` の出力から同じ鍵に属する `[S]` フラグ付きサブキー(ssb)行の直後にある `Keygrip` を読む(`user.signingkey` は primary 鍵の ID を指すが、実際の署名には `[S]` サブキーの keygrip が使われるため。実機確認済み)
+- **MUST**: 上記 keygrip で `gpg-connect-agent 'keyinfo --list' /bye` の出力(`S KEYINFO <keygrip> D - - <cached> P - - -` 形式)をフィルタし、7列目が `1` かどうかでキャッシュの有無を確認する(実機確認済み)
+- **SHOULD**: 冷えている(7列目が `1` でない)場合、ユーザーに1回署名(`echo test | gpg --clearsign -o /dev/null`)によるキャッシュ温めを依頼する
+- **MAY**: 温めは委任と並行に進めてよいが、worker がコミットに到達する前に温まっているのが望ましい
+
+#### pane の用意とエージェント起動
+
+pane の用意とエージェント起動は分離された2段構成になっている。まず worktree 専用 workspace のルート pane(手順3で控えた `result.root_pane.pane_id`)から下に pane を割り、作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
 
 ```bash
 herdr pane split --pane <root-pane-id> --direction down --cwd <worktree-path>
@@ -338,6 +356,8 @@ auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザ�
 
 ### GPG 署名コミットは worker pane から pinentry を出せない
 worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
+
+この詰まりは委任前の事前チェックで予防できる。詳細は手順4「GPG パスフレーズキャッシュの事前チェック」参照。
 
 ### pane-id は非永続
 pane-id はセッション中に compact されうる非永続 ID(詳細は `.config/claude/skills/herdr/SKILL.md` 参照)。
