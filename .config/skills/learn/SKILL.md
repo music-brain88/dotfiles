@@ -17,7 +17,7 @@ description: |
 ## 起動方法
 
 - **明示起動**: `/learn` または `/learn <お題>`
-  - 引数なし: Discovery を実行(学習台帳の未消化項目・直近の会話・マージ済み PR からお題を提案)
+  - 引数なし: Discovery を実行(学習台帳の未消化項目・蒸留キュー・直近の会話・マージ済み PR からお題を提案)
   - 引数あり: そのお題で教師セッションを開始する
 - **自発提案**: リポジトリの CLAUDE.md に理解ゲートの規律があるリポで、
   設計判断を含む PR がマージ間近のとき、発火を**提案**する(強制はしない — soft gate)
@@ -28,9 +28,15 @@ description: |
 
 1. 学習台帳(下記 Persistence)を読む。現在リポに対応する台帳(frontmatter の `repos` で解決)の
    未消化項目を最優先で提示し、他プロジェクト台帳の未消化は次点で提示する
-2. 引数がなければ、直近の会話・`git log`・マージ済み PR から学習価値のある
-   設計判断を 2〜3 個選び、AskUserQuestion で選ばせる
-3. お題が決まったら、理解すべき項目の Markdown チェックリストを作って提示する。
+2. 次点で蒸留キューを提示する。蒸留キューの定義(`distilled_to` が空 **かつ** `triage: candidate`
+   のノート、対象は ResearchNotes・LiteratureNotes(Clip) 共通)の単一の真実は vault の
+   `Zettelkasten/MOC-ObsidianWorkflow.md` の「蒸留状態の宣言」。検索方法(frontmatter の Grep
+   横断検索)を含む詳細は `/distill` と共通 — `.config/skills/distill/SKILL.md` の
+   「前提情報」を参照し、本スキルには重複記載しない
+3. 学習台帳・蒸留キューだけで候補が揃わない場合、直近の会話・`git log`・
+   マージ済み PR から学習価値のある設計判断を 2〜3 個選ぶ
+4. 集めた候補(候補源の優先順: 学習台帳 → 蒸留キュー → 会話・PR)を AskUserQuestion で選ばせる
+5. お題が決まったら、理解すべき項目の Markdown チェックリストを作って提示する。
    必ず次の 3 点を含める:
    1) **問題そのもの** — なぜその問題が発生したのか、考えられる別の方法
    2) **解決策** — なぜその方法で解決したのか、設計判断、エッジケース
@@ -79,6 +85,11 @@ description: |
   - [ ] 未消化の項目
   ```
 
+- **蒸留キュー由来のセッション**(上記 Discovery で蒸留キューから選んだ場合、または `/distill` から
+  「/learn への昇格ハンドオフ」を受けた場合の両方を含む): 上記 LearningLedger への書き戻しに加えて、
+  Verification の「自分の言葉で説明」の合格発話を PermanentNote へ逐語転記し、元ノートの
+  `distilled_to` を埋める。転記・配管の手順は `/distill` の手順4(逐語転記)・手順5(配管)と同一 —
+  共通部は `.config/skills/distill/SKILL.md` を参照し、本スキルには重複記載しない
 - 未消化項目は次回 `/learn` の Discovery が最優先で拾う — 毎回ゼロから始めない(Amnesiac Loop の回避)
 
 ## 外形化チェック
@@ -91,6 +102,9 @@ description: |
 
 - `/session-log` はセッションの意思決定の**蒸留(出力側)**、`/learn` は人間の理解の**検証(入力側)**
 - `/qbq` は**設計前**の問いの再定義、`/learn` は**実装後**の理解の実証
+- `/distill` は蒸留パイプライン層2の軽量蒸留(標準ルート)。蒸留キューの定義・PermanentNote への
+  配管は本スキルと共通(上記 Discovery・Persistence 参照)。深掘りで理解ゲートが要る場合は
+  `/distill` からの昇格ハンドオフを受ける
 
 ## Scheduling(段階導入)
 
@@ -104,3 +118,6 @@ dotfiles Issue #492。hexhive の /qbq セッション(2026-07-25)で「教師�
 「開発ループへの理解ゲートの組み込み」に再定義して合意した設計の実装。
 理論的背景は Loop Engineering —
 生成は安く判断は希少、comprehension rot への防御として人間のチェックポイントを恒久機能にする。
+
+蒸留キューの Discovery 統合・PermanentNote 配管は dotfiles Issue #506。
+設計は vault ProjectNotes の「Obsidian蒸留パイプライン設計書.md」(2026-07-27合意)。
