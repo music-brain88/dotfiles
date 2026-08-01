@@ -116,6 +116,32 @@ git worktree prune
 - **MUST**: スキップしたもの(理由付き: 未コミット変更あり、エージェント稼働中、open PR あり、など)を報告する
 - **MUST**: 回収した知見 / Issue 候補を報告する(worktree ごとに要約。該当なしなら「知見なし」)
 
+### 9. 収穫ステップ(蒸留パイプライン Hot lane)
+
+手順8の掃除完了報告の**後**に行う。蒸留パイプライン設計(vault ProjectNotes)の合意事項: 蒸留の実行トリガーは
+時刻ではなく**作業サイクルの完了**に置く。「マージ済み作業の後始末」である /wtclean は、その天然の完了の拍にあたる。
+
+削除した各 worktree について、対応する PR 番号(手順2で取得済み)を使い、ResearchNotes 配下の
+ClaudeCodeSession ノートを Grep で検索する:
+
+```bash
+grep -lE "#<PR番号>|pull/<PR番号>" /home/archie/Documents/Obsidian/Zettelkasten/ResearchNotes/ClaudeCodeSession-*.md
+```
+
+ヒットしたノートの frontmatter `distilled_to:` が空のものを候補とする(実例: 「決定事項・成果物」節に
+`[PR #534](https://github.com/.../pull/534)` の形で PR リンクを残す運用が既に存在するため、この検索は成立する)。
+
+**Constraints:**
+- **MUST**: 削除した各 worktree の PR 番号で `ResearchNotes/ClaudeCodeSession-*.md` を検索し、`distilled_to` が
+  空のノートを候補とする
+- **MUST**: 候補が複数あっても提案は1件のみに絞る(複数 worktree を掃除した場合など。最初に見つかったものでよい)
+- **MUST**: 候補が見つかったら `/distill <ノートパス>` による軽量蒸留を**提案**する
+- **MUST**: 提案は soft gate として行う。ユーザーが skip したら、それ以上食い下がらずそのまま終了する
+  (skip してもそのノートは蒸留キューに残るだけで害はない——罪悪感でループを殺さない、という設計意図をここに残す)
+- **MUST**: 対応する候補が1件も見つからない場合は何も言わずに終了する(ノイズを増やさない)
+- **MUST NOT**: この手順は手順1〜8(dry-run・安全チェック・削除・報告)の判定や結果に一切影響してはならない
+  (収穫ステップの成否に関わらず、掃除自体は手順8の時点で完了している)
+
 ## Examples
 
 ```
