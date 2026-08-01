@@ -33,7 +33,7 @@ description: |
    `Zettelkasten/MOC-ObsidianWorkflow.md` の「蒸留状態の宣言」。検索方法(frontmatter の Grep
    横断検索)を含む詳細は `/distill` と共通 — `.config/skills/distill/SKILL.md` の
    「前提情報」を参照し、本スキルには重複記載しない
-3. 学習台帳・蒸留キューだけで候補が揃わない、または引数もない場合、直近の会話・`git log`・
+3. 学習台帳・蒸留キューだけで候補が揃わない場合、直近の会話・`git log`・
    マージ済み PR から学習価値のある設計判断を 2〜3 個選ぶ
 4. 集めた候補(候補源の優先順: 学習台帳 → 蒸留キュー → 会話・PR)を AskUserQuestion で選ばせる
 5. お題が決まったら、理解すべき項目の Markdown チェックリストを作って提示する。
