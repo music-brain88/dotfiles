@@ -19,6 +19,9 @@
   # GnuPG config symlink (gpg-agent cache TTL)
   home.file.".gnupg/gpg-agent.conf".source = ../../.config/gnupg/gpg-agent.conf;
 
+  # pinentry preexec hook (forces curses/tty backend; see #533)
+  xdg.configFile."pinentry/preexec".source = ../../.config/pinentry/preexec;
+
   # GnuPG expects a private home directory.
   # GnuPGは ~/.gnupg がprivateじゃないと警告する
   home.activation.ensureGnuPGHomePermissions = config.lib.dag.entryAfter [ "writeBoundary" ] ''

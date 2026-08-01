@@ -12,6 +12,17 @@ set -x LC_CTYPE en_US.UTF-8
 set -x EDITOR nvim
 set -x VISUAL nvim
 
+# GPG: tell gpg-agent which tty to use for pinentry (interactive shells only)
+# gpg-agentにこのシェルのttyを伝える(pinentry用、対話シェルのみ)
+if status is-interactive; and isatty stdin
+  set -gx GPG_TTY (tty)
+  # SSH session: refresh gpg-agent's cached tty so pinentry can reach us
+  # SSHセッション時はgpg-agentが保持するttyを更新する
+  if set -q SSH_CONNECTION
+    gpg-connect-agent updatestartuptty /bye >/dev/null 2>&1
+  end
+end
+
 # Aliases
 alias vim 'nvim'
 alias rm 'rm -i'
