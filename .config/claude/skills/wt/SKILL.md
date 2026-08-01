@@ -73,7 +73,25 @@ worktree 作成直後に以下を行う:
 
 ### 4. エージェントの起動(任意)
 
-タスク内容が具体的な場合、新しい workspace でエージェントを起動してタスクを渡す。pane の用意とエージェント起動は分離された2段構成になっている。まず worktree 専用 workspace のルート pane(手順3で控えた `result.root_pane.pane_id`)から下に pane を割り、作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
+タスク内容が具体的な場合、新しい workspace でエージェントを起動してタスクを渡す。
+
+#### GPG パスフレーズキャッシュの事前チェック
+
+worker はコミット時に GPG 署名で詰まりやすい(worker pane は tty を持たず pinentry を表示できない構造的制約。詳細: Troubleshooting「GPG 署名コミットは worker pane から pinentry を出せない」参照)。委任前にキャッシュの有無を確認し、冷えていれば温めておく。
+
+```bash
+gpg-connect-agent 'keyinfo --list' /bye
+```
+
+**Constraints:**
+- **MUST**: 署名鍵の keygrip は次の手順で特定する: `git config user.signingkey` で鍵IDを取得し、`gpg --list-secret-keys --with-keygrip` の出力から同じ鍵に属する `[S]` フラグ付きサブキー(ssb)行の直後にある `Keygrip` を読む(`user.signingkey` は primary 鍵の ID を指すが、実際の署名には `[S]` サブキーの keygrip が使われるため。実機確認済み)
+- **MUST**: 上記 keygrip で `gpg-connect-agent 'keyinfo --list' /bye` の出力(`S KEYINFO <keygrip> D - - <cached> P - - -` 形式)をフィルタし、7列目が `1` かどうかでキャッシュの有無を確認する(実機確認済み)
+- **SHOULD**: 冷えている(7列目が `1` でない)場合、ユーザーに1回署名(`echo test | gpg --clearsign -o /dev/null`)によるキャッシュ温めを依頼する
+- **MAY**: 温めは委任と並行に進めてよいが、worker がコミットに到達する前に温まっているのが望ましい
+
+#### pane の用意とエージェント起動
+
+pane の用意とエージェント起動は分離された2段構成になっている。まず worktree 専用 workspace のルート pane(手順3で控えた `result.root_pane.pane_id`)から下に pane を割り、作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
 
 ```bash
 herdr pane split --pane <root-pane-id> --direction down --cwd <worktree-path>
@@ -197,6 +215,7 @@ herdr agent prompt <agent-name> "<追加指示のテキスト>"
 - **MUST**: `<agent-name>` は手順4でエージェントに付けたユニーク名をそのまま使う。pane-id の引き直しは不要
 - **MUST**: 実行前に対象の agent 名を必ず確認する(宛先を誤ると、無関係なエージェントに指示が届いてしまう。`agent prompt` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない)
 - **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は `agent prompt` を使わない(chat 入力欄への送信になるため、ハイライトされている選択肢を誤確定させる罠がある。`send-text` + Enter でこの誤確定による実害が実際に出ており(詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)、`agent prompt` も同じくメニュー表示中の pane に送信する以上、予防的に避ける)。メニューの選択肢確定自体は従来どおり `herdr pane send-keys <pane-id> Enter` で行う(pane-id は `herdr agent get <agent-name>` で都度引く。詳細: Troubleshooting「pane-id は非永続」参照)
+- **MUST**: `agent prompt` 送信後は `herdr agent get <agent-name>` で `working` へ遷移したことを確認する。コマンドは `agent_prompted` を正常に返すが、それだけでは submit の成否を判定できない(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)。遷移せずテキストが入力欄に残っている場合は、`herdr agent read` で pane の状態(メニュー非表示であること。上記 Constraint 参照)を確認したうえで `herdr pane send-keys <pane-id> Enter` で submit する(pane-id は `herdr agent get <agent-name>` で引く)
 - **MUST**: レビュー差し戻し等、委任後に追加の作業ラウンドを送る前に、`herdr agent get <agent-name>` で pane-id を引いたうえで `herdr pane read <pane-id> --source visible` を実行し、末尾行の pane 下部ステータスラインで context 使用率(💭 n%)を確認する。50% を超えている場合は追加ラウンドを送らず、(a) 司令塔が直接対応する、(b) 新 worker へ引き継ぐ(引き継ぎブリーフ = 元ブリーフ + ここまでの成果物参照(PR URL / コミット)+ 残作業のみ)、のいずれかを選ぶ。ユーザーより先に司令塔が検知すべきシグナルであり、閾値超過を検知したら対応方針とあわせてユーザーに報告する(詳細: Troubleshooting「レビュー差し戻しラウンドによる worker context の逼迫」参照)
 - **MUST**: pane 幅が狭くステータスラインが `…` で切り詰められ 💭 の値が読めない場合、herdr CLI に幅非依存で context 使用率を取得できる経路は無い(実機調査済み。詳細: Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)。読めない場合は使用率を推測で埋めず、保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す
 - **MAY**: `--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すると、送信と応答待ちを1コマンドに畳められる(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)
@@ -333,12 +352,14 @@ auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザ�
 ### send-keys Enter が chat 入力を submit できないことがある
 2026-07-26、#494/#466 の並行運用で、pane の入力欄にテキストが置かれたまま `pane send-keys <pane-id> Enter` が繰り返し効かず、作業者が再開できなくなった(同じ pane でメニューの選択肢確定には Enter が効いていたため、原因切り分けに時間を要した)。これは上記「send-text は単体では実行されない」(send-text だけでは実行されず別途 Enter が要る、という話)とは別の話 — real Enter を送っても Claude Code の chat 入力側で submit されないケースがある、という話。
 
-当時の回避策(`herdr pane run <pane-id> ""` で空文字+real Enter を送り pending テキストを submit する)は herdr 0.7.5 では効かないケースが確認されている(2026-07-30、#520)。0.7.5 で新設された `herdr agent prompt <agent-name> <text>` はこの罠自体を踏まない上位互換の解で、入力欄に別テキストが残った状態でも正しく処理される。手順5(1)の標準手順は `agent prompt` に置換済み(詳細はそちらを参照)。`--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すれば送信と応答待ちを1コマンドに畳められる。
+当時の回避策(`herdr pane run <pane-id> ""` で空文字+real Enter を送り pending テキストを submit する)は herdr 0.7.5 では効かないケースが確認されている(2026-07-30、#520)。0.7.5 で新設された `herdr agent prompt <agent-name> "<text>"` は、入力欄に既存の pending テキストが残っていてもそれを新テキストで**置換する**ところまでは実機確認できているが、この罠自体を踏まない上位互換の解ではない — **置換はされても submit されないケース**が確認されている(2026-07-31、#528。並行 worktree 運用の同一セッション内で4回再現。宛先 worker の状態は done / idle の両方で発生。いずれも `herdr pane send-keys <pane-id> Enter` の追撃で submit され復旧した)。herdr 0.7.5 はこのケースでもコマンドが `agent_prompted` を正常に返すため、戻り値だけでは失敗を検知できない。手順5(1)の標準手順は `agent prompt` 送信後に `herdr agent get <agent-name>` で working 遷移を確認し、遷移していなければ `herdr agent read` でメニュー非表示を確認のうえ `herdr pane send-keys <pane-id> Enter` で追撃する防御的手順とセットで運用する(詳細はそちらを参照)。`--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すれば送信と応答待ちを1コマンドに畳められる。
 
 なお AskUserQuestion メニューの選択肢確定(ハイライト行の Enter)は、この submit 不全とは別の経路のため、従来どおり `pane send-keys <pane-id> Enter` で機能する。効かないのはあくまで chat 入力の submit。
 
 ### GPG 署名コミットは worker pane から pinentry を出せない
 worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
+
+この詰まりは委任前の事前チェックで予防できる。詳細は手順4「GPG パスフレーズキャッシュの事前チェック」参照。
 
 ### pane-id は非永続
 pane-id はセッション中に compact されうる非永続 ID(詳細は `.config/claude/skills/herdr/SKILL.md` 参照)。
