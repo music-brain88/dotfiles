@@ -367,7 +367,7 @@ herdr が使えない環境(worktree だけで完結させたい等)では、作
 本業リポジトリの PR(2026-07-27)で、差し戻し2ラウンド後に worker が context 60% に到達し、ユーザーが先に検知した。差し戻しは元実装の全文脈を保持した worker に送るのが品質上望ましい一方、ラウンドごとに context は単調に増える。50% を目安に「直接対応 or 引き継ぎ」へ切り替える(上記手順5(1) の Constraint)。ステータスラインの使用率は `herdr agent get <agent-name>` で pane-id を引いてから `herdr pane read <pane-id> --source visible` を実行し、その末尾行で機械的に読める(ただし pane 幅が狭いと切り詰められて読めないケースがある。詳細と代替手段は次項「ステータスライン切り詰めで 💭 が読めない」参照)。
 
 ### ステータスライン切り詰めで 💭 が読めない
-2026-07-31、上記の運用で `herdr agent read <agent-name> --source visible` の末尾ステータスラインが pane 幅で切り詰められ(`⚡ Sonnet 5  xhigh …` までで省略)、💭 の値が読めないケースが発生した(#529)。ステータスラインの表示順で 💭 が右寄りにあるため、pane が狭いと機械的に読めない。
+2026-07-31、上記の運用で `herdr pane read <pane-id> --source visible` の末尾ステータスラインが pane 幅で切り詰められ(`⚡ Sonnet 5  xhigh …` までで省略)、💭 の値が読めないケースが発生した(#529)。ステータスラインの表示順で 💭 が右寄りにあるため、pane が狭いと機械的に読めない。
 
 調査の結果(実機確認済み)、herdr CLI に pane 幅非依存で context 使用率を取得できる経路は見つからなかった:
 - `herdr agent get <agent-name>` の JSON 出力(`agent`/`agent_status`/`cwd`/`pane_id`/`workspace_id` 等) に context 使用率相当のフィールドは無い
