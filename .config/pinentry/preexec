@@ -1,0 +1,9 @@
+# Force pinentry to curses/tty. Arch's /usr/bin/pinentry wrapper sources this
+# hook before backend selection; without it, stale XDG_SESSION_TYPE=wayland in
+# gpg-agent's environment selects pinentry-gnome3, which is unreachable from
+# SSH sessions (Permission denied / Timeout).
+# pinentryをcurses/ttyへ誘導する。gpg-agent環境に残るXDG_SESSION_TYPE=wayland
+# がgnome3バックエンドを選び続け、SSHセッションから到達不能になるため。
+# 恒久対策: music-brain88/dotfiles#533
+unset DISPLAY
+export XDG_SESSION_TYPE=tty

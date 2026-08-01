@@ -18,6 +18,11 @@ if [ "$(uname -s)" = 'Linux' ]; then
     eval "$(ssh-agent -s)"
   fi
   export GPG_TTY=$(tty)
+  # SSH session: refresh gpg-agent's cached tty so pinentry can reach us
+  # SSHセッション時はgpg-agentが保持するttyを更新する
+  if [ -n "$SSH_CONNECTION" ]; then
+    gpg-connect-agent updatestartuptty /bye >/dev/null 2>&1
+  fi
 fi
 
 # Launch Nix-managed fish shell
