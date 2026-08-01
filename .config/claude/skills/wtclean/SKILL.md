@@ -125,8 +125,10 @@ git worktree prune
 ClaudeCodeSession ノートを Grep で検索する:
 
 ```bash
-grep -lE "#<PR番号>|pull/<PR番号>" /home/archie/Documents/Obsidian/Zettelkasten/ResearchNotes/ClaudeCodeSession-*.md
+grep -lE "#<PR番号>([^0-9]|$)|pull/<PR番号>([^0-9]|$)" /home/archie/Documents/Obsidian/Zettelkasten/ResearchNotes/ClaudeCodeSession-*.md
 ```
+
+(部分一致による誤検知を避けるため、PR番号の直後に数字が続かない境界を入れる。例: PR 53 を探すとき `#534` や `pull/534` を誤ってヒットさせない)
 
 ヒットしたノートの frontmatter `distilled_to:` が空のものを候補とする(実例: 「決定事項・成果物」節に
 `[PR #534](https://github.com/.../pull/534)` の形で PR リンクを残す運用が既に存在するため、この検索は成立する)。
