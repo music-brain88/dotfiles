@@ -197,6 +197,7 @@ herdr agent prompt <agent-name> "<追加指示のテキスト>"
 - **MUST**: `<agent-name>` は手順4でエージェントに付けたユニーク名をそのまま使う。pane-id の引き直しは不要
 - **MUST**: 実行前に対象の agent 名を必ず確認する(宛先を誤ると、無関係なエージェントに指示が届いてしまう。`agent prompt` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない)
 - **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は `agent prompt` を使わない(chat 入力欄への送信になるため、ハイライトされている選択肢を誤確定させる罠がある。`send-text` + Enter でこの誤確定による実害が実際に出ており(詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)、`agent prompt` も同じくメニュー表示中の pane に送信する以上、予防的に避ける)。メニューの選択肢確定自体は従来どおり `herdr pane send-keys <pane-id> Enter` で行う(pane-id は `herdr agent get <agent-name>` で都度引く。詳細: Troubleshooting「pane-id は非永続」参照)
+- **MUST**: `agent prompt` 送信後は `herdr agent get <agent-name>` で `working` へ遷移したことを確認する。コマンドは `agent_prompted` を正常に返すが、それだけでは submit の成否を判定できない(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)。遷移せずテキストが入力欄に残っている場合は、`herdr agent read` で pane の状態(メニュー非表示であること。上記 Constraint 参照)を確認したうえで `herdr pane send-keys <pane-id> Enter` で submit する(pane-id は `herdr agent get <agent-name>` で引く)
 - **MUST**: レビュー差し戻し等、委任後に追加の作業ラウンドを送る前に、`herdr agent get <agent-name>` で pane-id を引いたうえで `herdr pane read <pane-id> --source visible` を実行し、末尾行の pane 下部ステータスラインで context 使用率(💭 n%)を確認する。50% を超えている場合は追加ラウンドを送らず、(a) 司令塔が直接対応する、(b) 新 worker へ引き継ぐ(引き継ぎブリーフ = 元ブリーフ + ここまでの成果物参照(PR URL / コミット)+ 残作業のみ)、のいずれかを選ぶ。ユーザーより先に司令塔が検知すべきシグナルであり、閾値超過を検知したら対応方針とあわせてユーザーに報告する(詳細: Troubleshooting「レビュー差し戻しラウンドによる worker context の逼迫」参照)
 - **MAY**: `--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すると、送信と応答待ちを1コマンドに畳められる(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)
 
@@ -332,7 +333,7 @@ auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザ�
 ### send-keys Enter が chat 入力を submit できないことがある
 2026-07-26、#494/#466 の並行運用で、pane の入力欄にテキストが置かれたまま `pane send-keys <pane-id> Enter` が繰り返し効かず、作業者が再開できなくなった(同じ pane でメニューの選択肢確定には Enter が効いていたため、原因切り分けに時間を要した)。これは上記「send-text は単体では実行されない」(send-text だけでは実行されず別途 Enter が要る、という話)とは別の話 — real Enter を送っても Claude Code の chat 入力側で submit されないケースがある、という話。
 
-当時の回避策(`herdr pane run <pane-id> ""` で空文字+real Enter を送り pending テキストを submit する)は herdr 0.7.5 では効かないケースが確認されている(2026-07-30、#520)。0.7.5 で新設された `herdr agent prompt <agent-name> <text>` はこの罠自体を踏まない上位互換の解で、入力欄に別テキストが残った状態でも正しく処理される。手順5(1)の標準手順は `agent prompt` に置換済み(詳細はそちらを参照)。`--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すれば送信と応答待ちを1コマンドに畳められる。
+当時の回避策(`herdr pane run <pane-id> ""` で空文字+real Enter を送り pending テキストを submit する)は herdr 0.7.5 では効かないケースが確認されている(2026-07-30、#520)。0.7.5 で新設された `herdr agent prompt <agent-name> <text>` は、入力欄に既存の pending テキストが残っていてもそれを新テキストで**置換する**ところまでは実機確認できているが、この罠自体を踏まない上位互換の解ではない — **置換はされても submit されないケース**が確認されている(2026-07-31、#528。並行 worktree 運用の同一セッション内で4回再現。宛先 worker の状態は done / idle の両方で発生。いずれも `herdr pane send-keys <pane-id> Enter` の追撃で submit され復旧した)。herdr 0.7.5 はこのケースでもコマンドが `agent_prompted` を正常に返すため、戻り値だけでは失敗を検知できない。手順5(1)の標準手順は `agent prompt` 送信後に `herdr agent get <agent-name>` で working 遷移を確認し、遷移していなければ `herdr agent read` でメニュー非表示を確認のうえ `herdr pane send-keys <pane-id> Enter` で追撃する防御的手順とセットで運用する(詳細はそちらを参照)。`--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すれば送信と応答待ちを1コマンドに畳められる。
 
 なお AskUserQuestion メニューの選択肢確定(ハイライト行の Enter)は、この submit 不全とは別の経路のため、従来どおり `pane send-keys <pane-id> Enter` で機能する。効かないのはあくまで chat 入力の submit。
 
