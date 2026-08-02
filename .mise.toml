@@ -250,3 +250,20 @@ gpg --quick-set-expire "$fpr" 2y '*'
 mise run gpg:export
 echo "Expiry extended. Re-register public.asc on GitHub, then run 'mise run gpg:import' on other machines."
 """
+
+# =============================================================================
+# Hyprland プラグイン管理 / Hyprland plugin management
+# =============================================================================
+
+[tasks."hypr:pm-update"]
+description = "Rebuild hyprpm-managed plugins after a Hyprland upgrade (forces the Arch toolchain over Nix)"
+run = """
+set -euo pipefail
+# Nix profile の cmake/pkg-config は純粋性パッチで /usr を探索できず、
+# システムの OpenGL/GLES3 が見つからずビルドに失敗する(#554)。
+# /usr/bin を先頭に置いて Arch のツールチェーンを強制する。
+# The Nix-profile cmake/pkg-config are patched not to search /usr, so system
+# OpenGL/GLES3 is never found (#554); prepend /usr/bin to force the Arch toolchain.
+# sudo プロンプトが出るため対話ターミナルで実行すること / run from an interactive terminal (needs a sudo prompt)
+PATH="/usr/bin:$PATH" hyprpm update
+"""
