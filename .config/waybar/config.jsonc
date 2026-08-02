@@ -50,13 +50,30 @@
             "default": "\uf01c" // nf-fa-inbox (depot)
         },
         "window-rewrite-default": "\u25aa", // U+25AA BLACK SMALL SQUARE (not a Nerd Font glyph)
+        "format-window-separator": " ",
+        // \u8f9e\u66f8\u306f window-rules.conf \u3067\u904b\u7528\u4e2d\u306e\u30a2\u30d7\u30ea\u5168\u3066\u3092\u7db2\u7f85\u3059\u308b(#548)\u3002\u6f0f\u308c\u308b\u3068 \u25aa \u306b\u843d\u3061\u3066\u4e2d\u8eab\u304c\u5224\u5225\u3067\u304d\u306a\u3044
+        // Cover every app managed in window-rules.conf (#548); anything missing falls back to an unreadable \u25aa
         "window-rewrite": {
             "class<^firefox$>": "\uf269", // nf-fa-firefox
             "class<^code$>": "\udb82\ude1e", // nf-md-microsoft_visual_studio_code
             "class<^kitty$>": "\uf120", // nf-fa-terminal
             "class<^Alacritty$>": "\uf120", // nf-fa-terminal
             "class<^org\\.wezfurlong\\.wezterm$>": "\uf120", // nf-fa-terminal
-            "class<^spotify$>": "\uf1bc" // nf-fa-spotify
+            "class<^spotify$>": "\uf1bc", // nf-fa-spotify
+            "class<^slack$>": "\uf198", // nf-fa-slack
+            "class<^discord$>": "\uf1ff", // nf-fa-discord
+            "class<^obsidian$>": "\ue6bb", // nf-custom-obsidian
+            "class<^claude-desktop$>": "\udb85\udf19", // nf-md-robot_happy
+            "class<^Emacs$>": "\ue632", // nf-custom-emacs
+            "class<^neovide$>": "\ue6ae", // nf-custom-neovim
+            "class<^Vivaldi-stable$>": "\uf0ac", // nf-fa-globe (Vivaldi \u56fa\u6709\u30b0\u30ea\u30d5\u306f Nerd Fonts \u306b\u7121\u3044 / no Vivaldi brand glyph exists)
+            "class<^steam$>": "\uf1b6", // nf-fa-steam
+            "class<^steam_app.*>": "\uf11b", // nf-fa-gamepad (Steam games)
+            "class<^lutris$>": "\uf11b", // nf-fa-gamepad
+            "class<^mpv$>": "\uf008", // nf-fa-film
+            "class<^vlc$>": "\udb81\udd7c", // nf-md-vlc
+            "class<^imv$>": "\uf03e", // nf-fa-image
+            "class<^org\\.kde\\.dolphin$>": "\uf07b" // nf-fa-folder
         },
         "persistent-workspaces": {
             "*": [1, 2, 3]
