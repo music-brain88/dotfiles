@@ -52,9 +52,9 @@
         "window-rewrite-default": "\u25aa", // U+25AA BLACK SMALL SQUARE (not a Nerd Font glyph)
         "format-window-separator": " ",
         // 辞書は window-rules.conf で運用中のアプリを網羅する(#548)。漏れると ▪ に落ちて中身が判別できない。
-        // wofi はレイヤーシェルでワークスペースに現れないため対象外
+        // wofi はレイヤーシェル(WSに現れない)、Emacs / neovide は不使用(エディタは端末内 neovim)のため対象外
         // Cover the apps managed in window-rules.conf (#548); anything missing falls back to an unreadable ▪.
-        // wofi is a layer-shell surface that never appears as a workspace window, hence excluded.
+        // Excluded: wofi (layer-shell, never a workspace window) and Emacs/neovide (unused; editing happens in terminal neovim).
         // マッチ方式: ルール全体を正規表現(icase)として "class<実class>" に regex_search する。
         // class< の内側に ^ / $ を書くと構造的に絶対マッチしない(#556 で全ルール沈黙から復旧)。
         // 山括弧 < > 自体が完全一致アンカーとして機能し、大文字小文字は icase で無視される。
@@ -72,8 +72,6 @@
             "class<discord>": "\uf1ff", // nf-fa-discord
             "class<obsidian>": "\ue6bb", // nf-custom-obsidian
             "class<claude-desktop>": "\udb85\udf19", // nf-md-robot_happy
-            "class<Emacs>": "\ue632", // nf-custom-emacs
-            "class<neovide>": "\ue6ae", // nf-custom-neovim
             "class<vivaldi-stable>": "\uf0ac", // nf-fa-globe (Nerd Fonts に Vivaldi グリフ無し / no Vivaldi brand glyph)
             "class<steam>": "\uf1b6", // nf-fa-steam
             "class<steam_app.*>": "\uf11b", // nf-fa-gamepad (Steam games)
