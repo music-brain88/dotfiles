@@ -50,13 +50,40 @@
             "default": "\uf01c" // nf-fa-inbox (depot)
         },
         "window-rewrite-default": "\u25aa", // U+25AA BLACK SMALL SQUARE (not a Nerd Font glyph)
+        "format-window-separator": " ",
+        // 辞書は window-rules.conf で運用中のアプリを網羅する(#548)。漏れると ▪ に落ちて中身が判別できない。
+        // wofi はレイヤーシェルでワークスペースに現れないため対象外
+        // Cover the apps managed in window-rules.conf (#548); anything missing falls back to an unreadable ▪.
+        // wofi is a layer-shell surface that never appears as a workspace window, hence excluded.
         "window-rewrite": {
             "class<^firefox$>": "\uf269", // nf-fa-firefox
             "class<^code$>": "\udb82\ude1e", // nf-md-microsoft_visual_studio_code
             "class<^kitty$>": "\uf120", // nf-fa-terminal
             "class<^Alacritty$>": "\uf120", // nf-fa-terminal
             "class<^org\\.wezfurlong\\.wezterm$>": "\uf120", // nf-fa-terminal
-            "class<^spotify$>": "\uf1bc" // nf-fa-spotify
+            "class<^[Ss]potify$>": "\uf1bc", // nf-fa-spotify (window-rules に spotify/Spotify 両表記あり / both casings appear)
+            "class<^slack$>": "\uf198", // nf-fa-slack
+            "class<^discord$>": "\uf1ff", // nf-fa-discord
+            "class<^obsidian$>": "\ue6bb", // nf-custom-obsidian
+            "class<^claude-desktop$>": "\udb85\udf19", // nf-md-robot_happy
+            "class<^Emacs$>": "\ue632", // nf-custom-emacs
+            "class<^neovide$>": "\ue6ae", // nf-custom-neovim
+            "class<^[Vv]ivaldi-stable$>": "\uf0ac", // nf-fa-globe (Nerd Fonts に Vivaldi グリフ無し。実機 class は小文字 / no brand glyph; live class is lowercase)
+            "class<^steam$>": "\uf1b6", // nf-fa-steam
+            "class<^steam_app.*>": "\uf11b", // nf-fa-gamepad (Steam games)
+            "class<^lutris$>": "\uf11b", // nf-fa-gamepad
+            "class<^mpv$>": "\uf008", // nf-fa-film
+            "class<^vlc$>": "\udb81\udd7c", // nf-md-vlc
+            "class<^imv$>": "\uf03e", // nf-fa-image
+            "class<^pavucontrol$>": "\uf1de", // nf-fa-sliders
+            "class<^blueman-manager$>": "\uf293", // nf-fa-bluetooth
+            "class<^nm-connection-editor$>": "\uf1eb", // nf-fa-wifi
+            "class<^file-roller$>": "\uf187", // nf-fa-archive
+            "class<^eog$>": "\uf03e", // nf-fa-image
+            "class<^nwg-look$>": "\uf1fc", // nf-fa-paint_brush
+            "class<^qt5ct$>": "\uf1fc", // nf-fa-paint_brush
+            "class<^org\\.kde\\.polkit-kde-authentication-agent-1$>": "\uf132", // nf-fa-shield
+            "class<^org\\.kde\\.dolphin$>": "\uf07b" // nf-fa-folder
         },
         "persistent-workspaces": {
             "*": [1, 2, 3]
