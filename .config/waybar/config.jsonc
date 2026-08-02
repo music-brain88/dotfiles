@@ -1,7 +1,7 @@
 {
     "layer": "top",
     "position": "top",
-    "height": 30,
+    "height": 38,
     "spacing": 4,
     "margin-top": 6,
     "margin-bottom": 0,
@@ -265,7 +265,9 @@
     },
 
     "tray": {
-        "icon-size": 21,
+        // trayだけはフォント非連動なのでfont-size拡大(#558)に合わせて個別に上げる
+        // Tray icons don't scale with font-size, so bump separately alongside #558.
+        "icon-size": 24,
         "spacing": 10
     }
 }
