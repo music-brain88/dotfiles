@@ -2,7 +2,9 @@
     border: none;
     border-radius: 0;
     font-family: "JetBrainsMono Nerd Font", "Noto Sans CJK JP";
-    font-size: 13px;
+    /* AW3821DW(37.5in/111ppi・scale 1.0)では13pxは物理約3mmで判読困難だった(#558) */
+    /* 13px was ~3mm physical on the AW3821DW (37.5in/111ppi, scale 1.0) — too small to read (#558) */
+    font-size: 16px;
     min-height: 0;
     transition-property: background-color;
     transition-duration: 0.5s;
