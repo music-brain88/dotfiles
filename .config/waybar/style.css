@@ -10,12 +10,22 @@
     transition-duration: 0.5s;
 }
 
+/* 三島構成(#559): バー本体は透明な土台にして、left/center/rightの各ゾーンを
+   独立した島にする。島の間は壁紙がそのまま見える */
+/* Three-island layout (#559): the bar window is a transparent stage; each of the
+   left/center/right zones becomes its own island, with wallpaper visible between them. */
 window#waybar {
-    background-color: rgba(21, 18, 27, 0.95);
-    border-bottom: 2px solid rgba(100, 114, 125, 0.5);
+    background: transparent;
     color: #cdd6f4;
-    transition-property: background-color;
-    transition-duration: .5s;
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+    background-color: rgba(21, 18, 27, 0.95);
+    border: 2px solid rgba(100, 114, 125, 0.5);
+    border-radius: 12px;
+    padding: 0 8px;
 }
 
 window#waybar.hidden {
