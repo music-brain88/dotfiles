@@ -29,12 +29,20 @@ if [ ! -s "$cache_file" ]; then
   exit 0
 fi
 
-# 今日以降で最初の祝日を1件取り出す(ISO日付なので文字列比較でそのまま並ぶ)
+# 今日以降で最初の祝日を1件取り出す(ISO日付なので文字列比較でそのまま並ぶ)。
+# 壊れたキャッシュはパース失敗で set -e ごと死なないよう捨てて非表示に落とす
+# (次回実行が再取得する)。bring_status.sh と同じ防御パターン。
 # Pick the first holiday on/after today (ISO dates sort lexicographically).
-next="$(jq -r --arg today "$today" '
+# A corrupt cache must not kill the script via set -e: drop it and hide the
+# module (the next run re-fetches). Same defensive pattern as bring_status.sh.
+if ! next="$(jq -r --arg today "$today" '
   to_entries | map(select(.key >= $today)) | sort_by(.key) | first
   | if . == null then "" else "\(.key)|\(.value)" end
-' "$cache_file")"
+' "$cache_file" 2>/dev/null)"; then
+  rm -f "$cache_file"
+  jq -cn '{text: "", tooltip: ""}'
+  exit 0
+fi
 
 # データの終端(来年分が未公開の年末など)に達したら非表示
 # Past the end of the dataset (e.g. year-end before next year is published) -> hide.
