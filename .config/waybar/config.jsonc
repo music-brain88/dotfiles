@@ -15,7 +15,13 @@
   // 中央集約(#559 案A): 「読む」情報(workspaces計器盤)は視野中心、「見る」情報(時計・日付)は左端へ
   // Centralized layout (#559 plan A): information you READ (workspaces gauge) sits at the
   // visual center; information you GLANCE at (clock, date) goes to the far-left zone.
-  "modules-left": ["clock", "clock#date", "custom/weather"],
+  "modules-left": [
+    //"clock#date",
+    "clock",
+    "custom/weather",
+    "custom/sun_moon",
+    "custom/holiday",
+  ],
   "modules-center": [
     "hyprland/workspaces",
     "hyprland/submap",
@@ -175,6 +181,17 @@
     "tooltip": false,
   },
 
+  // 祝日カウントダウン(#562): holidays-jp API を日次キャッシュ。ネットワーク断は
+  // スクリプト側が古いキャッシュ/非表示で吸収するので exec-if は持たない
+  // Holiday countdown (#562): holidays-jp API with a daily cache. The script itself
+  // absorbs network failures (stale cache / hidden), so no exec-if gate here.
+  "custom/holiday": {
+    "format": "{}",
+    "return-type": "json",
+    "interval": 3600,
+    "exec": "~/.config/waybar/scripts/holiday.sh",
+  },
+
   "custom/weather": {
     "format": "{}",
     "format-alt": "{alt}: {}",
@@ -182,6 +199,16 @@
     "interval": 1800,
     "return-type": "json",
     "exec": "~/.config/waybar/scripts/weather.sh",
+    "exec-if": "ping wttr.in -c1",
+  },
+
+  // 月相+日の出入り(#562): weather.sh と同じ wttr.in インフラに乗る空の計器
+  // Moon phase + sunrise/sunset (#562): a sky gauge riding the same wttr.in infra as weather.sh.
+  "custom/sun_moon": {
+    "format": "{}",
+    "return-type": "json",
+    "interval": 1800,
+    "exec": "~/.config/waybar/scripts/sun_moon.sh",
     "exec-if": "ping wttr.in -c1",
   },
 
