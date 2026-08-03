@@ -1,273 +1,289 @@
 {
-    "layer": "top",
-    "position": "top",
-    "height": 38,
-    "spacing": 4,
-    "margin-top": 6,
-    "margin-bottom": 0,
-    "modules-left": [
-        "hyprland/workspaces",
-        "hyprland/submap",
-        "hyprland/window",
-        "custom/bring"
-    ],
-    "modules-center": [
-        "clock",
-        "custom/weather"
-    ],
-    "modules-right": [
-        "custom/media",
-        "hyprland/language",
-        "pulseaudio",
-        "pulseaudio#microphone",
-        "network",
-        "cpu",
-        "memory",
-        "temperature",
-        "backlight",
-        "battery",
-        "custom/power",
-        "tray"
-    ],
+  "layer": "top",
+  "position": "top",
+  "height": 38,
+  "spacing": 4,
+  "margin-top": 6,
+  "margin-bottom": 0,
+  // 三島構成(#559): 中央島(workspaces計器盤)が常に視野中心にいるので、左右の島は
+  // 端まで戻してよい。6pxはmargin-topと揃えた「浮き」の名残り。島スタイルはstyle.css側。
+  // Three-island layout (#559): with the center island (workspaces gauge) pinned at the
+  // visual center, the side islands can sit at the screen edges again. 6px matches
+  // margin-top for the floating look; island styling lives in style.css.
+  "margin-left": 6,
+  "margin-right": 6,
+  // 中央集約(#559 案A): 「読む」情報(workspaces計器盤)は視野中心、「見る」情報(時計・日付)は左端へ
+  // Centralized layout (#559 plan A): information you READ (workspaces gauge) sits at the
+  // visual center; information you GLANCE at (clock, date) goes to the far-left zone.
+  "modules-left": ["clock", "clock#date", "custom/weather"],
+  "modules-center": [
+    "hyprland/workspaces",
+    "hyprland/submap",
+    "hyprland/window",
+    "custom/bring",
+  ],
+  "modules-right": [
+    "custom/media",
+    "hyprland/language",
+    "pulseaudio",
+    "pulseaudio#microphone",
+    "cpu",
+    "memory",
+    "network",
+    "temperature",
+    "backlight",
+    "battery",
+    "custom/power",
+    "tray",
+  ],
 
-    // 3層構造(window-rules.conf 冒頭コメント参照)をバー上でも宣言する
-    // Mirror the three-layer workspace design (see window-rules.conf header) in the bar:
-    //   作業台 ws1〜3 = 数字アイコン(persistent-workspacesで常時表示) / Workbench: numeral icons, always shown
-    //   詰め所 ws4〜  = 共通アイコン(default) / Depot: shared "default" icon
-    //   引き出し special = show-special + special-visible-only で開いている時だけ表示 / Drawer: shown only while open
-    "hyprland/workspaces": {
-        "format": "{icon}{windows}",
-        "on-click": "activate",
-        // Icons below are written as literal \uXXXX JSON escapes, not raw PUA glyphs pasted
-        // directly -- raw glyphs silently collapsed to empty strings in this file before
-        // (caught in PR #366 review). Look up glyph names at nerdfonts.com/cheat-sheet.
-        "format-icons": {
-            "1": "1",
-            "2": "2",
-            "3": "3",
-            "urgent": "\uf071", // nf-fa-exclamation_triangle
-            "special": "\uf052", // nf-fa-eject (drawer: shown only while open)
-            "default": "\uf01c" // nf-fa-inbox (depot)
-        },
-        "window-rewrite-default": "\u25aa", // U+25AA BLACK SMALL SQUARE (not a Nerd Font glyph)
-        "format-window-separator": " ",
-        // 辞書は window-rules.conf で運用中のアプリを網羅する(#548)。漏れると ▪ に落ちて中身が判別できない。
-        // wofi はレイヤーシェル(WSに現れない)、Emacs / neovide は不使用(エディタは端末内 neovim)のため対象外
-        // Cover the apps managed in window-rules.conf (#548); anything missing falls back to an unreadable ▪.
-        // Excluded: wofi (layer-shell, never a workspace window) and Emacs/neovide (unused; editing happens in terminal neovim).
-        // マッチ方式: ルール全体を正規表現(icase)として "class<実class>" に regex_search する。
-        // class< の内側に ^ / $ を書くと構造的に絶対マッチしない(#556 で全ルール沈黙から復旧)。
-        // 山括弧 < > 自体が完全一致アンカーとして機能し、大文字小文字は icase で無視される。
-        // Rules are regex_search'd (icase) against "class<actual>". Never put ^ / $ inside
-        // the angle brackets — they can never match there (#556); the < > delimiters
-        // already act as exact-match anchors, and casing is ignored via icase.
-        "window-rewrite": {
-            "class<firefox>": "\uf269", // nf-fa-firefox
-            "class<code>": "\udb82\ude1e", // nf-md-microsoft_visual_studio_code
-            "class<kitty>": "\uf120", // nf-fa-terminal
-            "class<Alacritty>": "\uf120", // nf-fa-terminal
-            "class<org\\.wezfurlong\\.wezterm>": "\uf120", // nf-fa-terminal
-            "class<spotify>": "\uf1bc", // nf-fa-spotify
-            "class<slack>": "\uf198", // nf-fa-slack
-            "class<discord>": "\uf1ff", // nf-fa-discord
-            "class<obsidian>": "\ue6bb", // nf-custom-obsidian
-            "class<claude-desktop>": "\udb85\udf19", // nf-md-robot_happy
-            "class<vivaldi-stable>": "\uf0ac", // nf-fa-globe (Nerd Fonts に Vivaldi グリフ無し / no Vivaldi brand glyph)
-            "class<steam>": "\uf1b6", // nf-fa-steam
-            "class<steam_app.*>": "\uf11b", // nf-fa-gamepad (Steam games)
-            "class<lutris>": "\uf11b", // nf-fa-gamepad
-            "class<mpv>": "\uf008", // nf-fa-film
-            "class<vlc>": "\udb81\udd7c", // nf-md-vlc
-            "class<imv>": "\uf03e", // nf-fa-image
-            "class<pavucontrol>": "\uf1de", // nf-fa-sliders
-            "class<blueman-manager>": "\uf293", // nf-fa-bluetooth
-            "class<nm-connection-editor>": "\uf1eb", // nf-fa-wifi
-            "class<file-roller>": "\uf187", // nf-fa-archive
-            "class<eog>": "\uf03e", // nf-fa-image
-            "class<nwg-look>": "\uf1fc", // nf-fa-paint_brush
-            "class<qt5ct>": "\uf1fc", // nf-fa-paint_brush
-            "class<org\\.kde\\.polkit-kde-authentication-agent-1>": "\uf132", // nf-fa-shield
-            "class<org\\.kde\\.dolphin>": "\uf07b" // nf-fa-folder
-        },
-        "persistent-workspaces": {
-            "*": [1, 2, 3]
-        },
-        "show-special": true,
-        "special-visible-only": true,
-        "sort-by": "number",
-        "on-scroll-up": "hyprctl dispatch workspace e+1",
-        "on-scroll-down": "hyprctl dispatch workspace e-1"
+  // 3層構造(window-rules.conf 冒頭コメント参照)をバー上でも宣言する
+  // Mirror the three-layer workspace design (see window-rules.conf header) in the bar:
+  //   作業台 ws1〜3 = 数字アイコン(persistent-workspacesで常時表示) / Workbench: numeral icons, always shown
+  //   詰め所 ws4〜  = 共通アイコン(default) / Depot: shared "default" icon
+  //   引き出し special = show-special + special-visible-only で開いている時だけ表示 / Drawer: shown only while open
+  "hyprland/workspaces": {
+    "format": "{icon}{windows}",
+    "on-click": "activate",
+    // Icons below are written as literal \uXXXX JSON escapes, not raw PUA glyphs pasted
+    // directly -- raw glyphs silently collapsed to empty strings in this file before
+    // (caught in PR #366 review). Look up glyph names at nerdfonts.com/cheat-sheet.
+    "format-icons": {
+      "1": "1",
+      "2": "2",
+      "3": "3",
+      "urgent": "\uf071", // nf-fa-exclamation_triangle
+      "special": "\uf052", // nf-fa-eject (drawer: shown only while open)
+      "default": "\uf01c", // nf-fa-inbox (depot)
     },
-
-    "hyprland/window": {
-        "format": " {}",
-        "max-length": 50,
-        "separate-outputs": true
+    "window-rewrite-default": "\u25aa", // U+25AA BLACK SMALL SQUARE (not a Nerd Font glyph)
+    "format-window-separator": " ",
+    // 辞書は window-rules.conf で運用中のアプリを網羅する(#548)。漏れると ▪ に落ちて中身が判別できない。
+    // wofi はレイヤーシェル(WSに現れない)、Emacs / neovide は不使用(エディタは端末内 neovim)のため対象外
+    // Cover the apps managed in window-rules.conf (#548); anything missing falls back to an unreadable ▪.
+    // Excluded: wofi (layer-shell, never a workspace window) and Emacs/neovide (unused; editing happens in terminal neovim).
+    // マッチ方式: ルール全体を正規表現(icase)として "class<実class>" に regex_search する。
+    // class< の内側に ^ / $ を書くと構造的に絶対マッチしない(#556 で全ルール沈黙から復旧)。
+    // 山括弧 < > 自体が完全一致アンカーとして機能し、大文字小文字は icase で無視される。
+    // Rules are regex_search'd (icase) against "class<actual>". Never put ^ / $ inside
+    // the angle brackets — they can never match there (#556); the < > delimiters
+    // already act as exact-match anchors, and casing is ignored via icase.
+    "window-rewrite": {
+      "class<firefox>": "\uf269", // nf-fa-firefox
+      "class<code>": "\udb82\ude1e", // nf-md-microsoft_visual_studio_code
+      "class<kitty>": "\uf120", // nf-fa-terminal
+      "class<Alacritty>": "\uf120", // nf-fa-terminal
+      "class<org\\.wezfurlong\\.wezterm>": "\uf120", // nf-fa-terminal
+      "class<spotify>": "\uf1bc", // nf-fa-spotify
+      "class<slack>": "\uf198", // nf-fa-slack
+      "class<discord>": "\uf1ff", // nf-fa-discord
+      "class<obsidian>": "\ue6bb", // nf-custom-obsidian
+      "class<claude-desktop>": "\udb85\udf19", // nf-md-robot_happy
+      "class<vivaldi-stable>": "\uf0ac", // nf-fa-globe (Nerd Fonts に Vivaldi グリフ無し / no Vivaldi brand glyph)
+      "class<steam>": "\uf1b6", // nf-fa-steam
+      "class<steam_app.*>": "\uf11b", // nf-fa-gamepad (Steam games)
+      "class<lutris>": "\uf11b", // nf-fa-gamepad
+      "class<mpv>": "\uf008", // nf-fa-film
+      "class<vlc>": "\udb81\udd7c", // nf-md-vlc
+      "class<imv>": "\uf03e", // nf-fa-image
+      "class<pavucontrol>": "\uf1de", // nf-fa-sliders
+      "class<blueman-manager>": "\uf293", // nf-fa-bluetooth
+      "class<nm-connection-editor>": "\uf1eb", // nf-fa-wifi
+      "class<file-roller>": "\uf187", // nf-fa-archive
+      "class<eog>": "\uf03e", // nf-fa-image
+      "class<nwg-look>": "\uf1fc", // nf-fa-paint_brush
+      "class<qt5ct>": "\uf1fc", // nf-fa-paint_brush
+      "class<org\\.kde\\.polkit-kde-authentication-agent-1>": "\uf132", // nf-fa-shield
+      "class<org\\.kde\\.dolphin>": "\uf07b", // nf-fa-folder
     },
-
-    // Bring 型の計器盤(#422): bring_window.sh(Super+Y)で借りている参照ウィンドウを表示。
-    // 常駐スクリプトが Hyprland socket2 を購読して随時1行出力する(interval なし)。
-    // 操作はここに持たせない — 表示のみ(操作系は Super+Y / Super+Shift+Y のまま)。
-    // Bring-style gauge (#422): shows the reference window borrowed via Super+Y.
-    // The long-running script subscribes to Hyprland socket2 and streams JSON lines
-    // (no interval). Display only; control stays on the Super+Y keybinds.
-    "custom/bring": {
-        "format": "{}",
-        "return-type": "json",
-        "max-length": 45,
-        "exec": "~/.config/waybar/scripts/bring_status.sh",
-        "escape": true
+    "persistent-workspaces": {
+      "*": [1, 2, 3],
     },
+    "show-special": true,
+    "special-visible-only": true,
+    "sort-by": "number",
+    "on-scroll-up": "hyprctl dispatch workspace e+1",
+    "on-scroll-down": "hyprctl dispatch workspace e-1",
+  },
 
-    "hyprland/language": {
-        "format": " {}",
-        "format-en": "US",
-        "format-ja": "JP",
-        "keyboard-name": "at-translated-set-2-keyboard"
+  "hyprland/window": {
+    "format": " {}",
+    "max-length": 50,
+    "separate-outputs": true,
+  },
+
+  // Bring 型の計器盤(#422): bring_window.sh(Super+Y)で借りている参照ウィンドウを表示。
+  // 常駐スクリプトが Hyprland socket2 を購読して随時1行出力する(interval なし)。
+  // 操作はここに持たせない — 表示のみ(操作系は Super+Y / Super+Shift+Y のまま)。
+  // Bring-style gauge (#422): shows the reference window borrowed via Super+Y.
+  // The long-running script subscribes to Hyprland socket2 and streams JSON lines
+  // (no interval). Display only; control stays on the Super+Y keybinds.
+  "custom/bring": {
+    "format": "{}",
+    "return-type": "json",
+    "max-length": 45,
+    "exec": "~/.config/waybar/scripts/bring_status.sh",
+    "escape": true,
+  },
+
+  "hyprland/language": {
+    "format": " {}",
+    "format-en": "US",
+    "format-ja": "JP",
+    "keyboard-name": "at-translated-set-2-keyboard",
+  },
+
+  "hyprland/submap": {
+    "format": "✌️ {}",
+    "max-length": 8,
+    "tooltip": false,
+  },
+
+  "clock": {
+    "format": " {:%H:%M}",
+    "format-alt": " {:%Y-%m-%d}",
+    "tooltip-format": "<tt><small>{calendar}</small></tt>",
+    "calendar": {
+      "mode": "year",
+      "mode-mon-col": 3,
+      "weeks-pos": "right",
+      "on-scroll": 1,
+      "on-click-right": "mode",
+      "format": {
+        "months": "<span color='#ffead3'><b>{}</b></span>",
+        "days": "<span color='#ecc6d9'><b>{}</b></span>",
+        "weeks": "<span color='#99ffdd'><b>W{}</b></span>",
+        "weekdays": "<span color='#ffcc66'><b>{}</b></span>",
+        "today": "<span color='#ff6699'><b><u>{}</u></b></span>",
+      },
     },
-
-    "hyprland/submap": {
-        "format": "✌️ {}",
-        "max-length": 8,
-        "tooltip": false
+    "actions": {
+      "on-click-right": "mode",
+      "on-click-forward": "tz_up",
+      "on-click-backward": "tz_down",
+      "on-scroll-up": "shift_up",
+      "on-scroll-down": "shift_down",
     },
+  },
 
-    "clock": {
-        "format": " {:%H:%M}",
-        "format-alt": " {:%Y-%m-%d}",
-        "tooltip-format": "<tt><small>{calendar}</small></tt>",
-        "calendar": {
-            "mode"          : "year",
-            "mode-mon-col"  : 3,
-            "weeks-pos"     : "right",
-            "on-scroll"     : 1,
-            "on-click-right": "mode",
-            "format": {
-                "months":     "<span color='#ffead3'><b>{}</b></span>",
-                "days":       "<span color='#ecc6d9'><b>{}</b></span>",
-                "weeks":      "<span color='#99ffdd'><b>W{}</b></span>",
-                "weekdays":   "<span color='#ffcc66'><b>{}</b></span>",
-                "today":      "<span color='#ff6699'><b><u>{}</u></b></span>"
-            }
-        },
-        "actions": {
-            "on-click-right": "mode",
-            "on-click-forward": "tz_up",
-            "on-click-backward": "tz_down",
-            "on-scroll-up": "shift_up",
-            "on-scroll-down": "shift_down"
-        }
+  // 日付の常時表示(#559派生): ホバーカレンダー・クリック切替は本体clockに任せ、こちらは見るだけの計器
+  // Always-visible date (offshoot of #559): hover calendar / click toggle stay on the main
+  // clock; this instance is a glance-only gauge. CSSは #clock.date として本体のスタイルを継承する
+  "clock#date": {
+    "format": " {:%m/%d (%a)}", // nf-fa-calendar
+    "locale": "ja_JP.UTF-8", // 曜日を「(日)」表記にする / Japanese weekday names
+    "tooltip": false,
+  },
+
+  "custom/weather": {
+    "format": "{}",
+    "format-alt": "{alt}: {}",
+    "format-alt-click": "click-right",
+    "interval": 1800,
+    "return-type": "json",
+    "exec": "~/.config/waybar/scripts/weather.sh",
+    "exec-if": "ping wttr.in -c1",
+  },
+
+  "custom/media": {
+    "format": "{icon} {}",
+    "return-type": "json",
+    "max-length": 40,
+    "format-icons": {
+      "spotify": "",
+      "default": "🎜",
     },
+    "escape": true,
+    "exec": "~/.config/waybar/scripts/mediaplayer.py 2> /dev/null",
+    "on-click": "playerctl play-pause",
+  },
 
-    "custom/weather": {
-        "format": "{}",
-        "format-alt": "{alt}: {}",
-        "format-alt-click": "click-right",
-        "interval": 1800,
-        "return-type": "json",
-        "exec": "~/.config/waybar/scripts/weather.sh",
-        "exec-if": "ping wttr.in -c1"
+  "cpu": {
+    "format": " {usage}%",
+    "tooltip": true,
+    "interval": 1,
+  },
+
+  "memory": {
+    "format": " {}%",
+    "interval": 1,
+  },
+
+  "temperature": {
+    "critical-threshold": 80,
+    "format": "{icon} {temperatureC}°C",
+    "format-icons": ["", "", ""],
+  },
+
+  "backlight": {
+    "format": "{icon} {percent}%",
+    "format-icons": ["", "", "", "", "", "", "", "", ""],
+    "on-scroll-up": "brightnessctl set +5%",
+    "on-scroll-down": "brightnessctl set 5%-",
+  },
+
+  "battery": {
+    "states": {
+      "good": 95,
+      "warning": 30,
+      "critical": 15,
     },
+    "format": "{icon} {capacity}%",
+    "format-charging": " {capacity}%",
+    "format-plugged": " {capacity}%",
+    "format-alt": "{icon} {time}",
+    "format-icons": ["", "", "", "", ""],
+  },
 
-    "custom/media": {
-        "format": "{icon} {}",
-        "return-type": "json",
-        "max-length": 40,
-        "format-icons": {
-            "spotify": "",
-            "default": "🎜"
-        },
-        "escape": true,
-        "exec": "~/.config/waybar/scripts/mediaplayer.py 2> /dev/null",
-        "on-click": "playerctl play-pause"
+  "network": {
+    "format-wifi": " {essid} ({signalStrength}%)",
+    "format-ethernet": " {ipaddr}/{cidr}",
+    "tooltip-format": " {ifname} via {gwaddr}",
+    "format-linked": " {ifname} (No IP)",
+    "format-disconnected": "⚠ Disconnected",
+    "format-alt": "{ifname}: {ipaddr}/{cidr}",
+    "on-click-right": "nm-connection-editor",
+  },
+
+  "pulseaudio": {
+    "format": "{icon} {volume}%",
+    "format-bluetooth": "{icon} {volume}% {format_source}",
+    "format-bluetooth-muted": " {icon} {format_source}",
+    "format-muted": " {format_source}",
+    "format-source": " {volume}%",
+    "format-source-muted": "",
+    "format-icons": {
+      "headphone": "",
+      "hands-free": "",
+      "headset": "",
+      "phone": "",
+      "portable": "",
+      "car": "",
+      "default": ["", "", ""],
     },
+    "on-click": "pavucontrol",
+  },
 
-    "cpu": {
-        "format": " {usage}%",
-        "tooltip": true,
-        "interval": 1
-    },
+  "pulseaudio#microphone": {
+    "format": "{format_source}",
+    "format-source": " {volume}%",
+    "format-source-muted": "",
+    "on-click": "pavucontrol",
+    "on-scroll-up": "pamixer --default-source -i 5",
+    "on-scroll-down": "pamixer --default-source -d 5",
+    "scroll-step": 5,
+  },
 
-    "memory": {
-        "format": " {}%",
-        "interval": 1
-    },
+  "custom/power": {
+    "format": "⏻",
+    "on-click": "wlogout",
+    "tooltip": false,
+  },
 
-    "temperature": {
-        "critical-threshold": 80,
-        "format": "{icon} {temperatureC}°C",
-        "format-icons": ["", "", ""]
-    },
-
-    "backlight": {
-        "format": "{icon} {percent}%",
-        "format-icons": ["", "", "", "", "", "", "", "", ""],
-        "on-scroll-up": "brightnessctl set +5%",
-        "on-scroll-down": "brightnessctl set 5%-"
-    },
-
-    "battery": {
-        "states": {
-            "good": 95,
-            "warning": 30,
-            "critical": 15
-        },
-        "format": "{icon} {capacity}%",
-        "format-charging": " {capacity}%",
-        "format-plugged": " {capacity}%",
-        "format-alt": "{icon} {time}",
-        "format-icons": ["", "", "", "", ""]
-    },
-
-    "network": {
-        "format-wifi": " {essid} ({signalStrength}%)",
-        "format-ethernet": " {ipaddr}/{cidr}",
-        "tooltip-format": " {ifname} via {gwaddr}",
-        "format-linked": " {ifname} (No IP)",
-        "format-disconnected": "⚠ Disconnected",
-        "format-alt": "{ifname}: {ipaddr}/{cidr}",
-        "on-click-right": "nm-connection-editor"
-    },
-
-    "pulseaudio": {
-        "format": "{icon} {volume}%",
-        "format-bluetooth": "{icon} {volume}% {format_source}",
-        "format-bluetooth-muted": " {icon} {format_source}",
-        "format-muted": " {format_source}",
-        "format-source": " {volume}%",
-        "format-source-muted": "",
-        "format-icons": {
-            "headphone": "",
-            "hands-free": "",
-            "headset": "",
-            "phone": "",
-            "portable": "",
-            "car": "",
-            "default": ["", "", ""]
-        },
-        "on-click": "pavucontrol"
-    },
-
-    "pulseaudio#microphone": {
-        "format": "{format_source}",
-        "format-source": " {volume}%",
-        "format-source-muted": "",
-        "on-click": "pavucontrol",
-        "on-scroll-up": "pamixer --default-source -i 5",
-        "on-scroll-down": "pamixer --default-source -d 5",
-        "scroll-step": 5
-    },
-
-    "custom/power": {
-        "format": "⏻",
-        "on-click": "wlogout",
-        "tooltip": false
-    },
-
-    "tray": {
-        // trayだけはフォント非連動なのでfont-size拡大(#558)に合わせて個別に上げる
-        // Tray icons don't scale with font-size, so bump separately alongside #558.
-        "icon-size": 24,
-        "spacing": 10
-    }
+  "tray": {
+    // trayだけはフォント非連動なのでfont-size拡大(#558)に合わせて個別に上げる
+    // Tray icons don't scale with font-size, so bump separately alongside #558.
+    "icon-size": 24,
+    "spacing": 10,
+  },
 }
