@@ -19,7 +19,14 @@ today="$(date +%Y-%m-%d)"
 # キャッシュの鮮度は mtime の日付で判定(日次更新)。取得失敗時は古いキャッシュで続行する
 # Cache freshness = mtime date (daily refresh). On fetch failure keep serving the old cache.
 if [ ! -s "$cache_file" ] || [ "$(date -r "$cache_file" +%Y-%m-%d)" != "$today" ]; then
-  curl -sf --max-time 10 "$api_url" -o "${cache_file}.tmp" && mv "${cache_file}.tmp" "$cache_file" || true
+  # 取得成功時のみ tmp を本採用(アトミック更新)、失敗時は部分書き込みの tmp を掃除
+  # Adopt the tmp file only on a successful fetch (atomic update); clean up the
+  # partially written tmp on failure.
+  if curl -sf --max-time 10 "$api_url" -o "${cache_file}.tmp"; then
+    mv -f "${cache_file}.tmp" "$cache_file"
+  else
+    rm -f "${cache_file}.tmp"
+  fi
 fi
 
 # キャッシュも無い(初回起動でオフライン等) → 非表示
