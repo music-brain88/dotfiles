@@ -97,6 +97,7 @@
     ".claude/skills/distill" = { source = ./.config/skills/distill; recursive = true; };
     ".claude/skills/digest" = { source = ./.config/skills/digest; recursive = true; };
     ".claude/skills/cognitive-rhythm-writing" = { source = ./.config/skills/cognitive-rhythm-writing; recursive = true; };
+    ".claude/skills/japanese-tech-writing" = { source = ./.config/skills/japanese-tech-writing; recursive = true; };
 
     # mise global config (tools available outside project dirs; claude is NOT here — it uses its native installer)
     # mise グローバル設定（プロジェクト外でも使うツール。claude は native installer 管理で node 経由ではない）
@@ -125,6 +126,7 @@
     ".copilot/skills/distill" = { source = ./.config/skills/distill; recursive = true; };
     ".copilot/skills/digest" = { source = ./.config/skills/digest; recursive = true; };
     ".copilot/skills/cognitive-rhythm-writing" = { source = ./.config/skills/cognitive-rhythm-writing; recursive = true; };
+    ".copilot/skills/japanese-tech-writing" = { source = ./.config/skills/japanese-tech-writing; recursive = true; };
     # Global copilot-instructions for GitHub Copilot (VS Code, etc.)
     ".github/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
 
