@@ -27,7 +27,7 @@
           (final: prev: {
             github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old:
               let
-                copilotVersion = "1.0.65";
+                copilotVersion = "1.0.78";
               in
               {
                 version = copilotVersion;
@@ -38,7 +38,7 @@
                 # and native binaries live in the platform-specific release asset.
                 src = prev.fetchzip {
                   url = "https://github.com/github/copilot-cli/releases/download/v${copilotVersion}/github-copilot-${copilotVersion}-linux-x64.tgz";
-                  hash = "sha256-4Af5u4K5xg76RCLu3jHY1+IxWMosu7d8fmwJy0zgwB4=";
+                  hash = "sha256-2tQ3dIamXBErYElEd8dgY+Iz5OgGY7WvcdnoDIB0hWM=";
                 };
                 # nixpkgs 側の derivation が npm tarball 前提の sourceRoot = "package" を
                 # 設定するようになったが、GitHub Release アセットはルート直下にファイルを
@@ -64,6 +64,20 @@
                   "libpng16.so.16"
                   "libpipewire-0.3.so.0"
                   "libei.so.1"
+                  # v1.0.78 で追加された webview 機能 (@webviewjs/webview) 用の GTK/WebKit
+                  # スタック。CLI 利用では webview 機能を使わないため無視する。
+                  # GTK/WebKit stack for the webview feature (@webviewjs/webview) added
+                  # in v1.0.78. Unused in CLI usage, so ignore it.
+                  "libwebkit2gtk-4.1.so.0"
+                  "libgtk-3.so.0"
+                  "libgdk-3.so.0"
+                  "libcairo.so.2"
+                  "libgdk_pixbuf-2.0.so.0"
+                  "libsoup-3.0.so.0"
+                  "libjavascriptcoregtk-4.1.so.0"
+                  "libwayland-client.so.0"
+                  "libdbus-1.so.3"
+                  "libxdo.so.3"
                 ];
                 # npm version may not match internal binary version string
                 doInstallCheck = false;
