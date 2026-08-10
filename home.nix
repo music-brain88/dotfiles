@@ -24,6 +24,7 @@
     ./nix/modules/herdr.nix
     ./nix/modules/neovim.nix
     ./nix/modules/dev-tools.nix
+    ./nix/modules/k8s-tools.nix
     ./nix/modules/fonts.nix
   ]
   ++ lib.optionals (profile == "native") [ ./nix/modules/desktop.nix ]
