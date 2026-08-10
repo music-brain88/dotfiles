@@ -52,9 +52,10 @@ herdr の pane 内に実ブラウザ (Chromium) を描画し、Chrome DevTools P
 
 ### 挙動
 
-1. **herdr 環境判定**: `HERDR_ENV=1` なら herdr 内とみなす。`HERDR_ENV` が立っていない場合は、SSH セッション (`SSH_CONNECTION` または `SSH_TTY` が set) でないことを条件に `herdr status server --json` でサーバソケットへの到達性を追加確認する。同一ホストへの SSH セッションはソケットには到達できてしまうため、`HERDR_ENV=1` でない限り必ず GUI ブラウザ (`xdg-open` 等) へフォールバックする
-2. **プラグイン導入済み判定**: `herdr` / `jq` / `bun` が揃っているか、`herdr plugin list --plugin official.browser --json` の結果から `plugin_root` を解決できるかを確認する。`plugin_root` はハードコードせず毎回 CLI から解決する。いずれか欠けていれば GUI へフォールバックする
-3. **pane への navigate**: プラグインの CLI (`bun run <plugin_root>/src/cli.ts views`) で既存 view (可視 pane に紐づくもの) の有無を確認する
+1. **WSL 判定**: `WSL_DISTRO_NAME` が set か `/proc/version` に `microsoft` を含む場合は WSL とみなし、herdr 環境判定に入る前に Windows 側の既定ブラウザへフォールバックする (`wslview` → `rundll32.exe url.dll,FileProtocolHandler` → `explorer.exe` の順で探す)。WSL2 では ConPTY が kitty graphics を剥ぐため herdr-browser は描画不可であり ([運用上の注意](#運用上の注意))、herdr が動いていても pane へは直行させない ([Issue #574](https://github.com/music-brain88/dotfiles/issues/574))
+2. **herdr 環境判定**: `HERDR_ENV=1` なら herdr 内とみなす。`HERDR_ENV` が立っていない場合は、SSH セッション (`SSH_CONNECTION` または `SSH_TTY` が set) でないことを条件に `herdr status server --json` でサーバソケットへの到達性を追加確認する。同一ホストへの SSH セッションはソケットには到達できてしまうため、`HERDR_ENV=1` でない限り必ず GUI ブラウザ (`xdg-open` 等) へフォールバックする。なお GUI フォールバック時は `BROWSER` を unset してから `xdg-open` を呼ぶ (desktop 判定不能な環境で xdg-open の generic モードが `$BROWSER` を参照し、このラッパー自身へ戻る無限ループを防ぐため)
+3. **プラグイン導入済み判定**: `herdr` / `jq` / `bun` が揃っているか、`herdr plugin list --plugin official.browser --json` の結果から `plugin_root` を解決できるかを確認する。`plugin_root` はハードコードせず毎回 CLI から解決する。いずれか欠けていれば GUI へフォールバックする
+4. **pane への navigate**: プラグインの CLI (`bun run <plugin_root>/src/cli.ts views`) で既存 view (可視 pane に紐づくもの) の有無を確認する
    - 既存 view があれば `bun run <plugin_root>/src/cli.ts open <url>` を実行する(`ensureView()` が既存 view を自動選択して navigate する。`--view` フラグは `connect` 専用で `open` には無い)
    - 既存 view が無ければ `herdr plugin pane open --plugin official.browser --entrypoint browser --placement overlay --focus --env HERDR_BROWSER_INITIAL_URL=<url>` で新規 pane を overlay 配置(承認だけの一時利用に向く transient/popup 的配置)で開き、初期 URL を渡す
    - navigate 自体が失敗した場合も GUI ブラウザへフォールバックする
@@ -75,12 +76,14 @@ herdr の pane 内に実ブラウザ (Chromium) を描画し、Chrome DevTools P
 
 - **CDP はローカル限定**: CDP エンドポイントはそのブラウザビューへの完全な制御権を持つ。ループバック (127.0.0.1) に限定し、ネットワークに公開しないこと (プラグイン README にも明記されている運用上の要件)
 - **WezTerm 専用**: Alacritty は画像プロトコル (Kitty graphics) 非対応であり、設計方針として今後も非搭載の予定。フォールバック側のターミナルとして使う場合、browser pane はそもそも描画されない。herdr-browser は WezTerm 上でのみ使用する
-- **WSL は未検証**: Windows 上の WezTerm (WSL2 経由) での動作は帯域面も含めて未検証。native Arch Linux 環境での検証を先に行うこと
+- **WSL2 は検証済み・描画不可 (native Arch 専用)**: Windows 11 + WSL2 Arch + Windows 側 WezTerm で 2026-08-05〜07 に検証した結果、browser pane はツールバー (テキスト) のみ表示され、ページ本体 (画像) が描画されない。herdr / plugin / Chromium / 両側の kitty graphics 設定はすべて正常 (plugin daemon の `metrics` でもフレーム送信は正常) で、herdr をバイパスして外側 PTY に直接 kitty graphics エスケープを書いても描画されないことを確認済み。**根本原因は `wsl.exe` と Windows 側ターミナルの間の ConPTY が kitty graphics protocol の APC エスケープ (`ESC _G ... ESC \`) を通さないこと**であり、両側の設定をどう整えても越えられない (参考: [microsoft/terminal#12166](https://github.com/microsoft/terminal/issues/12166))。回避策も検証済み: wezterm-mux-server + unix domain + `proxy_command` は GUI 側 codec タイムアウトで断念、WSLg 上の Linux 版 WezTerm では描画成功まで確認したが常用導線として重く plugin の IME 未サポートも重なり実用は断念。結論として **WSL 機では herdr-browser を使わない**。この決定に合わせ、device_auth_browser ラッパーは WSL を検知すると Windows 側の既定ブラウザへフォールバックする ([挙動](#挙動) の WSL 判定)。詳細な切り分けログは [Issue #569](https://github.com/music-brain88/dotfiles/issues/569) を参照。なお WSL 機で kitty graphics 系の画像全般が出ない症状も同じ ConPTY が原因 (browser plugin 固有ではない)
 - **prompt injection のリスクは構造的に残る**: エージェントにブラウザを操作させる以上、Web 由来の prompt injection リスクはこのプラグイン固有の問題ではなく、claude-in-chrome 等の他のブラウザ自動化と同質のものとして残る
 
 ## 関連
 
 - [Issue #520](https://github.com/music-brain88/dotfiles/issues/520) - 導入の背景とセキュリティレビュー結果
 - [Issue #523](https://github.com/music-brain88/dotfiles/issues/523) - device-auth 承認フローの $BROWSER ラッパー
+- [Issue #569](https://github.com/music-brain88/dotfiles/issues/569) - WSL2 検証結果 (ConPTY により描画不可) の詳細
+- [Issue #574](https://github.com/music-brain88/dotfiles/issues/574) - WSL ガード追加 (承認 URL を Windows 側ブラウザへ)
 - [reference/nix-modules.md](./nix-modules.md) - Nixモジュール構成 (bun は dev-tools.nix)
 - [explanation/architecture.md](../explanation/architecture.md) - Nix + Symlink ハイブリッドの設計思想

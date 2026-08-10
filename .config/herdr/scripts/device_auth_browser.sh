@@ -28,6 +28,12 @@ fi
 
 # GUI ブラウザへフォールバックする / fall back to the desktop GUI browser
 fallback_gui() {
+  # desktop 判定不能な環境では xdg-open が generic モードで $BROWSER を参照し、
+  # このスクリプト自身へ戻る無限ループになるため、必ず unset してから呼ぶ
+  # In environments where xdg-open can't detect a desktop it falls back to
+  # generic mode, which consults $BROWSER — i.e. this very script. Unset it
+  # first so the fallback can never loop back here.
+  unset BROWSER
   if command -v xdg-open >/dev/null 2>&1; then
     exec xdg-open "$url"
   fi
@@ -37,6 +43,32 @@ fallback_gui() {
   echo "device_auth_browser: no GUI browser opener (xdg-open/open) found for $url" >&2
   exit 1
 }
+
+# WSL では Windows 側の既定ブラウザで開く / on WSL, open the Windows default browser
+fallback_windows() {
+  if command -v wslview >/dev/null 2>&1; then
+    exec wslview "$url"
+  fi
+  if command -v rundll32.exe >/dev/null 2>&1; then
+    exec rundll32.exe url.dll,FileProtocolHandler "$url"
+  fi
+  if command -v explorer.exe >/dev/null 2>&1; then
+    exec explorer.exe "$url"
+  fi
+  # Windows interop が無効な場合の最終手段 / last resort when interop is off
+  fallback_gui
+}
+
+# WSL 判定: WSL2 では ConPTY が kitty graphics の APC エスケープを剥ぐため、
+# herdr-browser は設定に関わらず描画できない (Issue #569 で確定)。herdr 環境
+# 判定より先に Windows 側ブラウザへ振り分ける (Issue #574)。
+# WSL detection: on WSL2 the ConPTY layer strips the kitty graphics APC
+# escapes, so herdr-browser can never render regardless of configuration
+# (confirmed in Issue #569). Route to the Windows default browser before any
+# herdr detection (Issue #574).
+if [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; then
+  fallback_windows
+fi
 
 # SSH セッション判定: ソケット到達性だけで herdr 内と誤判定しないためのガード。
 # 同一ホストに SSH で入った別セッションでも herdr のソケットには到達できてしまう
