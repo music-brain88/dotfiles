@@ -9,6 +9,7 @@
     talosctl # Talos Linux CLI (hexhive node OS / ノード管理)
     kubectl # Kubernetes CLI
     k9s # Kubernetes TUI
+    helm # Kubernetes package manager / パッケージ管理
     sops # Secrets encryption for git-committed files / コミット前の秘密暗号化
     age # Encryption backend for SOPS / SOPS の暗号化バックエンド
   ];

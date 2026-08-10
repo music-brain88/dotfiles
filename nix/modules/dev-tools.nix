@@ -42,9 +42,8 @@ in
     # Cloud tools
     awscli2 # AWS CLI
     google-cloud-sdk # Google Cloud SDK
-    # kubectl / k9s は nix/modules/k8s-tools.nix に集約
-    # kubectl / k9s moved to nix/modules/k8s-tools.nix (single owner)
-    helm # Kubernetes package manager
+    # kubectl / k9s / helm は nix/modules/k8s-tools.nix に集約
+    # kubectl / k9s / helm moved to nix/modules/k8s-tools.nix (single owner)
     # NOTE: terraform は unfree (BUSL) でバイナリキャッシュに乗らないため OpenTofu を使用（コマンド名は tofu）
     # terraform is unfree (BUSL) and never cached by Hydra; use OpenTofu instead (command: tofu)
     opentofu # Infrastructure as code (Terraform-compatible)
