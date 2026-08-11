@@ -68,7 +68,7 @@ gh pr list --state merged --limit 50 --json number,headRefName,title
 herdr pane list --workspace <workspace-id>
 ```
 
-`"agent": "claude"` が付いている pane が作業者エージェントの pane。そのログを読む:
+`"agent": "claude"` が付いている pane が作業者エージェントの pane。**複数ある場合(worker 引き継ぎ運用をした worktree)はすべて読む**。各 pane のログを読む:
 
 ```bash
 herdr pane read <agent-pane-id> --source recent-unwrapped --lines 500
@@ -76,6 +76,7 @@ herdr pane read <agent-pane-id> --source recent-unwrapped --lines 500
 
 **Constraints:**
 - **MUST**: 削除が承認されたら、`herdr worktree remove` 実行前に各対象 worktree の pane ログから摩擦・回避策を抽出する
+- **MUST**: `"agent": "claude"` の pane が複数ある場合(context 逼迫による worker 引き継ぎ運用の痕跡)は全 pane を読む。引き継ぎチェーンでは前任(引き継ぎ元)pane に罠の発見・原因究明・引き継ぎ判断など価値の高い知見が残りやすいため、前任側を省略しない
 - **MUST**: 抽出対象は作業指示テンプレートの「## 報告」内の「気づき」欄(指示外の回避策・環境の摩擦・想定外の挙動)、および permission ブロックやリトライなど、ログ上に残る摩擦の痕跡とする
 - **MUST**: workspace がすでに閉じていて pane が読めない場合はスキップし、その旨を報告に含める
 - **MUST**: 抽出した内容を worktree ごとに要約し、Issue 化する価値がありそうなものは候補としてユーザーに提示する
