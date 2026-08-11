@@ -99,6 +99,19 @@ mise タスクではないが、あわせてよく使うコマンド:
 
 ---
 
+## SOPS age Tasks
+
+hexhive の Secrets(SOPS + age)で使う鍵の管理。秘密鍵の正本は Bitwarden、ローカルの置き場は `~/.config/sops/age/keys.txt`(sops が自動参照するパス)。GPG タスクと同じ「Bitwarden 添付 + fetch-if-absent」方式。
+
+| Task | Description |
+|------|-------------|
+| `mise run age:keygen` | age 鍵ペアを新規生成(既存鍵があれば拒否)+ 公開鍵を表示 |
+| `mise run age:status` | ローカル鍵から公開鍵を表示(`.sops.yaml` 更新用) |
+| `mise run age:import` | 新端末で Bitwarden から鍵を復元(ローカルにあれば何もしない) |
+| `mise run age:bw:push` | 鍵を Bitwarden アイテム(既定: `sops-age-key`)の添付としてアップロード |
+
+---
+
 ## Usage Examples
 
 ```bash
