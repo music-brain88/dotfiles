@@ -252,6 +252,73 @@ echo "Expiry extended. Re-register public.asc on GitHub, then run 'mise run gpg:
 """
 
 # =============================================================================
+# SOPS age 鍵管理 / SOPS age key management (hexhive Secrets)
+# =============================================================================
+
+[tasks."age:keygen"]
+description = "Generate the SOPS age keypair at ~/.config/sops/age/keys.txt (refuses to overwrite)"
+run = """
+set -euo pipefail
+keyfile="$HOME/.config/sops/age/keys.txt"
+# 既存鍵の上書きは拒否 — ローテーションは意図的な手作業に限る
+# Never overwrite an existing key — rotation must be a deliberate manual act
+[ ! -f "$keyfile" ] || { echo "Key already exists at $keyfile — refusing to overwrite." >&2; exit 1; }
+umask 077
+mkdir -p "$(dirname "$keyfile")"
+age-keygen -o "$keyfile"
+echo "Public key (paste into .sops.yaml recipients):"
+age-keygen -y "$keyfile"
+echo "Next: create a Bitwarden secure note '${AGE_BW_ITEM:-sops-age-key}', then run 'mise run age:bw:push'."
+"""
+
+[tasks."age:status"]
+description = "Show the public key derived from the local age key (for .sops.yaml updates)"
+run = """
+set -euo pipefail
+keyfile="$HOME/.config/sops/age/keys.txt"
+[ -f "$keyfile" ] || { echo "No key at $keyfile — run 'mise run age:keygen' (new) or 'mise run age:import' (restore)." >&2; exit 1; }
+age-keygen -y "$keyfile"
+"""
+
+[tasks."age:import"]
+description = "Restore the age key from Bitwarden to ~/.config/sops/age/keys.txt if absent (item: $AGE_BW_ITEM or 'sops-age-key')"
+run = """
+set -euo pipefail
+keyfile="$HOME/.config/sops/age/keys.txt"
+item=${AGE_BW_ITEM:-sops-age-key}
+[ ! -f "$keyfile" ] || { echo "Key already present at $keyfile — nothing to do."; exit 0; }
+bw unlock --check > /dev/null 2>&1 || export BW_SESSION=$(bw unlock --raw)
+item_id=$(bw get item "$item" | jq -r .id) || { echo "Item '$item' not found — create a secure note named '$item' in Bitwarden first." >&2; exit 1; }
+umask 077
+mkdir -p "$(dirname "$keyfile")"
+bw get attachment "keys.txt" --itemid "$item_id" --output "$keyfile"
+chmod 600 "$keyfile"
+echo "Restored. Public key:"
+age-keygen -y "$keyfile"
+"""
+
+[tasks."age:bw:push"]
+description = "Upload ~/.config/sops/age/keys.txt to Bitwarden as an attachment (item: $AGE_BW_ITEM or 'sops-age-key')"
+run = """
+set -euo pipefail
+keyfile="$HOME/.config/sops/age/keys.txt"
+item=${AGE_BW_ITEM:-sops-age-key}
+[ -f "$keyfile" ] || { echo "No key at $keyfile — run 'mise run age:keygen' first." >&2; exit 1; }
+# ロック中ならこの場で解錠 (マスターパスワードを対話入力)。シェル側の export は不要
+# Self-unlock when the vault is locked — no shell-specific export needed
+bw unlock --check > /dev/null 2>&1 || export BW_SESSION=$(bw unlock --raw)
+item_id=$(bw get item "$item" | jq -r .id) || { echo "Item '$item' not found — create a secure note named '$item' in Bitwarden first." >&2; exit 1; }
+# 同名の既存添付は全て削除して置き換える (重複添付にも耐性を持たせる)
+# Replace all existing attachments of the same name — robust against duplicates
+for old in $(bw get item "$item" | jq -r '.attachments[]? | select(.fileName=="keys.txt") | .id'); do
+  bw delete attachment "$old" --itemid "$item_id"
+done
+bw create attachment --file "$keyfile" --itemid "$item_id" > /dev/null
+bw sync > /dev/null
+echo "age key attached to Bitwarden item '$item'."
+"""
+
+# =============================================================================
 # Hyprland プラグイン管理 / Hyprland plugin management
 # =============================================================================
 
