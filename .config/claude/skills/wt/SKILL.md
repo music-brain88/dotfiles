@@ -216,7 +216,7 @@ herdr agent prompt <agent-name> "<追加指示のテキスト>"
 - **MUST**: 実行前に対象の agent 名を必ず確認する(宛先を誤ると、無関係なエージェントに指示が届いてしまう。`agent prompt` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない)
 - **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は `agent prompt` を使わない(chat 入力欄への送信になるため、ハイライトされている選択肢を誤確定させる罠がある。`send-text` + Enter でこの誤確定による実害が実際に出ており(詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)、`agent prompt` も同じくメニュー表示中の pane に送信する以上、予防的に避ける)。メニューの選択肢確定自体は従来どおり `herdr pane send-keys <pane-id> Enter` で行う(pane-id は `herdr agent get <agent-name>` で都度引く。詳細: Troubleshooting「pane-id は非永続」参照)
 - **MUST**: `agent prompt` 送信後は `herdr agent get <agent-name>` で `working` へ遷移したことを確認する。コマンドは `agent_prompted` を正常に返すが、それだけでは submit の成否を判定できない(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)。遷移せずテキストが入力欄に残っている場合は、`herdr agent read` で pane の状態(メニュー非表示であること。上記 Constraint 参照)を確認したうえで `herdr pane send-keys <pane-id> Enter` で submit する(pane-id は `herdr agent get <agent-name>` で引く)
-- **MUST**: レビュー差し戻し等、委任後に追加の作業ラウンドを送る前に、`herdr agent get <agent-name>` で pane-id を引いたうえで `herdr pane read <pane-id> --source visible` を実行し、末尾行の pane 下部ステータスラインで context 使用率(💭 n%)を確認する。50% を超えている場合は追加ラウンドを送らず、(a) 司令塔が直接対応する、(b) 新 worker へ引き継ぐ(引き継ぎブリーフ = 元ブリーフ + ここまでの成果物参照(PR URL / コミット)+ 残作業のみ)、のいずれかを選ぶ。ユーザーより先に司令塔が検知すべきシグナルであり、閾値超過を検知したら対応方針とあわせてユーザーに報告する(詳細: Troubleshooting「レビュー差し戻しラウンドによる worker context の逼迫」参照)
+- **MUST**: レビュー差し戻し等、委任後に追加の作業ラウンドを送る前に、`herdr agent get <agent-name>` で pane-id を引いたうえで `herdr pane read <pane-id> --source visible` を実行し、末尾行の pane 下部ステータスラインで context 使用率(💭 n%)を確認する。50% を超えている場合は追加ラウンドを送らず、(a) 司令塔が直接対応する、(b) 新 worker へ引き継ぐ(引き継ぎブリーフ = 元ブリーフ + ここまでの成果物参照(PR URL / コミット)+ 残作業のみ。引き継ぎ指示・HANDOFF.md・後任ブリーフの具体手順は手順8「引き継ぎモード」参照)、のいずれかを選ぶ。ユーザーより先に司令塔が検知すべきシグナルであり、閾値超過を検知したら対応方針とあわせてユーザーに報告する(詳細: Troubleshooting「レビュー差し戻しラウンドによる worker context の逼迫」参照)
 - **MUST**: pane 幅が狭くステータスラインが `…` で切り詰められ 💭 の値が読めない場合、herdr CLI に幅非依存で context 使用率を取得できる経路は無い(実機調査済み。詳細: Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)。読めない場合は使用率を推測で埋めず、保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す
 - **MAY**: `--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すると、送信と応答待ちを1コマンドに畳められる(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)
 
@@ -318,6 +318,63 @@ gh api graphql -f query='
 - **MUST**: フィルターを通過した教訓を Issue 化する際、llm/context/outcomes.md(未整備の場合は Issue #395 を参照)の外部アウトカム①-③のどれに効くか(どれでもなければ『プロセス改善のみ』)を Issue 本文に1行で明記する
 - **MUST**: 実装は issue-first(まず Issue 化)→ 作業者へ委任 → PR 作成 → 人間レビュー・マージ、という既存ゲート(手順4)と同じフローを通す
 - **MUST NOT**: 司令塔・作業者が自分でマージしない。自己更新は「自己起案」であって「自己マージ」ではない(自分の行動規範を自分で書き換えるループは、誤った教訓の一般化が全後続エージェントに複利で効くため、人間ゲートを安全弁として維持する)
+
+### 8. 引き継ぎモード(worker 交代)
+
+手順5(1) の 50% Constraint で「(b) 新 worker へ引き継ぐ」を選んだ場合の実行手順。前任 worker への引き継ぎ指示、HANDOFF.md の様式、後任 worker のブリーフ、HANDOFF.md のライフサイクルを規定する(2026-08-02 の実戦運用を標準化。背景: #553)。
+
+#### 引き継ぎ指示(前任 worker へ)
+
+司令塔が `herdr agent prompt <agent-name>`(手順5(1)参照)で前任 worker へ送る指示は、以下の5点をこの順で含める:
+
+```
+以下の5点を守ってください:
+
+1. 新規着手禁止: これ以降は新しい作業項目に着手しない
+2. 区切りまで仕上げ: 進行中の変更をコンパイル/チェックが通る最小の区切りまで仕上げる
+3. 署名コミット: 計画のコミット分割方針に沿ってコミットする(粒度は粗くてよい)
+4. HANDOFF.md 書き出し: worktree ルートに以下の5点セットで作成する(コミットに含めない。様式は下記「HANDOFF.md の様式」参照)
+5. 停止: 報告して終了する(PR 作成はしない)
+```
+
+**Constraints:**
+- **MUST**: 5点を過不足なく、この順で含める
+- **MUST NOT**: 前任に PR 作成やレビュー対応を続けさせない(5番目の「停止」が前任の最終ステップ)
+
+#### HANDOFF.md の様式
+
+worktree ルートに以下の5点セットで書く:
+- (a) 完了した項目(計画の C 番号・コミット hash 対応)
+- (b) 未完了項目と残作業のファイル単位リスト
+- (c) 実装中に下した判断と計画からの差分
+- (d) ハマった点・回避策・次の作業者への注意
+- (e) 検証状態(何が通っていて何が未実行か)
+
+**Constraints:**
+- **MUST**: 5点とも省略しない((c)(d) は特に後任の手戻りを防ぐ)
+- **MUST**: HANDOFF.md はコミットに含めない(untracked のまま置く。理由は下記「HANDOFF.md のライフサイクル」参照)
+
+#### 後任ブリーフ(新 worker へ)
+
+後任 worker の起動プロンプトは手順4のテンプレートを踏襲しつつ、以下を追加/変更する:
+- 最初に読むものの順序を明示する: **HANDOFF.md → 承認済み実装計画 → 正典 docs** の順
+- 残作業(HANDOFF.md の (b))と司令塔補足を「## タスク」「## 背景」に反映する
+
+**Constraints:**
+- **MUST**: 前任の署名コミットを rebase/amend しない(区切りまで仕上げた署名コミットが引き継ぎの前提であり、履歴の書き換えはその前提を壊す)
+- **MUST**: 50% ルールを後任のブリーフにも最初から組み込む(引き継ぎは連鎖しうるため。手順5(1) の Constraint 参照)
+- **MUST**: 後任 agent 名は前任の名前(手順4の変換ルール参照)に数字サフィックスを付けた連番とする(例: `claude-wt-agent-start-options` → `claude-wt-agent-start-options-2`。手順3の司令塔自己命名の数字サフィックス運用と同じ考え方)
+- **MUST**: 連番付与後の名前が32文字を超える場合、意味が保たれる範囲で単語を間引いて32文字以内に短縮する(#539)。例: `claude-breaking-cleanup-cutover-2`(33文字)は拒否されうるため `claude-cutover-2`(16文字)に短縮する
+
+#### HANDOFF.md のライフサイクル
+
+1. **untracked のまま置く**: `/wtclean` の未コミット変更チェックが、引き継ぎ文書の残る worktree を誤って削除しない安全弁として偶然機能する(`/wtclean` 側の複数 worker 対応は #552 参照)
+2. **PR 作成前に削除する**
+3. **削除前に司令塔のスクラッチパッドへアーカイブする**: `cp` で司令塔自身のスクラッチパッドディレクトリ(手順4「pane の用意とエージェント起動」参照)へコピーしてから削除する。削除後は worktree 側に実体が残らないため、アーカイブと削除の順序を逆にしない
+
+**Constraints:**
+- **MUST**: アーカイブしてから削除する(逆順にすると供養素材が失われる)
+- **MUST NOT**: HANDOFF.md をコミットに含めない(上記「HANDOFF.md の様式」の Constraint と同じ理由)
 
 ## Examples
 
