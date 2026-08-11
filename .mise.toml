@@ -291,7 +291,7 @@ bw unlock --check > /dev/null 2>&1 || export BW_SESSION=$(bw unlock --raw)
 item_id=$(bw get item "$item" | jq -r .id) || { echo "Item '$item' not found — create a secure note named '$item' in Bitwarden first." >&2; exit 1; }
 umask 077
 mkdir -p "$(dirname "$keyfile")"
-bw get attachment keys.txt --itemid "$item_id" --output "$keyfile"
+bw get attachment "keys.txt" --itemid "$item_id" --output "$keyfile"
 chmod 600 "$keyfile"
 echo "Restored. Public key:"
 age-keygen -y "$keyfile"
@@ -308,11 +308,11 @@ item=${AGE_BW_ITEM:-sops-age-key}
 # Self-unlock when the vault is locked — no shell-specific export needed
 bw unlock --check > /dev/null 2>&1 || export BW_SESSION=$(bw unlock --raw)
 item_id=$(bw get item "$item" | jq -r .id) || { echo "Item '$item' not found — create a secure note named '$item' in Bitwarden first." >&2; exit 1; }
-# 同名の既存添付は置き換える / Replace an existing attachment of the same name
-old=$(bw get item "$item" | jq -r '.attachments[]? | select(.fileName=="keys.txt") | .id')
-if [ -n "$old" ]; then
+# 同名の既存添付は全て削除して置き換える (重複添付にも耐性を持たせる)
+# Replace all existing attachments of the same name — robust against duplicates
+for old in $(bw get item "$item" | jq -r '.attachments[]? | select(.fileName=="keys.txt") | .id'); do
   bw delete attachment "$old" --itemid "$item_id"
-fi
+done
 bw create attachment --file "$keyfile" --itemid "$item_id" > /dev/null
 bw sync > /dev/null
 echo "age key attached to Bitwarden item '$item'."
