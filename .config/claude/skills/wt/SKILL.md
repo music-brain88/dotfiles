@@ -177,7 +177,7 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 herdr agent prompt "commander-<repo名>" "【相談】<branch>: <選択肢A/B + 自分の推奨>" || true
 ```
 
-相談を送ったら、司令塔からの回答(pane に届く追加指示)を待つ。回答が届くまで、相談した論点については実装を進めない。
+相談を送ったら、司令塔からの回答(pane に届く追加指示)を待つ。回答が届くまで、相談した論点については実装を進めない。push 送信後、司令塔からの回答が長時間届かない場合、push 自体が司令塔 pane の入力欄に滞留して届いていない可能性がある(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)。
 
 - `commander-<repo名>` が見つからない等、push が失敗した場合はエラーで止まらない。返答を待ち続けると作業が止まってしまうため、その場で自分の推奨案を採用して実装を進め、判断の経緯を最終報告に書く(push はあくまで即時性のための冗長化で、必須経路ではない)
 
@@ -412,6 +412,12 @@ auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザ�
 当時の回避策(`herdr pane run <pane-id> ""` で空文字+real Enter を送り pending テキストを submit する)は herdr 0.7.5 では効かないケースが確認されている(2026-07-30、#520)。0.7.5 で新設された `herdr agent prompt <agent-name> "<text>"` は、入力欄に既存の pending テキストが残っていてもそれを新テキストで**置換する**ところまでは実機確認できているが、この罠自体を踏まない上位互換の解ではない — **置換はされても submit されないケース**が確認されている(2026-07-31、#528。並行 worktree 運用の同一セッション内で4回再現。宛先 worker の状態は done / idle の両方で発生。いずれも `herdr pane send-keys <pane-id> Enter` の追撃で submit され復旧した)。herdr 0.7.5 はこのケースでもコマンドが `agent_prompted` を正常に返すため、戻り値だけでは失敗を検知できない。手順5(1)の標準手順は `agent prompt` 送信後に `herdr agent get <agent-name>` で working 遷移を確認し、遷移していなければ `herdr agent read` でメニュー非表示を確認のうえ `herdr pane send-keys <pane-id> Enter` で追撃する防御的手順とセットで運用する(詳細はそちらを参照)。`--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すれば送信と応答待ちを1コマンドに畳められる。
 
 なお AskUserQuestion メニューの選択肢確定(ハイライト行の Enter)は、この submit 不全とは別の経路のため、従来どおり `pane send-keys <pane-id> Enter` で機能する。効かないのはあくまで chat 入力の submit。
+
+2026-08-07 の /wt 運用(#570 → PR #571)で、この submit 不全が **worker→司令塔方向でも発生する**ことを初観測した。worker が完了時に送った【報告】push(`herdr agent prompt "commander-<repo名>" "..."`)が司令塔 pane の chat 入力欄に置かれたまま submit されず滞留し、ユーザーが滞留テキストに気づいて手動 Enter で送達して初めて司令塔セッションに user message として届いた。これまでの再現(#528 の4回 + 2026-07-31 の実踏)はすべて司令塔→worker方向であり、双方向で起きることが今回初めて確認された(詳細: #572)。
+
+push の不達を前提に主チャネル(手順5(2)の `agent wait` + `agent read` によるプル型検知)で検知する既存設計は変更しない — 今回も司令塔はプル型で先に完了を検知・処理しており、push 不達による実害はなかった。
+
+ユーザー向け救済手順: 司令塔 pane の chat 入力欄に滞留テキスト(【相談】【報告】プレフィックス付き)を見つけたら、手動 Enter で送達できる。司令塔がターン処理中の場合、送達したテキストはキューに入り、ターン終了後に届く(正常系)。
 
 ### GPG 署名コミットは worker pane から pinentry を出せない
 worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
