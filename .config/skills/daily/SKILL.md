@@ -25,7 +25,7 @@ cowork 環境で運用している「クラウディア」ワークフロー(Obs
 
 - Vault: `/home/archie/Documents/Obsidian/Zettelkasten/`(ファイル直接読み書き。Obsidian MCP は使わない)
 - デイリーノート: `DailyNotes/YYYY-MM-DD.md`
-- テンプレート: `Template/Daily-v3.md`
+- テンプレート: `Template/Daily-v5.md`
 - GitHub ユーザー: `music-brain88`
 - 環境固有の値(統括カレンダー ID・レビュー対象 org 一覧・ClickUp 対象スペース一覧・Meeting Notes リンク除外リスト)は `~/.claude/local/daily.local.md`(git 管理外)から読み込む。ファイルが無ければユーザーに値を確認して作成する
 
@@ -42,7 +42,7 @@ cowork 環境で運用している「クラウディア」ワークフロー(Obs
 ### 2. 今日のノート確認
 
 - `DailyNotes/YYYY-MM-DD.md`(今日の日付)が既にあれば、既存の構造を維持したまま再構成する
-- なければ `Template/Daily-v3.md` を元に作成する
+- なければ `Template/Daily-v5.md` を元に作成する
 - Templater 変数(`{{date...}}`、`<% moment()... %>` 等)が未展開のまま残っていたら、実日付(YYYY-MM-DD)に置換する
 
 ### 3. GitHub レビューリクエスト取得
@@ -88,7 +88,13 @@ ClickUp MCP(`mcp__claude_ai_ClickUp__*`)が利用可能な環境では、`~/.cla
 1. `clickup_resolve_assignees` で `"me"` を数値ユーザー ID に解決する
 2. `clickup_filter_tasks` を `assignees` + `space_ids`(対象スペース)+ `include_closed: false` で呼ぶ
 3. done 系ステータス(`done` / `✅done` 等)は `include_closed: false` でも返ってくることがあるため除外する
-4. スペースごとに対応するセクション(対応関係は daily.local.md に記載)へ、リスト名でグルーピングして記入する
+4. 掲載基準「今週の作業面」で絞り込む。以下のいずれかに該当するタスクのみ記載する:
+   - ① Sprint リスト所属
+   - ② 期限が今週末まで(超過含む)
+   - ③ 進行中系ステータス(in progress / 🤖 / 🚧 / 開発中 等)
+   - どれにも該当しないタスク(期限なし・未着手・Sprint 外)は記載しない — バックログの正本は ClickUp、ノートは今週の作業面という役割分界
+5. 期限超過が 2 週間以上かつ未着手のタスクは、スペース別セクションではなく「要棚卸し ⚠️」セクションにまとめる(ClickUp 側の期限が形骸化しているシグナル。期限を引き直すか閉じるかの裁定待ちとして可視化する)
+6. スペースごとに対応するセクション(対応関係は daily.local.md に記載)へ、リスト名でグルーピングして記入する
    - タスク名は ClickUp タスク URL へのリンクにする
    - 期限超過は「期限 M/D 超過⚠️」、priority urgent は 🔥、進行中・レビュー中などのステータスも付記する
 
@@ -99,7 +105,7 @@ MCP が利用できない環境では従来どおり「cowork 側クラウディ
 以下のセクション構成を維持する:
 
 ```
-Tasks (Carry Over / ClickUp スペース別セクション(daily.local.md 参照) / GitHub Review Requests)
+Tasks (Carry Over / ClickUp スペース別セクション(daily.local.md 参照) / 要棚卸し / GitHub Review Requests)
 Schedule
 Meeting Notes
 Available Time
