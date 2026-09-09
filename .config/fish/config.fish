@@ -37,6 +37,11 @@ set -x PATH $HOME/.cargo/bin $PATH
 # set pulimi path
 set -x PATH $HOME/.pulumi/bin $PATH
 
+# set ~/.local/bin path (native installer 管理ツール: claude 等 / native-installer tools such as claude)
+# 以前は化石 mise の activate が副作用で入れていた。fish_add_path は冪等なので入れ子シェルでも重複しない (#593)
+# Formerly injected as a side effect of the fossil mise activate; fish_add_path is idempotent across nested shells (#593)
+fish_add_path --path $HOME/.local/bin
+
 
 # set exa alias
 if type -q test eza
