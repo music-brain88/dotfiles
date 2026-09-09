@@ -159,7 +159,7 @@ if type -q bat; alias cat 'bat'; end
 starship init fish | source
 
 # バージョン管理
-~/.local/bin/mise activate fish | source
+mise activate fish | source
 ```
 
 ---
