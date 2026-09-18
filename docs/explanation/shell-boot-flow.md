@@ -83,7 +83,7 @@ Fish で作業
 ┌─────────────────────────────────────────────────────────┐
 │  config.fish                                            │
 │  ├── ロケール設定 (LANG, LC_CTYPE)                       │
-│  ├── PATH 設定 (cargo, go, pyenv, etc.)                 │
+│  ├── PATH 設定 (~/.local/bin, cargo, go, etc.)          │
 │  ├── エイリアス設定 (vim, rm, ls, cat, ps)              │
 │  ├── プロンプト設定 (starship)                          │
 │  └── ツール有効化 (mise)                                │
@@ -149,6 +149,7 @@ alias rm 'rm -i'
 
 # PATH 設定
 set -x PATH $HOME/.cargo/bin $PATH
+fish_add_path --path $HOME/.local/bin   # claude 等 native installer 管理ツール
 set -x GOPATH $HOME/go
 
 # モダン CLI ツール
