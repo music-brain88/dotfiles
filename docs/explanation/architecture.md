@@ -258,7 +258,7 @@ home.file.".config/fish/config.fish".source = ../../.config/fish/config.fish;
 xdg.configFile."starship.toml".source = ../../.config/starship/starship.toml;
 ```
 
-**採用例**: Fish, Neovim, Hyprland, Alacritty, Tmux
+**採用例**: Fish, Neovim, Hyprland, WezTerm, herdr（Alacritty, Tmux は移行期間中のフォールバックとして併存）
 
 ### Strategy 2: programs.* with Native Config
 
