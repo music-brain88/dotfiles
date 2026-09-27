@@ -435,7 +435,7 @@ worktree で Neovim 設定(`.config/nvim/*.toml` 等)を変更するタスクで
 実例(dein 時代): 2026-07-18、#444(telescope.nvim 廃止)の検証で、変更後の headless 起動は dein 内部で `E897: List or Blob required`(`dein#source` 経由)、切り分けのため `git stash` で変更前に戻して再実行すると別種のエラー(`ddc.vim` の `hook_source` 失敗、`lspconfig` 非推奨警告)が出た。どちらも telescope/ddu とは無関係で、変更前後どちらでも「その時点のエラー」が出る状態だった(#453)。当時の原因は dein のプラグインキャッシュ・自動インストール状態の食い違いだが、dpp.vim へ移行した現在も「worktree の設定と実機のキャッシュ / state が食い違う」構造は変わらない。
 
 教訓: Neovim 設定を変更するタスクでは、headless 起動の「エラーなし=正しい」を当てにせず、以下を標準の検証手順とする:
-1. 静的検証: `grep` での参照漏れチェック、`git diff` での意図しない変更(特に PUA グリフ等の非ASCII文字を含む箇所)の不在確認、TOML 構文チェック(例: `python3 -c "import tomllib, sys; tomllib.load(open(sys.argv[1], 'rb'))" <file>`)
+1. 静的検証: `grep` での参照漏れチェック、`git diff` での意図しない変更(特に PUA グリフ等の非ASCII文字を含む箇所)の不在確認、TOML 構文チェック(例: `python3 -c "import tomllib, sys; tomllib.load(open(sys.argv[1], 'rb'))" .config/nvim/ddc_settings.toml`。パスは変更した TOML に置き換える。成功時は無出力で exit 0、構文エラー時は `TOMLDecodeError` で exit 1)
 2. ベースライン比較: 変更前の状態(一時 WIP コミットや `git worktree` の別チェックアウト等)で同じ headless コマンドを実行し、エラーの有無・種類を比較する。変更前後どちらでも同じ(無関係な)エラーが出るなら、そのエラーは環境由来と判断してよい
 3. 実際に起動して確かめる必要がある場合は、次項の XDG_* 5点セットでキャッシュ / state ごと隔離した環境で行う
 4. headless 検証が不安定な場合は無理に続行せず、静的検証で代替した旨を最終報告に明記する
