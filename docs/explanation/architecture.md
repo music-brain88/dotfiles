@@ -366,8 +366,11 @@ GitHub Actionsのディスク容量制限（約14GB）を回避するため、Ni
 
 ### Pipeline Stages
 
+図では省略しているが、3ジョブの前段に変更検知の `changes` ジョブがあり、docs 等のみの変更なら下流の3ジョブはまとめて skip される（依存グラフの詳細は [ci-cd-pipeline.md](../reference/ci-cd-pipeline.md#pipeline-stages)）。
+
 | Stage | Purpose |
 |-------|---------|
+| **changes** | 変更ファイルを判定し、下流ジョブの実行要否を決める |
 | **build-image** | Docker イメージをビルドしてGHCRにプッシュ |
 | **check** | `nix flake check --no-build`、フォーマット検証 |
 | **verify-docker** | Arch Linux コンテナ内でビルド＆アクティベーション |
