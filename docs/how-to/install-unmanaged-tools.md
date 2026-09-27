@@ -95,8 +95,9 @@ mise x node -- npm ls -g --depth=0          # 残骸の確認
 mise x node -- npm uninstall -g <package>
 
 # cargo install の化石(Nix へ移したツールが ~/.cargo/bin に残っているもの)
-ls ~/.cargo/bin/                             # Nix と同名のものが掃除候補
-rm ~/.cargo/bin/<tool>                       # Nix 側 (~/.nix-profile/bin) が引き継ぐ
+cargo install --list                         # crate 名と入っているバイナリの対応。Nix と同名のものが掃除候補
+cargo uninstall <crate>                      # 記録 (.crates.toml / .crates2.json) と同 crate の全バイナリを消す。Nix 側が引き継ぐ
+# crate 名はバイナリ名と違うことがある: fd → fd-find, rg → ripgrep, delta → git-delta, dust → du-dust, btm → bottom, cargo-install-update → cargo-update
 
 # curl installer の化石(mise 等、~/.local/bin に直接置かれたもの)
 ls -la ~/.local/bin/                         # Nix 管理外の実体を確認
