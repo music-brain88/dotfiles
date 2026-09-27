@@ -275,7 +275,7 @@ herdr agent wait "$AGENT_NAME" > "<司令塔自身のスクラッチパッドデ
 - **MUST**: 出力先は司令塔自身のスクラッチパッドディレクトリ(システムプロンプトに明記されるセッション固有の `/tmp/claude-<uid>/<cwd正規化>/<session-id>/scratchpad`)配下とする。`/tmp` 直下の固定パスは読み取り時に権限分類器の確認対象になりうるため使わない。2026-07-19(#446 の運用中)、司令塔が `/tmp/wait-idle-<agent-name>.json` を `cat` する Bash コマンドが権限確認プロンプト(`Yes, allow reading from tmp/ from this project`)で停止し、作業者の【相談】に長時間応答できなくなった(#462。作業者側の影響は #463)
 - **MUST**: `<agent-name>` は手順4でエージェントに付けたユニーク名。`herdr agent wait` / `herdr agent read` は pane-id ではなく agent 名を直接ターゲットにできるため、監視中に pane-id を引き直す必要がない
 - **MUST NOT**: 定期ポーリング(`herdr pane list` 等を一定間隔で呼び続けるループ)は禁止。コストが高いうえ、このプロトコルが解消したいアンチパターンそのもの
-- **MUST**: 特定のステータスだけを待ちたい場合は `--until <STATUS>` を明示する(繰り返し指定可、例: `--until blocked --until idle`)。`done` は herdr 0.7.5 以降 `--until` / デフォルトの両方で受理される(詳細: Troubleshooting「herdr agent wait の done 受理」参照)
+- **MUST**: 特定のステータスだけを待ちたい場合は `--until <STATUS>` を明示する(繰り返し指定可、例: `--until blocked --until idle`)。`done` は herdr 0.7.5 以降 `--until` / デフォルトの両方で受理される(詳細: Troubleshooting「herdr agent wait の done 受理(0.7.5)」参照)
 - **MUST**: 似た用途で `herdr wait agent-status <pane-id> --status <...|done|...>` というコマンドもあるが、こちらは pane-id が必須の UI 向けのコマンド。CLI 主導のこのプロトコルでは agent 名を直接使える `herdr agent wait <agent-name>` を使う
 - **MAY**: `--timeout`(ミリ秒)は省略可能で、省略すると無期限にブロックする。バックグラウンドで放置する分には問題ないが、安全弁として妥当な値を指定してもよい
 - **MUST**: タイムアウトした場合は同じ wait を仕掛け直す(これは定期ポーリングではなく、イベント待ちの再武装)
