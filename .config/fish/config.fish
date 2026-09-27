@@ -27,15 +27,21 @@ end
 alias vim 'nvim'
 alias rm 'rm -i'
 
+# PATH は fish_add_path --path で冪等に追加する。入れ子シェルでも重複せず、存在しない dir は無視される (#595)
+# --path を外すと universal 変数 fish_user_paths (リポジトリ外の fish_variables) に書き込むので必ず付ける
+# Add PATH entries idempotently with fish_add_path --path: no duplicates in nested shells, missing dirs are skipped (#595)
+# Always pass --path; without it fish writes to the universal fish_user_paths (fish_variables, outside the repo)
+
 # set pyenv path
 set -x PYENV_ROOT $HOME/.pyenv
-set -x PATH $PYENV_ROOT/bin $PATH
+fish_add_path --path $PYENV_ROOT/bin
 
-# set cargo path
-set -x PATH $HOME/.cargo/bin $PATH
+# set cargo path (cargo の PATH 宣言はここだけ。rust-tools.nix の home.sessionPath は #595 で削除)
+# The only cargo PATH declaration; home.sessionPath in rust-tools.nix was removed in #595
+fish_add_path --path $HOME/.cargo/bin
 
-# set pulimi path
-set -x PATH $HOME/.pulumi/bin $PATH
+# set pulumi path
+fish_add_path --path $HOME/.pulumi/bin
 
 # set ~/.local/bin path (native installer 管理ツール: claude 等 / native-installer tools such as claude)
 # 以前は化石 mise の activate が副作用で入れていた。fish_add_path は冪等なので入れ子シェルでも重複しない (#593)
@@ -71,12 +77,12 @@ set __fish_git_prompt_color_branch yellow
 
 # set GO PATH
 set -x GOPATH $HOME/go
-set -x PATH $PATH $GOPATH/bin
+fish_add_path --path --append $GOPATH/bin
 
 export TERM=xterm-256color
 
-# set skim setting
-set -x PATH ~/.skim/bin $PATH
+# set skim setting (skim 本体は Nix 管理: nix/modules/rust-tools.nix。旧 git clone 版の ~/.skim/bin は #595 で PATH から削除)
+# skim itself is Nix-managed (nix/modules/rust-tools.nix); the legacy git-clone ~/.skim/bin was dropped from PATH in #595
 set -x SKIM_DEFAULT_COMMAND 'rg --files --hidden --follow --glob "!.git/*"'
 
 

@@ -147,10 +147,13 @@ set -x LC_CTYPE en_US.UTF-8
 alias vim 'nvim'
 alias rm 'rm -i'
 
-# PATH 設定
-set -x PATH $HOME/.cargo/bin $PATH
-fish_add_path --path $HOME/.local/bin   # claude 等 native installer 管理ツール
+# PATH 設定（fish_add_path --path で冪等に追加。理由は下記）
+fish_add_path --path $PYENV_ROOT/bin
+fish_add_path --path $HOME/.cargo/bin
+fish_add_path --path $HOME/.pulumi/bin
+fish_add_path --path $HOME/.local/bin     # claude 等 native installer 管理ツール
 set -x GOPATH $HOME/go
+fish_add_path --path --append $GOPATH/bin # go だけ末尾（低優先度）
 
 # モダン CLI ツール
 if type -q eza; alias ls 'eza --icons'; end
@@ -162,6 +165,19 @@ starship init fish | source
 # バージョン管理
 mise activate fish | source
 ```
+
+### PATH は `fish_add_path --path` で書く
+
+fish は入れ子で起動されるたびに（herdr の pane → 作業者 → Claude Code など）config.fish を頭から実行し直します。そのため PATH の追加は、何度実行しても結果が変わらない（冪等な）書き方にしています。
+
+| 書き方 | 入れ子で起動したときの PATH |
+|--------|------------------------------|
+| `set -x PATH X $PATH` | 実行のたびに先頭へ足すので、段数ぶん同じ dir が積み上がる（3 段で `~/.cargo/bin` が 6 回、31 要素） |
+| `fish_add_path --path X` | 既にあれば何もしない。段数によらず一定（1 段でも 3 段でも 15 要素、重複なし） |
+
+- **`--path` は必須**: 付けないと universal 変数 `fish_user_paths`（`~/.config/fish/fish_variables`、リポジトリ外の状態）に書き込まれる
+- **存在しない dir は無視される**: `fish_add_path` は `test -d` で弾くので、マシンによって入っていないツール（pulumi 等）の行を残しても PATH は汚れない。裏返すと、シェル起動後に初めて作られた dir（初回 `go install` 前の `~/go/bin` など）は新しいシェルを開くまで PATH に入らない
+- **Home Manager の `home.sessionPath` は使わない**: `hm-session-vars.sh` に出力される `export PATH="…:$PATH"` は無条件の prepend で、config.fish 冒頭が入れ子のたびに source し直す（`set -e __HM_SESS_VARS_SOURCED`）ため冪等にできない。cargo はかつて `nix/modules/rust-tools.nix` の `home.sessionPath` と config.fish の二重宣言だったが、config.fish に一本化した（#595）
 
 ---
 
