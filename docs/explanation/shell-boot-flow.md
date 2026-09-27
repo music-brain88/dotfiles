@@ -71,9 +71,11 @@ Fish で作業
                          ▼
 ┌─────────────────────────────────────────────────────────┐
 │  .bashrc                                                │
-│  ├── 非インタラクティブなら終了                           │
-│  ├── ssh-agent 起動（未起動の場合）                       │
+│  ├── 非インタラクティブなら終了                         │
+│  ├── Nix 環境の source (nix.sh)                         │
+│  ├── ssh-agent 起動（未起動の場合）                     │
 │  ├── GPG_TTY 設定                                       │
+│  ├── gpg-agent の tty 更新（SSH接続時）                 │
 │  └── exec fish                                          │
 └────────────────────────┬────────────────────────────────┘
                          │
@@ -123,16 +125,25 @@ bash (PID 100) → fish (PID 100)  # 同じ PID、bash は消える
 # 1. 非インタラクティブなら何もしない
 [ -z "$PS1" ] && return
 
-# 2. 環境変数の設定（exec で引き継がれる）
+# 2. Nix 環境の source（Nix 管理下の fish を起動するために必須）
+if [ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
+  . "$HOME/.nix-profile/etc/profile.d/nix.sh"
+fi
+
+# 3. 環境変数の設定（exec で引き継がれる）
 if [ "$(uname -s)" = 'Linux' ]; then
   # ssh-agent（既に起動中なら何もしない）
   if [ -z "$SSH_AUTH_SOCK" ]; then
     eval "$(ssh-agent -s)"
   fi
   export GPG_TTY=$(tty)
+  # SSH 接続時は gpg-agent が保持する tty を更新する
+  if [ -n "$SSH_CONNECTION" ]; then
+    gpg-connect-agent updatestartuptty /bye >/dev/null 2>&1
+  fi
 fi
 
-# 3. Fish を起動
+# 4. Fish を起動
 exec fish
 ```
 
