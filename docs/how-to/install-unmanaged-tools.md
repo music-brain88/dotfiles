@@ -68,7 +68,15 @@ paru -S <package>
 
 ### 「化石」の検出と掃除
 
-このリポジトリの歴史上、ツールの管理層が移行した後に**旧方式のインストールが端末に残り、PATH の先勝ちで新方式を隠す**事故が実際に起きています(claude の npm 版残存、mise の curl installer 版残存)。
+ツールの管理層を移した後も、旧方式のインストール(化石)は端末に残ります。このリポジトリでは、その化石が PATH の先勝ちで新方式を隠す事故が実際に起きました(claude の npm 版残存、#584 の mise の curl installer 版残存)。
+
+`~/.local/bin` は PATH の末尾に置いているので(#596)、**`~/.local/bin` の化石が Nix 版を隠す事故は構造的に起きません**。原則は「Nix 版が常に勝つ」で、`~/.local/bin` は Nix に無いものだけを拾うフォールバック層です(優先順位の設計は [shell-boot-flow.md](../explanation/shell-boot-flow.md#path-の優先順位) を参照)。
+
+それでも化石は掃除対象です。
+
+- **静かに動かないだけになる**: Nix 版を隠さない代わりに、化石はエラーも出さずに残り続けます。気づくきっかけが無いので、見に行かないと溜まる一方です
+- **Nix から外すと復活する**: `home.packages` からツールを外した瞬間、フォールバック層に残った化石が解決先になり、古いバージョンが黙って動き出します
+- **末尾に回っていない場所の化石は今も隠せる**: npm グローバルの実体は mise の installs 配下に入り、hook-env がプロンプトのたびに PATH 先頭へ入れます(claude の npm 版残存はこの型)。`~/.cargo/bin` も Nix より前にあるので、`cargo install` した実体は同名の Nix 版を隠します
 
 症状と確認方法:
 
@@ -76,7 +84,8 @@ paru -S <package>
 |------|-------------|--------|
 | claude の更新が来ない・バージョンがずれる | `readlink -f "$(which claude)"` | `~/.local/share/claude/versions/` 配下 |
 | mise のバージョンが古い | `which mise` | `~/.nix-profile/bin/mise` |
-| Nix で更新したのに反映されない | `which <tool>` | `/nix/store/...`(`~/.nix-profile/bin` 経由) |
+| Nix で更新したのに反映されない | `type -a <tool>` | 先頭が `/nix/store/...`(`~/.nix-profile/bin` 経由)。先頭が mise installs 配下や `~/.cargo/bin` なら化石 |
+| `~/.local/bin` に置いたのに効かない | `type -a <tool>` | 先頭が `~/.local/bin/<tool>`。前に同名があれば、そちらが勝っている(末尾に置いているため) |
 
 掃除手順:
 
@@ -85,9 +94,13 @@ paru -S <package>
 mise x node -- npm ls -g --depth=0          # 残骸の確認
 mise x node -- npm uninstall -g <package>
 
+# cargo install の化石(Nix へ移したツールが ~/.cargo/bin に残っているもの)
+ls ~/.cargo/bin/                             # Nix と同名のものが掃除候補
+rm ~/.cargo/bin/<tool>                       # Nix 側 (~/.nix-profile/bin) が引き継ぐ
+
 # curl installer の化石(mise 等、~/.local/bin に直接置かれたもの)
 ls -la ~/.local/bin/                         # Nix 管理外の実体を確認
-rm ~/.local/bin/<tool>                       # Nix 側 (~/.nix-profile/bin) が引き継ぐ
+rm ~/.local/bin/<tool>                       # Nix に同名があれば解決先は既に Nix 版。無ければコマンドごと消える
 ```
 
 > **⚠️ 注意:** `~/.local/bin` には Home Manager が意図的に置くファイル(`home.file` で定義、symlink になっている)もあります。`ls -la` で **symlink でない実体ファイル**だけが掃除候補です。消す前に `readlink` で確認してください。

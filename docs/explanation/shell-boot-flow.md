@@ -163,9 +163,9 @@ set -x PYENV_ROOT $HOME/.pyenv
 fish_add_path --path $PYENV_ROOT/bin
 fish_add_path --path $HOME/.cargo/bin
 fish_add_path --path $HOME/.pulumi/bin
-fish_add_path --path $HOME/.local/bin     # claude 等 native installer 管理ツール
+fish_add_path --path --append $HOME/.local/bin # claude 等 native installer 管理ツール（末尾。理由は下記）
 set -x GOPATH $HOME/go
-fish_add_path --path --append $GOPATH/bin # go だけ末尾（低優先度）
+fish_add_path --path --append $GOPATH/bin      # go も末尾（低優先度）
 
 # モダン CLI ツール
 if type -q eza; alias ls 'eza --icons'; end
@@ -190,6 +190,28 @@ fish は入れ子で起動されるたびに（herdr の pane → 作業者 → 
 - **`--path` は必須**: 付けないと universal 変数 `fish_user_paths`（`~/.config/fish/fish_variables`、リポジトリ外の状態）に書き込まれる
 - **存在しない dir は無視される**: `fish_add_path` は `test -d` で弾くので、マシンによって入っていないツール（pulumi 等）の行を残しても PATH は汚れない。裏返すと、シェル起動後に初めて作られた dir（初回 `go install` 前の `~/go/bin` など）は新しいシェルを開くまで PATH に入らない
 - **Home Manager の `home.sessionPath` は使わない**: `hm-session-vars.sh` に出力される `export PATH="…:$PATH"` は無条件の prepend で、config.fish 冒頭が入れ子のたびに source し直す（`set -e __HM_SESS_VARS_SOURCED`）ため冪等にできない。cargo はかつて `nix/modules/rust-tools.nix` の `home.sessionPath` と config.fish の二重宣言だったが、config.fish に一本化した（#595）
+
+### PATH の優先順位
+
+原則は「**Nix 版が常に勝つ**」です（#596）。PATH は次の 3 層の順に並び、同名のコマンドがあれば上の層が勝ちます。
+
+| 順 | 層 | PATH 上の位置 | 入れるもの | 役割 |
+|----|----|---------------|------------|------|
+| 1 | mise installs（`~/.local/share/mise/installs/*`） | 先頭 | mise の hook-env（プロンプトのたび） | `.mise.toml` で指定したバージョンを、そのディレクトリの中でだけ最優先で効かせる |
+| 2 | Nix（`~/.nix-profile/bin`） | 中間（`/usr/bin` より前） | ログイン時の Nix プロファイルスクリプト | Home Manager で宣言したものは「あれば必ず勝つ」 |
+| 3 | `~/.local/bin` | 末尾（`/usr/bin` より後ろ） | config.fish の `fish_add_path --path --append` | Nix に無いもの（claude 等の native installer、手動ビルド）だけを拾うフォールバック |
+
+**なぜ `~/.local/bin` を末尾に置くのか。** `~/.local/bin` は curl installer や native installer が勝手に書き込む場所で、ツールの管理層を Nix へ移した後も旧版が残りやすい。先頭側にあった頃は、残った旧版（化石）が PATH の先勝ちで Nix 版を黙って隠す事故が実際に起きた（#584 の mise、それ以前の claude の npm 版）。末尾に置けば、Nix にあるものを `~/.local/bin` が隠す経路そのものが無くなる。
+
+代償として、次の 2 つは成立しません。どちらも意図した制約です。
+
+- **native installer で Nix 版を上書きできない**: Nix 版が壊れたときの一時退避として `~/.local/bin` に別版を置いても、Nix 版が勝つ。上書きしたいときは Nix 側を直すか、フルパスで呼ぶ
+- **OS パッケージとも同名にできない**: `/usr/bin` 等より後ろなので、pacman で入っているものと同名のファイルを `~/.local/bin` に置いても効かない。効かないと思ったら `type -a <名前>` で前にある同名を確認する
+
+**なぜ mise installs は先頭のままでよいのか。** mise は `.mise.toml` を置いたディレクトリでだけ効く、明示的な上書きの仕組みです。化石のように「知らないうちに残る」ものではなく、指定した本人の意図が勝つべき層なので Nix より前に置く。hook-env がプロンプトのたびに先頭へ入れ直すため、config.fish の行の順序にも左右されません。
+
+- **`~/.cargo/bin` と `~/.pyenv/bin` はこの原則の外側にある**: どちらも Nix より前に並ぶので、`cargo install` した実体が Nix 版と同名なら cargo 版が勝つ。bat / fd / rg / starship など、Nix へ移す前に `cargo install` していたツールが `~/.cargo/bin` に残っていると、#584 と同じ形で Nix 版を隠す。`type -a <名前>` で先頭が `~/.cargo/bin` になっていないか確認する
+- **`--append` は既にある dir を動かさない**: `fish_add_path` は PATH に既にある dir には何もしないので、古い PATH（`~/.local/bin` が先頭側）を受け継いだシェルでは位置が変わらない。config.fish を変えた後は、既存の fish の中からではなく新しいターミナルから fish を起動し直す
 
 ---
 
