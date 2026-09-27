@@ -2,7 +2,7 @@
 
 > **Diátaxis:** 🔧 How-to
 
-Fish/Tmux/Hyprland にキーバインドを追加・変更する方法です。既存のキーバインド一覧は [reference/keybindings.md](../reference/keybindings.md) を参照してください。
+Fish/herdr/Tmux/Hyprland にキーバインドを追加・変更する方法です。既存のキーバインド一覧は [reference/keybindings.md](../reference/keybindings.md) を参照してください。
 
 ---
 
@@ -18,10 +18,47 @@ function fish_user_key_bindings
 end
 ```
 
-## Adding Tmux Keybindings
+## Adding herdr Keybindings
+
+herdr のキーバインドは `.config/herdr/config.toml` の `[keys]` テーブルで宣言します。現在の割当と 4 層ナビゲーションの全体像は [reference/keybindings.md の herdr 節](../reference/keybindings.md#-herdr) を参照してください。
+
+```toml
+# .config/herdr/config.toml
+[keys]
+prefix = "ctrl+g"                             # prefix キー (herdr のデフォルトは ctrl+b)
+split_vertical = ["prefix+v", "prefix+|"]     # 配列で複数キーを割り当て
+new_workspace = "prefix+shift+c"              # 修飾キーは + でつなぐ
+switch_workspace = "prefix+shift+1..9"        # 1..9 で番号付き (indexed) 割当
+
+# 例: close_pane (デフォルト prefix+x) を残したまま prefix+ctrl+x も割り当てる
+# close_pane = ["prefix+x", "prefix+ctrl+x"]
+```
+
+- **キー名はアクション名**: 左辺は `split_vertical` / `next_tab` / `reload_config` などの herdr のアクション名で、右辺がキー。キーは `prefix+<key>` の形で書き、修飾キーは `shift` / `ctrl` / `alt` を `+` でつなぐ(herdr のデフォルト設定では `-` キーを `minus` と表記している。例: `split_horizontal = "prefix+minus"`)。書式の誤りは次の `herdr config check` で検出できる
+- **書いたアクションだけデフォルトを上書きする**: `[keys]` に書かなかったアクションは herdr のデフォルトのまま効く。このリポジトリでデフォルトのまま使っているもの(`focus_pane_*` = `prefix+h/j/k/l`、`copy_mode` = `prefix+[`、`reload_config` = `prefix+shift+r` など)は、config.toml 冒頭 1〜17 行目のコメントに一覧がある。デフォルトのキーを残したまま別キーを足したいときは、`split_vertical` のようにデフォルトのキーも配列に含める
+- **旧 tmux との対応**: 各行の末尾コメントに対応する tmux の設定を併記している。新しく足す行も同じ流儀で書く
+
+config.toml は Nix(`nix/modules/herdr.nix`)が `~/.config/herdr/config.toml` へ配布しているため、`~/.config` 側ではなくリポジトリ側を編集して反映します。
 
 ```bash
-# .tmux.conf
+# 1. リポジトリ側の .config/herdr/config.toml を編集したら反映
+mise run nix:switch
+
+# 2. 配布された config.toml を検証
+herdr config check
+
+# 3. 起動中の herdr に読み込ませる (prefix + shift + r でも同じ)
+herdr server reload-config
+```
+
+反映後は `prefix + ?` で全キーバインド一覧を表示して確認できます。
+
+## Adding Tmux Keybindings
+
+> **Note**: Tmux は herdr への移行中で非推奨です。新しいキーバインドは原則 herdr 側に追加してください。
+
+```bash
+# .config/tmux/tmux.conf (Nix が ~/.tmux.conf へ配布)
 # prefix + x で custom command を実行
 bind x run-shell "your-command"
 ```
@@ -46,4 +83,5 @@ submap = reset
 ## 🔗 Related Documentation
 
 - [reference/keybindings.md](../reference/keybindings.md) - 既存のキーバインド一覧
+- [reference/keybindings.md の herdr 節](../reference/keybindings.md#-herdr) - herdr の現在の割当と 4 層ナビゲーション
 - [reference/directory-structure.md](../reference/directory-structure.md) - ディレクトリ構造
