@@ -3,6 +3,13 @@
 # Reset flag to ensure latest session variables are always loaded after nix:switch
 set -e __HM_SESS_VARS_SOURCED
 bass source ~/.nix-profile/etc/profile.d/hm-session-vars.sh
+# bass は空文字で export された変数を「未定義」と誤判定し、universal の fish_user_paths='' を global に写す。
+# fish のハンドラがその空要素を PATH 先頭に足し、PATH の空要素は '.' に正規化されるので、カレントが PATH に入る (#610)
+# set -eg だけでは消えない: ハンドラは前回足した "" を PATH から探すが、PATH 側には '.' で入っていて一致しない
+# bass treats empty exported vars as undefined and copies the universal fish_user_paths='' into global scope.
+# fish's handler prepends that empty element to PATH, which fish stores as '.', putting cwd on PATH (#610)
+# set -eg alone is not enough: the handler looks for "" in PATH, but it is stored as '.', so strip '.' explicitly
+set -eg fish_user_paths; set -gx PATH (string match -v -- . $PATH)
 
 # Locale settings
 set -x LANG en_US.UTF-8
