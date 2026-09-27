@@ -186,6 +186,7 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 - ライブセッションでの検証時、起動・生成が確認できない場合は検証を中止して報告する(推測で続行しない)
 - ライブセッションでの検証時、ユーザーの既存ウィンドウ・既存プロセスは操作しない(読み取りのみ可)
 - GPG 署名で詰まった場合、`gpgconf --kill gpg-agent` 等で gpg-agent を殺さない(キャッシュ破壊で他作業者を巻き込む)。署名の失敗は「## 相談」の手順で司令塔へエスカレーションする
+- CI 待ちは `gh pr checks <PR番号> --watch` を run_in_background で仕掛ける(`sleep N && gh pr checks` はハーネスに blocked されうる)。**push 直後は GitHub 側の check 登録に数秒〜十数秒のラグがあり、`--watch` が「no checks reported」で即座に失敗することがある**。その場合は失敗扱いにせず 15〜20 秒後に同じコマンドを再実行する(`gh pr checks` の exit code 8 は「pending あり」で失敗ではない)
 
 ## 相談
 実装の方向を左右する判断で確信が持てないときは、最終報告まで抱え込まず、その場で司令塔へ相談を push する。判断に迷う点のうち、実装の方向を左右しない小さなものは上記「## 制約」の通り最終報告に書けばよい。
@@ -499,3 +500,6 @@ herdr が使えない環境(worktree だけで完結させたい等)では、作
 
 ### 非ASCII・不可視文字(PUA グリフ等)をファイルに書く場合
 Nerd Font の PUA グリフ等をツール呼び出しで直接タイプすると、バイト列が消失して空文字列になったり、意図せず `\uXXXX` テキストに化けたりする(不可視文字はエディタ・diff・レビューUIのどこでも見えず、目視でのミス検出ができない構造的な罠 — #363、PR #366)。該当する書き込みは以下の手順で行う: JSON ファイルへは、コードポイントが BMP 内(U+FFFF 以下)なら `\uXXXX` エスケープをリテラル ASCII 文字列として書いてよいが、U+10000 以上(サロゲートペアが必要。Nerd Fonts 由来の記号で頻出、例: `U+F0A1E`)では `\uXXXX` 単体では表現できず手順が破綻するため、`python3 -c "import json; print(json.dumps('<文字>', ensure_ascii=True))"` 等でサロゲートペアのエスケープを機械生成して貼る。JSON 以外のファイルは Python の `chr()` でコードポイントから機械的に文字列を組み立ててファイル I/O で書き込む。書き込み後は hex dump(`xxd` 等)で機械的に検証する(目視確認は禁止)。コードポイントの正典は `ryanoasis/nerd-fonts` リポジトリの `glyphnames.json`。
+
+### push 直後の `gh pr checks --watch` が即失敗する
+2026-09-23、GVA-NyaN の並行 worktree 運用(PR #179 / #180)で、force-push・push の直後に仕掛けた `gh pr checks <n> --watch` が「no checks reported」で exit 1 になり、CI 監視が空振りした(worker 2 体で同時に発生)。GitHub 側の check 登録に数秒〜十数秒のラグがあるため。対処は「15〜20 秒待ってから再実行」で、失敗扱いにしない。`sleep N && gh pr checks` に逃げるとハーネスに blocked されうるので、待ちは run_in_background の watch の再武装で行う。
