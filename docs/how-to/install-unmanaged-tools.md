@@ -88,6 +88,8 @@ paru -S <package>
 | `~/.local/bin` に置いたのに効かない | `type -a <tool>` | 先頭が `~/.local/bin/<tool>`。前に同名があれば、そちらが勝っている(末尾に置いているため) |
 | `fishPlugins` で入れたプラグイン(bass 等、`nix/modules/shell.nix`)の挙動が Nix 版と違う | fish で `readlink -f (functions --details <関数名>)` | `/nix/store/…/share/fish/vendor_functions.d/` 配下。`~/.config/fish/functions/` の実体ファイルのままなら fisher 時代の化石(同じディレクトリでも `home.file` で置いたリポジトリ管理の関数は `/nix/store/` に解決されるので正常) |
 
+> **⚠️ 掃除前に: `exec fish` が要る(#584 / #611):** `starship init fish` / `mise activate fish` は生成時に `which` で解決したバイナリの絶対パスを `fish_prompt` 等の関数本体に焼き込みます。掃除で実体を消すと、掃除前から起動している fish はプロンプト描画のたびに `fish: Unknown command: <旧パス>/starship` のようなエラーを吐きます(#611 で `cargo uninstall starship` 直後に発生、#584 の mise `__mise_env_eval` でも同型)。対処は各シェルで `exec fish`(または新しいターミナルを開く)。新しく起動した fish は Nix 版のパスを焼き込むので最初から正常です。
+
 掃除手順:
 
 ```bash
