@@ -304,13 +304,13 @@ home.packages = with pkgs; [
 **使用場面**: ツールが動的にファイルを読み書きするため、Nixのシンボリックリンク（読み取り専用）では管理できない場合
 
 ```nix
-# home.nix
-home.activation.seedCopilotConfig = config.lib.dag.entryAfter [ "writeBoundary" ] ''
-  target="$HOME/.config/.copilot/config.json"
+# パターンの一般形(<tool> / <file> は置き換える)
+home.activation.seedToolConfig = config.lib.dag.entryAfter [ "writeBoundary" ] ''
+  target="$HOME/.<tool>/<file>"
   if [ ! -f "$target" ] || [ -L "$target" ]; then
     mkdir -p "$(dirname "$target")"
     rm -f "$target"
-    cp ${./.config/copilot/config.json} "$target"
+    cp ${./.config/<tool>/<file>} "$target"
     chmod 644 "$target"
   fi
 '';
@@ -323,7 +323,9 @@ home.activation.seedCopilotConfig = config.lib.dag.entryAfter [ "writeBoundary" 
 
 **リセット**: `rm <target>` して `nix:switch` すれば dotfiles の内容で再シードされる
 
-**採用例**: GitHub Copilot CLI (`config.json`) — CLIがtrusted foldersやモデル設定を書き込む
+**注意（沈黙ドリフト）**: 既存環境では毎回スキップされるため、dotfiles 側の値は初回以降どこにも届かない。ツール側が設定ファイルのスキーマや置き場所を変えても symlink のように壊れて気づくことがなく、dotfiles に古い値が黙って残る。初期値を持つ意味が薄い（ツール内のコマンドで変える値しかない）なら、シードせず Nix 管理外に置く方がよい
+
+**採用例**: 現在なし。かつて GitHub Copilot CLI の `~/.copilot/config.json` のシードに使っていたが、CLI 1.0.7x 以降このファイルは認証トークン・trusted folders 専用の自動管理ファイルになり、ユーザー設定は `~/.copilot/settings.json` に移ったため化石化していた。両ファイルとも Nix 管理外（CLI 任せ）とし、シードは撤去した（Issue #597）
 
 ---
 
