@@ -531,3 +531,11 @@ Nerd Font の PUA グリフ等をツール呼び出しで直接タイプする�
 
 ### push 直後の `gh pr checks --watch` が即失敗する
 2026-09-23、GVA-NyaN の並行 worktree 運用(PR #179 / #180)で、force-push・push の直後に仕掛けた `gh pr checks <n> --watch` が「no checks reported」で exit 1 になり、CI 監視が空振りした(worker 2 体で同時に発生)。GitHub 側の check 登録に数秒〜十数秒のラグがあるため。対処は「15〜20 秒待ってから再実行」で、失敗扱いにしない。`sleep N && gh pr checks` に逃げるとハーネスに blocked されうるので、待ちは run_in_background の watch の再武装で行う。
+
+### dynamic workflow のオプトインキーワードが作業指示経由で誤発火する
+Claude Code は、ユーザープロンプト中に `ultra` と `code` を連結した1語のキーワードを見つけると、multi-agent orchestration(dynamic workflow)へのオプトインとして扱う(Claude Code 2.1.160 で旧キーワードから改名)。作業指示プロンプト経由で worker に渡った文字列も「ユーザープロンプト」として発火するため、worker が意図しない「Run a dynamic workflow?」ダイアログで `blocked` になる。2026-07-24、claude:effort のこのキーワード対応(#487 / PR #488)を委任した際に実発生し、worker は司令塔の介入指示で workflow を辞退して逐次実装に切り替えた(成果物への影響なし、#489)。司令塔は代理承認できない(手順4)ため、発火のたびに人間へのエスカレーションが必要になる。
+
+教訓:
+- 作業指示プロンプトにこのキーワードを連結形のまま書かない。「`ultra` と `code` を連結したキーワード」のように分割して書くか、「dynamic workflow のオプトインキーワード(#489 参照)」のように間接表記する。キーワード自体を扱うタスクでも同様で、コミットメッセージ・PR タイトル・PR 本文にも連結形を書かないよう作業指示に明記する
+- この SOP 自体もスキル起動時にセッションへ読み込まれるため、SKILL.md に連結形を書くと /wt を使うたびに誤発火しうる。この節も含め、SOP への追記では連結形を使わない
+- 発火した場合の標準対処: `herdr agent read` でダイアログ表示を確認し、人間の判断で辞退(No)する場合は `herdr pane send-keys <pane-id> 3` でダイアログを辞退してから、逐次実装で進める旨の補足指示を送る(送信手順は手順5(1) の標準手順に従う)
