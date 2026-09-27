@@ -10,7 +10,7 @@
 
 ## 出典
 
-onedarkpro.nvim の `lua/onedarkpro/themes/onedark.lua`（[GitHub](https://github.com/olimorris/onedarkpro.nvim/blob/main/lua/onedarkpro/themes/onedark.lua)）が定義する base palette と、同梱の WezTerm extra テンプレート（`lua/onedarkpro/extra/wezterm.lua` + `lua/onedarkpro/extra/init.lua` の `add_bright_colors`）が生成する ANSI 16色・bright 色を、ローカルの dein プラグインキャッシュ（`~/.cache/dein/repos/github.com/olimorris/onedarkpro.nvim/`）から直接確認しました。
+onedarkpro.nvim の `lua/onedarkpro/themes/onedark.lua`（[GitHub](https://github.com/olimorris/onedarkpro.nvim/blob/main/lua/onedarkpro/themes/onedark.lua)）が定義する base palette と、同梱の WezTerm extra テンプレート（`lua/onedarkpro/extra/wezterm.lua` + `lua/onedarkpro/extra/init.lua` の `add_bright_colors`）が生成する ANSI 16色・bright 色を、当時（2026-07、dein→dpp 移行前）のローカルの dein プラグインキャッシュ（`~/.cache/dein/repos/github.com/olimorris/onedarkpro.nvim/`）から直接確認しました。dpp 移行後の現在、同じソースは `~/.cache/dpp/repos/github.com/olimorris/onedarkpro.nvim/` にあります。
 
 ## Base Palette
 

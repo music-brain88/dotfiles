@@ -17,18 +17,19 @@
 
 ## 📄 TOML File Structure
 
-### dein.toml - Core Plugins
+### dpp.toml - Core Plugins
 
 起動時に読み込まれるコアプラグイン。
 
 | Plugin | Description |
 |--------|-------------|
-| `denops.vim` | Deno runtime for Vim/Neovim plugins |
 | `pum.vim` | Popup menu library |
 | `lexima.vim` | Auto-close brackets/quotes |
 | `winresizer` | Window resize helper |
 | `neoterm` | Terminal integration |
 | `nvim-colorizer.lua` | Color code highlighter |
+
+`denops.vim`(Deno runtime for Vim/Neovim plugins)は TOML では宣言しない。dpp.vim 本体・dpp 拡張と同じく Nix 管理で(`nix/modules/neovim.nix`)、`init.lua` の bootstrap が `$NVIM_DENOPS_VIM` の store パスを直接 runtimepath に追加する。`dpp-ext-installer` のクローン対象にしないための扱い(`dpp.toml` 冒頭コメント参照)。
 
 ### ddc_settings.toml - Completion
 
@@ -56,7 +57,7 @@ ddu.vimベースのファイラー＆検索システム。
 
 ### lsp_settings.toml - Language Server
 
-`vim.lsp.config()` / `vim.lsp.enable()` (Neovim 0.11+ ネイティブAPI) ベース。nvim-lspconfigはサーバー定義データ(`lsp/*.lua`)の提供元としてdeinプラグインのまま維持し、`require('lspconfig')...setup{}`のフレームワーク層は使わない。LSPサーバー本体はすべて`nix/modules/neovim.nix`のextraPackagesから供給される(mason.nvim/mason-lspconfig.nvimは廃止)。
+`vim.lsp.config()` / `vim.lsp.enable()` (Neovim 0.11+ ネイティブAPI) ベース。nvim-lspconfigはサーバー定義データ(`lsp/*.lua`)の提供元としてdppで管理するプラグイン(`lsp_settings.toml`)のまま維持し、`require('lspconfig')...setup{}`のフレームワーク層は使わない。LSPサーバー本体はすべて`nix/modules/neovim.nix`のextraPackagesから供給される(mason.nvim/mason-lspconfig.nvimは廃止)。
 
 対応言語サーバー:
 

@@ -8,7 +8,7 @@ All tasks are defined in `.mise.toml`. Run `mise tasks` to see available command
 
 ## Architecture Overview
 
-**Hybrid approach**: Nix manages packages/versions (reproducibility), symlinks manage native config files per tool (flexibility) — configs are never converted to Nix expressions. Neovim uses dein.vim with modular TOML files loaded from `init.lua` (one TOML per concern: `dein.toml`, `ddc_settings.toml`, `lsp_settings.toml`, etc. — see `docs/reference/neovim-config.md`). CI/CD is a hybrid Docker + Nix pipeline (`build-image` → `check` → `verify-docker`) to work around GitHub Actions' disk limits.
+**Hybrid approach**: Nix manages packages/versions (reproducibility), symlinks manage native config files per tool (flexibility) — configs are never converted to Nix expressions. Neovim uses dpp.vim with modular TOML files (one TOML per concern: `dpp.toml`, `dpp_lazy.toml`, `ddc_settings.toml`, `lsp_settings.toml`, etc.) whose load list and lazy grouping live in `dpp/config.ts`; dpp.vim and denops.vim themselves come from the Nix store and `init.lua` only bootstraps them — see `docs/reference/neovim-config.md`. CI/CD is a hybrid Docker + Nix pipeline (`build-image` → `check` → `verify-docker`) to work around GitHub Actions' disk limits.
 
 Full design rationale: [docs/explanation/architecture.md](docs/explanation/architecture.md). CI/CD details: [docs/reference/ci-cd-pipeline.md](docs/reference/ci-cd-pipeline.md), evolution/lessons learned: [docs/explanation/cicd-evolution.md](docs/explanation/cicd-evolution.md).
 

@@ -103,9 +103,24 @@ home-manager switch --flake /path/to/dotfiles#archie
 
 ## 5. Install Neovim Plugins
 
+Neovim のプラグインは**初回起動時に自動でインストール**されます(プラグインマネージャは dpp.vim)。インストール用のコマンドを打つ必要はなく、Neovim を起動するだけです:
+
 ```bash
-nvim --headless +"call dein#install()" +qall
+nvim
 ```
+
+初回起動では次の順で進みます:
+
+1. `init.lua` が dpp の state(`~/.cache/dpp` 配下の `startup.vim` / `state.vim`)を生成する
+2. プラグインが1つも取得されていないことを検知し、`:DppInstall` 相当の処理を自動で開始する(通知が出ます。数分かかることがあります)
+3. `dpp: initial plugin install finished. Restart Neovim to load them.` と通知されたら、Neovim を再起動する(手順1の直後に出る `dpp#make_state() done. Restart Neovim to load plugins.` の時点ではまだインストール中なので、こちらの通知を待ちます)
+
+> **Note:** 起動時に `dpp.vim: NVIM_DPP_*/NVIM_DENOPS_VIM environment variables are not set.` と表示された場合は、手順4で追加された環境変数がまだシェルに読み込まれていません。再ログイン(または新しいシェルを開く)してから Neovim を起動し直してください。
+
+- 自動インストールが途中で止まった・プラグインを入れ直したいときは、Neovim 内で `:DppInstall` を実行します
+- TOML を変更した後の反映は通常自動で行われます。Neovim を開かずに明示的に反映したいときは `mise run nvim:state` を実行します
+
+仕組みの詳細は [neovim-config.md の Plugin Management (dpp)](../reference/neovim-config.md#-plugin-management-dpp) を参照してください。
 
 ## 6. Install Claude Code (Optional)
 
