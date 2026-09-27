@@ -63,7 +63,7 @@ Neovim設定:
 
 開発ツール:
 - Container tools (Docker, lazydocker)
-- Cloud tools (AWS CLI, kubectl, k9s)
+- Cloud tools (AWS CLI, Google Cloud SDK, OpenTofu, Ansible) — kubectl/k9s/helmはk8s-tools.nixに集約(下記参照)
 - Database clients
 - Language runtimes
 - System monitoring tools
