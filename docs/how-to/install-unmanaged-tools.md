@@ -86,6 +86,7 @@ paru -S <package>
 | mise のバージョンが古い | `which mise` | `~/.nix-profile/bin/mise` |
 | Nix で更新したのに反映されない | `type -a <tool>` | 先頭が `/nix/store/...`(`~/.nix-profile/bin` 経由)。先頭が mise installs 配下や `~/.cargo/bin` なら化石 |
 | `~/.local/bin` に置いたのに効かない | `type -a <tool>` | 先頭が `~/.local/bin/<tool>`。前に同名があれば、そちらが勝っている(末尾に置いているため) |
+| `fishPlugins` で入れたプラグイン(bass 等、`nix/modules/shell.nix`)の挙動が Nix 版と違う | fish で `readlink -f (functions --details <関数名>)` | `/nix/store/…/share/fish/vendor_functions.d/` 配下。`~/.config/fish/functions/` の実体ファイルのままなら fisher 時代の化石(同じディレクトリでも `home.file` で置いたリポジトリ管理の関数は `/nix/store/` に解決されるので正常) |
 
 掃除手順:
 
