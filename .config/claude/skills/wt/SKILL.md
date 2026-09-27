@@ -90,14 +90,17 @@ worker はコミット時に GPG 署名で詰まりやすい(worker pane は tty
 
 ```bash
 KEYID=$(git config user.signingkey)
+[ -n "$KEYID" ] || { echo "git config user.signingkey is not set" >&2; exit 1; }
 KEYGRIP=$(gpg --list-secret-keys --with-keygrip "$KEYID" 2>/dev/null \
   | awk '/^ssb/ && /\[S\]/ {found=1; next} found && /Keygrip/ {gsub(/ /,"",$0); sub(/Keygrip=/,""); print; exit}')
+[ -n "$KEYGRIP" ] || { echo "No [S] subkey keygrip found for $KEYID — cannot identify the signing key" >&2; exit 1; }
 gpg-connect-agent 'keyinfo --list' /bye | grep "$KEYGRIP" | awk '{print $7}'  # 1 = cached
 ```
 
 **Constraints:**
 - **MUST**: 署名鍵の keygrip は次の手順で特定する: `git config user.signingkey` で鍵IDを取得し、`gpg --list-secret-keys --with-keygrip` の出力から同じ鍵に属する `[S]` フラグ付きサブキー(ssb)行の直後にある `Keygrip` を読む(`user.signingkey` は primary 鍵の ID を指すが、実際の署名には `[S]` サブキーの keygrip が使われるため。実機確認済み)
 - **MUST**: 上記 keygrip で `gpg-connect-agent 'keyinfo --list' /bye` の出力(`S KEYINFO <keygrip> D - - <cached> P - - -` 形式)をフィルタし、7列目が `1` かどうかでキャッシュの有無を確認する(実機確認済み)
+- **MUST**: `KEYID`(`user.signingkey` 未設定)または `KEYGRIP`([S] サブキーが無い鍵構成)が空なら、agent に問い合わせる前に失敗させ「署名鍵を特定できない」と報告する(上記ワンライナーの `[ -n ... ] ||` ガード。`.mise.toml` の `gpg:*` タスクと同じ流儀)。空文字で `grep "$KEYGRIP"` すると全 KEYINFO 行にマッチし、無関係な鍵の cached フラグを署名鍵のものと誤読しうるため(PR #625 のレビュー指摘)
 - **SHOULD**: 冷えている(7列目が `1` でない)場合、ユーザーに1回署名(`echo test | gpg --clearsign -o /dev/null`)によるキャッシュ温めを依頼する
 - **MAY**: 温めは委任と並行に進めてよいが、worker がコミットに到達する前に温まっているのが望ましい
 
@@ -482,7 +485,7 @@ awk '/^ssb/{s=1} s && /Keygrip/{print $3; exit}'
 awk '/^ssb/ && /\[S\]/ {found=1; next} found && /Keygrip/ {gsub(/ /,"",$0); sub(/Keygrip=/,""); print; exit}'
 ```
 
-OK 例は 2026-08-31 に WSL2 + ed25519 primary [SC] / cv25519 ssb [E] / ed25519 ssb [S] 構成で、[S] サブキーの keygrip を正しく選択し cached=`1` を返すことを確認済み(2026-09-28 に Arch Linux の同構成でも再確認)。awk を都度手書きせず、手順4のワンライナーをそのまま使う。
+OK 例は 2026-08-31 に WSL2 + ed25519 primary [SC] / cv25519 ssb [E] / ed25519 ssb [S] 構成で、[S] サブキーの keygrip を正しく選択し cached=`1` を返すことを確認済み(2026-09-28 に Arch Linux の同構成でも再確認)。awk を都度手書きせず、手順4のワンライナーをそのまま使う。なお OK 例の awk も、`user.signingkey` 未設定や [S] サブキーの無い鍵構成では空文字を返す。空のまま `grep` に渡すと全 KEYINFO 行にマッチしてしまうため、手順4のワンライナーの空チェック(`[ -n "$KEYGRIP" ] ||` ガード)とセットで使う。
 
 ### pane-id は非永続
 pane-id はセッション中に compact されうる非永続 ID(詳細は `.config/claude/skills/herdr/SKILL.md` 参照)。
