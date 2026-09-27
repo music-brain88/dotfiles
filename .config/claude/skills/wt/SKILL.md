@@ -89,7 +89,10 @@ worktree 作成直後に以下を行う:
 worker はコミット時に GPG 署名で詰まりやすい(worker pane は tty を持たず pinentry を表示できない構造的制約。詳細: Troubleshooting「GPG 署名コミットは worker pane から pinentry を出せない」参照)。委任前にキャッシュの有無を確認し、冷えていれば温めておく。
 
 ```bash
-gpg-connect-agent 'keyinfo --list' /bye
+KEYID=$(git config user.signingkey)
+KEYGRIP=$(gpg --list-secret-keys --with-keygrip "$KEYID" 2>/dev/null \
+  | awk '/^ssb/ && /\[S\]/ {found=1; next} found && /Keygrip/ {gsub(/ /,"",$0); sub(/Keygrip=/,""); print; exit}')
+gpg-connect-agent 'keyinfo --list' /bye | grep "$KEYGRIP" | awk '{print $7}'  # 1 = cached
 ```
 
 **Constraints:**
@@ -456,6 +459,19 @@ push の不達を前提に主チャネル(手順5(2)の `agent wait` + `agent re
 worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
 
 この詰まりは委任前の事前チェックで予防できる。詳細は手順4「GPG パスフレーズキャッシュの事前チェック」参照。
+
+### keygrip 特定の awk が [E] サブキーを拾ってキャッシュを誤判定する
+2026-08-31、GVA-NyaN の /wt 運用で、司令塔が GPG パスフレーズキャッシュの事前チェック(手順4)を実装した際、keygrip 特定の awk が「最初の ssb 行」の Keygrip を拾う形になっていた(#583)。鍵構成が `ssb [E]`(暗号化)→ `ssb [S]`(署名)の順だったため [E] サブキーの keygrip でキャッシュを照会してしまい、実際には温まっていた署名キャッシュを「冷えている(`-`)」と誤判定して、ユーザーに不要なキャッシュ温めを依頼した。SOP の散文(「[S] フラグ付き ssb 行の直後の Keygrip を読む」)は正しく、司令塔が都度書いた awk が仕様を満たしていなかった。[E] が先に並ぶのは gpg の既定出力順で、ssb が複数ある鍵構成では誰でも踏みうる。
+
+```bash
+# NG: 最初の ssb の keygrip を拾う([S] 判定がない)
+awk '/^ssb/{s=1} s && /Keygrip/{print $3; exit}'
+
+# OK: [S] フラグ付き ssb の直後の keygrip を拾う(手順4のワンライナー)
+awk '/^ssb/ && /\[S\]/ {found=1; next} found && /Keygrip/ {gsub(/ /,"",$0); sub(/Keygrip=/,""); print; exit}'
+```
+
+OK 例は 2026-08-31 に WSL2 + ed25519 primary [SC] / cv25519 ssb [E] / ed25519 ssb [S] 構成で、[S] サブキーの keygrip を正しく選択し cached=`1` を返すことを確認済み(2026-09-28 に Arch Linux の同構成でも再確認)。awk を都度手書きせず、手順4のワンライナーをそのまま使う。
 
 ### pane-id は非永続
 pane-id はセッション中に compact されうる非永続 ID(詳細は `.config/claude/skills/herdr/SKILL.md` 参照)。
