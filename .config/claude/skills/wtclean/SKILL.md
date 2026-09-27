@@ -33,10 +33,10 @@ gh pr list --state merged --limit 50 --json number,headRefName,title
 
 ### 3. worktree との突き合わせ
 
-`herdr worktree list` と `git worktree list` の結果を突き合わせて、マージ済みブランチに対応する worktree を特定する。
+`herdr worktree list --cwd <repo-root>` と `git worktree list` の結果を突き合わせて、マージ済みブランチに対応する worktree を特定する。
 
 **Constraints:**
-- **MUST**: `herdr worktree list` と `git worktree list` の結果を突き合わせて、マージ済みブランチに対応する worktree を特定する
+- **MUST**: `herdr worktree list --cwd <repo-root>` と `git worktree list` の結果を突き合わせて、マージ済みブランチに対応する worktree を特定する(`--cwd` を省略するとフォーカス中 workspace のリポジトリが返り、複数リポジトリ並行時に別リポジトリの一覧と突き合わせてしまう — 2026-07-12 copilot-quorum セッションで実機確認)
 - **MUST**: マージ済みブランチに対応する worktree が1つもなければ「掃除対象なし」と報告して終了する
 
 ### 4. 各対象の安全チェック
@@ -62,7 +62,7 @@ gh pr list --state merged --limit 50 --json number,headRefName,title
 
 削除が承認されたら、実際に `herdr worktree remove` を実行する**前**に、各対象 worktree の pane ログから摩擦・回避策を抽出する。対話プロトコル(`/wt` 手順5、#332)の4本柱のうち「供養」にあたる工程で、worktree を消す前に知見を回収する。
 
-対象 worktree の pane を特定する(`herdr worktree list` で得た `open_workspace_id` を使う):
+対象 worktree の pane を特定する(`herdr worktree list --cwd <repo-root>` で得た `open_workspace_id` を使う):
 
 ```bash
 herdr pane list --workspace <workspace-id>
