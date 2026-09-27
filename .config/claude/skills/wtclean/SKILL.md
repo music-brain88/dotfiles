@@ -47,6 +47,7 @@ gh pr list --state merged --limit 50 --json number,headRefName,title
 - **MUST**: 未コミット変更がないこと(worktree 内で `git status --short` が空であること)を確認する
 - **MUST**: エージェントが稼働中でないこと(`herdr agent list` で、その workspace のエージェントが `working` / `blocked` 状態でないこと)を確認する
 - **MUST**: open PR が紐づいていないこと(`gh pr list --state open --head <branch>` が空であること)を確認する
+- **SHOULD**: 同一リポジトリに他の司令塔 pane(`commander-<repo名>*` の別名義)が存在するか `herdr agent list` で確認し、存在する場合は「並行 /wtclean のレースがありうる」旨を dry-run の提示に含める
 - **MUST**: 1つでも引っかかったらその worktree はスキップし、理由付きで報告リストに回す(削除はしない)
 
 ### 5. 削除対象の提示と確認
@@ -103,6 +104,8 @@ git worktree prune
 
 **Constraints:**
 - **MUST**: 承認された各対象について `herdr worktree remove --workspace <workspace-id>` と `git branch -d <branch>` を実行する
+- **MUST**: 各対象の削除直前に存在を再検証する(worktree パスの存在・ブランチの存在)。消失していた場合は「他セッションが掃除済み」としてスキップし、結果報告にその旨を含める(エラーとして扱わない)
+- **MUST**: `git worktree remove` / `git branch -d` の「対象なし」系エラー(`not a working tree` / `branch not found`)は、並行掃除の痕跡として握りつぶさず報告に記録する
 - **MUST**: 最後にまとめて `git worktree prune` を実行する
 - **MUST**: `git branch -d` を使う(merged 確認済みのため)
 - **MUST NOT**: `-D` は使わない
@@ -156,3 +159,10 @@ grep -lE "#<PR番号>([^0-9]|$)|pull/<PR番号>([^0-9]|$)" /home/archie/Document
 
 ### git branch -d の not yet merged to HEAD 警告
 squash マージ運用ではマージされたブランチのコミットが main の履歴に直接は含まれないため、ローカル main が最新であってもこの警告は出る(ローカル main の遅延が原因とは限らない)。手順2で origin(の同名ブランチ)へのマージは確認できているので、`git branch -d` が upstream 追跡ブランチへのマージ済みと判定すれば、警告付きで削除は成功する。この場合は警告を無視してよい。`-d` が実際に拒否された(削除されなかった)場合のみ、ローカル main を更新してから再実行する(それでも `-D` にはエスカレートしない)。更新方法: main をチェックアウト中のリポジトリでは `git fetch origin main:main` は拒否されるため、`git fetch origin` してから `git merge --ff-only origin/main`(または `git pull --ff-only`)で更新する。それでも拒否される場合は削除を中止してユーザーに報告する。
+
+### 並行 /wtclean のレース(複数司令塔)
+同一リポジトリで複数の司令塔セッションが /wtclean を並行実行すると、dry-run で提示した
+対象が実行時には他セッションにより削除済みになりうる(2026-07-18 実例: dry-run 時点で
+worktree ディレクトリのみ消失した幽霊エントリを観測、実行時に branch not found)。
+削除直前の再検証(手順7)で「掃除済みスキップ」として扱う。供養(手順6)も同様に、
+pane ログが他セッションの掃除で消失している場合はスキップして報告する。
