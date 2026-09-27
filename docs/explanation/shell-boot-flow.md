@@ -210,7 +210,7 @@ fish は入れ子で起動されるたびに（herdr の pane → 作業者 → 
 
 **なぜ mise installs は先頭のままでよいのか。** mise は `.mise.toml` を置いたディレクトリでだけ効く、明示的な上書きの仕組みです。化石のように「知らないうちに残る」ものではなく、指定した本人の意図が勝つべき層なので Nix より前に置く。hook-env がプロンプトのたびに先頭へ入れ直すため、config.fish の行の順序にも左右されません。
 
-- **`~/.cargo/bin` と `~/.pyenv/bin` はこの原則の外側にある**: どちらも Nix より前に並ぶので、`cargo install` した実体が Nix 版と同名なら cargo 版が勝つ。bat / fd / rg / starship など、Nix へ移す前に `cargo install` していたツールが `~/.cargo/bin` に残っていると、#584 と同じ形で Nix 版を隠す。`type -a <名前>` で先頭が `~/.cargo/bin` になっていないか確認する
+- **`~/.cargo/bin` と `~/.pyenv/bin` は今回の原則の適用外**: どちらも Nix より前に並ぶので、`cargo install` した実体が Nix 版と同名なら cargo 版が勝つ。実際に、Nix へ移す前に `cargo install` していた bat / fd / rg / starship などが `~/.cargo/bin` に残っていて、現状は #584 と同じ形で Nix 版を隠している。`~/.cargo/bin` の扱いは #611 で別途決める
 - **`--append` は既にある dir を動かさない**: `fish_add_path` は PATH に既にある dir には何もしないので、古い PATH（`~/.local/bin` が先頭側）を受け継いだシェルでは位置が変わらない。config.fish を変えた後は、既存の fish の中からではなく新しいターミナルから fish を起動し直す
 
 ---
