@@ -113,7 +113,7 @@ cat > <司令塔のスクラッチパッドディレクトリ>/task-<branch-name
 <作業指示プロンプト（複数行可）>
 PROMPT
 
-herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --pane <new-pane-id> -- --model <model> --effort <effort> --permission-mode auto "<司令塔のスクラッチパッドディレクトリ>/task-<branch-name>.md を読み、その内容全体をあなたへの作業指示として忠実に実行してください。"
+herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --pane <new-pane-id> -- --model <model> --effort <effort> --permission-mode auto "<司令塔のスクラッチパッドディレクトリ>/task-<branch-name>.md をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。"
 ```
 
 **Constraints:**
@@ -123,7 +123,8 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 - **MUST**: pane split 直後に `herdr agent start` を投げない。split 直後は pane 内のシェルがまだ使える状態になっておらず、`agent_pane_busy`(`agent target pane <pane-id> is not an available shell`)で拒否されうる。`herdr pane process-info --pane <new-pane-id>` の `result.process_info.foreground_processes[].name` で前面プロセスがシェルになったことを確認してから起動し、確認できなければ数秒待って再試行する(詳細: Troubleshooting「pane split 直後の agent start が agent_pane_busy で拒否される」参照)
 - **MUST NOT**: `herdr agent start` に `--workspace` / `--cwd` / `--split` / `--focus` を渡さない。herdr 0.7.5 で廃止され `unknown option` エラーになる。pane はあらかじめ `pane split` で用意し、`agent start` には `--pane <pane split で得た pane-id>` を渡す
 - **MUST**: `--kind claude` が実行ファイルの正典を与えるため、`--` 以降には実行ファイル名(`claude`)を含めず、引数のみを渡す
-- **MUST**: 作業指示プロンプトは `AGENT_ARG` に直接 inline しない。複数行 heredoc をそのまま渡すと `invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(詳細: Troubleshooting「長文プロンプトの inline 渡しが拒否される」参照)。作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書き、起動プロンプトは「<パス> を読み、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする
+- **MUST**: 作業指示プロンプトは `AGENT_ARG` に直接 inline しない。複数行 heredoc をそのまま渡すと `invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(詳細: Troubleshooting「長文プロンプトの inline 渡しが拒否される」参照)。作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書き、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする
+- **MUST**: 起動プロンプトには「自分で読む(サブエージェント委任禁止)」を明記する(上記の文言に含まれている「あなた自身が読み(サブエージェントに委任しない)」を削らない)。「読み、実行してください」だけだと作業者本人が読むか委任するかが曖昧になり、fork サブエージェントへの委任という遠回りな解釈を許して初手で止まりうる(詳細: Troubleshooting「起動プロンプトのファイル読みを fork サブエージェントに委任して初手で止まる」参照)
 - **MUST**: エージェント名はセッション全体でユニーク制約があるため、固定名 `claude` ではなくブランチ名由来の名前にする。変換ルール: ブランチ名から prefix(`fix/` 等)を除き、`_` と `/` を `-` に置換して `claude-` を前置する(例: `fix/wt_agent_start_options` → `claude-wt-agent-start-options`)
 - **MUST**: 作業者モデル(`--model <model>`)は下記「作業者モデルの選択基準」で決め、既定は `claude-opus-5-5`(司令塔=メインセッションが計画とレビュー、作業者が実装を担う分業は変わらない)。ユーザーが入力内で別モデルを指定した場合はそれに従う
 - **MUST**: `--permission-mode auto` で起動する。定型操作は自動承認され、判断が必要な操作だけが blocked として表面化する
@@ -421,10 +422,13 @@ mise trust は絶対パス単位で管理されるため、新規 worktree は�
 auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザーの明示許可がない」として拒否されることがある。その場合は AskUserQuestion 等でユーザーに auto mode 起動の許可を明示的に確認してから再実行する。
 
 ### 長文プロンプトの inline 渡しが拒否される
-`herdr agent start` の `--` 以降(`AGENT_ARG`)に複数行 heredoc の作業指示プロンプトをそのまま渡すと、`invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(2026-07-30、#520 で実機確認)。回避策: 作業指示を司令塔自身のスクラッチパッドディレクトリにファイルとして書き、起動プロンプトは「<パス> を読み、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする(手順4参照)。allowlist テンプレート(手順3「worktree の準備」参照)は「司令塔がタスク指示を置くスクラッチパッドの読み取り」を既に許可しており、この方式と整合している。
+`herdr agent start` の `--` 以降(`AGENT_ARG`)に複数行 heredoc の作業指示プロンプトをそのまま渡すと、`invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(2026-07-30、#520 で実機確認)。回避策: 作業指示を司令塔自身のスクラッチパッドディレクトリにファイルとして書き、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする(手順4参照)。allowlist テンプレート(手順3「worktree の準備」参照)は「司令塔がタスク指示を置くスクラッチパッドの読み取り」を既に許可しており、この方式と整合している。
 
 ### pane split 直後の agent start が agent_pane_busy で拒否される
 2026-09-27 の並行運用で、司令塔が `herdr pane split` の直後に同じコマンド列で `herdr agent start` を投げたところ、`agent_pane_busy`(`agent target pane w4V:p2 is not an available shell`)で拒否された(#614)。pane split 直後は pane 内のシェルがまだ起動しておらず、前面プロセスがシェルとして使える状態になるまでラグがあるため、直後の `agent start` はタイミング依存で失敗しうる。同日 2 回発生し(#596・#611 の worker 起動時)、2 回目は 5 秒待ってから同じコマンドを再実行して成功した。`agent_pane_busy` を受けたら失敗扱いにせず、数秒後に同じコマンドを再実行する(2 回目で通る)。予防策として、起動前に `herdr pane process-info --pane <pane-id>` で前面プロセスがシェルになったことを確認する(手順4「pane の用意とエージェント起動」参照)。
+
+### 起動プロンプトのファイル読みを fork サブエージェントに委任して初手で止まる
+2026-09-27 の 7 体並行運用で、作業者 1 体(Sonnet 5 / effort high)が当時の起動プロンプト「<パス> を読み、その内容全体をあなたへの作業指示として忠実に実行してください。」を受けて、ファイルを自分で読まず Agent ツール(`subagent_type: fork`)に読ませ、そのままターンを終えて done になった(#609)。fork の結果通知が届かず、司令塔が `agent prompt` で「サブエージェントに委任せず自分で cat して実行」と差し替えるまで止まった(約 8 分のロス)。起動プロンプトが「読み、実行してください」だけだと、作業者本人が読むか委任するかが曖昧で、fork への委任という遠回りな解釈を許してしまう。起動プロンプトには「あなた自身が読み(サブエージェントに委任しない)」を明記する(手順4「pane の用意とエージェント起動」参照)。
 
 ### ライブセッション検証時の誤 kill 事故
 2026-07-05、作業者エージェントが検証用に起動したはずの Alacritty が実際にはマップされておらず、直後に `pgrep -af alacritty` で拾った PID をテスト用ウィンドウと誤認して kill し、ユーザーが元から開いていた既存の Alacritty(workspace 2)を誤終了させた(#354、PR #353)。自分が起動したプロセスは起動時の `$!` で PID を捕捉して追跡し、事後に名前ベースの `pgrep` で「自分のものらしきプロセス」を探して kill するのは禁止。
