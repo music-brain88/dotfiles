@@ -53,7 +53,9 @@ fish_add_path --path $HOME/.pulumi/bin
 # set ~/.local/bin path (native installer 管理ツール: claude 等 / native-installer tools such as claude)
 # 以前は化石 mise の activate が副作用で入れていた。fish_add_path は冪等なので入れ子シェルでも重複しない (#593)
 # Formerly injected as a side effect of the fossil mise activate; fish_add_path is idempotent across nested shells (#593)
-fish_add_path --path $HOME/.local/bin
+# --append で末尾に置き、Nix 版が常に勝つようにする。~/.local/bin は Nix に無いものだけを拾うフォールバック (#596)
+# Appended so the Nix-managed version always wins; ~/.local/bin is only a fallback for tools Nix doesn't provide (#596)
+fish_add_path --path --append $HOME/.local/bin
 
 
 # set exa alias
