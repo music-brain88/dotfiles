@@ -11,3 +11,4 @@
 - [fontconfig.md](./fontconfig.md) — フォント設定
 - [color-palette.md](./color-palette.md) — カラーパレット基準表 (onedark)
 - [tool-management-map.md](./tool-management-map.md) — ツール管轄マップ(どのツールをどの層が管理するか)
+- [herdr-browser.md](./herdr-browser.md) — herdr-browser プラグインの概要・要件・インストール手順

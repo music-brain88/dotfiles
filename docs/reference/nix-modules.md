@@ -44,6 +44,13 @@ Tmux設定:
 - Status bar configuration
 - Plugins (sensible, yank, resurrect, etc.)
 
+### herdr.nix
+
+herdr (agent multiplexer、tmuxの後継):
+- herdr パッケージ (flake.nix の overlay 経由で新しい nixpkgs から供給)
+- `.config/herdr/config.toml` のシンボリックリンク (keybindは旧tmux設定互換)
+- device-auth 承認URLをherdr-browser paneに直行させる `$BROWSER` ラッパー (Issue #523)
+
 ### neovim.nix
 
 Neovim設定:
@@ -60,6 +67,35 @@ Neovim設定:
 - Database clients
 - Language runtimes
 - System monitoring tools
+
+### k8s-tools.nix
+
+Kubernetes / hexhive クラスタ運用ツール (dev-tools.nix からは分離し、k8s関連ツールをこのモジュールに集約):
+- talosctl (Talos Linux CLI、hexhive ノード管理)
+- kubectl, k9s (Kubernetes CLI/TUI)
+- helm (Kubernetesパッケージ管理)
+- sops, age (Secrets暗号化)
+
+### fonts.nix
+
+フォントパッケージ:
+- hackgen-nf-font (等幅、ターミナル・エディタ用)
+- source-han-sans, source-han-serif (システムUI用)
+- noto-fonts-color-emoji (絵文字フォールバック用)
+
+### desktop.nix
+
+ネイティブArch (Hyprland) 専用のGUI設定群 (WSL profileではimportされない):
+- Hyprland, systemd user units (Hyprlandセッションターゲット)
+- Waybar, Wofi, Mako
+- WezTerm (メインターミナル), Alacritty (併存期間中のフォールバック)
+- MPD, ncmpcpp, fontconfig
+
+### wsl.nix
+
+WSL固有の設定 (wsl profileのみ):
+- Obsidian vault symlink (実体はWindows側、Cowork/Obsidian Syncの都合)
+- WezTerm/Alacritty設定のWindows側への配布 (drift防止、activation時にコピー)
 
 ---
 

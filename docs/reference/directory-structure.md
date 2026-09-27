@@ -66,6 +66,7 @@ dotfiles/
 | `wezterm/` | WezTerm ターミナル設定 (`wezterm.lua`、native Arch と Windows で共通)。native Arch のメインターミナル(Phase 3, #393) |
 | `alacritty/` | Alacritty ターミナル設定 (併存期間中のフォールバック) |
 | `starship/` | Starship プロンプト設定 |
+| `herdr/` | herdr (agent multiplexer、tmux の後継) 設定 (`config.toml`) |
 
 ### Editor
 
@@ -78,6 +79,13 @@ dotfiles/
 | Directory | Description |
 |-----------|-------------|
 | `hypr/` | Hyprland 設定 (Wayland) |
+
+### Notifications & Session
+
+| Directory | Description |
+|-----------|-------------|
+| `mako/` | Mako 通知デーモン設定 (Wayland) |
+| `systemd/` | systemd user units (`user/hyprland-session.target`) |
 
 ### Status Bars
 
@@ -112,6 +120,13 @@ dotfiles/
 | `claude/skills/` | Claude Code 専用スキル。`herdr`(環境固有)、`wt`/`wtclean`(Claude の人格・herdr 前提)。旧 `claude/commands/` はスキル形式に統合済み(Claude Code はスキルをスラッシュコマンドとしても呼べる) |
 | `copilot/` | GitHub Copilot CLI 設定。実体は `~/.copilot/`(`~/.config/copilot` ではない)。スキルは `skills/` からマウントされる共有分のみで、Copilot 固有のスキルディレクトリは持たない |
 
+### Security
+
+| Directory | Description |
+|-----------|-------------|
+| `gnupg/` | GPG agent 設定 (`gpg-agent.conf`、パスフレーズキャッシュTTL) |
+| `pinentry/` | pinentry を curses/tty へ強制するフック (`preexec`、SSHセッションでのgnome3誤選択対策) |
+
 ### Media & Misc
 
 | Directory | Description |
@@ -120,6 +135,9 @@ dotfiles/
 | `ncmpcpp/` | ncmpcpp (MPD クライアント) 設定 |
 | `wakatime/` | WakaTime 設定 (config.sample のみ) |
 | `fontconfig/` | フォント設定・トラブルシューティング |
+| `mise/` | mise グローバル設定 (`config.toml`、リポジトリ横断のタスク・ツールバージョン管理) |
+| `obsidian-web-clipper/` | Obsidian Web Clipper (ブラウザ拡張) のクリップテンプレート設定 |
+| `ranger/` | ranger ファイラー設定 (`rc.conf`, `scope.sh`) |
 
 ---
 
