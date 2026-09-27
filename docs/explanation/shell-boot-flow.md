@@ -161,9 +161,11 @@ alias rm 'rm -i'
 # PATH 設定（fish_add_path --path で冪等に追加。理由は下記）
 set -x PYENV_ROOT $HOME/.pyenv
 fish_add_path --path $PYENV_ROOT/bin
-fish_add_path --path --append --move $HOME/.cargo/bin # deno / zellij / broot 等 cargo install 専用ツール（末尾。理由は下記）
+set -gx PATH (string match -v -- $HOME/.cargo/bin $PATH)
+fish_add_path --path --append $HOME/.cargo/bin # deno / zellij / broot 等 cargo install 専用ツール（末尾。理由は下記）
 fish_add_path --path $HOME/.pulumi/bin
-fish_add_path --path --append --move $HOME/.local/bin # claude 等 native installer 管理ツール（末尾。理由は下記）
+set -gx PATH (string match -v -- $HOME/.local/bin $PATH)
+fish_add_path --path --append $HOME/.local/bin # claude 等 native installer 管理ツール（末尾。理由は下記）
 set -x GOPATH $HOME/go
 fish_add_path --path --append $GOPATH/bin      # go も末尾（低優先度）
 
@@ -199,7 +201,7 @@ fish は入れ子で起動されるたびに（herdr の pane → 作業者 → 
 |----|----|---------------|------------|------|
 | 1 | mise installs（`~/.local/share/mise/installs/*`） | 先頭 | mise の hook-env（プロンプトのたび） | `.mise.toml` で指定したバージョンを、そのディレクトリの中でだけ最優先で効かせる |
 | 2 | Nix（`~/.nix-profile/bin`） | 中間（`/usr/bin` より前） | ログイン時の Nix プロファイルスクリプト | Home Manager で宣言したものは「あれば必ず勝つ」 |
-| 3 | `~/.cargo/bin`、`~/.local/bin` | 末尾（`/usr/bin` より後ろ） | config.fish の `fish_add_path --path --append --move` | Nix に無いもの（`~/.cargo/bin`: deno / zellij / broot 等 cargo install 専用ツール、`~/.local/bin`: claude 等の native installer、手動ビルド）だけを拾うフォールバック |
+| 3 | `~/.cargo/bin`、`~/.local/bin` | 末尾（`/usr/bin` より後ろ） | config.fish の `string match -v` で既存エントリを除去してから `fish_add_path --path --append` | Nix に無いもの（`~/.cargo/bin`: deno / zellij / broot 等 cargo install 専用ツール、`~/.local/bin`: claude 等の native installer、手動ビルド）だけを拾うフォールバック |
 
 **なぜ `~/.local/bin` を末尾に置くのか。** `~/.local/bin` は curl installer や native installer が勝手に書き込む場所で、ツールの管理層を Nix へ移した後も旧版が残りやすい。先頭側にあった頃は、残った旧版（化石）が PATH の先勝ちで Nix 版を黙って隠す事故が実際に起きた（#584 の mise、それ以前の claude の npm 版）。末尾に置けば、Nix にあるものを `~/.local/bin` が隠す経路そのものが無くなる。
 
@@ -213,8 +215,8 @@ fish は入れ子で起動されるたびに（herdr の pane → 作業者 → 
 - **`~/.cargo/bin` は #611 で `~/.local/bin` と同じ末尾フォールバックに揃えた**: Nix へ移す前に `cargo install` していた bat / fd / rg / starship など 18 個が `~/.cargo/bin` に残っていて、Nix より前に並んでいた頃は #584 と同じ形で Nix 版を隠していた。末尾に回したことで解決先が Nix 版へ変わる（skim 0.16 → 5.0 などメジャー更新を含む）ので、`switch` 後は `type -a <名前>` で確認するとよい。Nix と同名の cargo 版そのものの掃除（`cargo uninstall`）は各マシンでの手作業として別途行う（[install-unmanaged-tools.md](../how-to/install-unmanaged-tools.md) 参照）
 - **`~/.pyenv/bin` は今回の原則の適用外**: Nix より前に並ぶが、中身は `pyenv` 1 個で Nix と同名の衝突は無い
 - **rustup proxy がある環境の注意**: `~/.cargo/bin` に `cargo` / `rustc` / `rustup` の rustup proxy がある環境（rustup を公式 installer で入れた機など）では、`--append` 後は `cargo` 自体の解決先も Nix 版（または `/usr/bin`）に変わる。`type -a cargo` で確認すること
-- **`--append` だけでは既にある dir を動かさない。`--move` を付けて位置ごと末尾へ移す**: `fish_add_path --path --append` は PATH に既にある dir には何もしないので、switch 前の古い PATH(`~/.cargo/bin` や `~/.local/bin` が先頭側)を受け継いだシェルでは位置が変わらず、herdr のような常駐プロセスから生える新しい fish が switch 後もその旧位置を引き継いでしまう(#611 のレビューで指摘)。`--move` を付けると、既存の dir を今の位置から取り除いてから指定位置(`--append` なら末尾)へ入れ直すので、入れ子シェルでも PATH の順序は正しく直る
-- **ただし PATH の順序が直っても、新しいターミナルからの再起動は依然として推奨**: `--move` が直すのは PATH の順序だけで、`home.sessionVariables` に新しく追加された変数など、config.fish の実行だけでは反映されない環境変数もある。確実に反映させたいときは、既存の fish の中からではなく新しいターミナルから fish を起動し直す
+- **`--append` だけでは既にある dir を動かさない。`string match -v` で先に取り除いてから append する**: `fish_add_path --path --append` は PATH に既にある dir には何もしないので、switch 前の古い PATH(`~/.cargo/bin` や `~/.local/bin` が先頭側)を受け継いだシェルでは位置が変わらず、herdr のような常駐プロセスから生える新しい fish が switch 後もその旧位置を引き継いでしまう(#611 のレビューで指摘)。当初はこれを `fish_add_path --move` で直していたが、`--move` は PATH に同じ dir が複数回入っていても**最初の1個しか末尾へ移さず**、残りの重複はその場に残ってしまう(#617)。長寿命プロセス(herdr デーモン等)由来の env はまさにこの「重複あり」の形で古い PATH を蓄積しているため、`--move` では取りこぼしが発生する。`set -gx PATH (string match -v -- $HOME/.cargo/bin $PATH)` で既存エントリを**重複ごと全部**取り除いてから `fish_add_path --path --append` するので、入れ子シェルでも、重複があっても、PATH の順序は正しく直る
+- **ただし PATH の順序が直っても、新しいターミナルからの再起動は依然として推奨**: この `string match -v` + `--append` が直すのは PATH の順序だけで、`home.sessionVariables` に新しく追加された変数など、config.fish の実行だけでは反映されない環境変数もある。確実に反映させたいときは、既存の fish の中からではなく新しいターミナルから fish を起動し直す
 
 ---
 

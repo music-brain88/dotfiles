@@ -47,9 +47,12 @@ fish_add_path --path $PYENV_ROOT/bin
 # The only cargo PATH declaration; home.sessionPath in rust-tools.nix was removed in #595
 # --append で末尾に置き、Nix 版が常に勝つようにする。~/.cargo/bin は Nix に無い cargo install 専用ツール(deno / zellij / broot 等)だけを拾うフォールバック。Nix と同名の cargo 版は掃除対象 (#611)
 # Appended so the Nix-managed version always wins; ~/.cargo/bin is only a fallback for cargo-install-only tools Nix doesn't provide (deno / zellij / broot, etc). Cargo builds that shadow a same-named Nix package are cleanup targets (#611)
-# --move で、switch 前の環境を継承した古い PATH(先頭側に残った旧位置)も末尾へ移す。無いと switch 後も herdr デーモン等の常駐プロセスから生える新しい fish が旧位置を引き継ぎ、Nix 版が勝たない (#611 レビュー)
-# --move also relocates a pre-switch PATH entry (a stale leading position inherited from a long-lived process). Without it, new fish shells spawned from daemons like herdr that predate the switch keep the old position, and the Nix version never wins (#611 review)
-fish_add_path --path --append --move $HOME/.cargo/bin
+# switch 前の環境を継承した古い PATH には ~/.cargo/bin が重複して残っていることがある。--move は最初の1個しか末尾へ移さず残りの重複を取りこぼすため、
+# 先に既存エントリを重複ごと全部 PATH から取り除いてから append する。無いと switch 後も herdr デーモン等の常駐プロセスから生える新しい fish が旧位置を引き継ぎ、Nix 版が勝たない (#611 レビュー、#617 で --move の取りこぼしを修正)
+# A pre-switch PATH may carry ~/.cargo/bin duplicated. --move only relocates the first occurrence and leaves the rest behind,
+# so strip every existing entry (duplicates included) before appending. Without this, new fish shells spawned from daemons like herdr that predate the switch keep the old position, and the Nix version never wins (#611 review, fixed in #617 after --move's gap)
+set -gx PATH (string match -v -- $HOME/.cargo/bin $PATH)
+fish_add_path --path --append $HOME/.cargo/bin
 
 # set pulumi path
 fish_add_path --path $HOME/.pulumi/bin
@@ -59,9 +62,12 @@ fish_add_path --path $HOME/.pulumi/bin
 # Formerly injected as a side effect of the fossil mise activate; fish_add_path is idempotent across nested shells (#593)
 # --append で末尾に置き、Nix 版が常に勝つようにする。~/.local/bin は Nix に無いものだけを拾うフォールバック (#596)
 # Appended so the Nix-managed version always wins; ~/.local/bin is only a fallback for tools Nix doesn't provide (#596)
-# --move で、switch 前の環境を継承した古い PATH(先頭側に残った旧位置)も末尾へ移す。無いと switch 後も herdr デーモン等の常駐プロセスから生える新しい fish が旧位置を引き継ぎ、Nix 版が勝たない (#611 レビュー)
-# --move also relocates a pre-switch PATH entry (a stale leading position inherited from a long-lived process). Without it, new fish shells spawned from daemons like herdr that predate the switch keep the old position, and the Nix version never wins (#611 review)
-fish_add_path --path --append --move $HOME/.local/bin
+# switch 前の環境を継承した古い PATH には ~/.local/bin が重複して残っていることがある。--move は最初の1個しか末尾へ移さず残りの重複を取りこぼすため、
+# 先に既存エントリを重複ごと全部 PATH から取り除いてから append する。無いと switch 後も herdr デーモン等の常駐プロセスから生える新しい fish が旧位置を引き継ぎ、Nix 版が勝たない (#611 レビュー、#617 で --move の取りこぼしを修正)
+# A pre-switch PATH may carry ~/.local/bin duplicated. --move only relocates the first occurrence and leaves the rest behind,
+# so strip every existing entry (duplicates included) before appending. Without this, new fish shells spawned from daemons like herdr that predate the switch keep the old position, and the Nix version never wins (#611 review, fixed in #617 after --move's gap)
+set -gx PATH (string match -v -- $HOME/.local/bin $PATH)
+fish_add_path --path --append $HOME/.local/bin
 
 
 # set exa alias
