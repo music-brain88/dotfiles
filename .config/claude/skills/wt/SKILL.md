@@ -75,6 +75,15 @@ worktree 作成直後に以下を行う:
 
 タスク内容が具体的な場合、新しい workspace でエージェントを起動してタスクを渡す。
 
+#### 指示書の材料集め(Explore)のモデル
+
+作業指示プロンプトの「## 背景」に載せる事実(関連ファイル・行番号・既存の契約・テスト基盤)を Explore サブエージェントに集めさせる場合の指針:
+
+**Constraints:**
+- **SHOULD**: Explore の `model` は `opus` を既定にする。実装制約(置き場・鍵の材料・テスト基盤の `cfg(test)` 制約・docs のドリフト)まで洗い出したいときだけ `fable` にする(所要とトークンは 2〜3 倍、md ファイルの行番号が 1〜3 行ずれる癖がある)
+- **SHOULD**: 報告の長さは「5,000 字程度」のような目安ではなく、数えられる制約(引用 N 本まで・1 節 M 行まで)で書く(2026-09-27 の比較では 3 モデルとも目安を守らなかった)
+- **MUST**: Explore の報告の行番号は司令塔が `sed -n` / `grep -n` で標本検査してから指示書に写す(モデルに依らず md の行番号はずれうる)
+
 #### GPG パスフレーズキャッシュの事前チェック
 
 worker はコミット時に GPG 署名で詰まりやすい(worker pane は tty を持たず pinentry を表示できない構造的制約。詳細: Troubleshooting「GPG 署名コミットは worker pane から pinentry を出せない」参照)。委任前にキャッシュの有無を確認し、冷えていれば温めておく。
@@ -104,7 +113,7 @@ cat > <司令塔のスクラッチパッドディレクトリ>/task-<branch-name
 <作業指示プロンプト（複数行可）>
 PROMPT
 
-herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --pane <new-pane-id> -- --model claude-sonnet-5 --effort <effort> --permission-mode auto "<司令塔のスクラッチパッドディレクトリ>/task-<branch-name>.md を読み、その内容全体をあなたへの作業指示として忠実に実行してください。"
+herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --pane <new-pane-id> -- --model <model> --effort <effort> --permission-mode auto "<司令塔のスクラッチパッドディレクトリ>/task-<branch-name>.md を読み、その内容全体をあなたへの作業指示として忠実に実行してください。"
 ```
 
 **Constraints:**
@@ -115,12 +124,25 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 - **MUST**: `--kind claude` が実行ファイルの正典を与えるため、`--` 以降には実行ファイル名(`claude`)を含めず、引数のみを渡す
 - **MUST**: 作業指示プロンプトは `AGENT_ARG` に直接 inline しない。複数行 heredoc をそのまま渡すと `invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(詳細: Troubleshooting「長文プロンプトの inline 渡しが拒否される」参照)。作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書き、起動プロンプトは「<パス> を読み、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする
 - **MUST**: エージェント名はセッション全体でユニーク制約があるため、固定名 `claude` ではなくブランチ名由来の名前にする。変換ルール: ブランチ名から prefix(`fix/` 等)を除き、`_` と `/` を `-` に置換して `claude-` を前置する(例: `fix/wt_agent_start_options` → `claude-wt-agent-start-options`)
-- **MUST**: 作業者モデルはデフォルト `claude-sonnet-5`(司令塔=メインセッションが計画とレビュー、作業者が実装を担う分業)。ユーザーが入力内で別モデルを指定した場合はそれに従う
+- **MUST**: 作業者モデル(`--model <model>`)は下記「作業者モデルの選択基準」で決め、既定は `claude-opus-5-5`(司令塔=メインセッションが計画とレビュー、作業者が実装を担う分業は変わらない)。ユーザーが入力内で別モデルを指定した場合はそれに従う
 - **MUST**: `--permission-mode auto` で起動する。定型操作は自動承認され、判断が必要な操作だけが blocked として表面化する
 - **MUST NOT**: `--dangerously-skip-permissions` は使わない(監督を全て外すのではなく、エスカレーションのレーンを残すのが目的)
 - **MUST**: それでも blocked が発生した場合、司令塔は代理承認できない(Claude Code が禁止している)。司令塔の責務は「即検知して人間に知らせる」まで(#332 の対話プロトコル参照)
 - **MUST**: auto mode 起動がハーネス(auto mode 分類器)に拒否された場合、AskUserQuestion 等でユーザーに auto mode 起動の許可を明示的に確認してから再実行する(詳細: Troubleshooting「auto mode 起動の拒否」参照)
 - **MUST NOT**: タスクが曖昧な場合は起動しない。**MUST**: その場合は workspace の準備完了だけ報告して終わる
+
+#### 作業者モデルの選択基準
+
+司令塔がタスクの性質を見て判断する。既定は `claude-opus-5-5`:
+
+| モデル | 使いどころ |
+|--------|-----------|
+| `claude-opus-5-5`(既定) | 裁定つき指示書の実装、複数ファイル・設計判断を含むタスク、指示書の前提と実態が食い違ったときに自分で実測して【相談】できることが要るタスク |
+| `claude-sonnet-5` | 定型・機械的な変更(effort medium 相当)、指示を literal に解釈してよいタスク |
+
+**Constraints:**
+- **MUST**: 反証(Opus で差し戻しが増える・定型タスクで遅い等)が出たら既定を戻す。現行の既定の根拠は 2026-09-27 の実測(N=1、#600): 同一依頼の Explore 3 モデル比較(opus 4 分・誤り 0 / sonnet 5 分・内容誤り 1 + 記述漏れ 2 / fable 11 分・単独の発見は最多だが長さ 4 倍)と、Opus 作業者の初回 PR(26 ファイルを 26 分・差し戻し 1 ラウンド・裁定の技術的前提を実測で崩す【相談】)
+- **SHOULD**: 定型タスクまで Opus にしない(単価が高い)。effort medium 相当なら `claude-sonnet-5` を選ぶ
 
 #### effort の選択基準
 
@@ -129,7 +151,7 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 | effort | 使いどころ |
 |--------|-----------|
 | medium | 定型・機械的な変更(バージョン bump、typo 修正、設定1行の変更) |
-| high | 通常の実装タスク(迷ったらこれ。Sonnet 5 のデフォルト) |
+| high | 通常の実装タスク(迷ったらこれ) |
 | xhigh | 難しい実装・複数ファイルにまたがる変更・設計判断を含むタスク |
 
 **Constraints:**
