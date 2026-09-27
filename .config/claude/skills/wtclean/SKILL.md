@@ -104,8 +104,8 @@ git worktree prune
 
 **Constraints:**
 - **MUST**: 承認された各対象について `herdr worktree remove --workspace <workspace-id>` と `git branch -d <branch>` を実行する
-- **MUST**: 各対象の削除直前に存在を再検証する(worktree パスの存在・ブランチの存在)。消失していた場合は「他セッションが掃除済み」としてスキップし、結果報告にその旨を含める(エラーとして扱わない)
-- **MUST**: `git worktree remove` / `git branch -d` の「対象なし」系エラー(`not a working tree` / `branch not found`)は、並行掃除の痕跡として握りつぶさず報告に記録する
+- **MUST**: 各対象の削除直前に worktree パスとブランチの存在を個別に再検証する。他セッションが `herdr worktree remove` を済ませ `git branch -d` を未実行の窓ではパスのみ消失してブランチが残ることがあるため、パスが消えていてもブランチが存在する限り `git branch -d` は試みる。両方消えている場合のみ「他セッションが掃除済み」としてスキップし、結果報告にその旨を含める(エラーとして扱わない)
+- **MUST**: `herdr worktree remove --workspace <workspace-id>`(内部で実行される `git worktree remove` 由来のエラーを含む)/ `git branch -d` の「対象なし」系エラー(`not a working tree` / `branch not found`)は、並行掃除の痕跡として握りつぶさず報告に記録する
 - **MUST**: 最後にまとめて `git worktree prune` を実行する
 - **MUST**: `git branch -d` を使う(merged 確認済みのため)
 - **MUST NOT**: `-D` は使わない
@@ -164,5 +164,8 @@ squash マージ運用ではマージされたブランチのコミットが mai
 同一リポジトリで複数の司令塔セッションが /wtclean を並行実行すると、dry-run で提示した
 対象が実行時には他セッションにより削除済みになりうる(2026-07-18 実例: dry-run 時点で
 worktree ディレクトリのみ消失した幽霊エントリを観測、実行時に branch not found)。
-削除直前の再検証(手順7)で「掃除済みスキップ」として扱う。供養(手順6)も同様に、
-pane ログが他セッションの掃除で消失している場合はスキップして報告する。
+worktree パスとブランチの消失は独立に起こりうる(他セッションの `herdr worktree remove`
+実行後・`git branch -d` 未実行の窓ではパスのみ消えてブランチは残る)ため、削除直前の
+再検証(手順7)ではパスとブランチを個別に確認し、両方消えている場合のみ「掃除済み
+スキップ」として扱う。片方だけ残っていれば残っている方の削除は試みる。供養(手順6)
+も同様に、pane ログが他セッションの掃除で消失している場合はスキップして報告する。
