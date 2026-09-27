@@ -15,14 +15,20 @@ home.username = "your-username";
 home.homeDirectory = "/home/your-username";
 ```
 
-`nix/modules/git.nix` を編集:
+`.config/git/config.local.sample` を `~/.gitconfig.local` にコピーして編集:
 
-```nix
-programs.git = {
-  userName = "Your Name";
-  userEmail = "your.email@example.com";
-};
+```bash
+cp .config/git/config.local.sample ~/.gitconfig.local
 ```
+
+```ini
+[user]
+	name = Your Name
+	email = your.email@example.com
+	signingkey = your-signing-key
+```
+
+`.config/git/config` 冒頭の `[include] path = ~/.gitconfig.local` でこのファイルが読み込まれます。`nix/modules/git.nix` は `home.file.".gitconfig".source = ../../.config/git/config` として共通設定のみをシンボリックリンクしており、`programs.git` はこのリポジトリでは使用されていません。ユーザー情報は `~/.gitconfig.local` 側で管理してください。
 
 ---
 
