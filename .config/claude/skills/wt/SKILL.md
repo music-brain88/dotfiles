@@ -304,7 +304,7 @@ gh pr view <PR番号> --json mergeStateStatus --jq .mergeStateStatus
 | mergeStateStatus | 対応 |
 |--------|-----------|
 | BEHIND | `gh pr update-branch <PR番号>` で base に追随させる |
-| CLEAN | マージしてよい(実行はユーザー承認のもとで) |
+| CLEAN | マージしてよい(実行はユーザー承認のもとで)。ただし push 直後の CLEAN は仮 CLEAN の可能性がある(下記 Constraints 参照) |
 | DIRTY | コンフリクトあり。作業者に rebase/merge を差し戻すか、ユーザーにエスカレーションする |
 | BLOCKED | 単体では判別不能な複合ステータス。下記の GraphQL で切り分ける(詳細: Troubleshooting「BLOCKED は複合ステータス」参照) |
 
@@ -327,6 +327,10 @@ gh api graphql -f query='
 - **MUST**: 未解決の review thread が1件以上あれば、CI結果を待たずに即エスカレーションする(作業者へ差し戻すか、ユーザーに報告する)
 - **MUST**: 未解決の review thread が0件なら、required checks の完了を待つ
 - **MUST**: 複数 PR を直列にマージする場合、1本マージするたびに残りの PR が base 更新で BEHIND に戻る玉突きを前提にループを設計する(全PRを一度に判定してから順にマージ、ではなく「1本マージ→残りのステータスを再取得→次を判定」を繰り返す)
+- **MUST**: マージ実行の直前に `mergeStateStatus` を再取得し、`CLEAN` であることを確かめてから `gh pr merge` を実行する。判定時点の `CLEAN` を使い回さない(CLEAN 確認とマージ実行の間に Copilot レビューが割り込む TOCTOU がある — #542、#388。詳細: Troubleshooting「push 直後の CLEAN は仮 CLEAN」)
+- **MUST**: push(`gh pr update-branch` を含む)から間もない `CLEAN` は、Copilot 自動レビュー未着弾の暫定値(仮 CLEAN)とみなす。Copilot の自動レビューは push から着弾まで1〜2分かかるため、最新 push から少なくとも2分待ってから reviewThreads の未解決数(上記 GraphQL)を最終チェックする。15秒待ちでは着弾が間に合わず防げなかった実例がある(#388)
+- **MAY**: 着弾の手がかりとして `gh pr view <PR番号> --json headRefOid,reviews --jq '{head: .headRefOid, reviewed: [.reviews[] | select(.author.login == "copilot-pull-request-reviewer") | .commit.oid]}'` で Copilot レビューが最新コミットに付いたかを見てよい。ただし Copilot は push ごとに必ず再レビューするとは限らないため、「最新コミットへのレビュー着弾」をマージの必須条件にはしない(来ないレビューを待ち続けることになる)
+- **MUST**: マージが「base branch policy prohibits the merge」で拒否されたら、`CLEAN` 表示を信用せず reviewThreads を再取得する(この拒否は conversation 割り込みのシグナル)。未解決 thread があれば上記の即エスカレーションに合流する
 - **MUST NOT**: `mergeStateStatus` が `CLEAN` になる前にマージを実行しない
 - **MUST NOT**: マージ時に `--delete-branch` を付けない。worktree が生存中はローカルブランチ削除が必ず失敗して紛らわしいため、ブランチ削除(リモート含む)は `/wtclean` の領分とする
 
@@ -463,6 +467,14 @@ gotcha(実機確認済み): `herdr agent wait` は対象が既に指定ステー
 
 ### BLOCKED は複合ステータス
 2026-07-05 の運用で、PR #348/#350 の `mergeStateStatus: BLOCKED` を「CI待ち」と解釈し、監視スクリプトが90分待機した(#355)。実際のブロック要因は Copilot レビューの未解決 conversation で、このリポジトリのブランチ保護では conversation 未解決はマージ不可。`BLOCKED` は CI実行中と conversation 未解決を区別できない複合ステータスのため、検知時は必ず GraphQL で reviewThreads の未解決数を確認する。
+
+### push 直後の CLEAN は仮 CLEAN
+「`mergeStateStatus=CLEAN` を確認 → `gh pr merge` 実行」の間に Copilot の自動レビューが非同期で着弾し、「base branch policy prohibits the merge」(conversation 未解決)でマージが拒否される TOCTOU(Time-of-check to time-of-use)が繰り返し発生している。共通パターンは、(1) 新コミット push または `gh pr update-branch` → (2) required checks 通過で `CLEAN` を確認 → (3) この時点で Copilot の(再)レビューはまだ実行中(push から着弾まで1〜2分の遅延がある)→ (4) マージ実行が policy 拒否 → (5) 再取得すると `BLOCKED` かつ未解決 reviewThreads が増えている、というもの。
+
+- 2026-07-08、PR #384 と PR #387 で同日2回発生(#388)。PR #387 では「CLEAN 確認後に15秒待って reviewThreads を再チェック」を試したが、レビュー着弾がそれより遅く防げなかった
+- 2026-08-01、PR #540 / #541 で PR 作成直後に `CLEAN`・未解決 thread 0件を確認してマージしたところ policy 拒否、再取得で `BLOCKED` + Copilot の未解決 thread 各1件が判明した(#542)
+
+教訓: push から数分以内の `CLEAN` は「レビュー未着弾の仮 CLEAN」でありうる。`CLEAN` は判定時点のスナップショットにすぎないため、マージ直前に再取得し、push から十分(2分以上)待ってから reviewThreads を最終チェックする。policy 拒否はエラーではなく「conversation が割り込んだ」シグナルとして扱う(手順6 の Constraints 参照)。
 
 ### SendMessage は司令塔に届かない(構造的理由)
 2026-07-04、copilot-quorum #303 の作業者が完了報告のため `SendMessage` を試行し、`You are the main conversation` エラーで失敗した(#341)。Claude Code のセッション間に直接チャネルはなく、作業者は自セッションの main のため司令塔という宛先が存在しない。上り報告は `SendMessage` ではなく、会話内テキスト出力(司令塔が `herdr agent read` で回収するプル型)と、herdr 経由の push(手順5「(3) 上り=内容」参照)の組み合わせで行う。
