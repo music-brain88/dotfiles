@@ -429,6 +429,22 @@ auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザ�
 ### ライブセッション検証時の誤 kill 事故
 2026-07-05、作業者エージェントが検証用に起動したはずの Alacritty が実際にはマップされておらず、直後に `pgrep -af alacritty` で拾った PID をテスト用ウィンドウと誤認して kill し、ユーザーが元から開いていた既存の Alacritty(workspace 2)を誤終了させた(#354、PR #353)。自分が起動したプロセスは起動時の `$!` で PID を捕捉して追跡し、事後に名前ベースの `pgrep` で「自分のものらしきプロセス」を探して kill するのは禁止。
 
+### worktree での headless nvim 起動の成否は検証シグナルにならない
+worktree で Neovim 設定(`.config/nvim/*.toml` 等)を変更するタスクで `XDG_CONFIG_HOME=<worktree>/.config nvim --headless "+qa!"` を検証に使うと、変更内容とは無関係なプラグイン層起因のエラーが出て、起動の成否が変更の正しさのシグナルとして機能しないことがある。原因は構造的なもので、実機の `~/.config/nvim` は home-manager が最後の `nix:switch` 時点の設定を配布したもの(Nix store への symlink)であり、プラグインキャッシュと state(dpp.vim の `~/.cache/dpp` 配下の `repos/`・`state.vim`・`startup.vim`)もその実機設定を前提に生成・インストールされている。worktree の `.config/nvim` はそれと食い違うため、headless 起動は「worktree の設定 × 実機のキャッシュ / state」という混ざった状態を検証してしまう。さらに `init.lua` の `dpp_base` は `XDG_CACHE_HOME` ではなく `$HOME/.cache/dpp` で決まるため、`XDG_CONFIG_HOME` だけを worktree に向けて起動すると worktree の設定で実機の state を読み、再生成まで走らせうる(state 鮮度管理の経路は `docs/reference/neovim-config.md` の「Plugin Management (dpp)」章参照)。
+
+実例(dein 時代): 2026-07-18、#444(telescope.nvim 廃止)の検証で、変更後の headless 起動は dein 内部で `E897: List or Blob required`(`dein#source` 経由)、切り分けのため `git stash` で変更前に戻して再実行すると別種のエラー(`ddc.vim` の `hook_source` 失敗、`lspconfig` 非推奨警告)が出た。どちらも telescope/ddu とは無関係で、変更前後どちらでも「その時点のエラー」が出る状態だった(#453)。当時の原因は dein のプラグインキャッシュ・自動インストール状態の食い違いだが、dpp.vim へ移行した現在も「worktree の設定と実機のキャッシュ / state が食い違う」構造は変わらない。
+
+教訓: Neovim 設定を変更するタスクでは、headless 起動の「エラーなし=正しい」を当てにせず、以下を標準の検証手順とする:
+1. 静的検証: `grep` での参照漏れチェック、`git diff` での意図しない変更(特に PUA グリフ等の非ASCII文字を含む箇所)の不在確認、TOML 構文チェック(例: `python3 -c "import tomllib, sys; tomllib.load(open(sys.argv[1], 'rb'))" <file>`)
+2. ベースライン比較: 変更前の状態(一時 WIP コミットや `git worktree` の別チェックアウト等)で同じ headless コマンドを実行し、エラーの有無・種類を比較する。変更前後どちらでも同じ(無関係な)エラーが出るなら、そのエラーは環境由来と判断してよい
+3. 実際に起動して確かめる必要がある場合は、次項の XDG_* 5点セットでキャッシュ / state ごと隔離した環境で行う
+4. headless 検証が不安定な場合は無理に続行せず、静的検証で代替した旨を最終報告に明記する
+
+### worktree での headless nvim 隔離検証は XDG_* 5点セット必須
+2026-07-26、#495 の隔離検証(PR #500)で `HOME` 環境変数だけをスクラッチディレクトリへ上書きして headless nvim を起動したところ、修正後にもかかわらず `[ddc] Not found source: cmdline-history` が出続け「まだ直っていない」ように見えた(偽陰性)。原因は、このリポジトリの Nix (home-manager) セットアップが `XDG_CONFIG_HOME` / `XDG_CACHE_HOME` / `XDG_STATE_HOME` / `XDG_DATA_HOME` をログインシェルのグローバル環境変数として実ホームのパスに固定しており、`HOME` より優先されること。`vim.fn.stdpath('config')` 等はこれらの `XDG_*` を先に見るため、`HOME` だけの上書きでは隔離が漏れ、headless nvim は隔離先ではなく実ファイル(未修正の設定)を読んでしまう。`HOME` に加えて4つの `XDG_*` もすべてスクラッチディレクトリへ上書きして再検証したところ、正しく隔離された状態で修正の効果(`Not found source` が0件、`sourced: true`)を確認できた(#501)。
+
+教訓: worktree での headless nvim 隔離検証(dpp state 再生成の事前確認など)では、`HOME` に加えて `XDG_CONFIG_HOME` / `XDG_CACHE_HOME` / `XDG_STATE_HOME` / `XDG_DATA_HOME` の4変数もスクラッチディレクトリへ明示的に上書きする(計5点)。`HOME` だけ、あるいは `XDG_CONFIG_HOME` だけの片側上書きは、前項の通り dpp の state が `$HOME/.cache/dpp`、設定が `stdpath('config')` と別々の変数で決まるため、どちらかが実機側に漏れる。
+
 ### send-text は単体では実行されない
 `pane send-text` は pane の入力欄にテキストを挿入するだけで、送信(実行)はされない。実機確認済み: `send-text` の直後に `pane read` してもコマンドは未実行のまま入力欄に残っており、続けて `pane send-keys <pane-id> Enter` を送って初めて実行される。
 
