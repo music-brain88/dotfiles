@@ -161,7 +161,7 @@ alias rm 'rm -i'
 # PATH 設定（fish_add_path --path で冪等に追加。理由は下記）
 set -x PYENV_ROOT $HOME/.pyenv
 fish_add_path --path $PYENV_ROOT/bin
-fish_add_path --path $HOME/.cargo/bin
+fish_add_path --path --append $HOME/.cargo/bin # deno / zellij / broot 等 cargo install 専用ツール（末尾。理由は下記）
 fish_add_path --path $HOME/.pulumi/bin
 fish_add_path --path --append $HOME/.local/bin # claude 等 native installer 管理ツール（末尾。理由は下記）
 set -x GOPATH $HOME/go
@@ -199,7 +199,7 @@ fish は入れ子で起動されるたびに（herdr の pane → 作業者 → 
 |----|----|---------------|------------|------|
 | 1 | mise installs（`~/.local/share/mise/installs/*`） | 先頭 | mise の hook-env（プロンプトのたび） | `.mise.toml` で指定したバージョンを、そのディレクトリの中でだけ最優先で効かせる |
 | 2 | Nix（`~/.nix-profile/bin`） | 中間（`/usr/bin` より前） | ログイン時の Nix プロファイルスクリプト | Home Manager で宣言したものは「あれば必ず勝つ」 |
-| 3 | `~/.local/bin` | 末尾（`/usr/bin` より後ろ） | config.fish の `fish_add_path --path --append` | Nix に無いもの（claude 等の native installer、手動ビルド）だけを拾うフォールバック |
+| 3 | `~/.cargo/bin`、`~/.local/bin` | 末尾（`/usr/bin` より後ろ） | config.fish の `fish_add_path --path --append` | Nix に無いもの（`~/.cargo/bin`: deno / zellij / broot 等 cargo install 専用ツール、`~/.local/bin`: claude 等の native installer、手動ビルド）だけを拾うフォールバック |
 
 **なぜ `~/.local/bin` を末尾に置くのか。** `~/.local/bin` は curl installer や native installer が勝手に書き込む場所で、ツールの管理層を Nix へ移した後も旧版が残りやすい。先頭側にあった頃は、残った旧版（化石）が PATH の先勝ちで Nix 版を黙って隠す事故が実際に起きた（#584 の mise、それ以前の claude の npm 版）。末尾に置けば、Nix にあるものを `~/.local/bin` が隠す経路そのものが無くなる。
 
@@ -210,7 +210,9 @@ fish は入れ子で起動されるたびに（herdr の pane → 作業者 → 
 
 **なぜ mise installs は先頭のままでよいのか。** mise は `.mise.toml` を置いたディレクトリでだけ効く、明示的な上書きの仕組みです。化石のように「知らないうちに残る」ものではなく、指定した本人の意図が勝つべき層なので Nix より前に置く。hook-env がプロンプトのたびに先頭へ入れ直すため、config.fish の行の順序にも左右されません。
 
-- **`~/.cargo/bin` と `~/.pyenv/bin` は今回の原則の適用外**: どちらも Nix より前に並ぶので、`cargo install` した実体が Nix 版と同名なら cargo 版が勝つ。実際に、Nix へ移す前に `cargo install` していた bat / fd / rg / starship などが `~/.cargo/bin` に残っていて、現状は #584 と同じ形で Nix 版を隠している。`~/.cargo/bin` の扱いは #611 で別途決める
+- **`~/.cargo/bin` は #611 で `~/.local/bin` と同じ末尾フォールバックに揃えた**: Nix へ移す前に `cargo install` していた bat / fd / rg / starship など 18 個が `~/.cargo/bin` に残っていて、Nix より前に並んでいた頃は #584 と同じ形で Nix 版を隠していた。末尾に回したことで解決先が Nix 版へ変わる（skim 0.16 → 5.0 などメジャー更新を含む）ので、`switch` 後は `type -a <名前>` で確認するとよい。Nix と同名の cargo 版そのものの掃除（`cargo uninstall`）は各マシンでの手作業として別途行う（[install-unmanaged-tools.md](../how-to/install-unmanaged-tools.md) 参照）
+- **`~/.pyenv/bin` は今回の原則の適用外**: Nix より前に並ぶが、中身は `pyenv` 1 個で Nix と同名の衝突は無い
+- **rustup proxy がある環境の注意**: `~/.cargo/bin` に `cargo` / `rustc` / `rustup` の rustup proxy がある環境（rustup を公式 installer で入れた機など）では、`--append` 後は `cargo` 自体の解決先も Nix 版（または `/usr/bin`）に変わる。`type -a cargo` で確認すること
 - **`--append` は既にある dir を動かさない**: `fish_add_path` は PATH に既にある dir には何もしないので、古い PATH（`~/.local/bin` が先頭側）を受け継いだシェルでは位置が変わらない。config.fish を変えた後は、既存の fish の中からではなく新しいターミナルから fish を起動し直す
 
 ---

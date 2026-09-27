@@ -45,7 +45,9 @@ fish_add_path --path $PYENV_ROOT/bin
 
 # set cargo path (cargo の PATH 宣言はここだけ。rust-tools.nix の home.sessionPath は #595 で削除)
 # The only cargo PATH declaration; home.sessionPath in rust-tools.nix was removed in #595
-fish_add_path --path $HOME/.cargo/bin
+# --append で末尾に置き、Nix 版が常に勝つようにする。~/.cargo/bin は Nix に無い cargo install 専用ツール(deno / zellij / broot 等)だけを拾うフォールバック。Nix と同名の cargo 版は掃除対象 (#611)
+# Appended so the Nix-managed version always wins; ~/.cargo/bin is only a fallback for cargo-install-only tools Nix doesn't provide (deno / zellij / broot, etc). Cargo builds that shadow a same-named Nix package are cleanup targets (#611)
+fish_add_path --path --append $HOME/.cargo/bin
 
 # set pulumi path
 fish_add_path --path $HOME/.pulumi/bin
