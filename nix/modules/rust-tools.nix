@@ -36,8 +36,6 @@
     PKG_CONFIG_PATH = "${config.home.homeDirectory}/.nix-profile/lib/pkgconfig";
   };
 
-  # Add Cargo bin to PATH
-  home.sessionPath = [
-    "${config.home.homeDirectory}/.cargo/bin"
-  ];
+  # ~/.cargo/bin の PATH は .config/fish/config.fish で管理する (home.sessionPath は二重宣言だったので #595 で削除)
+  # ~/.cargo/bin is added to PATH in .config/fish/config.fish (home.sessionPath was a duplicate, removed in #595)
 }
