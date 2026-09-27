@@ -159,6 +159,7 @@ alias vim 'nvim'
 alias rm 'rm -i'
 
 # PATH 設定（fish_add_path --path で冪等に追加。理由は下記）
+set -x PYENV_ROOT $HOME/.pyenv
 fish_add_path --path $PYENV_ROOT/bin
 fish_add_path --path $HOME/.cargo/bin
 fish_add_path --path $HOME/.pulumi/bin
