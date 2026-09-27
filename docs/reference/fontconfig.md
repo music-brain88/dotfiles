@@ -36,6 +36,7 @@ Managed by Nix in `nix/modules/fonts.nix`:
 - **hackgen-nf-font** - Programming font (monospace)
 - **source-han-sans** - System UI font (sans-serif)
 - **source-han-serif** - Document font (serif)
+- **noto-fonts-color-emoji** - Color emoji fallback (terminal/desktop)
 
 ---
 
