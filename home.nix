@@ -110,7 +110,11 @@
     };
 
     # GitHub Copilot CLI (uses ~/.copilot/)
-    # NOTE: config.json is seeded via activation script (Copilot CLI writes to it dynamically)
+    # NOTE: ~/.copilot/config.json (auth/trustedFolders, auto-managed) and
+    # ~/.copilot/settings.json (user settings, written by /model and /settings)
+    # are intentionally left unmanaged by Nix (Issue #597)
+    # config.json は CLI の自動管理ファイル、settings.json は /model や /settings が
+    # 書き換えるユーザー設定のため、どちらも Nix 管理外(CLI 任せ)とする
     ".copilot/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
     # Tool-neutral shared skills, same source as ".claude/skills/*" above (Issue #404)
     # Claude 側と同じソースを共有(単一ソース化)
@@ -135,15 +139,4 @@
     # systemd user units) は nix/modules/desktop.nix へ移動 (native profile のみ)
     # GUI configs moved to nix/modules/desktop.nix (native profile only)
   };
-
-  # Activation scripts for files that need to be writable at runtime
-  home.activation.seedCopilotConfig = config.lib.dag.entryAfter [ "writeBoundary" ] ''
-    target="$HOME/.copilot/config.json"
-    if [ ! -f "$target" ] || [ -L "$target" ]; then
-      mkdir -p "$(dirname "$target")"
-      rm -f "$target"
-      cp ${./.config/copilot/config.json} "$target"
-      chmod 644 "$target"
-    fi
-  '';
 }
