@@ -27,7 +27,7 @@
           (final: prev: {
             github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old:
               let
-                copilotVersion = "1.0.78";
+                copilotVersion = "1.0.88";
               in
               {
                 version = copilotVersion;
@@ -38,7 +38,7 @@
                 # and native binaries live in the platform-specific release asset.
                 src = prev.fetchzip {
                   url = "https://github.com/github/copilot-cli/releases/download/v${copilotVersion}/github-copilot-${copilotVersion}-linux-x64.tgz";
-                  hash = "sha256-2tQ3dIamXBErYElEd8dgY+Iz5OgGY7WvcdnoDIB0hWM=";
+                  hash = "sha256-Gju6FqmGsAS0CRtX0fvrQVccnH3ytWBzuONE66lGisQ=";
                 };
                 # nixpkgs 側の derivation が npm tarball 前提の sourceRoot = "package" を
                 # 設定するようになったが、GitHub Release アセットはルート直下にファイルを

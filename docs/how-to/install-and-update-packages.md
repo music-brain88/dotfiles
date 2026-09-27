@@ -16,7 +16,7 @@ home.packages = with pkgs; [
   # Existing packages...
 
   # Add new package
-  neofetch
+  cowsay
   htop
 ];
 ```
