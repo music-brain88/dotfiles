@@ -77,7 +77,7 @@ paru -S <package>
 | claude の更新が来ない・バージョンがずれる | `readlink -f "$(which claude)"` | `~/.local/share/claude/versions/` 配下 |
 | mise のバージョンが古い | `which mise` | `~/.nix-profile/bin/mise` |
 | Nix で更新したのに反映されない | `which <tool>` | `/nix/store/...`(`~/.nix-profile/bin` 経由) |
-| fish プラグイン(bass 等)の挙動が Nix 版と違う | fish で `functions --details <関数名>` | `~/.nix-profile/share/fish/vendor_functions.d/` 配下(`~/.config/fish/functions/` なら fisher 時代の化石) |
+| `fishPlugins` で入れたプラグイン(bass 等、`nix/modules/shell.nix`)の挙動が Nix 版と違う | fish で `readlink -f (functions --details <関数名>)` | `/nix/store/…/share/fish/vendor_functions.d/` 配下。`~/.config/fish/functions/` の実体ファイルのままなら fisher 時代の化石(同じディレクトリでも `home.file` で置いたリポジトリ管理の関数は `/nix/store/` に解決されるので正常) |
 
 掃除手順:
 
