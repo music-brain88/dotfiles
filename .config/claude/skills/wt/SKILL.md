@@ -245,6 +245,7 @@ herdr agent prompt <agent-name> "<追加指示のテキスト>"
 - **MUST**: `<agent-name>` は手順4でエージェントに付けたユニーク名をそのまま使う。pane-id の引き直しは不要
 - **MUST**: 実行前に対象の agent 名を必ず確認する(宛先を誤ると、無関係なエージェントに指示が届いてしまう。`agent prompt` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない)
 - **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は `agent prompt` を使わない(chat 入力欄への送信になるため、ハイライトされている選択肢を誤確定させる罠がある。`send-text` + Enter でこの誤確定による実害が実際に出ており(詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)、`agent prompt` も同じくメニュー表示中の pane に送信する以上、予防的に避ける)。メニューの選択肢確定自体は従来どおり `herdr pane send-keys <pane-id> Enter` で行う(pane-id は `herdr agent get <agent-name>` で都度引く。詳細: Troubleshooting「pane-id は非永続」参照)
+- **MUST**: 送信前の `herdr agent read` では、メニュー表示の有無に加えて**入力欄の pending テキストの有無**も確認する。`agent prompt` は入力欄の pending テキストを新テキストで置換するため、ユーザー由来と思われるテキスト(【相談】【報告】プレフィックスが付いていない未送信テキスト)が残っている場合は置換で消さず、ユーザーに確認するか、送達(手動 Enter)を待ってから送る(詳細: Troubleshooting「agent prompt がユーザー由来の pending テキストを置換で消しうる」参照)
 - **MUST**: `agent prompt` 送信後は `herdr agent get <agent-name>` で `working` へ遷移したことを確認する。コマンドは `agent_prompted` を正常に返すが、それだけでは submit の成否を判定できない(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)。遷移せずテキストが入力欄に残っている場合は、`herdr agent read` で pane の状態(メニュー非表示であること。上記 Constraint 参照)を確認したうえで `herdr pane send-keys <pane-id> Enter` で submit する(pane-id は `herdr agent get <agent-name>` で引く)
 - **MUST**: レビュー差し戻し等、委任後に追加の作業ラウンドを送る前に、`herdr agent get <agent-name>` で pane-id を引いたうえで `herdr pane read <pane-id> --source visible` を実行し、末尾行の pane 下部ステータスラインで context 使用率(💭 n%)を確認する。50% を超えている場合は追加ラウンドを送らず、(a) 司令塔が直接対応する、(b) 新 worker へ引き継ぐ(引き継ぎブリーフ = 元ブリーフ + ここまでの成果物参照(PR URL / コミット)+ 残作業のみ。引き継ぎ指示・HANDOFF.md・後任ブリーフの具体手順は手順8「引き継ぎモード」参照)、のいずれかを選ぶ。ユーザーより先に司令塔が検知すべきシグナルであり、閾値超過を検知したら対応方針とあわせてユーザーに報告する(詳細: Troubleshooting「レビュー差し戻しラウンドによる worker context の逼迫」参照)
 - **MUST**: pane 幅が狭くステータスラインが `…` で切り詰められ 💭 の値が読めない場合、herdr CLI に幅非依存で context 使用率を取得できる経路は無い(実機調査済み。詳細: Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)。読めない場合は使用率を推測で埋めず、保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す
@@ -454,6 +455,9 @@ auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザ�
 push の不達を前提に主チャネル(手順5(2)の `agent wait` + `agent read` によるプル型検知)で検知する既存設計は変更しない — 今回も司令塔はプル型で先に完了を検知・処理しており、push 不達による実害はなかった。
 
 ユーザー向け救済手順: 司令塔 pane の chat 入力欄に滞留テキスト(【相談】【報告】プレフィックス付き)を見つけたら、手動 Enter で送達できる。司令塔がターン処理中の場合、送達したテキストはキューに入り、ターン終了後に届く(正常系)。
+
+### agent prompt がユーザー由来の pending テキストを置換で消しうる
+2026-08-12 の /wt 運用(Issue #553 → PR #579、worker 3 体 + 司令塔の並行運用)で、司令塔が Copilot レビュー差し戻し指示を `herdr agent prompt` で worker へ送った際、宛先 worker pane の chat 入力欄にユーザーが手で打った未送信テキスト(「PR #579の内容とレビュー結果を確認して」)が残っており、`agent prompt` の置換仕様(#520/#528 で実機確認済み。上記「send-keys Enter が chat 入力を submit できないことがある」参照)により消えた(#580)。消えたテキストは司令塔の差し戻し指示と実質重複していたため実害はなかったが、構造としては**ユーザーの未送信入力を司令塔が無断で消しうる**。同一セッション内で別 worker pane にもユーザー由来と思われる未送信テキスト(「PR #578のCI結果を確認して」)が置かれているのを観測しており、ユーザーが worker pane に直接入力する運用は一回きりではない。送信前の `herdr agent read` はメニュー誤確定の防止(#498)だけでなく、pending テキストの保全のためにも行う(手順5(1)の Constraint 参照。関連: #572)。
 
 ### GPG 署名コミットは worker pane から pinentry を出せない
 worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
