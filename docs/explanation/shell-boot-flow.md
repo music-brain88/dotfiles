@@ -172,7 +172,7 @@ if type -q eza; alias ls 'eza --icons'; end
 if type -q bat; alias cat 'bat'; end
 
 # プロンプト
-starship init fish | source
+starship init fish | source           # 生成時の starship 絶対パスを fish_prompt 等に焼き込む(掃除時は exec fish が必要 → docs/how-to/install-unmanaged-tools.md)
 
 # バージョン管理
 mise activate fish | source
