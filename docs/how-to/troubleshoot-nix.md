@@ -36,7 +36,6 @@ nixpkgs.config.allowUnfree = true;
 
 ```
 Existing file '/home/archie/.config/starship.toml' would be clobbered
-Existing file '/home/archie/.config/gh/config.yml' would be clobbered
 Existing file '/home/archie/.config/fish/config.fish' would be clobbered
 ```
 
