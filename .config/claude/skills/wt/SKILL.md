@@ -128,7 +128,7 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 - **MUST**: `--kind claude` が実行ファイルの正典を与えるため、`--` 以降には実行ファイル名(`claude`)を含めず、引数のみを渡す
 - **MUST**: 作業指示プロンプトは `AGENT_ARG` に直接 inline しない。複数行 heredoc をそのまま渡すと `invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(詳細: Troubleshooting「長文プロンプトの inline 渡しが拒否される」参照)。作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書き、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする
 - **MUST**: 起動プロンプトには「自分で読む(サブエージェント委任禁止)」を明記する(上記の文言に含まれている「あなた自身が読み(サブエージェントに委任しない)」を削らない)。「読み、実行してください」だけだと作業者本人が読むか委任するかが曖昧になり、fork サブエージェントへの委任という遠回りな解釈を許して初手で止まりうる(詳細: Troubleshooting「起動プロンプトのファイル読みを fork サブエージェントに委任して初手で止まる」参照)
-- **MUST**: エージェント名はセッション全体でユニーク制約があるため、固定名 `claude` ではなくブランチ名由来の名前にする。変換ルール: ブランチ名から prefix(`fix/` 等)を除き、`_` と `/` を `-` に置換して `claude-` を前置する(例: `fix/wt_agent_start_options` → `claude-wt-agent-start-options`)
+- **MUST**: エージェント名はセッション全体でユニーク制約があるため、固定名 `claude` ではなくブランチ名由来の名前にする。変換ルール: ブランチ名から prefix(`fix/` 等)を除き、`_` と `/` を `-` に置換して `claude-` を前置する(例: `fix/wt_agent_start_options` → `claude-wt-agent-start-options`)。herdr の agent 名は 1〜32 文字に制限されており(超過すると `invalid_agent_name: agent name must start with a lowercase letter and contain only lowercase letters, digits, '-' or '_' (1-32 characters)` で起動に失敗する)、変換後の名前が32文字を超える場合は、意味が保たれる範囲で単語を間引いて32文字以内に短縮する(ユニーク性が保てればよい)。実例(2026-08-01、#539): `fix/wt_agent_prompt_submit_check` → `claude-wt-agent-prompt-submit-check`(35文字)が拒否され、`claude-wt-prompt-submit-check`(29文字)に短縮して復旧した
 - **MUST**: 作業者モデル(`--model <model>`)は下記「作業者モデルの選択基準」で決め、既定は `claude-opus-5-5`(司令塔=メインセッションが計画とレビュー、作業者が実装を担う分業は変わらない)。ユーザーが入力内で別モデルを指定した場合はそれに従う
 - **MUST**: `--permission-mode auto` で起動する。定型操作は自動承認され、判断が必要な操作だけが blocked として表面化する
 - **MUST NOT**: `--dangerously-skip-permissions` は使わない(監督を全て外すのではなく、エスカレーションのレーンを残すのが目的)
@@ -395,7 +395,7 @@ worktree ルートに以下の5点セットで書く:
 - **MUST**: 前任の署名コミットを rebase/amend しない(区切りまで仕上げた署名コミットが引き継ぎの前提であり、履歴の書き換えはその前提を壊す)
 - **MUST**: 50% ルールを後任のブリーフにも最初から組み込む(引き継ぎは連鎖しうるため。手順5(1) の Constraint 参照)
 - **MUST**: 後任 agent 名は前任の名前(手順4の変換ルール参照)に数字サフィックスを付けた連番とする(例: `claude-wt-agent-start-options` → `claude-wt-agent-start-options-2`。手順3の司令塔自己命名の数字サフィックス運用と同じ考え方)
-- **MUST**: 連番付与後の名前が32文字を超える場合、意味が保たれる範囲で単語を間引いて32文字以内に短縮する(#539)。例: `claude-breaking-cleanup-cutover-2`(33文字)は拒否されうるため `claude-cutover-2`(16文字)に短縮する
+- **MUST**: 連番付与後の名前にも手順4の32文字制限と短縮規定(手順4「pane の用意とエージェント起動」の名前変換ルール参照)が適用される。サフィックスの分だけ前任より長くなるため、前任が32文字以内でも超過しうる。例: `claude-breaking-cleanup-cutover-2`(33文字)は拒否されうるため `claude-cutover-2`(16文字)に短縮する
 
 #### HANDOFF.md のライフサイクル
 
