@@ -67,7 +67,7 @@ mise タスクではないが、あわせて使うグローバルタスク(`.con
 | `mise run nvim:ts-install` | `treesitter_parsers.lua` のリストに従い nvim-treesitter のパーサをインストール(冪等) | headless nvim 経由で `ts.install()` |
 | `mise run nvim:state` | dpp state(`startup.vim`/`state.vim`)を headless で強制再生成(`check_files()` の差分有無を問わない)。pull後・`nix:switch` 後の明示反映用([#466](https://github.com/music-brain88/dotfiles/issues/466)) | headless nvim 経由で `dpp#make_state()` |
 
-state 鮮度管理の4経路(BufWritePost / 起動時 check_files / `:DppMakeState` / `mise run nvim:state`)の使い分けは [neovim-config.md](neovim-config.md#plugin-management-dpp) を参照。
+プラグインのインストールは mise タスクにしていない。初回起動時に `init.lua` が未取得を検知して自動インストールし、手動で入れ直すときは Neovim 内で `:DppInstall` を実行する。自動インストールの仕組みと、state 鮮度管理の4経路(BufWritePost / 起動時 check_files / `:DppMakeState` / `mise run nvim:state`)の使い分けは [neovim-config.md](neovim-config.md#-plugin-management-dpp) を参照。
 
 ---
 
@@ -90,12 +90,6 @@ state 鮮度管理の4経路(BufWritePost / 起動時 check_files / `:DppMakeSta
 | `mise run gpg:import` | 新端末でバンドルをimportし、trust設定まで完了(バンドルが無ければBitwardenから自動取得) |
 | `mise run gpg:extend` | 期限延長(主キー +5y、サブキー +2y)+ バンドル再生成 |
 | `mise run gpg:bw:push` | バンドルをBitwardenアイテム(既定: `gpg-bundle`)の添付としてアップロード |
-
-mise タスクではないが、あわせてよく使うコマンド:
-
-| Command | Description |
-|---------|-------------|
-| `nvim --headless +"call dein#install()" +qall` | Neovim プラグインをインストール |
 
 ---
 

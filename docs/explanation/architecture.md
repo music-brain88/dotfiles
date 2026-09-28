@@ -33,7 +33,7 @@
 
 上記の設計思想を実現するための具体的な取り組み：
 
-- **設定ファイルのモジュール化**: 用途やツールごとに細かく分割。NeovimはプラグインごとにTOMLファイルに分割してdein.vimで管理
+- **設定ファイルのモジュール化**: 用途やツールごとに細かく分割。Neovimは用途ごとにTOMLファイルに分割してdpp.vimで管理
 - **シンボリックリンクの活用**: dotfilesリポジトリ内の設定ファイルをホームディレクトリにシンボリックリンクし、一元管理を実現
 - **CI/CDによる自動化**: GitHub Actionsを活用して設定ファイルや開発環境の構築を自動化
 - **ドキュメントの整備**: 設定ファイルやスクリプトの意図や使い方を明確にするためにドキュメントを整備
@@ -108,7 +108,7 @@ home.file.".config/fish/config.fish".source = ../../.config/fish/config.fish;
 
 **Nixが担当しないもの：**
 - 設定ファイルの中身
-- プラグインの設定（Neovimのdein.vim等）
+- プラグインの宣言・設定（NeovimのdppのTOML等。dpp.vim本体とdenops.vimだけはNixがstoreから供給し、個々のプラグインはdppが取得する）
 
 ### 言語ランタイムのバージョン方針 / Language Runtime Version Policy
 
@@ -132,7 +132,7 @@ Nix provides unpinned baseline runtimes (binary-cache friendly); mise pins versi
 
 | Tool | Native Config Format | Why Keep Native |
 |------|---------------------|-----------------|
-| Neovim (dein.vim) | TOML | dein.vimはTOML前提の設計 |
+| Neovim (dpp.vim) | TOML + TypeScript | dpp.vimは`config.ts`(Deno)とdpp-ext-tomlのTOML前提の設計 |
 | Fish | `.fish` | 補完・関数が独自形式 |
 | Starship | TOML | 公式がTOML推奨 |
 | Hyprland | Custom DSL | Hypr独自のシンタックス |
@@ -146,21 +146,24 @@ Nix provides unpinned baseline runtimes (binary-cache friendly); mise pins versi
 
 #### 2. 既存の設定を活かす
 
-Neovimの設定は13個のTOMLファイルで構成されています：
+Neovimの設定は14個のTOMLファイルと、それらの読み込みを束ねる`dpp/config.ts`、プラグインごとのLuaフック(`hooks/`)で構成されています：
 
 ```
 .config/nvim/
-├── dein.toml           # 200+ lines
-├── ddc_settings.toml   # 160+ lines
-├── ddu_settings.toml   # 400+ lines
-├── lsp_settings.toml   # 120+ lines
+├── dpp/config.ts       # TOMLの読み込みリスト・lazy区分（Denoで評価）
+├── dpp.toml            # コアプラグイン
+├── dpp_lazy.toml       # 遅延読み込みプラグイン
+├── ddc_settings.toml   # 補完
+├── ddu_settings.toml   # ファイラー/検索
+├── lsp_settings.toml   # LSP
+├── hooks/*.lua         # 各プラグインのフック（TOMLのhooks_fileから参照）
 └── ...
 ```
 
 これらをNix式に書き直すのは：
 - 膨大な作業量
 - 既存の動作確認済み設定を捨てることになる
-- dein.vimのエコシステムから離れる
+- dpp.vimのエコシステム（dpp-ext-tomlによるTOML宣言、dpp-ext-lazyによる遅延読み込み）から離れる
 
 #### 3. Nixの強みに集中
 
@@ -363,8 +366,11 @@ GitHub Actionsのディスク容量制限（約14GB）を回避するため、Ni
 
 ### Pipeline Stages
 
+図では省略しているが、3ジョブの前段に変更検知の `changes` ジョブがあり、docs 等のみの変更なら下流の3ジョブはまとめて skip される（依存グラフの詳細は [ci-cd-pipeline.md](../reference/ci-cd-pipeline.md#pipeline-stages)）。
+
 | Stage | Purpose |
 |-------|---------|
+| **changes** | 変更ファイルを判定し、下流ジョブの実行要否を決める |
 | **build-image** | Docker イメージをビルドしてGHCRにプッシュ |
 | **check** | `nix flake check --no-build`、フォーマット検証 |
 | **verify-docker** | Arch Linux コンテナ内でビルド＆アクティベーション |

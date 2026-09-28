@@ -26,9 +26,23 @@
 
 ### Pipeline Stages
 
-1. **build-image**: Docker イメージをビルドしてGHCRにプッシュ（レイヤーキャッシュ）
-2. **check**: 軽量チェック（`nix flake check --no-build`、フォーマット検証）
-3. **verify-docker**: Arch Linux コンテナ内でビルド＆アクティベーション実行
+`nix.yml` のジョブ依存グラフ（`needs:`）：
+
+```
+changes ─┬─→ build-image ─┬─→ verify-docker
+         └─→ check ───────┘
+```
+
+| Job | `needs` | Purpose |
+|-----|---------|---------|
+| **changes** | — | 変更ファイルを判定し、下流ジョブの実行要否を `code` 出力で返す。`*.md` / `docs/` / `llm/` / `LICENSE` / `.gitignore` 以外に変更があれば `code=true`。base SHA が取れない場合（force push・ブランチ新規作成等）は安全側に倒して `code=true` |
+| **build-image** | `changes` | Docker イメージをビルドしてGHCRにプッシュ（レイヤーキャッシュ。`build-docker-image.yml` を `workflow_call` で呼び出し） |
+| **check** | `changes` | 軽量チェック（shellcheck、`nix flake check --no-build`、フォーマット検証） |
+| **verify-docker** | `changes`, `build-image`, `check` | Arch Linux コンテナ内でビルド＆アクティベーション実行 |
+
+- `build-image` と `check` はどちらも `needs: changes` のみなので**並列実行**される。`verify-docker` は両方の完了を待つ
+- `changes` 以外の3ジョブは `if: needs.changes.outputs.code == 'true'` を持ち、docs 等のみの変更では skip される。skip されたジョブは required status checks 上は成功扱いになる
+- トリガーに `paths-ignore` を使わずこの構成にしているのは、トリガー段階で workflow を止めるとチェックが一切報告されず、PR が「Expected — waiting for status」のままマージ不能になるため（[#312](https://github.com/music-brain88/dotfiles/issues/312)）
 
 ### Container Configuration
 

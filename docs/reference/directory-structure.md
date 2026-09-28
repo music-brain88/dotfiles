@@ -196,6 +196,7 @@ AI アシスタント向けのコンテキストファイル。
 | `workflows/build-docker-image.yml` | Docker イメージビルド (nix.yml から呼び出し) |
 | `workflows/docs-lint.yml` | Markdown リンク切れチェック |
 | `workflows/release-drafter.yml` | リリースノート自動生成 |
+| `workflows/update-flake-lock.yml` | flake inputs の週次自動更新 (毎週月曜 03:00 UTC、更新 PR を自動作成) |
 
 ### Instructions & Templates
 
