@@ -31,7 +31,7 @@
 | Command / Keybind | Description | 説明 |
 |-------------------|-------------|------|
 | 基本操作 | Start/Stop/Logs | コンテナの起動・停止・ログ確認 |
-| `,d` | Select container with skim | コンテナ選択＆ログ表示（skim連携） |
+| `Alt+d` | Select container with skim | コンテナ選択＆ログ表示（skim連携） |
 
 ### Neovim Operations
 
@@ -55,7 +55,7 @@
 | `z` | Directory autojump | ディレクトリ移動を効率化 |
 | `Ctrl+t` | File search with skim | ファイル検索 |
 | `Ctrl+r` | History search with skim | 履歴検索 |
-| `Alt+d` | Directory search with skim | ディレクトリ検索 |
+| `Alt+e` | Directory search with skim | ディレクトリ検索 |
 
 ### Development Environment
 
@@ -94,7 +94,7 @@ Dockerfileを編集
     ↓
 コンテナイメージをビルド
     ↓
-起動・停止・ログ確認（skim連携 ,d）
+起動・停止・ログ確認（skim連携 Alt+d）
 ```
 
 ### 4. テスト実行
