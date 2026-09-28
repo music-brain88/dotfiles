@@ -304,7 +304,7 @@ gh pr view <PR番号> --json mergeStateStatus --jq .mergeStateStatus
 | mergeStateStatus | 対応 |
 |--------|-----------|
 | BEHIND | `gh pr update-branch <PR番号>` で base に追随させる |
-| CLEAN | マージしてよい(実行はユーザー承認のもとで) |
+| CLEAN | マージしてよい(実行はユーザー承認のもとで)。ただし push 直後の CLEAN は仮 CLEAN の可能性がある(下記 Constraints 参照) |
 | DIRTY | コンフリクトあり。作業者に rebase/merge を差し戻すか、ユーザーにエスカレーションする |
 | BLOCKED | 単体では判別不能な複合ステータス。下記の GraphQL で切り分ける(詳細: Troubleshooting「BLOCKED は複合ステータス」参照) |
 
@@ -327,6 +327,10 @@ gh api graphql -f query='
 - **MUST**: 未解決の review thread が1件以上あれば、CI結果を待たずに即エスカレーションする(作業者へ差し戻すか、ユーザーに報告する)
 - **MUST**: 未解決の review thread が0件なら、required checks の完了を待つ
 - **MUST**: 複数 PR を直列にマージする場合、1本マージするたびに残りの PR が base 更新で BEHIND に戻る玉突きを前提にループを設計する(全PRを一度に判定してから順にマージ、ではなく「1本マージ→残りのステータスを再取得→次を判定」を繰り返す)
+- **MUST**: マージ実行の直前に `mergeStateStatus` を再取得し、`CLEAN` であることを確かめてから `gh pr merge` を実行する。判定時点の `CLEAN` を使い回さない(CLEAN 確認とマージ実行の間に Copilot レビューが割り込む TOCTOU がある — #542、#388。詳細: Troubleshooting「push 直後の CLEAN は仮 CLEAN」)
+- **MUST**: push(`gh pr update-branch` を含む)から間もない `CLEAN` は、Copilot 自動レビュー未着弾の暫定値(仮 CLEAN)とみなす。Copilot の自動レビューは push から着弾まで1〜2分かかるため、最新 push から少なくとも2分待ってから reviewThreads の未解決数(上記 GraphQL)を最終チェックする。15秒待ちでは着弾が間に合わず防げなかった実例がある(#388)
+- **MAY**: 着弾の手がかりとして `gh pr view <PR番号> --json headRefOid,reviews --jq '{head: .headRefOid, reviewed: [.reviews[] | select(.author.login == "copilot-pull-request-reviewer") | .commit.oid]}'` で Copilot レビューが最新コミットに付いたかを見てよい。ただし Copilot は push ごとに必ず再レビューするとは限らないため、「最新コミットへのレビュー着弾」をマージの必須条件にはしない(来ないレビューを待ち続けることになる)
+- **MUST**: マージが「base branch policy prohibits the merge」で拒否されたら、`CLEAN` 表示を信用せず reviewThreads を再取得する(この拒否は conversation 割り込みのシグナル)。未解決 thread があれば上記の即エスカレーションに合流する
 - **MUST NOT**: `mergeStateStatus` が `CLEAN` になる前にマージを実行しない
 - **MUST NOT**: マージ時に `--delete-branch` を付けない。worktree が生存中はローカルブランチ削除が必ず失敗して紛らわしいため、ブランチ削除(リモート含む)は `/wtclean` の領分とする
 
@@ -425,6 +429,22 @@ auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザ�
 ### ライブセッション検証時の誤 kill 事故
 2026-07-05、作業者エージェントが検証用に起動したはずの Alacritty が実際にはマップされておらず、直後に `pgrep -af alacritty` で拾った PID をテスト用ウィンドウと誤認して kill し、ユーザーが元から開いていた既存の Alacritty(workspace 2)を誤終了させた(#354、PR #353)。自分が起動したプロセスは起動時の `$!` で PID を捕捉して追跡し、事後に名前ベースの `pgrep` で「自分のものらしきプロセス」を探して kill するのは禁止。
 
+### worktree での headless nvim 起動の成否は検証シグナルにならない
+worktree で Neovim 設定(`.config/nvim/*.toml` 等)を変更するタスクで `XDG_CONFIG_HOME=<worktree>/.config nvim --headless "+qa!"` を検証に使うと、変更内容とは無関係なプラグイン層起因のエラーが出て、起動の成否が変更の正しさのシグナルとして機能しないことがある。原因は構造的なもので、実機の `~/.config/nvim` は home-manager が最後の `nix:switch` 時点の設定を配布したもの(Nix store への symlink)であり、プラグインキャッシュと state(dpp.vim の `~/.cache/dpp` 配下の `repos/`・`state.vim`・`startup.vim`)もその実機設定を前提に生成・インストールされている。worktree の `.config/nvim` はそれと食い違うため、headless 起動は「worktree の設定 × 実機のキャッシュ / state」という混ざった状態を検証してしまう。さらに `init.lua` の `dpp_base` は `XDG_CACHE_HOME` ではなく `$HOME/.cache/dpp` で決まるため、`XDG_CONFIG_HOME` だけを worktree に向けて起動すると worktree の設定で実機の state を読み、再生成まで走らせうる(state 鮮度管理の経路は `docs/reference/neovim-config.md` の「Plugin Management (dpp)」章参照)。
+
+実例(dein 時代): 2026-07-18、#444(telescope.nvim 廃止)の検証で、変更後の headless 起動は dein 内部で `E897: List or Blob required`(`dein#source` 経由)、切り分けのため `git stash` で変更前に戻して再実行すると別種のエラー(`ddc.vim` の `hook_source` 失敗、`lspconfig` 非推奨警告)が出た。どちらも telescope/ddu とは無関係で、変更前後どちらでも「その時点のエラー」が出る状態だった(#453)。当時の原因は dein のプラグインキャッシュ・自動インストール状態の食い違いだが、dpp.vim へ移行した現在も「worktree の設定と実機のキャッシュ / state が食い違う」構造は変わらない。
+
+教訓: Neovim 設定を変更するタスクでは、headless 起動の「エラーなし=正しい」を当てにせず、以下を標準の検証手順とする:
+1. 静的検証: `grep` での参照漏れチェック、`git diff` での意図しない変更(特に PUA グリフ等の非ASCII文字を含む箇所)の不在確認、TOML 構文チェック(例: `python3 -c "import tomllib, sys; tomllib.load(open(sys.argv[1], 'rb'))" .config/nvim/ddc_settings.toml`。パスは変更した TOML に置き換える。成功時は無出力で exit 0、構文エラー時は `TOMLDecodeError` で exit 1)
+2. ベースライン比較: 変更前の状態(一時 WIP コミットや `git worktree` の別チェックアウト等)で同じ headless コマンドを実行し、エラーの有無・種類を比較する。変更前後どちらでも同じ(無関係な)エラーが出るなら、そのエラーは環境由来と判断してよい
+3. 実際に起動して確かめる必要がある場合は、次項の XDG_* 5点セットでキャッシュ / state ごと隔離した環境で行う
+4. headless 検証が不安定な場合は無理に続行せず、静的検証で代替した旨を最終報告に明記する
+
+### worktree での headless nvim 隔離検証は XDG_* 5点セット必須
+2026-07-26、#495 の隔離検証(PR #500)で `HOME` 環境変数だけをスクラッチディレクトリへ上書きして headless nvim を起動したところ、修正後にもかかわらず `[ddc] Not found source: cmdline-history` が出続け「まだ直っていない」ように見えた(偽陰性)。原因は、このリポジトリの Nix (home-manager) セットアップが `XDG_CONFIG_HOME` / `XDG_CACHE_HOME` / `XDG_STATE_HOME` / `XDG_DATA_HOME` をログインシェルのグローバル環境変数として実ホームのパスに固定しており、`HOME` より優先されること。`vim.fn.stdpath('config')` 等はこれらの `XDG_*` を先に見るため、`HOME` だけの上書きでは隔離が漏れ、headless nvim は隔離先ではなく実ファイル(未修正の設定)を読んでしまう。`HOME` に加えて4つの `XDG_*` もすべてスクラッチディレクトリへ上書きして再検証したところ、正しく隔離された状態で修正の効果(`Not found source` が0件、`sourced: true`)を確認できた(#501)。
+
+教訓: worktree での headless nvim 隔離検証(dpp state 再生成の事前確認など)では、`HOME` に加えて `XDG_CONFIG_HOME` / `XDG_CACHE_HOME` / `XDG_STATE_HOME` / `XDG_DATA_HOME` の4変数もスクラッチディレクトリへ明示的に上書きする(計5点)。`HOME` だけ、あるいは `XDG_CONFIG_HOME` だけの片側上書きは、前項の通り dpp の state が `$HOME/.cache/dpp`、設定が `stdpath('config')` と別々の変数で決まるため、どちらかが実機側に漏れる。
+
 ### send-text は単体では実行されない
 `pane send-text` は pane の入力欄にテキストを挿入するだけで、送信(実行)はされない。実機確認済み: `send-text` の直後に `pane read` してもコマンドは未実行のまま入力欄に残っており、続けて `pane send-keys <pane-id> Enter` を送って初めて実行される。
 
@@ -463,6 +483,14 @@ gotcha(実機確認済み): `herdr agent wait` は対象が既に指定ステー
 
 ### BLOCKED は複合ステータス
 2026-07-05 の運用で、PR #348/#350 の `mergeStateStatus: BLOCKED` を「CI待ち」と解釈し、監視スクリプトが90分待機した(#355)。実際のブロック要因は Copilot レビューの未解決 conversation で、このリポジトリのブランチ保護では conversation 未解決はマージ不可。`BLOCKED` は CI実行中と conversation 未解決を区別できない複合ステータスのため、検知時は必ず GraphQL で reviewThreads の未解決数を確認する。
+
+### push 直後の CLEAN は仮 CLEAN
+「`mergeStateStatus=CLEAN` を確認 → `gh pr merge` 実行」の間に Copilot の自動レビューが非同期で着弾し、「base branch policy prohibits the merge」(conversation 未解決)でマージが拒否される TOCTOU(Time-of-check to time-of-use)が繰り返し発生している。共通パターンは、(1) 新コミット push または `gh pr update-branch` → (2) required checks 通過で `CLEAN` を確認 → (3) この時点で Copilot の(再)レビューはまだ実行中(push から着弾まで1〜2分の遅延がある)→ (4) マージ実行が policy 拒否 → (5) 再取得すると `BLOCKED` かつ未解決 reviewThreads が増えている、というもの。
+
+- 2026-07-08、PR #384 と PR #387 で同日2回発生(#388)。PR #387 では「CLEAN 確認後に15秒待って reviewThreads を再チェック」を試したが、レビュー着弾がそれより遅く防げなかった
+- 2026-08-01、PR #540 / #541 で PR 作成直後に `CLEAN`・未解決 thread 0件を確認してマージしたところ policy 拒否、再取得で `BLOCKED` + Copilot の未解決 thread 各1件が判明した(#542)
+
+教訓: push から数分以内の `CLEAN` は「レビュー未着弾の仮 CLEAN」でありうる。`CLEAN` は判定時点のスナップショットにすぎないため、マージ直前に再取得し、push から十分(2分以上)待ってから reviewThreads を最終チェックする。policy 拒否はエラーではなく「conversation が割り込んだ」シグナルとして扱う(手順6 の Constraints 参照)。
 
 ### SendMessage は司令塔に届かない(構造的理由)
 2026-07-04、copilot-quorum #303 の作業者が完了報告のため `SendMessage` を試行し、`You are the main conversation` エラーで失敗した(#341)。Claude Code のセッション間に直接チャネルはなく、作業者は自セッションの main のため司令塔という宛先が存在しない。上り報告は `SendMessage` ではなく、会話内テキスト出力(司令塔が `herdr agent read` で回収するプル型)と、herdr 経由の push(手順5「(3) 上り=内容」参照)の組み合わせで行う。
@@ -503,3 +531,11 @@ Nerd Font の PUA グリフ等をツール呼び出しで直接タイプする�
 
 ### push 直後の `gh pr checks --watch` が即失敗する
 2026-09-23、GVA-NyaN の並行 worktree 運用(PR #179 / #180)で、force-push・push の直後に仕掛けた `gh pr checks <n> --watch` が「no checks reported」で exit 1 になり、CI 監視が空振りした(worker 2 体で同時に発生)。GitHub 側の check 登録に数秒〜十数秒のラグがあるため。対処は「15〜20 秒待ってから再実行」で、失敗扱いにしない。`sleep N && gh pr checks` に逃げるとハーネスに blocked されうるので、待ちは run_in_background の watch の再武装で行う。
+
+### dynamic workflow のオプトインキーワードが作業指示経由で誤発火する
+Claude Code は、ユーザープロンプト中に `ultra` と `code` を連結した1語のキーワードを見つけると、multi-agent orchestration(dynamic workflow)へのオプトインとして扱う(Claude Code 2.1.160 で旧キーワードから改名)。作業指示プロンプト経由で worker に渡った文字列も「ユーザープロンプト」として発火するため、worker が意図しない「Run a dynamic workflow?」ダイアログで `blocked` になる。2026-07-24、claude:effort のこのキーワード対応(#487 / PR #488)を委任した際に実発生し、worker は司令塔の介入指示で workflow を辞退して逐次実装に切り替えた(成果物への影響なし、#489)。司令塔は代理承認できない(手順4)ため、発火のたびに人間へのエスカレーションが必要になる。
+
+教訓:
+- 作業指示プロンプトにこのキーワードを連結形のまま書かない。「`ultra` と `code` を連結したキーワード」のように分割して書くか、「dynamic workflow のオプトインキーワード(#489 参照)」のように間接表記する。キーワード自体を扱うタスクでも同様で、コミットメッセージ・PR タイトル・PR 本文にも連結形を書かないよう作業指示に明記する
+- この SOP 自体もスキル起動時にセッションへ読み込まれるため、SKILL.md に連結形を書くと /wt を使うたびに誤発火しうる。この節も含め、SOP への追記では連結形を使わない
+- 発火した場合の標準対処: `herdr agent read` でダイアログ表示を確認し、人間の判断で辞退(No)する場合は `herdr pane send-keys <pane-id> 3` でダイアログを辞退してから、逐次実装で進める旨の補足指示を送る(送信手順は手順5(1) の標準手順に従う)
