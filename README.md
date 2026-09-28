@@ -20,8 +20,8 @@ Nix + Home Manager + mise を使用した、宣言的でモダンな開発環境
 |----------|-------|
 | Editor | Neovim (LSP, Treesitter, GitHub Copilot) |
 | Shell | Fish + Starship |
-| Terminal | Alacritty |
-| Multiplexer | Tmux |
+| Terminal | WezTerm（Alacritty は移行期間中のフォールバックとして併存） |
+| Multiplexer | herdr（tmux は移行中で併存） |
 | Window Manager | Hyprland (Wayland) |
 | Status Bar | Waybar (Wayland) |
 | CLI Tools | Rust-based (eza, ripgrep, fd, bat, delta, etc.) |

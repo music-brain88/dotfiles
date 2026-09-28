@@ -147,7 +147,7 @@ Home Manager の設定をモジュール化。
 
 | Module | Description |
 |--------|-------------|
-| `base.nix` | 基本パッケージ (curl, wget, git, cmake, etc.) |
+| `base.nix` | 基本パッケージ (gnutar, protobuf, mako, libnotify, etc. — curl/wget/git/cmake は他モジュールへ移動済み) |
 | `rust-tools.nix` | Rust 開発ツール (fd, ripgrep, eza, bat, etc.) |
 | `shell.nix` | Fish shell + Starship 設定 |
 | `git.nix` | Git 設定 (aliases, delta, gh) |
