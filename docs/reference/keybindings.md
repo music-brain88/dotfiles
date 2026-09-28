@@ -29,7 +29,7 @@ Fish shellのキーバインドは `.config/fish/functions/fish_user_key_binding
 |---------|-------------|------|
 | `Ctrl+t` | File search with preview | ファイル検索（プレビュー付き） |
 | `Ctrl+r` | Command history search | コマンド履歴検索 |
-| `Alt+d` | Directory search | ディレクトリ検索・移動 |
+| `Alt+e` | Directory search | ディレクトリ検索・移動 |
 
 ### Git Integration
 
@@ -41,13 +41,13 @@ Fish shellのキーバインドは `.config/fish/functions/fish_user_key_binding
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
-| `,d` | Select Docker container and show logs | Dockerコンテナ選択＆ログ表示 |
+| `Alt+d` | Select Docker container and show logs | Dockerコンテナ選択＆ログ表示 |
 
 ### skim Tips
 
 - `Ctrl+t` のファイル検索では `bat` によるシンタックスハイライト付きプレビューが表示される
 - `Ctrl+y` のブランチ選択では最新20件のコミットログがプレビュー表示される
-- `,d` のDocker選択では `p` キーでプレビュー（ログ）の表示/非表示を切り替え
+- `Alt+d` のDocker選択では `p` キーでプレビュー（ログ）の表示/非表示を切り替え
 
 ---
 
@@ -215,6 +215,7 @@ Tmuxの設定は `.tmux.conf` で定義されています。
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `prefix + r` | Reload tmux config | 設定ファイルをリロード |
+| `prefix + C` | Launch / re-attach a persistent Claude Code popup (per git root) | git リポジトリ root ごとの永続 Claude Code セッションを popup で起動・再アタッチ（popup 内で `prefix + d` でデタッチ、セッションは維持） |
 
 ### Copy Mode
 

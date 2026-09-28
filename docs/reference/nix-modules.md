@@ -10,10 +10,12 @@
 
 ### base.nix
 
-基本的なシステムパッケージを定義:
-- curl, wget, git
-- cmake, pkg-config
+基本的なシステムパッケージを定義（最小構成。curl/wget/cmakeはdev-tools.nix、gitはgit.nix、pkg-configはrust-tools.nixへ移動済み）:
+- gnutar, gzip
+- protobuf
 - mako, libnotify
+- wl-clipboard, cliphist, hypridle
+- tree, which, file
 
 ### rust-tools.nix
 
