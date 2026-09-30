@@ -59,7 +59,7 @@ Fish で作業
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Terminal Launch                      │
+│  Terminal Launch（通常: bash 対話ログイン）             │
 └────────────────────────┬────────────────────────────────┘
                          │
                          ▼
@@ -81,9 +81,22 @@ Fish で作業
                          │
                          │  exec = プロセス置換
                          │  （Bash プロセスが Fish に置き換わる）
-                         ▼
+                         │
+                         │    ┌──────────────────────────────────────────────┐
+                         │    │  fish 直起動（bash を通らない）              │
+                         │    │  WezTerm→wsl.exe / herdr pane / ssh 越し     │
+                         │    │  親は /init・herdr デーモン・sshd の bash -c │
+                         │    │  └── /usr/bin/fish --login ...               │
+                         │    │      （.bashrc の nix.sh を通らない）        │
+                         │    └──────────────────────┬───────────────────────┘
+                         │                           │
+                         ▼                           ▼
 ┌─────────────────────────────────────────────────────────┐
 │  config.fish                                            │
+│  ├── Nix bootstrap（fish_function_path 等）             │
+│  ├── hm-session-vars.sh を bass で source               │
+│  ├── set -eg fish_user_paths の直後に                   │
+│  │   Nix bin を PATH へ（fish_add_path --path）         │
 │  ├── ロケール設定 (LANG, LC_CTYPE)                      │
 │  ├── PATH 設定 (~/.local/bin, cargo, go, etc.)          │
 │  ├── エイリアス設定 (vim, rm, ls, cat, ps)              │
@@ -91,6 +104,16 @@ Fish で作業
 │  └── ツール有効化 (mise)                                │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### fish 直起動経路（bash を通らない）
+
+起動経路は bash 経由の 1 本だけではありません。次の経路では fish が直接起動され、`.bash_profile` / `.bashrc` を一切通りません。
+
+- **Windows 側 WezTerm → `wsl.exe` 直起動**: `default_prog` が `wsl.exe --cd ~ -- /usr/bin/fish --login --command herdr`（`.config/wezterm/wezterm.lua`）で、fish の親プロセスは `/init`。`wsl.exe --shell-type login` にしても、`.bashrc` 冒頭の `[ -z "$PS1" ] && return` が nix.sh の source より前にあるので素通りする
+- **herdr デーモンから生える pane**: 常駐プロセスが fish を直接起動する
+- **ssh 越しに fish を明示起動するコマンド実行**（`ssh host fish -c '…'` など）: ログインシェルの bash は非対話なので `.bashrc` 冒頭で return し、nix.sh を通らないまま fish が起動する。なお fish を介さない `ssh host cmd` は bash が `-c` で実行するだけで config.fish を通らないので、この対策の範囲外
+
+このため、Nix 管理ツール（herdr / starship / mise / bass）を見せるのに必要な設定は、`.bashrc` の nix.sh に頼らず config.fish の冒頭で自前でブートストラップしています（#632）。bash 経由の経路では nix.sh が既に PATH に入れているので、config.fish 側の追加は冪等に何もしません。
 
 ### `exec` コマンドについて
 
@@ -117,7 +140,7 @@ bash (PID 100) → fish (PID 100)  # 同じ PID、bash は消える
 |------|---------|------------|
 | `.bash_profile` | ログインシェル起動時に `.bashrc` を読み込む | dotfiles |
 | `.bashrc` | 最小限のブートストラップ、`exec fish` | dotfiles |
-| `config.fish` | メインの設定（PATH、エイリアス、プロンプト等） | dotfiles + Nix |
+| `config.fish` | メインの設定（Nix bootstrap、PATH、エイリアス、プロンプト等） | dotfiles + Nix |
 
 ### .bashrc の責務（最小限）
 
@@ -125,7 +148,7 @@ bash (PID 100) → fish (PID 100)  # 同じ PID、bash は消える
 # 1. 非インタラクティブなら何もしない
 [ -z "$PS1" ] && return
 
-# 2. Nix 環境の source（Nix 管理下の fish を起動するために必須）
+# 2. Nix 環境の source（exec fish 前の踏み台。fish 直起動経路は config.fish 側で自前ブートストラップする）
 if [ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
   . "$HOME/.nix-profile/etc/profile.d/nix.sh"
 fi
@@ -150,6 +173,18 @@ exec fish
 ### config.fish の責務
 
 ```fish
+# Nix bootstrap（bash を通らない fish 直起動経路でも Nix 管理ツールを見せる。#632）
+# PATH はここでは触らない（理由は「PATH は fish_add_path --path で書く」節）
+if test -d $HOME/.nix-profile/bin
+  # bass（Nix 管理の fish plugin）を見せるため fish_function_path に vendor_functions.d を足す
+  # XDG_DATA_DIRS に ~/.nix-profile/share を足し、NIX_PROFILES / NIX_SSL_CERT_FILE を未設定なら設定
+end
+
+# Home Manager の session variables を bass で読み込む
+bass source ~/.nix-profile/etc/profile.d/hm-session-vars.sh
+set -eg fish_user_paths; set -gx PATH (string match -v -- . $PATH)  # カレント混入の防御（#610/#613）
+test -d $HOME/.nix-profile/bin; and fish_add_path --path --prepend $HOME/.nix-profile/bin  # Nix bin は set -eg の直後に PATH へ
+
 # ロケール
 set -x LANG en_US.UTF-8
 set -x LC_CTYPE en_US.UTF-8
@@ -193,6 +228,8 @@ fish は入れ子で起動されるたびに（herdr の pane → 作業者 → 
 - **存在しない dir は無視される**: `fish_add_path` は `test -d` で弾くので、マシンによって入っていないツール（pulumi 等）の行を残しても PATH は汚れない。裏返すと、シェル起動後に初めて作られた dir（初回 `go install` 前の `~/go/bin` など）は新しいシェルを開くまで PATH に入らない
 - **Home Manager の `home.sessionPath` は使わない**: `hm-session-vars.sh` に出力される `export PATH="…:$PATH"` は無条件の prepend で、config.fish 冒頭が入れ子のたびに source し直す（`set -e __HM_SESS_VARS_SOURCED`）ため冪等にできない。cargo はかつて `nix/modules/rust-tools.nix` の `home.sessionPath` と config.fish の二重宣言だったが、config.fish に一本化した（#595）
 
+**Nix の PATH を `set -eg fish_user_paths` の直後で入れ直す理由（#632）。** Nix installer は repo 管理外の `~/.config/fish/conf.d/nix.fish` を置き、これが Nix 本体の `nix.fish` を読んで `fish_add_path --prepend --global` で `~/.nix-profile/bin` を入れる。これは PATH の直書きではなく global の `fish_user_paths` 経由で、conf.d は config.fish より先に読まれる。ところが config.fish 冒頭のカレント混入対策（#610/#613）の `set -eg fish_user_paths` が global の `fish_user_paths` を消すと、fish のハンドラが同じ要素を PATH からも引き剥がし、`~/.nix-profile/bin` まで消えてしまう。bash 経由の経路では nix.sh が `export PATH=…` で PATH に直書きしているので消えずに済むが、fish 直起動経路では Nix 管理ツールが全部見えなくなり、WezTerm→`wsl.exe` の herdr 起動が exit 127 で落ちていた。そこで `~/.nix-profile/bin` は `set -eg` の**直後**に `fish_add_path --path --prepend` で PATH へ直接入れ直す。`set -eg` より前（Nix bootstrap ブロック）で入れても、同じ文字列なのでハンドラに消されるため、置き場所はここしかない。`--path` なので `fish_user_paths` を経由せず、冪等なので bash 経由で既に PATH にある環境では何も変わらない。結果として conf.d/nix.fish には依存しなくなり、残っていても無害
+
 ### PATH の優先順位
 
 原則は「**Nix 版が常に勝つ**」です（#596）。PATH は次の 3 層の順に並び、同名のコマンドがあれば上の層が勝ちます。
@@ -200,7 +237,7 @@ fish は入れ子で起動されるたびに（herdr の pane → 作業者 → 
 | 順 | 層 | PATH 上の位置 | 入れるもの | 役割 |
 |----|----|---------------|------------|------|
 | 1 | mise installs（`~/.local/share/mise/installs/*`） | 先頭 | mise の hook-env（プロンプトのたび） | `.mise.toml` で指定したバージョンを、そのディレクトリの中でだけ最優先で効かせる |
-| 2 | Nix（`~/.nix-profile/bin`） | 中間（`/usr/bin` より前） | ログイン時の Nix プロファイルスクリプト | Home Manager で宣言したものは「あれば必ず勝つ」 |
+| 2 | Nix（`~/.nix-profile/bin`） | 中間（`/usr/bin` より前） | config.fish の `fish_add_path --path --prepend`（bash 経由ではその前に `.bashrc` の nix.sh も入れる） | Home Manager で宣言したものは「あれば必ず勝つ」 |
 | 3 | `~/.cargo/bin`、`~/.local/bin` | 末尾（`/usr/bin` より後ろ） | config.fish の `string match -v` で既存エントリを除去してから `fish_add_path --path --append` | Nix に無いもの（`~/.cargo/bin`: deno / zellij / broot 等 cargo install 専用ツール、`~/.local/bin`: claude 等の native installer、手動ビルド）だけを拾うフォールバック |
 
 **なぜ `~/.local/bin` を末尾に置くのか。** `~/.local/bin` は curl installer や native installer が勝手に書き込む場所で、ツールの管理層を Nix へ移した後も旧版が残りやすい。先頭側にあった頃は、残った旧版（化石）が PATH の先勝ちで Nix 版を黙って隠す事故が実際に起きた（#584 の mise、それ以前の claude の npm 版）。末尾に置けば、Nix にあるものを `~/.local/bin` が隠す経路そのものが無くなる。
@@ -253,6 +290,7 @@ exec fish
 | 環境変数（POSIX ツール用） | `.bashrc` | `exec` 前に設定、Fish に引き継がれる |
 | 環境変数（一般） | `config.fish` | Fish で管理 |
 | PATH 設定 | `config.fish` | Fish で管理 |
+| Nix の PATH | `config.fish` | fish 直起動でも効く。`.bashrc` の nix.sh は `exec fish` 前の踏み台として残す |
 | エイリアス | `config.fish` | alias はプロセス間で引き継がれない |
 | プロンプト | `config.fish` | Fish 専用 |
 | ssh-agent | `.bashrc` | `exec` 前に起動、環境変数が引き継がれる |

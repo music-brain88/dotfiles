@@ -1,3 +1,27 @@
+# --- Nix bootstrap (fish 自前 / self-contained) ---
+# bash (~/.bashrc の nix.sh) を経由しない起動経路 (WezTerm→wsl.exe 直起動・herdr デーモンからの pane・ssh 越しの fish 明示起動) でも Nix 管理ツールが見えるようにする (#632)
+# bass は Nix 管理の fish plugin なので、bass より前に fish_function_path を通す
+# PATH の追加はこのブロックではやらない: 下の set -eg fish_user_paths のハンドラが同じ文字列を PATH から消すため、その直後で行う
+# Make fish self-sufficient for Nix so launch paths that skip bash's nix.sh (WezTerm→wsl.exe, herdr daemon panes, fish launched explicitly over ssh) still see Nix-managed tools (#632)
+# bass is a Nix-managed plugin, so fish_function_path must be set before bass runs
+# PATH is deliberately not touched here: the set -eg fish_user_paths handler below would strip the same entry, so it is added right after it
+if test -d $HOME/.nix-profile/bin
+  if not contains -- $HOME/.nix-profile/share/fish/vendor_functions.d $fish_function_path
+    set -ga fish_function_path $HOME/.nix-profile/share/fish/vendor_functions.d
+  end
+  if not contains -- $HOME/.nix-profile/share (string split : -- $XDG_DATA_DIRS)
+    if test -z "$XDG_DATA_DIRS"
+      set -gx XDG_DATA_DIRS /usr/local/share:/usr/share:$HOME/.nix-profile/share
+    else
+      set -gx XDG_DATA_DIRS $XDG_DATA_DIRS:$HOME/.nix-profile/share
+    end
+  end
+  set -q NIX_PROFILES; or set -gx NIX_PROFILES "/nix/var/nix/profiles/default $HOME/.nix-profile"
+  if not set -q NIX_SSL_CERT_FILE; and test -e /etc/ssl/certs/ca-certificates.crt
+    set -gx NIX_SSL_CERT_FILE /etc/ssl/certs/ca-certificates.crt
+  end
+end
+
 # Home Managerのhome.sessionVariablesはhm-session-vars.sh(bashスクリプト)に出力されるが、
 # fishはbashスクリプトを自動で読み込まないため、bassプラグインを使ってsourceする
 # Reset flag to ensure latest session variables are always loaded after nix:switch
@@ -10,6 +34,9 @@ bass source ~/.nix-profile/etc/profile.d/hm-session-vars.sh
 # fish's handler prepends that empty element to PATH, which fish stores as '.', putting cwd on PATH (#610)
 # set -eg alone is not enough: the handler looks for "" in PATH, but it is stored as '.', so strip '.' explicitly
 set -eg fish_user_paths; set -gx PATH (string match -v -- . $PATH)
+# Nix bin は fish_user_paths に乗せず PATH 直接で確定する (--path)。上の set -eg が conf.d/nix.fish (Nix installer 生成) 由来の要素を消した後に入れ直す (#632)
+# Put the Nix bin dir on PATH directly (--path), never via fish_user_paths, right after the set -eg above strips the entry added by conf.d/nix.fish (Nix installer) (#632)
+test -d $HOME/.nix-profile/bin; and fish_add_path --path --prepend $HOME/.nix-profile/bin
 
 # Locale settings
 set -x LANG en_US.UTF-8
