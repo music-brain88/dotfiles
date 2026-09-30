@@ -1,8 +1,8 @@
 # --- Nix bootstrap (fish 自前 / self-contained) ---
-# bash (~/.bashrc の nix.sh) を経由しない起動経路 (WezTerm→wsl.exe 直起動・herdr デーモンからの pane・ssh cmd) でも Nix 管理ツールが見えるようにする (#632)
+# bash (~/.bashrc の nix.sh) を経由しない起動経路 (WezTerm→wsl.exe 直起動・herdr デーモンからの pane・ssh 越しの fish 明示起動) でも Nix 管理ツールが見えるようにする (#632)
 # bass は Nix 管理の fish plugin なので、bass より前に fish_function_path を通す
 # PATH の追加はこのブロックではやらない: 下の set -eg fish_user_paths のハンドラが同じ文字列を PATH から消すため、その直後で行う
-# Make fish self-sufficient for Nix so launch paths that skip bash's nix.sh (WezTerm→wsl.exe, herdr daemon panes, ssh cmd) still see Nix-managed tools (#632)
+# Make fish self-sufficient for Nix so launch paths that skip bash's nix.sh (WezTerm→wsl.exe, herdr daemon panes, fish launched explicitly over ssh) still see Nix-managed tools (#632)
 # bass is a Nix-managed plugin, so fish_function_path must be set before bass runs
 # PATH is deliberately not touched here: the set -eg fish_user_paths handler below would strip the same entry, so it is added right after it
 if test -d $HOME/.nix-profile/bin

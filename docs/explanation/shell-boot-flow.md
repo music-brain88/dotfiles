@@ -84,8 +84,8 @@ Fish で作業
                          │
                          │    ┌──────────────────────────────────────────────┐
                          │    │  fish 直起動（bash を通らない）              │
-                         │    │  WezTerm→wsl.exe / herdr pane / ssh cmd      │
-                         │    │  親は /init・herdr デーモン・sshd            │
+                         │    │  WezTerm→wsl.exe / herdr pane / ssh 越し     │
+                         │    │  親は /init・herdr デーモン・sshd の bash -c │
                          │    │  └── /usr/bin/fish --login ...               │
                          │    │      （.bashrc の nix.sh を通らない）        │
                          │    └──────────────────────┬───────────────────────┘
@@ -111,7 +111,7 @@ Fish で作業
 
 - **Windows 側 WezTerm → `wsl.exe` 直起動**: `default_prog` が `wsl.exe --cd ~ -- /usr/bin/fish --login --command herdr`（`.config/wezterm/wezterm.lua`）で、fish の親プロセスは `/init`。`wsl.exe --shell-type login` にしても、`.bashrc` 冒頭の `[ -z "$PS1" ] && return` が nix.sh の source より前にあるので素通りする
 - **herdr デーモンから生える pane**: 常駐プロセスが fish を直接起動する
-- **ssh のコマンド実行**（`ssh host cmd`）: 非対話なので `.bashrc` は冒頭で return する
+- **ssh 越しに fish を明示起動するコマンド実行**（`ssh host fish -c '…'` など）: ログインシェルの bash は非対話なので `.bashrc` 冒頭で return し、nix.sh を通らないまま fish が起動する。なお fish を介さない `ssh host cmd` は bash が `-c` で実行するだけで config.fish を通らないので、この対策の範囲外
 
 このため、Nix 管理ツール（herdr / starship / mise / bass）を見せるのに必要な設定は、`.bashrc` の nix.sh に頼らず config.fish の冒頭で自前でブートストラップしています（#632）。bash 経由の経路では nix.sh が既に PATH に入れているので、config.fish 側の追加は冪等に何もしません。
 
