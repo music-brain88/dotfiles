@@ -124,7 +124,7 @@ dotfiles/
 
 | Directory | Description |
 |-----------|-------------|
-| `gnupg/` | GPG agent 設定 (`gpg-agent.conf`、パスフレーズキャッシュTTL) |
+| `gnupg/` | GPG agent 設定 (`gpg-agent.conf`、パスフレーズキャッシュTTL、pinentry-programの明示) |
 | `pinentry/` | pinentry を curses/tty へ強制するフック (`preexec`、SSHセッションでのgnome3誤選択対策) |
 
 ### Media & Misc

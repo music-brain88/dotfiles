@@ -128,6 +128,7 @@ gpg --list-secret-keys
 | 署名時に `No secret key` | `gpg --list-secret-keys` でサブキーに `ssb` があるか確認。無ければ `mise run gpg:import` |
 | GitHub で `Unverified` 表示 | GitHub側の公開鍵が期限切れのまま。公開鍵を再登録する |
 | pinentry が出ない | `~/.gnupg/gpg-agent.conf` を確認し `gpg-connect-agent reloadagent /bye` |
+| `gpg: signing failed: No pinentry`(`gpg-unlock` でも出る) | 稼働中の agent が Nix 版 gnupg(`readlink /proc/$(gpg-connect-agent 'getinfo pid' /bye \| awk '/^D/{print $2}')/exe`)。`gpg-agent.conf` の `pinentry-program` が効いていない世代なら `mise run nix:switch` 後に `gpg-connect-agent reloadagent /bye`。それでも駄目なら手元で `gpgconf --kill gpg-agent` → `/usr/bin/gpg-agent --homedir ~/.gnupg --daemon` → `gpg-unlock`(#634) |
 | trust が `unknown` になる | `gpg --import-ownertrust .backup/gpg/ownertrust.txt` |
 
 ---
