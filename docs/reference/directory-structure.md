@@ -19,6 +19,7 @@ dotfiles/
 │   └── explanation/         # 理解向け
 ├── llm/                     # LLM コンテキストファイル
 ├── nix/                     # Nix モジュール
+├── tools/                   # 自作ツールのソース (Rust、flake の overlay でパッケージ化)
 ├── .mise.toml               # タスクランナー設定
 ├── flake.nix                # Nix Flake エントリーポイント
 ├── home.nix                 # Home Manager メイン設定
@@ -37,6 +38,12 @@ dotfiles/
 | `flake.nix` | Nix Flake のエントリーポイント。依存関係と出力を定義 |
 | `flake.lock` | 依存関係のバージョンをロック |
 | `home.nix` | Home Manager のメイン設定ファイル |
+
+### In-repo Tools / 自作ツール
+
+| ディレクトリ | 説明 |
+|---|---|
+| `tools/standalone-check/` | 配布文書の自立可読性チェッカー(Rust)。`standalone-report-writing` skill の点検手順から呼ぶ。`flake.nix` の overlay で `pkgs.standalone-check` として定義し、`nix/modules/dev-tools.nix` の `home.packages` で配る。単体ビルドは `nix build .#standalone-check`、開発は `cargo test`(Issue #639) |
 
 ### Task Runner
 
