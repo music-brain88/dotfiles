@@ -23,6 +23,13 @@
         inherit system;
         config.allowUnfree = true;
         overlays = [
+          # 自作ツール: standalone-check (配布文書の自立可読性チェッカー、Rust)。
+          # ソースは tools/standalone-check/、配布は nix/modules/dev-tools.nix の home.packages。
+          # In-repo tool: standalone-check (Rust). Source in tools/standalone-check/,
+          # shipped via home.packages in nix/modules/dev-tools.nix.
+          (final: prev: {
+            standalone-check = final.callPackage ./tools/standalone-check/package.nix { };
+          })
           # Bump github-copilot-cli to latest release (nixpkgs lags behind npm)
           (final: prev: {
             github-copilot-cli = prev.github-copilot-cli.overrideAttrs (old:
@@ -138,6 +145,10 @@
           # GUI lives on the Windows host; we own everything from the shell inward
           "archie-wsl" = mkHome "wsl";
         };
+
+      # 自作ツールを `nix build .#standalone-check` で単体ビルドできるように出す
+      # Expose the in-repo tool so `nix build .#standalone-check` works on its own
+      packages.${system}.standalone-check = pkgs.standalone-check;
 
       # Development shell for testing
       devShells.${system}.default = pkgs.mkShell {

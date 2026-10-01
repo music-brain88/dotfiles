@@ -62,6 +62,10 @@ in
     nodejs # Node.js
     bun # Bun runtime (herdr-browser プラグインの依存 / dependency of the herdr-browser plugin)
     python3 # Python
+    # standalone-check: 配布文書の自立可読性チェッカー (tools/standalone-check、Rust、flake overlay で定義)。
+    # standalone-report-writing skill の点検手順から呼ぶ。--with-yomiyasu は python3 で yomiyasu の lint を呼ぶ
+    # In-repo Rust checker used by the standalone-report-writing skill; --with-yomiyasu shells out to python3
+    standalone-check
     go # Go language
     ruby # Ruby
     php # PHP
