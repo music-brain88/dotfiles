@@ -12,3 +12,6 @@ result-*
 
 # Machine-specific backups (mise run backup の出力先 / not portable)
 .backup/
+
+# Rust build output of in-repo tools (tools/standalone-check など)
+/tools/*/target/

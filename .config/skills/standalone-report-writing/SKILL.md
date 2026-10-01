@@ -104,13 +104,14 @@ yomiyasu の lint(`../yomiyasu/scripts/yomiyasu_lint.py`)は文単位の機械�
 
 1. **文脈除去テスト**。直前の会話と自分の記憶を使わずに文書だけを読み直し、各節で「誰が・何を・どうする」を言えるかを確認する。言えない節は主文を足す。
 2. **役割テスト**。登場人物が役割表にあるか、「こっち」「先方」「あの人」「例の」「さっき」が残っていないかを確認する。
-3. **同梱スクリプト**を走らせる。節の冒頭の主文の欠落・本文と箇条書きの体言止め・文脈依存語・読点の多い文・対句の疑いを列挙する。
+3. **点検ツール `standalone-check`** を走らせる。節の冒頭の主文の欠落・本文と箇条書きの体言止め・文脈依存語・読点の多い文・対句の疑いを列挙する。ツールは Rust 製で、dotfiles の `tools/standalone-check/` にあり、`home.packages` 経由で PATH に入っている(Issue #639。以前は Python スクリプトだった)。
 
    ```bash
-   python3 <スキル配置ディレクトリ>/scripts/standalone_check.py <対象ファイル>
+   standalone-check <対象ファイル>
+   standalone-check <対象ファイル> --with-yomiyasu
    ```
 
-   `--with-yomiyasu` を付けると、隣の `yomiyasu/scripts/yomiyasu_lint.py` を続けて実行し、上の表で「読まない」とした指摘を除いて表示する。判定は物理行ではなく段落単位で行うので、Markdown の折り返し(読点の後で改行した 1 文)は体言止めに数えない。終了コードは、本スクリプトの WARN か yomiyasu の warn があれば 1、ファイルを読めないか lint を実行できなければ 2、それ以外は 0 になる。INFO と yomiyasu の info は表示だけで、終了コードに影響しない。lint を実行できなかったときは `[SKIP]` と表示し、検査済みとはみなさない。
+   `--with-yomiyasu` を付けると、`~/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py` を `python3` で続けて実行し、上の表で「読まない」とした指摘を除いて表示する。lint の場所は `--yomiyasu-script <パス>` か環境変数 `STANDALONE_CHECK_YOMIYASU` で指定できる。判定は物理行ではなく段落単位で行うので、Markdown の折り返し(読点の後で改行した 1 文)は体言止めに数えない。終了コードは、本スクリプトの WARN か yomiyasu の warn があれば 1、ファイルを読めないか lint を実行できなければ 2、それ以外は 0 になる。INFO と yomiyasu の info は表示だけで、終了コードに影響しない。lint を実行できなかったときは `[SKIP]` と表示し、検査済みとはみなさない。`standalone-check` が PATH に無いときは、dotfiles で `mise run nix:switch` を実行してから使う。
 4. **修正は 2 回まで**。警告をゼロにすることを目的にしない。専門用語、固有名詞、意図した短い見出し語は残す。
 
 ## 修正指示への使い方
