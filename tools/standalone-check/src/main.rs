@@ -20,7 +20,7 @@
 //!   2  ファイルを読めない、または --with-yomiyasu を付けたのに lint を実行できなかった
 
 use regex::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
@@ -96,6 +96,25 @@ struct Finding {
     severity: &'static str,
     message: String,
     snippet: String,
+}
+
+#[derive(Deserialize)]
+struct YomiyasuReport {
+    findings: Vec<YomiyasuFinding>,
+}
+
+#[derive(Deserialize)]
+struct YomiyasuFinding {
+    #[serde(default = "default_yomiyasu_severity")]
+    severity: String,
+    message: String,
+    snippet: String,
+    #[serde(flatten)]
+    extra: serde_json::Map<String, serde_json::Value>,
+}
+
+fn default_yomiyasu_severity() -> String {
+    "warn".into()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -610,51 +629,65 @@ fn run_yomiyasu(script: &Path, file: &Path) -> (&'static str, Vec<serde_json::Va
         Err(e) => return ("failed", Vec::new(), format!("起動できない: {e}")),
     };
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let parsed: serde_json::Value = match serde_json::from_str(&stdout) {
-        Ok(v) => v,
-        Err(_) => {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let detail = if stderr.trim().is_empty() {
-                stdout.trim()
-            } else {
-                stderr.trim()
-            };
-            let code = output
-                .status
-                .code()
-                .map(|c| c.to_string())
-                .unwrap_or_else(|| "?".into());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let detail = if stderr.trim().is_empty() {
+        stdout.trim()
+    } else {
+        stderr.trim()
+    };
+    if !output.status.success() {
+        return (
+            "failed",
+            Vec::new(),
+            format!(
+                "lint が異常終了した({}): {}",
+                output.status,
+                truncate_chars(detail, 200)
+            ),
+        );
+    }
+    let parsed: YomiyasuReport =
+        match serde_json::from_slice::<serde_json::Map<String, serde_json::Value>>(&output.stdout)
+            .and_then(|obj| serde_json::from_value(serde_json::Value::Object(obj)))
+        {
+            Ok(v) => v,
+            Err(e) => {
+                return (
+                    "failed",
+                    Vec::new(),
+                    format!(
+                        "出力を JSON レポートとして解釈できない: {e}; {}",
+                        truncate_chars(detail, 200)
+                    ),
+                );
+            }
+        };
+    let mut kept = Vec::new();
+    for f in parsed.findings {
+        if !matches!(
+            f.severity.to_lowercase().as_str(),
+            "info" | "warn" | "error"
+        ) {
             return (
                 "failed",
                 Vec::new(),
-                format!(
-                    "出力を JSON として解釈できない(終了コード {code}): {}",
-                    truncate_chars(detail, 200)
-                ),
+                format!("lint の応答形式が不正: 未知の severity {:?}", f.severity),
             );
         }
-    };
-    let mut kept = Vec::new();
-    if let Some(items) = parsed.get("findings").and_then(|f| f.as_array()) {
-        for f in items {
-            let msg = f.get("message").and_then(|m| m.as_str()).unwrap_or("");
-            let snip = f.get("snippet").and_then(|m| m.as_str()).unwrap_or("");
-            if re_yomiyasu_ignore().is_match(msg)
-                || (snip.contains("正本") && msg.contains("スロップ"))
-            {
-                continue;
-            }
-            let mut f = f.clone();
-            if let Some(obj) = f.as_object_mut() {
-                obj.entry("severity")
-                    .or_insert_with(|| serde_json::Value::String("warn".into()));
-                obj.insert(
-                    "file".into(),
-                    serde_json::Value::String(file.display().to_string()),
-                );
-            }
-            kept.push(f);
+        if re_yomiyasu_ignore().is_match(&f.message)
+            || (f.snippet.contains("正本") && f.message.contains("スロップ"))
+        {
+            continue;
         }
+        let mut obj = f.extra;
+        obj.insert("severity".into(), serde_json::Value::String(f.severity));
+        obj.insert("message".into(), serde_json::Value::String(f.message));
+        obj.insert("snippet".into(), serde_json::Value::String(f.snippet));
+        obj.insert(
+            "file".into(),
+            serde_json::Value::String(file.display().to_string()),
+        );
+        kept.push(serde_json::Value::Object(obj));
     }
     ("ok", kept, String::new())
 }

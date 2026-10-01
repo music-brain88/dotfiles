@@ -29,6 +29,8 @@ standalone-check FILE --json                      # JSON で出力する
 
 終了コードは、WARN なしが 0、本ツールの WARN か yomiyasu の warn / error があれば 1、ファイルを読めないか lint を実行できなければ 2 である。INFO と yomiyasu の info は表示だけで、終了コードに影響しない。
 
+lint の異常終了は、JSON を出力していても失敗として扱う。終了コードが 0 の場合も、応答は `findings` 配列を持つ JSON オブジェクトでなければならない。各指摘には文字列の `message` と `snippet` が必要で、`severity` は `info` / `warn` / `error` を大文字小文字を区別せずに受ける。`severity` の省略時は従来どおり `warn` とする。`line` や `rule` などの追加フィールドは保持する。応答形式が不正な場合は、終了コード 2 と `yomiyasu_status` の `failed` で返し、通常出力では `[SKIP]` と表示する。
+
 `--with-yomiyasu` は `~/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py`(次に `~/.copilot/skills/...`)を探し、`python3` で実行する。本環境の表記と衝突する指摘(和欧文間の半角スペース、太字頻度、箇条書き比率、用語「正本」)は除いて表示する。環境変数 `STANDALONE_CHECK_YOMIYASU` でも場所を指定できる。
 
 ## 開発

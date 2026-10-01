@@ -9,6 +9,10 @@ fn fixture(name: &str) -> PathBuf {
 }
 
 fn run(args: &[&str]) -> Output {
+    run_with_env(args, &[])
+}
+
+fn run_with_env(args: &[&str], env: &[(&str, &str)]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_standalone-check"))
         .args(args)
         .env(
@@ -16,8 +20,29 @@ fn run(args: &[&str]) -> Output {
             std::env::temp_dir().join("standalone-check-no-home"),
         )
         .env_remove("STANDALONE_CHECK_YOMIYASU")
+        .envs(env.iter().copied())
         .output()
         .expect("binary runs")
+}
+
+fn run_yomiyasu_report(report: &str, exit_code: &str, json: bool) -> Output {
+    let document = fixture("ok.md");
+    let script = fixture("fake_yomiyasu_report.sh");
+    let mut args = vec![
+        document.to_str().unwrap(),
+        "--yomiyasu-script",
+        script.to_str().unwrap(),
+    ];
+    if json {
+        args.push("--json");
+    }
+    run_with_env(
+        &args,
+        &[
+            ("STANDALONE_CHECK_TEST_REPORT", report),
+            ("STANDALONE_CHECK_TEST_EXIT_CODE", exit_code),
+        ],
+    )
 }
 
 fn stdout(o: &Output) -> String {
@@ -133,6 +158,130 @@ fn broken_yomiyasu_keeps_json_valid_and_exits_two() {
     let status = v["yomiyasu_status"].as_object().unwrap();
     assert_eq!(status.values().next().unwrap(), "failed");
     assert!(String::from_utf8_lossy(&o.stderr).contains("解釈できない"));
+}
+
+#[test]
+fn failing_yomiyasu_with_valid_json_exits_two() {
+    for report in [
+        r#"{"findings":[]}"#,
+        r#"{"findings":[{"severity":"warn","message":"確認候補","snippet":"結果を確認する。"}]}"#,
+    ] {
+        let o = run_yomiyasu_report(report, "2", true);
+        assert_eq!(o.status.code(), Some(2), "{}", stdout(&o));
+        let v: serde_json::Value = serde_json::from_str(&stdout(&o)).expect("valid JSON");
+        assert_eq!(
+            v["yomiyasu_status"]
+                .as_object()
+                .unwrap()
+                .values()
+                .next()
+                .unwrap(),
+            "failed"
+        );
+        assert!(v["yomiyasu"].as_array().unwrap().is_empty());
+        let stderr = String::from_utf8_lossy(&o.stderr);
+        assert!(stderr.contains("異常終了"), "{stderr}");
+        assert!(stderr.contains("exit status: 2"), "{stderr}");
+        assert!(stderr.contains("fake lint failed"), "{stderr}");
+    }
+}
+
+#[test]
+fn invalid_yomiyasu_report_shapes_exit_two() {
+    for report in [
+        "null",
+        "[]",
+        "[[]]",
+        "{}",
+        r#"{"findings":null}"#,
+        r#"{"findings":{}}"#,
+        r#"{"findings":"invalid"}"#,
+        r#"{"findings":[null]}"#,
+        r#"{"findings":["invalid"]}"#,
+        r#"{"findings":[["warn","message","snippet"]]}"#,
+        r#"{"findings":[{"message":42,"snippet":"x"}]}"#,
+        r#"{"findings":[{"message":"x","snippet":false}]}"#,
+        r#"{"findings":[{"message":"x","snippet":"x","severity":7}]}"#,
+        r#"{"findings":[{"message":"x","snippet":"x","severity":null}]}"#,
+        r#"{"findings":[{"message":"x","snippet":"x","severity":"unknown"}]}"#,
+        r#"{"findings":[{"message":"半角空白","snippet":"x","severity":"unknown"}]}"#,
+        r#"{"findings":[{"message":"x"}]}"#,
+        r#"{"findings":[{"snippet":"x"}]}"#,
+    ] {
+        let o = run_yomiyasu_report(report, "0", true);
+        assert_eq!(o.status.code(), Some(2), "report: {report}\n{}", stdout(&o));
+        let v: serde_json::Value = serde_json::from_str(&stdout(&o)).expect("valid JSON");
+        assert_eq!(
+            v["yomiyasu_status"]
+                .as_object()
+                .unwrap()
+                .values()
+                .next()
+                .unwrap(),
+            "failed",
+            "report: {report}"
+        );
+        assert!(v["yomiyasu"].as_array().unwrap().is_empty());
+        assert!(!o.stderr.is_empty(), "report: {report}");
+    }
+}
+
+#[test]
+fn valid_empty_yomiyasu_report_passes() {
+    let o = run_yomiyasu_report(r#"{"findings":[]}"#, "0", true);
+    assert_eq!(o.status.code(), Some(0), "{}", stdout(&o));
+    let v: serde_json::Value = serde_json::from_str(&stdout(&o)).expect("valid JSON");
+    assert_eq!(
+        v["yomiyasu_status"]
+            .as_object()
+            .unwrap()
+            .values()
+            .next()
+            .unwrap(),
+        "ok"
+    );
+    assert!(v["yomiyasu"].as_array().unwrap().is_empty());
+    assert!(o.stderr.is_empty());
+}
+
+#[test]
+fn yomiyasu_default_severity_and_extra_fields_are_preserved() {
+    let o = run_yomiyasu_report(
+        r#"{"findings":[{"line":3,"rule":"custom","message":"確認候補","snippet":"結果を確認する。","file":"stale.md","context":{"source":"test"}}]}"#,
+        "0",
+        true,
+    );
+    assert_eq!(o.status.code(), Some(1), "{}", stdout(&o));
+    let v: serde_json::Value = serde_json::from_str(&stdout(&o)).expect("valid JSON");
+    let f = &v["yomiyasu"][0];
+    assert_eq!(f["severity"], "warn");
+    assert_eq!(f["line"], 3);
+    assert_eq!(f["rule"], "custom");
+    assert_eq!(f["context"]["source"], "test");
+    assert_eq!(f["file"], fixture("ok.md").to_str().unwrap());
+}
+
+#[test]
+fn yomiyasu_severity_remains_case_insensitive() {
+    for (severity, expected) in [("INFO", 0), ("WARN", 1), ("ERROR", 1)] {
+        let report = format!(
+            r#"{{"findings":[{{"severity":"{severity}","message":"確認候補","snippet":"結果を確認する。"}}]}}"#
+        );
+        let o = run_yomiyasu_report(&report, "0", true);
+        assert_eq!(o.status.code(), Some(expected), "{}", stdout(&o));
+        let v: serde_json::Value = serde_json::from_str(&stdout(&o)).expect("valid JSON");
+        assert_eq!(v["yomiyasu"][0]["severity"], severity);
+    }
+}
+
+#[test]
+fn invalid_yomiyasu_report_is_skip_not_pass() {
+    for exit_code in ["0", "2"] {
+        let o = run_yomiyasu_report(r#"{"findings":"invalid"}"#, exit_code, false);
+        assert_eq!(o.status.code(), Some(2), "{}", stdout(&o));
+        assert!(stdout(&o).contains("[SKIP] yomiyasu"));
+        assert!(!stdout(&o).contains("[PASS] yomiyasu"));
+    }
 }
 
 #[test]
