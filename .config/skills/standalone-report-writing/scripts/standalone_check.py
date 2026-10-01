@@ -4,17 +4,22 @@ Mechanical checks for standalone readability of distributed Japanese documents.
 
 検査項目 / Checks:
   MAIN     節の冒頭に主文(句点で終わる文)がなく、表や箇条書きで始まっている
-  TAIGEN   本文の行や文が句点で終わらない、または名詞で終わる(体言止め)
+  TAIGEN   段落や文が句点で終わらない、または名詞で終わる(体言止め)
   LIST     20 字以上の箇条書き項目が句点で終わらない
   CONTEXT  直前の会話を前提にする語(こっち、先方、例の、さっき など)
-  TOUTEN   1 文に読点が 3 つ以上ある
+  TOUTEN   1 文に読点が 3 つ以上あり、節がつながれている
   TSUIKU   「X は A、Y は B」型の並列で動詞がない(対句の疑い)
+判定は物理行ではなく段落単位で行う。連続する本文行・引用行は 1 つの段落に結合し、
+箇条書きは続きの行(インデント行、または空行を挟まない直後の行)を項目に結合する。
 行に "standalone: ignore" を含む HTML コメントを置くと、その行は検査しない。
 重さ: WARN(終了コード 1 の対象)と INFO(確認だけ)。MAIN の箇条書き始まりは INFO。
 
 使い方 / Usage:
   standalone_check.py FILE [FILE ...] [--with-yomiyasu] [--json]
-終了コード / Exit code: WARN あり 1、なし 0、ファイルエラー 2
+終了コード / Exit code:
+  0  WARN なし(INFO と yomiyasu の info は影響しない)
+  1  本スクリプトの WARN、または yomiyasu の warn / error がある
+  2  ファイルを読めない、または --with-yomiyasu を付けたのに lint を実行できなかった
 標準ライブラリのみで動作する。
 """
 
@@ -35,15 +40,15 @@ OPENERS = {"（": "）", "(": ")", "「": "」", "『": "』", "【": "】"}
 SENTENCE_END = "。！？!?"
 HIRAGANA = re.compile(r"[ぁ-ん]")
 CONTEXT_WORDS = re.compile(
-    r"こっち|あっち|そっち|例の|さっき|先ほどの|前に話した|前回話した|この前の|あの件|その件|くだんの|上で言った|冒頭で言った"
+    r"こっち|あっち|そっち|先方|あの人|例の|さっき|先ほどの|前に話した|前回話した|この前の|あの件|その件|くだんの|上で言った|冒頭で言った"
 )
 # yomiyasu の指摘のうち、本環境の表記と衝突するため読まないもの(SKILL.md「yomiyasu の指摘の読み方」)
 YOMIYASU_IGNORE = re.compile(r"半角空白|太字の頻度|箇条書きの比率|「正本」|正本")
-
-
 IGNORE_MARK = "standalone: ignore"
 PARTICLES = set("はがをにでとのへやかもねよな")
 TRAILING_PAREN = re.compile(r"\s*[（(][^（）()]*[）)]\s*$")
+ASCII_TAIL = re.compile(r"[A-Za-z0-9)\]]$")
+ASCII_HEAD = re.compile(r"^[A-Za-z0-9(\[]")
 
 
 def strip_closers(s: str) -> str:
@@ -86,6 +91,18 @@ def strip_inline(s: str) -> str:
     return s.strip()
 
 
+def join_wrapped(a: str, b: str) -> str:
+    """折り返された 2 行をつなぐ。和文は詰め、欧文同士は半角空白を挟む。"""
+    a, b = a.rstrip(), b.strip()
+    if not a:
+        return b
+    if not b:
+        return a
+    if ASCII_TAIL.search(a) and ASCII_HEAD.search(b):
+        return a + " " + b
+    return a + b
+
+
 def sentences(text: str):
     """句点で区切った文を返す。括弧の中の句点では切らない。末尾に句点がない残りも 1 文として返す。"""
     buf = ""
@@ -104,23 +121,10 @@ def sentences(text: str):
         yield rest, False
 
 
-def check_file(path: Path):
-    findings = []
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError as e:
-        print(f"{path}: cannot read: {e}", file=sys.stderr)
-        return None
-
-    start = 0
-    if lines and lines[0].strip() == "---":
-        for i in range(1, len(lines)):
-            if lines[i].strip() == "---":
-                start = i + 1
-                break
-
+def classify_lines(lines, start):
+    """各行の種別を返す。fence の中は code 扱い。"""
+    kinds = {}
     in_fence = False
-    kinds = {}  # line index -> (kind, text)
     for i in range(start, len(lines)):
         raw = lines[i]
         if IGNORE_MARK in raw:
@@ -145,6 +149,70 @@ def check_file(path: Path):
             kinds[i] = ("quote", BLOCKQUOTE.match(raw).group(1))
         else:
             kinds[i] = ("para", raw.strip())
+    return kinds
+
+
+def build_blocks(lines, kinds):
+    """行を段落(ブロック)にまとめる。各ブロックは (kind, 先頭行 index, 結合したテキスト)。"""
+    blocks = []
+    cur = None  # [kind, start, text]
+
+    def flush():
+        nonlocal cur
+        if cur is not None:
+            blocks.append(tuple(cur))
+            cur = None
+
+    for i in sorted(kinds):
+        kind, text = kinds[i]
+        if kind in ("blank", "fence", "code", "ignored", "heading", "table"):
+            flush()
+            if kind != "blank":
+                blocks.append((kind, i, text))
+            continue
+        if kind == "para":
+            if cur is not None and cur[0] == "para":
+                cur[2] = join_wrapped(cur[2], text)
+                continue
+            if cur is not None and cur[0] == "list":
+                # 空行を挟まずに箇条書きへ続く本文行は項目の続き(インデント行と CommonMark の lazy continuation)
+                cur[2] = join_wrapped(cur[2], text)
+                continue
+            flush()
+            cur = ["para", i, text]
+            continue
+        if kind == "quote":
+            if cur is not None and cur[0] == "quote":
+                cur[2] = join_wrapped(cur[2], text)
+                continue
+            flush()
+            cur = ["quote", i, text]
+            continue
+        if kind == "list":
+            flush()
+            cur = ["list", i, text]
+            continue
+    flush()
+    return blocks
+
+
+def check_file(path: Path):
+    findings = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as e:
+        print(f"{path}: cannot read: {e}", file=sys.stderr)
+        return None
+
+    start = 0
+    if lines and lines[0].strip() == "---":
+        for i in range(1, len(lines)):
+            if lines[i].strip() == "---":
+                start = i + 1
+                break
+
+    kinds = classify_lines(lines, start)
+    blocks = build_blocks(lines, kinds)
 
     def add(code, lineno, msg, snippet, severity="WARN"):
         findings.append({
@@ -153,14 +221,11 @@ def check_file(path: Path):
         })
 
     # MAIN: 節の冒頭
-    idx = sorted(kinds)
-    for n, i in enumerate(idx):
-        kind, _ = kinds[i]
+    for n, (kind, i, text) in enumerate(blocks):
         if kind != "heading":
             continue
-        for j in idx[n + 1:]:
-            k2, t2 = kinds[j]
-            if k2 in ("blank", "fence", "code", "ignored"):
+        for k2, j, t2 in blocks[n + 1:]:
+            if k2 in ("fence", "code", "ignored"):
                 continue
             if k2 == "heading":
                 break  # 空の節(親見出し)は対象外
@@ -173,11 +238,12 @@ def check_file(path: Path):
                     add("MAIN", j, "節の冒頭の段落が句点で終わる文を含まない", t2)
             break
 
-    # 行単位・文単位の検査
-    for i in idx:
-        kind, text = kinds[i]
-        if kind in ("blank", "heading", "fence", "code", "table", "ignored"):
-            if kind == "table" and CONTEXT_WORDS.search(text):
+    # 段落単位・文単位の検査
+    for kind, i, text in blocks:
+        if kind in ("heading", "fence", "code", "ignored"):
+            continue
+        if kind == "table":
+            if CONTEXT_WORDS.search(re.sub(r"「[^」]*」", "「」", text)):
                 add("CONTEXT", i, "直前の会話を前提にする語がある", text.strip())
             continue
         plain = strip_inline(text)
@@ -190,7 +256,7 @@ def check_file(path: Path):
         if kind in ("para", "quote"):
             tail = strip_closers(plain)
             if tail and tail[-1] not in SENTENCE_END:
-                add("TAIGEN", i, "本文の行が句点で終わっていない", plain)
+                add("TAIGEN", i, "段落が句点で終わっていない", plain)
         elif kind == "list":
             tail = strip_closers(plain)
             if len(plain) >= 20 and tail and tail[-1] not in SENTENCE_END and not plain.endswith(":"):
@@ -231,23 +297,29 @@ def find_yomiyasu():
 
 
 def run_yomiyasu(script: Path, path: Path):
-    proc = subprocess.run(
-        [sys.executable, str(script), str(path), "--json"],
-        capture_output=True, text=True,
-    )
+    """yomiyasu の lint を実行する。戻り値は (status, findings, detail)。
+    status は "ok" か "failed"。失敗の理由は detail に入れ、呼び出し側が stderr に出す。"""
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), str(path), "--json"],
+            capture_output=True, text=True,
+        )
+    except OSError as e:
+        return "failed", [], f"起動できない: {e}"
     try:
         result = json.loads(proc.stdout)
     except json.JSONDecodeError:
-        print(f"  yomiyasu の出力を解釈できない: {proc.stderr.strip()[:200]}")
-        return []
+        detail = (proc.stderr.strip() or proc.stdout.strip())[:200]
+        return "failed", [], f"出力を JSON として解釈できない(終了コード {proc.returncode}): {detail}"
     kept = []
     for f in result.get("findings", []):
         msg = f.get("message", "")
         snip = f.get("snippet", "")
         if YOMIYASU_IGNORE.search(msg) or ("正本" in snip and "スロップ" in msg):
             continue
+        f.setdefault("severity", "warn")
         kept.append(f)
-    return kept
+    return "ok", kept, ""
 
 
 def main():
@@ -259,7 +331,12 @@ def main():
 
     all_findings = []
     yomi = []
+    yomi_status = {}
     had_error = False
+    script = find_yomiyasu() if args.with_yomiyasu else None
+    if args.with_yomiyasu and script is None:
+        print("yomiyasu_lint.py が見つからない(../yomiyasu/scripts または ~/.claude/skills/yomiyasu/scripts)", file=sys.stderr)
+
     for f in args.files:
         p = Path(f)
         res = check_file(p)
@@ -268,16 +345,24 @@ def main():
             continue
         all_findings.extend(res)
         if args.with_yomiyasu:
-            script = find_yomiyasu()
             if script is None:
-                print("yomiyasu_lint.py が見つからない(../yomiyasu/scripts または ~/.claude/skills/yomiyasu/scripts)", file=sys.stderr)
-            else:
-                for y in run_yomiyasu(script, p):
-                    y["file"] = str(p)
-                    yomi.append(y)
+                yomi_status[str(p)] = "unavailable"
+                continue
+            status, items, detail = run_yomiyasu(script, p)
+            yomi_status[str(p)] = status
+            if status != "ok":
+                print(f"{p}: yomiyasu を実行できなかった: {detail}", file=sys.stderr)
+                continue
+            for y in items:
+                y["file"] = str(p)
+                yomi.append(y)
+
+    yomi_failed = any(s != "ok" for s in yomi_status.values())
+    yomi_warns = [y for y in yomi if str(y.get("severity", "warn")).lower() in ("warn", "error")]
 
     if args.json:
-        print(json.dumps({"findings": all_findings, "yomiyasu": yomi}, ensure_ascii=False, indent=2))
+        print(json.dumps({"findings": all_findings, "yomiyasu": yomi, "yomiyasu_status": yomi_status},
+                         ensure_ascii=False, indent=2))
     else:
         if not all_findings:
             print("[PASS] standalone_check: 指摘なし")
@@ -288,18 +373,22 @@ def main():
                 print(f"  > {f['snippet']}")
         if args.with_yomiyasu:
             print("-" * 60)
-            if not yomi:
-                print("[PASS] yomiyasu: 読む対象の指摘なし")
-            else:
-                print(f"[NOTICE] yomiyasu: {len(yomi)} 件(半角空白・太字頻度・箇条書き比率・「正本」は除外)")
-                for y in yomi:
-                    print(f"{y['file']}:L{y.get('line', '?')}: {y.get('message', '')}")
-                    print(f"  > {str(y.get('snippet', ''))[:70]}")
+            skipped = [k for k, v in yomi_status.items() if v != "ok"]
+            if skipped:
+                print(f"[SKIP] yomiyasu: 実行できなかったファイルがある({len(skipped)} 件。理由は stderr)。検査済みとはみなさない")
+            if any(v == "ok" for v in yomi_status.values()):
+                if not yomi:
+                    print("[PASS] yomiyasu: 読む対象の指摘なし")
+                else:
+                    print(f"[NOTICE] yomiyasu: {len(yomi)} 件(うち warn {len(yomi_warns)}。半角空白・太字頻度・箇条書き比率・「正本」は除外)")
+                    for y in yomi:
+                        print(f"{y['file']}:L{y.get('line', '?')}: [{y.get('severity', 'warn')}] {y.get('message', '')}")
+                        print(f"  > {str(y.get('snippet', ''))[:70]}")
 
-    if had_error:
+    if had_error or yomi_failed:
         sys.exit(2)
     warns = [f for f in all_findings if f["severity"] == "WARN"]
-    sys.exit(1 if (warns or yomi) else 0)
+    sys.exit(1 if (warns or yomi_warns) else 0)
 
 
 if __name__ == "__main__":
