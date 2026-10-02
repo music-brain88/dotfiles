@@ -8,7 +8,7 @@ Fish/herdr/Tmux/Hyprland にキーバインドを追加・変更する方法で�
 
 ## Adding Fish Keybindings
 
-新しいキーバインドを追加する場合:
+Fish に新しいキーバインドを追加する場合は、`.config/fish/functions/fish_user_key_bindings.fish` の `fish_user_key_bindings` 関数に `bind` を書きます。次の例は `Ctrl+x` に `custom_function` を割り当てます。
 
 ```fish
 # .config/fish/functions/fish_user_key_bindings.fish
@@ -34,9 +34,9 @@ switch_workspace = "prefix+shift+1..9"        # 1..9 で番号付き (indexed) �
 # close_pane = ["prefix+x", "prefix+ctrl+x"]
 ```
 
-- **キー名はアクション名**: 左辺は `split_vertical` / `next_tab` / `reload_config` などの herdr のアクション名で、右辺がキー。キーは `prefix+<key>` の形で書き、修飾キーは `shift` / `ctrl` / `alt` を `+` でつなぐ(herdr のデフォルト設定では `-` キーを `minus` と表記している。例: `split_horizontal = "prefix+minus"`)。書式の誤りは次の `herdr config check` で検出できる
-- **書いたアクションだけデフォルトを上書きする**: `[keys]` に書かなかったアクションは herdr のデフォルトのまま効く。このリポジトリでデフォルトのまま使っているもの(`focus_pane_*` = `prefix+h/j/k/l`、`copy_mode` = `prefix+[`、`reload_config` = `prefix+shift+r` など)は、config.toml 冒頭 1〜17 行目のコメントに一覧がある。デフォルトのキーを残したまま別キーを足したいときは、`split_vertical` のようにデフォルトのキーも配列に含める
-- **旧 tmux との対応**: 各行の末尾コメントに対応する tmux の設定を併記している。新しく足す行も同じ流儀で書く
+- **キー名はアクション名**: 左辺は `split_vertical` / `next_tab` / `reload_config` などの herdr のアクション名で、右辺はキーです。キーは `prefix+<key>` の形で書き、修飾キーは `shift` / `ctrl` / `alt` を `+` でつなぎます(herdr のデフォルト設定では `-` キーを `minus` と表記しています。例: `split_horizontal = "prefix+minus"`)。書式の誤りは、後の手順 2 の `herdr config check` で検出できます。
+- **書いたアクションだけデフォルトを上書きする**: `[keys]` に書かなかったアクションは、herdr のデフォルトのまま効きます。このリポジトリでデフォルトのまま使っているもの(`focus_pane_*` = `prefix+h/j/k/l`、`copy_mode` = `prefix+[`、`reload_config` = `prefix+shift+r` など)は、config.toml 冒頭 1〜17 行目のコメントに一覧があります。デフォルトのキーを残したまま別キーを足したいときは、`split_vertical` のようにデフォルトのキーも配列に含めます。
+- **旧 tmux との対応**: config.toml の各行の末尾コメントには、対応する tmux の設定を併記しています。新しく足す行も同じ流儀で書きます。
 
 config.toml は Nix(`nix/modules/herdr.nix`)が `~/.config/herdr/config.toml` へ配布しているため、`~/.config` 側ではなくリポジトリ側を編集して反映します。
 
@@ -57,6 +57,8 @@ herdr server reload-config
 
 > **Note**: Tmux は herdr への移行中で非推奨です。新しいキーバインドは原則 herdr 側に追加してください。
 
+Tmux のキーバインドは、`.config/tmux/tmux.conf` に `bind` で追加します。
+
 ```bash
 # .config/tmux/tmux.conf (Nix が ~/.tmux.conf へ配布)
 # prefix + x で custom command を実行
@@ -64,6 +66,8 @@ bind x run-shell "your-command"
 ```
 
 ## Adding Hyprland Keybindings
+
+Hyprland のキーバインドは、`.config/hypr/keybinds.conf` に `bind` で追加します。次のコードブロックの後半は、サブマップ(モード)を使う場合の書き方です。
 
 ```bash
 # .config/hypr/keybinds.conf

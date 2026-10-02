@@ -12,12 +12,16 @@ Claude Code は native installer 管理です(Nix にも npm にも入れない 
 
 ### 新規インストール
 
+Claude Code を新しく入れるときは、公式の native installer を実行します。
+
 ```bash
 # Official native installer / 公式インストーラー
 curl -fsSL https://claude.ai/install.sh | bash
 ```
 
 ### 確認
+
+インストール後は、次のコマンドで `claude` の解決先とバージョンを確認します。
 
 ```bash
 # ~/.local/bin/claude -> ~/.local/share/claude/versions/<ver> になっていれば正常
@@ -72,13 +76,13 @@ paru -S <package>
 
 `~/.local/bin` と `~/.cargo/bin` は PATH の末尾に置いているので(#596、#611)、**この 2 つの化石が Nix 版を隠す事故は構造的に起きません**。原則は「Nix 版が常に勝つ」で、どちらも Nix に無いものだけを拾うフォールバック層です(優先順位の設計は [shell-boot-flow.md](../explanation/shell-boot-flow.md#path-の優先順位) を参照)。
 
-それでも化石は掃除対象です。
+それでも、利用者は化石を掃除する必要があります。理由は次の 3 つです。
 
-- **静かに動かないだけになる**: Nix 版を隠さない代わりに、化石はエラーも出さずに残り続けます。気づくきっかけが無いので、見に行かないと溜まる一方です
-- **Nix から外すと復活する**: `home.packages` からツールを外した瞬間、フォールバック層に残った化石が解決先になり、古いバージョンが黙って動き出します
-- **末尾に回っていない場所の化石は今も隠せる**: npm グローバルの実体は mise の installs 配下に入り、hook-env がプロンプトのたびに PATH 先頭へ入れます(claude の npm 版残存はこの型)
+- **静かに動かないだけになる**: Nix 版を隠さない代わりに、化石はエラーも出さずに残り続けます。気づくきっかけが無いので、見に行かないと溜まる一方です。
+- **Nix から外すと復活する**: `home.packages` からツールを外した瞬間、フォールバック層に残った化石が解決先になり、古いバージョンが黙って動き出します。
+- **末尾に回っていない場所の化石は今も隠せる**: npm グローバルの実体は mise の installs 配下に入り、hook-env がプロンプトのたびに PATH 先頭へ入れます(claude の npm 版残存はこの型です)。
 
-症状と確認方法:
+次の表は、化石が残っているときに現れる症状ごとに、確認コマンドと正常時の期待値を並べたものです。
 
 | 症状 | 確認コマンド | 期待値 |
 |------|-------------|--------|
@@ -88,9 +92,9 @@ paru -S <package>
 | `~/.local/bin` に置いたのに効かない | `type -a <tool>` | 先頭が `~/.local/bin/<tool>`。前に同名があれば、そちらが勝っている(末尾に置いているため) |
 | `fishPlugins` で入れたプラグイン(bass 等、`nix/modules/shell.nix`)の挙動が Nix 版と違う | fish で `readlink -f (functions --details <関数名>)` | `/nix/store/…/share/fish/vendor_functions.d/` 配下。`~/.config/fish/functions/` の実体ファイルのままなら fisher 時代の化石(同じディレクトリでも `home.file` で置いたリポジトリ管理の関数は `/nix/store/` に解決されるので正常) |
 
-> **⚠️ 掃除前に: `exec fish` が要る(#584 / #611):** `starship init fish` / `mise activate fish` は生成時に `which` で解決したバイナリの絶対パスを `fish_prompt` 等の関数本体に焼き込みます。掃除で実体を消すと、掃除前から起動している fish はプロンプト描画のたびに `fish: Unknown command: <旧パス>/starship` のようなエラーを吐きます(#611 で `cargo uninstall starship` 直後に発生、#584 の mise `__mise_env_eval` でも同型)。対処は各シェルで `exec fish`(または新しいターミナルを開く)。新しく起動した fish は Nix 版のパスを焼き込むので最初から正常です。
+> **⚠️ 掃除前に: `exec fish` が要る(#584 / #611):** `starship init fish` / `mise activate fish` は生成時に `which` で解決したバイナリの絶対パスを `fish_prompt` 等の関数本体に焼き込みます。掃除で実体を消すと、掃除前から起動している fish はプロンプト描画のたびに `fish: Unknown command: <旧パス>/starship` のようなエラーを吐きます(#611 で `cargo uninstall starship` 直後に発生、#584 の mise `__mise_env_eval` でも同型)。対処として、利用者は各シェルで `exec fish` を実行します(または新しいターミナルを開きます)。新しく起動した fish は Nix 版のパスを焼き込むので最初から正常です。
 
-掃除手順:
+化石の種類ごとの掃除手順は次のとおりです。
 
 ```bash
 # npm グローバルの化石(claude 等)
@@ -113,7 +117,7 @@ rm ~/.local/bin/<tool>                       # Nix に同名があれば解決�
 
 > **⚠️ 注意:** `~/.local/bin` には Home Manager が意図的に置くファイル(`home.file` で定義、symlink になっている)もあります。`ls -la` で **symlink でない実体ファイル**だけが掃除候補です。消す前に `readlink` で確認してください。
 
-> **⚠️ 壊れた cargo 版 hurl(#611):** `hurl` は Nix には無く、pacman 版(`/usr/bin/hurl`)と cargo 版が同名衝突しています。cargo 版(6.0.0)は `libxml2.so.2` が無く起動できないため、`~/.cargo/bin` が Nix より前にあった間は動かない cargo 版が動く pacman 版を隠していました。`~/.cargo/bin` を末尾に回した(#611)ことで `hurl` の解決先は pacman 版に戻ります。cargo 版は Nix と同名ではないので上記 17 crate には含みませんが、使わないなら `cargo uninstall hurl` で一緒に掃除してよいです。
+> **⚠️ 壊れた cargo 版 hurl(#611):** `hurl` は Nix には無く、pacman 版(`/usr/bin/hurl`)と cargo 版が同名衝突しています。cargo 版(6.0.0)は `libxml2.so.2` が無く起動できないため、`~/.cargo/bin` が Nix より前にあった間は動かない cargo 版が動く pacman 版を隠していました。`~/.cargo/bin` を末尾に回した(#611)ことで `hurl` の解決先は pacman 版に戻ります。cargo 版は Nix と同名ではないので掃除手順のコードブロックに挙げた 17 crate には含みませんが、使わないなら `cargo uninstall hurl` で一緒に掃除してよいです。
 >
 > **⚠️ rustup proxy がある機での確認:** `~/.cargo/bin` に `cargo` / `rustc` / `rustup` の rustup proxy がある環境では、`--append` 後は `cargo` 自体の解決先も変わります。掃除の前後で `type -a cargo` を確認してください。
 

@@ -19,6 +19,8 @@
 
 ### Git Operations
 
+次の表は、Git 操作で使うコマンドとキーバインドを並べたものです。
+
 | Command / Keybind | Description | 説明 |
 |-------------------|-------------|------|
 | `git status/add/commit/push/pull` | Basic Git commands | 基本的なGitコマンド |
@@ -28,12 +30,16 @@
 
 ### Docker Operations
 
+次の表は、Docker 操作で使う操作とキーバインドを並べたものです。
+
 | Command / Keybind | Description | 説明 |
 |-------------------|-------------|------|
 | 基本操作 | Start/Stop/Logs | コンテナの起動・停止・ログ確認 |
 | `Alt+d` | Select container with skim | コンテナ選択＆ログ表示（skim連携） |
 
 ### Neovim Operations
+
+次の表は、Neovim で使うキーバインドと機能を並べたものです。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -43,12 +49,16 @@
 
 ### Tmux Operations
 
+次の表は、Tmux で行う主な操作を並べたものです。
+
 | Operation | Description | 説明 |
 |-----------|-------------|------|
 | Session管理 | Create, attach, detach | 新規作成・アタッチ・デタッチ |
 | Window/Pane | Split, switch | 分割・切り替え |
 
 ### Fish Shell Operations
+
+次の表は、Fish Shell で使うコマンドとキーバインドを並べたものです。
 
 | Command / Keybind | Description | 説明 |
 |-------------------|-------------|------|
@@ -59,6 +69,8 @@
 
 ### Development Environment
 
+次の表は、開発環境で使うツールを並べたものです。
+
 | Tool | Description | 説明 |
 |------|-------------|------|
 | mise | Version manager | Node.js, Python, Rustなどのバージョン管理 |
@@ -67,7 +79,11 @@
 
 ## 🔄 Typical Workflow / 典型的なワークフロー
 
+この節は、普段の開発の流れを 5 つの段階に分け、各段階で行う作業の順序を図で示します。
+
 ### 1. Git操作
+
+次の図は、Git 操作の順序を示します。
 
 ```
 ブランチ作成・切り替え（skim連携で効率化）
@@ -76,6 +92,8 @@
 ```
 
 ### 2. コード編集
+
+次の図は、コード編集の順序を示します。
 
 ```
 Neovimでコードを書く
@@ -89,6 +107,8 @@ LSPでコードジャンプ・型チェック・エラー修正
 
 ### 3. Docker Build
 
+次の図は、Docker イメージを編集・ビルド・起動する順序を示します。
+
 ```
 Dockerfileを編集
     ↓
@@ -99,6 +119,8 @@ Dockerfileを編集
 
 ### 4. テスト実行
 
+次の図は、テストを実行してから結果を確認するまでの順序を示します。
+
 ```
 Dockerコンテナ内でテスト実行
     ↓
@@ -106,6 +128,8 @@ Dockerコンテナ内でテスト実行
 ```
 
 ### 5. デプロイ
+
+次の図は、テスト通過からデプロイまでの順序を示します。
 
 ```
 テスト通過

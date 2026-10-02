@@ -1,6 +1,6 @@
 # How-to Guides / ハウツーガイド
 
-作業向け。すでに基本を理解している人が、特定の目的を達成するためのガイドです。
+ハウツーガイドは作業向けの文書で、すでに基本を理解している人が特定の目的を達成するためのものです。
 
 - [install-and-update-packages.md](./install-and-update-packages.md) — パッケージの追加・更新・ロールバック
 - [customize-your-fork.md](./customize-your-fork.md) — フォークして自分用にカスタマイズする

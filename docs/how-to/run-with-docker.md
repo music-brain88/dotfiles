@@ -6,6 +6,8 @@ Dockerコンテナ上でこのdotfilesのHome Manager設定をビルド・確認
 
 ---
 
+初めて使うときは、イメージをビルドしてコンテナを起動し、コンテナに入ります。
+
 ```bash
 # Build and run
 mise run docker:build
@@ -15,13 +17,13 @@ mise run docker:run
 mise run docker:exec
 ```
 
-コンテナを再度使う場合:
+コンテナを再度使う場合は、次のタスクで起動します。
 
 ```bash
 mise run docker:start
 ```
 
-停止・削除:
+コンテナを停止・削除するときは、次のタスクを実行します。
 
 ```bash
 mise run docker:stop
