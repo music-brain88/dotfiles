@@ -13,17 +13,19 @@ mise tasks
 
 ## Nix Tasks
 
+次の表は、Nix 関連の mise タスクと、それぞれが実行する同等のコマンドを並べたものである。
+
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
 | `mise run nix:build` | Home Manager 設定をビルド (profile 自動判別) | `nix build .#homeConfigurations.<profile>.activationPackage` |
 | `mise run nix:switch` | ビルド＆アクティベート (profile 自動判別) | build + `./result/activate` |
-
-profile は `uname -r` から自動判別される: WSL カーネル (`microsoft` を含む) なら `archie-wsl`、それ以外は `archie`。両マシンでコマンドは同一。
 | `mise run nix:check` | Flake チェック実行 | `nix flake check` |
 | `mise run nix:update` | Flake inputs を更新 | `nix flake update` |
 | `mise run nix:gc` | 古い世代をガベージコレクト | `nix-collect-garbage -d` |
 
-mise タスクではないが、あわせてよく使うNix関連コマンド:
+`nix:build` と `nix:switch` は、profile を `uname -r` から自動判別する。WSL カーネル (`microsoft` を含む) なら `archie-wsl` を使い、それ以外なら `archie` を使う。そのため、両マシンで実行するコマンドは同一である。
+
+次の表は、mise タスクではないが、あわせてよく使うNix関連コマンドを並べたものである。
 
 | Command | Description |
 |---------|-------------|
@@ -33,13 +35,15 @@ mise タスクではないが、あわせてよく使うNix関連コマンド:
 
 ## Claude Code Tasks
 
+次の表は、Claude Code の設定を変える mise タスクと、同等の操作を並べたものである。
+
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
 | `mise run claude:effort <level>` | Claude Code の effort 設定(effortLevel/ultracode)を更新してNix経由で反映 (`low` / `medium` / `high` / `xhigh` / `ultracode`) | `.config/claude/settings.json` を jq で書き換え + `nix:switch` |
 
-`ultracode` は effortLevel の値ではなく、独立した boolean 設定キー。xhigh 相当の effort に加えて、常設の dynamic-workflow(マルチエージェント)オーケストレーションをセッション全体で有効にする。`mise run claude:effort ultracode` を実行すると `effortLevel = "xhigh"` と `ultracode = true` が書き込まれる。通常レベル(low/medium/high/xhigh)に戻すと `ultracode` キー自体を削除し、設定ファイルを最小に保つ。
+`ultracode` は effortLevel の値ではなく、独立した boolean 設定キーである。xhigh 相当の effort に加えて、常設の dynamic-workflow(マルチエージェント)オーケストレーションをセッション全体で有効にする。`mise run claude:effort ultracode` を実行すると `effortLevel = "xhigh"` と `ultracode = true` が書き込まれる。通常レベル(low/medium/high/xhigh)に戻すと `ultracode` キー自体を削除し、設定ファイルを最小に保つ。
 
-mise タスクではないが、あわせて使うグローバルタスク(`.config/mise/config.toml` 定義、リポジトリを問わずどのディレクトリからでも実行可):
+次の表は、mise タスクではないが、あわせて使うグローバルタスクを並べたものである。グローバルタスクは `.config/mise/config.toml` で定義されていて、リポジトリを問わずどのディレクトリからでも実行できる。
 
 | Task | Description |
 |------|-------------|
@@ -48,6 +52,8 @@ mise タスクではないが、あわせて使うグローバルタスク(`.con
 ---
 
 ## Docker Tasks
+
+次の表は、Docker 関連の mise タスクと、それぞれが実行する同等のコマンドを並べたものである。
 
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
@@ -62,16 +68,20 @@ mise タスクではないが、あわせて使うグローバルタスク(`.con
 
 ## Neovim Tasks
 
+次の表は、Neovim 関連の mise タスクと、それぞれが実行する同等の操作を並べたものである。
+
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
 | `mise run nvim:ts-install` | `treesitter_parsers.lua` のリストに従い nvim-treesitter のパーサをインストール(冪等) | headless nvim 経由で `ts.install()` |
 | `mise run nvim:state` | dpp state(`startup.vim`/`state.vim`)を headless で強制再生成(`check_files()` の差分有無を問わない)。pull後・`nix:switch` 後の明示反映用([#466](https://github.com/music-brain88/dotfiles/issues/466)) | headless nvim 経由で `dpp#make_state()` |
 
-プラグインのインストールは mise タスクにしていない。初回起動時に `init.lua` が未取得を検知して自動インストールし、手動で入れ直すときは Neovim 内で `:DppInstall` を実行する。自動インストールの仕組みと、state 鮮度管理の4経路(BufWritePost / 起動時 check_files / `:DppMakeState` / `mise run nvim:state`)の使い分けは [neovim-config.md](neovim-config.md#-plugin-management-dpp) を参照。
+プラグインのインストールは mise タスクにしていない。初回起動時に `init.lua` が未取得を検知して自動インストールし、手動で入れ直すときは Neovim 内で `:DppInstall` を実行する。自動インストールの仕組みと、state 鮮度管理の4経路(BufWritePost / 起動時 check_files / `:DppMakeState` / `mise run nvim:state`)の使い分けは [neovim-config.md](neovim-config.md#-plugin-management-dpp) に書いてある。
 
 ---
 
 ## Utility Tasks
+
+次の表は、その他の mise タスクと、それが実行する同等のコマンドを示す。
 
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
@@ -81,7 +91,7 @@ mise タスクではないが、あわせて使うグローバルタスク(`.con
 
 ## GPG Tasks
 
-複数端末での署名鍵運用。手順の詳細は [manage-gpg-keys.md](../how-to/manage-gpg-keys.md) を参照。
+GPG タスクは、署名鍵を複数端末で運用するためのタスクである。手順の詳細は [manage-gpg-keys.md](../how-to/manage-gpg-keys.md) に書いてある。
 
 | Task | Description |
 |------|-------------|
@@ -95,7 +105,7 @@ mise タスクではないが、あわせて使うグローバルタスク(`.con
 
 ## SOPS age Tasks
 
-hexhive の Secrets(SOPS + age)で使う鍵の管理。秘密鍵の正本は Bitwarden、ローカルの置き場は `~/.config/sops/age/keys.txt`(sops が自動参照するパス)。GPG タスクと同じ「Bitwarden 添付 + fetch-if-absent」方式。
+SOPS age タスクは、hexhive の Secrets(SOPS + age)で使う鍵を管理する。秘密鍵の正本は Bitwarden に置く。ローカルの置き場は `~/.config/sops/age/keys.txt`(sops が自動参照するパス)である。方式は GPG タスクと同じ「Bitwarden 添付 + fetch-if-absent」である。
 
 | Task | Description |
 |------|-------------|
@@ -108,6 +118,8 @@ hexhive の Secrets(SOPS + age)で使う鍵の管理。秘密鍵の正本は Bit
 
 ## Hyprland Tasks
 
+次の表は、Hyprland 関連の mise タスクと、それが実行する同等のコマンドを示す。
+
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
 | `mise run hypr:pm-update` | Hyprland アップグレード後に hyprpm 管理プラグインを再ビルド(Nix ではなく Arch のツールチェーンを強制) | `PATH="/usr/bin:$PATH" hyprpm update` |
@@ -117,6 +129,8 @@ Nix プロファイルの cmake/pkg-config は純粋性パッチにより `/usr`
 ---
 
 ## Usage Examples
+
+次の例は、よく使うタスクの組み合わせを示す。
 
 ```bash
 # 設定を更新してアクティベート

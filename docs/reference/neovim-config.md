@@ -19,7 +19,7 @@
 
 ### dpp.toml - Core Plugins
 
-起動時に読み込まれるコアプラグイン。
+`dpp.toml` は、起動時に読み込まれるコアプラグインを宣言する。次の表は、そのプラグインを並べたものである。
 
 | Plugin | Description |
 |--------|-------------|
@@ -29,11 +29,11 @@
 | `neoterm` | Terminal integration |
 | `nvim-colorizer.lua` | Color code highlighter |
 
-`denops.vim`(Deno runtime for Vim/Neovim plugins)は TOML では宣言しない。dpp.vim 本体・dpp 拡張と同じく Nix 管理で(`nix/modules/neovim.nix`)、`init.lua` の bootstrap が `$NVIM_DENOPS_VIM` の store パスを直接 runtimepath に追加する。`dpp-ext-installer` のクローン対象にしないための扱い(`dpp.toml` 冒頭コメント参照)。
+`denops.vim`(Deno runtime for Vim/Neovim plugins)は TOML では宣言しない。dpp.vim 本体・dpp 拡張と同じく Nix 管理で(`nix/modules/neovim.nix`)、`init.lua` の bootstrap が `$NVIM_DENOPS_VIM` の store パスを直接 runtimepath に追加する。この扱いは、`dpp-ext-installer` のクローン対象にしないためである(`dpp.toml` 冒頭コメント参照)。
 
 ### ddc_settings.toml - Completion
 
-ddc.vimベースの補完システム。
+`ddc_settings.toml` は、ddc.vimベースの補完システムを設定する。次の表は、補完ソースを並べたものである。
 
 | Source | Description |
 |--------|-------------|
@@ -46,7 +46,7 @@ ddc.vimベースの補完システム。
 
 ### ddu_settings.toml - File/Buffer Management
 
-ddu.vimベースのファイラー＆検索システム。
+`ddu_settings.toml` は、ddu.vimベースのファイラー＆検索システムを設定する。次の表は、モードごとの用途を並べたものである。
 
 | Mode | Description |
 |------|-------------|
@@ -57,9 +57,9 @@ ddu.vimベースのファイラー＆検索システム。
 
 ### lsp_settings.toml - Language Server
 
-`vim.lsp.config()` / `vim.lsp.enable()` (Neovim 0.11+ ネイティブAPI) ベース。nvim-lspconfigはサーバー定義データ(`lsp/*.lua`)の提供元としてdppで管理するプラグイン(`lsp_settings.toml`)のまま維持し、`require('lspconfig')...setup{}`のフレームワーク層は使わない。LSPサーバー本体はすべて`nix/modules/neovim.nix`のextraPackagesから供給される(mason.nvim/mason-lspconfig.nvimは廃止)。
+LSP の設定は、`vim.lsp.config()` / `vim.lsp.enable()` (Neovim 0.11+ ネイティブAPI) をベースにしている。nvim-lspconfigはサーバー定義データ(`lsp/*.lua`)の提供元としてdppで管理するプラグイン(`lsp_settings.toml`)のまま維持し、`require('lspconfig')...setup{}`のフレームワーク層は使わない。LSPサーバー本体はすべて`nix/modules/neovim.nix`のextraPackagesから供給される(mason.nvim/mason-lspconfig.nvimは廃止)。
 
-対応言語サーバー:
+次の表は、対応している言語サーバーと言語を並べたものである。
 
 | Server | Language |
 |--------|----------|
@@ -67,18 +67,18 @@ ddu.vimベースのファイラー＆検索システム。
 | `pyright` | Python |
 | `ts_ls` | TypeScript/JavaScript |
 
-追加ツール:
-- **none-ls.nvim**: Prettier等のフォーマッター連携
+追加ツールとして、次のプラグインも使う。
+- **none-ls.nvim**: Prettier等のフォーマッターと連携する。
 
 ### copilot.toml - Inline Completion + CopilotChat
 
-GitHub Copilotのインライン補完(copilot.vim + ddc-source-copilot)。CopilotChatはcodecompanion.nvimと並行稼働中で、`:CopilotChat`コマンド経由で引き続き利用可能(専用の`<leader>c*`キーマップはcodecompanion.tomlに付け替え済み)。
+`copilot.toml` は、GitHub Copilotのインライン補完(copilot.vim + ddc-source-copilot)を設定する。CopilotChatはcodecompanion.nvimと並行稼働中で、`:CopilotChat`コマンド経由で引き続き利用できる(専用の`<leader>c*`キーマップはcodecompanion.tomlに付け替え済み)。
 
 ### codecompanion.toml - AI Assistant (Multi-agent Hub)
 
-CopilotChat.nvimの後継。[ACP (Agent Client Protocol)](https://github.com/olimorris/codecompanion.nvim)対応のチャット型AIアシスタントを、複数のAIエージェントCLIを束ねる「マルチエージェントハブ」として構成([Epic #447](https://github.com/music-brain88/dotfiles/issues/447) D2/D2b、[Issue #443](https://github.com/music-brain88/dotfiles/issues/443)参照)。
+codecompanion.nvim は CopilotChat.nvimの後継である。`codecompanion.toml` は、[ACP (Agent Client Protocol)](https://github.com/olimorris/codecompanion.nvim)対応のチャット型AIアシスタントを、複数のAIエージェントCLIを束ねる「マルチエージェントハブ」として構成する([Epic #447](https://github.com/music-brain88/dotfiles/issues/447) D2/D2b、[Issue #443](https://github.com/music-brain88/dotfiles/issues/443)参照)。
 
-アダプタ構成:
+次の表は、codecompanion のアダプタ構成を並べたものである。
 
 | Adapter | Type | 用途 |
 |---------|------|------|
@@ -86,9 +86,9 @@ CopilotChat.nvimの後継。[ACP (Agent Client Protocol)](https://github.com/oli
 | `claude_code` | ACP | 主軸。Claude Code本体(Skills/MCP/CLAUDE.md込み)がチャットの脳になる。要`claude-agent-acp`ラッパー(別途インストール) |
 | `gemini_cli` | ACP | 複数CLI併用の実証用。CLI追加が「アダプタ宣言1つ」で完結することを示す |
 
-チャットバッファ内で`ga`キーマップ、または`:CodeCompanionChat <adapter>`でアダプタを切り替え可能。
+チャットバッファ内で`ga`キーマップ、または`:CodeCompanionChat <adapter>`でアダプタを切り替えられる。
 
-カスタムプロンプト(prompt library、`g-`接頭辞のaliasで組み込みプロンプトと衝突を回避):
+カスタムプロンプト(prompt library)として、次のプロンプトを定義している。各プロンプトには`g-`接頭辞のaliasを付けて、組み込みプロンプトとの衝突を回避している。
 - Explain, Review, Tests, Refactor, Debug
 - Optimize, Document, Architecture, Security
 - Commit (コミットメッセージ生成、gpt-5.6-luna固定)
@@ -96,7 +96,7 @@ CopilotChat.nvimの後継。[ACP (Agent Client Protocol)](https://github.com/oli
 
 ### mini/mini.toml - Mini.nvim Plugins
 
-軽量で高機能なmini.nvimプラグイン群。
+`mini/mini.toml` は、軽量で高機能なmini.nvimプラグイン群を宣言する。次の表は、使っているプラグインを並べたものである。
 
 | Plugin | Description |
 |--------|-------------|
@@ -109,9 +109,11 @@ CopilotChat.nvimの後継。[ACP (Agent Client Protocol)](https://github.com/oli
 
 ## 🔌 Plugin Management (dpp)
 
-> dein→dpp移行([#478](https://github.com/music-brain88/dotfiles/pull/478))のフォローアップ([#479](https://github.com/music-brain88/dotfiles/issues/479))。dpp.vimは「本体ミニマル＋拡張分離」の設計思想のため、dein時代と異なりプラグインの取得(インストール・更新)は`dpp-ext-installer`経由の明示的なアクション呼び出しが必要。
+> この節の内容は、dein→dpp移行([#478](https://github.com/music-brain88/dotfiles/pull/478))のフォローアップ([#479](https://github.com/music-brain88/dotfiles/issues/479))に当たる。dpp.vimは「本体ミニマル＋拡張分離」の設計思想を採っている。そのため、dein時代と異なり、プラグインの取得(インストール・更新)には`dpp-ext-installer`経由の明示的なアクション呼び出しが必要である。
 
 ### コマンド
+
+次の表は、プラグインのインストールと更新に使うコマンドを並べたものである。
 
 | Command | Description |
 |---------|-------------|
@@ -123,7 +125,7 @@ CopilotChat.nvimの後継。[ACP (Agent Client Protocol)](https://github.com/oli
 
 ### 初回起動時の自動インストール
 
-`init.lua`は`~/.cache/dpp/repos/`配下にクローン済みプラグインが1つもない状態を検知すると、`:DppInstall`相当の処理を通知付きで自動発動する。検知タイミングは以下の2箇所:
+`init.lua`は`~/.cache/dpp/repos/`配下にクローン済みプラグインが1つもない状態を検知すると、`:DppInstall`相当の処理を通知付きで自動発動する。検知タイミングは次の2箇所である。
 
 - `Dpp:makeStatePost`(state生成直後。主に初回起動でここに引っかかる)
 - `DenopsReady`(state生成済みの通常起動時。`repos/`がキャッシュ掃除等で out-of-band に消失していた場合の保険)
@@ -132,11 +134,11 @@ CopilotChat.nvimの後継。[ACP (Agent Client Protocol)](https://github.com/oli
 
 ### 更新方針(Decision Log D2: 基盤層はrev固定)
 
-denops/ddc/ddu本体・UI層などの基盤層プラグインはTOMLで`rev`を固定しており、dpp-protocol-gitがそのrev指定を尊重するため`:DppUpdate`を無条件に実行してもバージョンは動かない。ただし基盤層プラグインの更新自体は`:DppUpdate`に頼らず、**意図的なrev bump PR**を経由するのが原則([Epic #447](https://github.com/music-brain88/dotfiles/issues/447) Decision Log D2)。`:DppUpdate`は非基盤層プラグイン(rev未指定)の追従更新に使う。
+denops/ddc/ddu本体・UI層などの基盤層プラグインはTOMLで`rev`を固定しており、dpp-protocol-gitがそのrev指定を尊重するため`:DppUpdate`を無条件に実行してもバージョンは動かない。ただし基盤層プラグインの更新自体は`:DppUpdate`に頼らず、**意図的なrev bump PR**を経由するのが原則である([Epic #447](https://github.com/music-brain88/dotfiles/issues/447) Decision Log D2)。`:DppUpdate`は非基盤層プラグイン(rev未指定)の追従更新に使う。
 
 ### state鮮度管理(明示的な再生成、[#466](https://github.com/music-brain88/dotfiles/issues/466))
 
-dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein時代のようなmtime自動チェックは一切行わない。鮮度チェックは`dpp#check_files()`(`state.vim`のmtimeと、`config.ts`が`checkFiles`に登録した全TOML + `config.ts`自身のmtimeを比較)を**自分で呼ぶ**必要がある。差分があれば`dpp#make_state()`で再生成する。本リポジトリでは以下4つの経路で再生成のタイミングをカバーしている:
+dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein時代のようなmtime自動チェックは一切行わない。鮮度チェックは`dpp#check_files()`(`state.vim`のmtimeと、`config.ts`が`checkFiles`に登録した全TOML + `config.ts`自身のmtimeを比較)を**自分で呼ぶ**必要がある。差分があれば`dpp#make_state()`で再生成する。本リポジトリでは、次の表の4つの経路で再生成のタイミングをカバーしている。
 
 | 経路 | 発火タイミング | 用途 |
 |------|----------------|------|
@@ -153,6 +155,8 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 
 ### Basic Navigation (init.lua)
 
+次の表は、`init.lua` で定義している基本的な移動のキーバインドを並べたものである。
+
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `Ctrl+j` | Previous buffer | 前のバッファ |
@@ -164,6 +168,8 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 
 ### Terminal (neoterm)
 
+次の表は、neoterm でターミナルを操作するキーバインドを並べたものである。
+
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `,rc` | Send file to REPL | ファイルをREPLに送信 |
@@ -173,7 +179,7 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 
 ### File Explorer (ddu-filer)
 
-`,m` でファイラーを起動。
+`,m` でファイラーを起動する。次の表は、ファイラー内で使うキーを並べたものである。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -193,6 +199,8 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 
 ### Fuzzy Finder (ddu-ff)
 
+次の表は、ddu のファイラーと検索を起動するキーバインドを並べたものである。
+
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `,m` | Open filer | ファイラーを開く |
@@ -201,7 +209,7 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 | `,r` | Recently used files (MRU) | 最近使ったファイル一覧 |
 | `,w` | Grep word under cursor | カーソル下の単語でgrep |
 
-ddu-ff内:
+次の表は、ddu-ff の中で使うキーを並べたものである。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -211,6 +219,8 @@ ddu-ff内:
 | `q` | Quit | 閉じる |
 
 ### LSP
+
+次の表は、LSP の機能を呼び出すキーバインドを並べたものである。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -225,7 +235,7 @@ ddu-ff内:
 | `<Space>ca` | Code action | コードアクション |
 | `<Space>D` | Type definition | 型定義へジャンプ |
 
-ワークスペース管理:
+次の表は、LSP のワークスペースを管理するキーバインドを並べたものである。
 
 | Keybind | Description |
 |---------|-------------|
@@ -234,6 +244,8 @@ ddu-ff内:
 | `<Space>wl` | List workspace folders |
 
 ### Completion (ddc.vim)
+
+次の表は、ddc.vim の補完を操作するキーバインドを並べたものである。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -244,6 +256,8 @@ ddu-ff内:
 
 ### Snippets
 
+次の表は、スニペットを操作するキーバインドを並べたものである。
+
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `Ctrl+j` | Expand snippet (vsnip) | スニペット展開 |
@@ -253,7 +267,7 @@ ddu-ff内:
 
 ### codecompanion (旧CopilotChatから付け替え)
 
-`<leader>ce`/`cr`/`ct`/`cF`はノーマルモード=バッファ全体、ビジュアルモード=選択範囲を自動判定。CopilotChat自体は`:CopilotChat`コマンドで並行稼働中(キーマップなし)。
+`<leader>ce`/`cr`/`ct`/`cF`は、ノーマルモードではバッファ全体を、ビジュアルモードでは選択範囲を対象にする(モードは自動判定する)。CopilotChat自体は、`:CopilotChat`コマンドで並行稼働している(キーマップはない)。次の表は、codecompanion のキーバインドを並べたものである。
 
 | Keybind | Mode | Description | 説明 |
 |---------|------|-------------|------|
@@ -269,7 +283,7 @@ ddu-ff内:
 | `<leader>cm` | n | Generate commit message (gpt-5.6-luna) | コミットメッセージ生成 |
 | `<leader>cF` | n/v | Analyze all buffers / selection | 全バッファ/選択範囲分析 |
 
-チャットバッファ内(codecompanion組み込み):
+次の表は、チャットバッファ内で使える codecompanion 組み込みのキーを並べたものである。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -281,12 +295,16 @@ ddu-ff内:
 
 #### mini.comment
 
+次の表は、mini.comment でコメントを操作するキーバインドを並べたものである。
+
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `gc` | Toggle comment (motion) | コメントトグル（モーション） |
 | `gcc` | Toggle line comment | 行コメントトグル |
 
 #### mini.surround
+
+次の表は、mini.surround で囲み文字を操作するキーバインドを並べたものである。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -301,6 +319,8 @@ ddu-ff内:
 ---
 
 ## 🔗 Related Files
+
+次の表は、Neovim の設定を構成する主なファイルを並べたものである。
 
 | File | Description |
 |------|-------------|

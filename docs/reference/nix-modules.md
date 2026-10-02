@@ -10,7 +10,7 @@
 
 ### base.nix
 
-基本的なシステムパッケージを定義（最小構成。curl/wget/cmakeはdev-tools.nix、gitはgit.nix、pkg-configはrust-tools.nixへ移動済み）:
+`base.nix` は、最小構成の基本的なシステムパッケージを定義します。curl/wget/cmakeはdev-tools.nixへ、gitはgit.nixへ、pkg-configはrust-tools.nixへ移動済みです。
 - gnutar, gzip
 - protobuf
 - mako, libnotify
@@ -19,21 +19,21 @@
 
 ### rust-tools.nix
 
-Rust開発ツールとCLIツールを定義:
+`rust-tools.nix` は、Rust開発ツールとCLIツールを定義します。
 - rustup, cargo
 - fd, ripgrep, eza, bat
 - gitui, tealdeer, hyperfine
 
 ### shell.nix
 
-Fish shellとStarshipの設定:
+`shell.nix` は、Fish shellとStarshipを設定します。
 - Fish shell with plugins (z, bass)
 - Starship prompt configuration
 - Shell aliases and functions
 
 ### git.nix
 
-Git設定:
+`git.nix` は、Git の次の項目を設定します。
 - User information
 - Aliases
 - Delta (better diff viewer)
@@ -41,21 +41,21 @@ Git設定:
 
 ### tmux.nix
 
-Tmux設定:
+`tmux.nix` は、Tmux の次の項目を設定します。
 - Key bindings
 - Status bar configuration
 - Plugins (sensible, yank, resurrect, etc.)
 
 ### herdr.nix
 
-herdr (agent multiplexer、tmuxの後継):
+`herdr.nix` は、herdr (agent multiplexer、tmuxの後継) に関する次の 3 つを管理します。
 - herdr パッケージ (flake.nix の overlay 経由で新しい nixpkgs から供給)
 - `.config/herdr/config.toml` のシンボリックリンク (keybindは旧tmux設定互換)
 - device-auth 承認URLをherdr-browser paneに直行させる `$BROWSER` ラッパー (Issue #523)
 
 ### neovim.nix
 
-Neovim設定:
+`neovim.nix` は、Neovim の次の要素を設定します。
 - Language servers (LSP)
 - Formatters and linters
 - Tree-sitter
@@ -63,16 +63,16 @@ Neovim設定:
 
 ### dev-tools.nix
 
-開発ツール:
+`dev-tools.nix` は、次の開発ツールを定義します。
 - Container tools (Docker, lazydocker)
-- Cloud tools (AWS CLI, Google Cloud SDK, OpenTofu, Ansible) — kubectl/k9s/helmはk8s-tools.nixに集約(下記参照)
+- Cloud tools (AWS CLI, Google Cloud SDK, OpenTofu, Ansible) — kubectl/k9s/helmはk8s-tools.nixに集約(「k8s-tools.nix」節参照)
 - Database clients
 - Language runtimes
 - System monitoring tools
 
 ### k8s-tools.nix
 
-Kubernetes / hexhive クラスタ運用ツール (dev-tools.nix からは分離し、k8s関連ツールをこのモジュールに集約):
+`k8s-tools.nix` は、Kubernetes / hexhive クラスタの運用ツールを定義します。k8s関連ツールは dev-tools.nix から分離し、このモジュールに集約しています。
 - talosctl (Talos Linux CLI、hexhive ノード管理)
 - kubectl, k9s (Kubernetes CLI/TUI)
 - helm (Kubernetesパッケージ管理)
@@ -80,14 +80,14 @@ Kubernetes / hexhive クラスタ運用ツール (dev-tools.nix からは分離�
 
 ### fonts.nix
 
-フォントパッケージ:
+`fonts.nix` は、次のフォントパッケージを定義します。
 - hackgen-nf-font (等幅、ターミナル・エディタ用)
 - source-han-sans, source-han-serif (システムUI用)
 - noto-fonts-color-emoji (絵文字フォールバック用)
 
 ### desktop.nix
 
-ネイティブArch (Hyprland) 専用のGUI設定群 (WSL profileではimportされない):
+`desktop.nix` は、ネイティブArch (Hyprland) 専用のGUI設定群を定義します (WSL profileではimportされません)。
 - Hyprland, systemd user units (Hyprlandセッションターゲット)
 - Waybar, Wofi, Mako
 - WezTerm (メインターミナル), Alacritty (併存期間中のフォールバック)
@@ -95,7 +95,7 @@ Kubernetes / hexhive クラスタ運用ツール (dev-tools.nix からは分離�
 
 ### wsl.nix
 
-WSL固有の設定 (wsl profileのみ):
+`wsl.nix` は、WSL固有の設定を定義します (wsl profileでのみ使います)。
 - Obsidian vault symlink (実体はWindows側、Cowork/Obsidian Syncの都合)
 - WezTerm/Alacritty設定のWindows側への配布 (drift防止、activation時にコピー)
 
@@ -106,7 +106,7 @@ WSL固有の設定 (wsl profileのみ):
 ### Username Configuration
 
 現在、`home.nix` ではハードコードされたユーザー名 `archie` を使用しています。
-環境に応じて変更してください（手順は [customize-your-fork.md](../how-to/customize-your-fork.md) を参照）:
+利用者は、環境に応じて次の 2 行を変更してください（手順は [customize-your-fork.md](../how-to/customize-your-fork.md) を参照）。
 
 ```nix
 home.username = "your-username";  # Change this

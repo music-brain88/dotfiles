@@ -8,6 +8,8 @@
 
 ## 📁 Overview
 
+次の図は、リポジトリの主なディレクトリ構成を示す。
+
 ```
 dotfiles/
 ├── .config/                 # アプリケーション設定ファイル
@@ -33,6 +35,8 @@ dotfiles/
 
 ### Nix Configuration
 
+次の表は、Nix の設定を構成するルートファイルを並べたものである。
+
 | File | Description |
 |------|-------------|
 | `flake.nix` | Nix Flake のエントリーポイント。依存関係と出力を定義 |
@@ -41,17 +45,23 @@ dotfiles/
 
 ### In-repo Tools / 自作ツール
 
+次の表は、このリポジトリ内で開発している自作ツールを示す。
+
 | ディレクトリ | 説明 |
 |---|---|
 | `tools/standalone-check/` | 配布文書の自立可読性チェッカー(Rust)。`standalone-report-writing` skill の点検手順から呼ぶ。`flake.nix` の overlay で `pkgs.standalone-check` として定義し、`nix/modules/dev-tools.nix` の `home.packages` で配る。単体ビルドは `nix build .#standalone-check`、開発は `cargo test`(Issue #639) |
 
 ### Task Runner
 
+次の表は、タスクランナーの設定ファイルを示す。
+
 | File | Description |
 |------|-------------|
 | `.mise.toml` | mise タスク定義とツールバージョン管理 |
 
 ### Docker
+
+次の表は、Docker 関連のファイルを示す。
 
 | File | Description |
 |------|-------------|
@@ -61,9 +71,11 @@ dotfiles/
 
 ## 📁 .config/ - Application Configurations
 
-各アプリケーションの設定ファイルを格納。
+`.config/` には、各アプリケーションの設定ファイルを格納している。
 
 ### Terminal & Shell
+
+次の表は、ターミナルとシェルの設定ディレクトリを並べたものである。
 
 | Directory | Description |
 |-----------|-------------|
@@ -77,17 +89,23 @@ dotfiles/
 
 ### Editor
 
+次の表は、エディタの設定ディレクトリを示す。
+
 | Directory | Description |
 |-----------|-------------|
 | `nvim/` | Neovim 設定 (TOML ベースのプラグイン管理) |
 
 ### Window Managers
 
+次の表は、ウィンドウマネージャの設定ディレクトリを示す。
+
 | Directory | Description |
 |-----------|-------------|
 | `hypr/` | Hyprland 設定 (Wayland) |
 
 ### Notifications & Session
+
+次の表は、通知とセッション管理の設定ディレクトリを並べたものである。
 
 | Directory | Description |
 |-----------|-------------|
@@ -96,11 +114,15 @@ dotfiles/
 
 ### Status Bars
 
+次の表は、ステータスバーの設定ディレクトリを示す。
+
 | Directory | Description |
 |-----------|-------------|
 | `waybar/` | Waybar 設定 (Wayland) |
 
 ### Launchers
+
+次の表は、ランチャーの設定ディレクトリを示す。
 
 | Directory | Description |
 |-----------|-------------|
@@ -108,18 +130,22 @@ dotfiles/
 
 ### Version Control
 
+次の表は、バージョン管理の設定ディレクトリを示す。
+
 | Directory | Description |
 |-----------|-------------|
 | `git/` | Git 設定 (config, ignore, config.local.sample) |
 
 ### AI Assistant Skills
 
-スキルは配線経路によって2層に分かれる:
+スキルは、配線経路によって次の 2 層に分かれる。
 
-- **tool-neutral 層**(`skills/`): エージェント横断の共有 SOP(例: `learn`、`session-log`、`distill`)。`home.nix` で `.claude/skills/<name>` と `.copilot/skills/<name>` の両方へのマウントに解決され、単一ソースからドリフトしない(Issue #404)
-- **Claude 専用層**(`claude/skills/`): harness 固有の運用スキル(例: `wt`、`wtclean`、`herdr`)。これらは `.claude` 全体の recursive マウント(`home.nix` の `".claude"` エントリ)でそのまま配布され、tool-neutral 層のような個別スキル単位の上書きマウントは持たない(個別の `.claude/skills/<name>` エントリが `home.nix` に存在するのは、あくまで tool-neutral 層の共有スキルを上書きするためのもの)
+- **tool-neutral 層**(`skills/`): エージェント横断の共有 SOP を置く(例: `learn`、`session-log`、`distill`)。`home.nix` で `.claude/skills/<name>` と `.copilot/skills/<name>` の両方へのマウントに解決され、単一ソースからドリフトしない(Issue #404)。
+- **Claude 専用層**(`claude/skills/`): harness 固有の運用スキルを置く(例: `wt`、`wtclean`、`herdr`)。これらは `.claude` 全体の recursive マウント(`home.nix` の `".claude"` エントリ)でそのまま配布され、tool-neutral 層のような個別スキル単位の上書きマウントは持たない(個別の `.claude/skills/<name>` エントリが `home.nix` に存在するのは、あくまで tool-neutral 層の共有スキルを上書きするためである)。
 
-新しいスキルを追加する際は「特定 harness(Claude Code)の機能に依存するか」で配置を判断する — 依存しなければ tool-neutral 層、依存すれば Claude 専用層に置く。
+新しいスキルを追加する際は、「特定 harness(Claude Code)の機能に依存するか」で配置を判断する。依存しなければ tool-neutral 層に置き、依存すれば Claude 専用層に置く。
+
+次の表は、スキルとエージェント設定に関わるディレクトリを並べたものである。
 
 | Directory | Description |
 |-----------|-------------|
@@ -129,12 +155,16 @@ dotfiles/
 
 ### Security
 
+次の表は、セキュリティ関連の設定ディレクトリを並べたものである。
+
 | Directory | Description |
 |-----------|-------------|
 | `gnupg/` | GPG agent 設定 (`gpg-agent.conf`、パスフレーズキャッシュTTL、pinentry-programの明示) |
 | `pinentry/` | pinentry を curses/tty へ強制するフック (`preexec`、SSHセッションでのgnome3誤選択対策) |
 
 ### Media & Misc
+
+次の表は、メディア関連とその他の設定ディレクトリを並べたものである。
 
 | Directory | Description |
 |-----------|-------------|
@@ -150,7 +180,7 @@ dotfiles/
 
 ## 📁 nix/modules/ - Nix Modules
 
-Home Manager の設定をモジュール化。
+Home Manager の設定は、`nix/modules/` の下でモジュールに分けている。次の表は、各モジュールの役割を並べたものである。
 
 | Module | Description |
 |--------|-------------|
@@ -166,13 +196,13 @@ Home Manager の設定をモジュール化。
 | `desktop.nix` | GUI 設定群 (hypr, waybar, wezterm, alacritty, wofi, mako, mpd, ncmpcpp, fontconfig) — native profile のみ |
 | `wsl.nix` | WSL 固有: Obsidian vault symlink と Windows 側 WezTerm/Alacritty 設定の配布 — wsl profile のみ |
 
-profile 分割の設計意図は [architecture.md の Per-Host Profiles](../explanation/architecture.md#per-host-profiles) を参照。
+profile 分割の設計意図は [architecture.md の Per-Host Profiles](../explanation/architecture.md#per-host-profiles) に書いてある。
 
 ---
 
 ## 📁 docs/ - Documentation (Diátaxis)
 
-Diátaxis (https://diataxis.fr) に沿って4象限に分類。詳細は [docs/README.md](../README.md) を参照。
+`docs/` の文書は、Diátaxis (https://diataxis.fr) に沿って4象限に分類している。詳細は [docs/README.md](../README.md) に書いてある。次の表は、各ディレクトリと象限の対応を示す。
 
 | Directory | 象限 | Description |
 |-----------|------|-------------|
@@ -185,7 +215,7 @@ Diátaxis (https://diataxis.fr) に沿って4象限に分類。詳細は [docs/R
 
 ## 📁 llm/ - LLM Context Files
 
-AI アシスタント向けのコンテキストファイル。
+`llm/` には、AI アシスタント向けのコンテキストファイルを置いている。次の表は、その構成を示す。
 
 | Directory/File | Description |
 |----------------|-------------|
@@ -197,6 +227,8 @@ AI アシスタント向けのコンテキストファイル。
 
 ### Workflows
 
+次の表は、GitHub Actions のワークフローファイルを並べたものである。
+
 | File | Description |
 |------|-------------|
 | `workflows/nix.yml` | Nix CI/CD パイプライン |
@@ -206,6 +238,8 @@ AI アシスタント向けのコンテキストファイル。
 | `workflows/update-flake-lock.yml` | flake inputs の週次自動更新 (毎週月曜 03:00 UTC、更新 PR を自動作成) |
 
 ### Instructions & Templates
+
+次の表は、GitHub Copilot 向けの指示ファイルと、Issue・PR のテンプレートを並べたものである。
 
 | Directory/File | Description |
 |-----------------|-------------|

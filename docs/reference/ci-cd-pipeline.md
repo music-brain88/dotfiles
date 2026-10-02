@@ -17,7 +17,7 @@
 
 ### Workflow Structure
 
-ワークフローは2つのファイルに分離：
+CI のワークフローは、次の表の 2 つのファイルに分かれている。
 
 | File | Purpose |
 |------|---------|
@@ -26,7 +26,7 @@
 
 ### Pipeline Stages
 
-`nix.yml` のジョブ依存グラフ（`needs:`）：
+次の図は、`nix.yml` のジョブ依存グラフ（`needs:`）を示す。図の後の表は、各ジョブの依存先と役割を並べたものである。
 
 ```
 changes ─┬─→ build-image ─┬─→ verify-docker
@@ -40,27 +40,27 @@ changes ─┬─→ build-image ─┬─→ verify-docker
 | **check** | `changes` | 軽量チェック（shellcheck、`nix flake check --no-build`、フォーマット検証） |
 | **verify-docker** | `changes`, `build-image`, `check` | Arch Linux コンテナ内でビルド＆アクティベーション実行 |
 
-- `build-image` と `check` はどちらも `needs: changes` のみなので**並列実行**される。`verify-docker` は両方の完了を待つ
-- `changes` 以外の3ジョブは `if: needs.changes.outputs.code == 'true'` を持ち、docs 等のみの変更では skip される。skip されたジョブは required status checks 上は成功扱いになる
-- トリガーに `paths-ignore` を使わずこの構成にしているのは、トリガー段階で workflow を止めるとチェックが一切報告されず、PR が「Expected — waiting for status」のままマージ不能になるため（[#312](https://github.com/music-brain88/dotfiles/issues/312)）
+- `build-image` と `check` はどちらも `needs: changes` のみなので**並列実行**される。`verify-docker` は両方の完了を待つ。
+- `changes` 以外の3ジョブは `if: needs.changes.outputs.code == 'true'` を持ち、docs 等のみの変更では skip される。skip されたジョブは required status checks 上は成功扱いになる。
+- トリガーに `paths-ignore` を使わずこの構成にしているのは、トリガー段階で workflow を止めるとチェックが一切報告されず、PR が「Expected — waiting for status」のままマージ不能になるためである（[#312](https://github.com/music-brain88/dotfiles/issues/312)）。
 
 ### Container Configuration
 
-コンテナは `archie` ユーザーで実行され、Home Manager設定と整合性を保つ：
+コンテナは `archie` ユーザーで実行され、Home Manager設定との整合性を保つ。
 
 ```dockerfile
 USER archie
 WORKDIR /home/archie
 ```
 
-ビルド後、`./result/activate` を実行してアクティベーションもテスト。
+CI はビルド後に `./result/activate` を実行し、アクティベーションもテストする。
 
-**Note**: `container:` セクションではなく手動で `docker run` を使用。
-理由：`container:` はステップ実行前にイメージをプルするため、先にディスククリーンアップができない。
+**Note**: CI は `container:` セクションではなく、手動で `docker run` を使う。
+理由は、`container:` がステップ実行前にイメージをプルするため、先にディスククリーンアップができないことである。
 
 ### Disk Space Management
 
-両方のビルドジョブでディスククリーンアップを実行：
+両方のビルドジョブは、次のコマンドでディスククリーンアップを実行する。
 
 ```bash
 sudo rm -rf /usr/share/dotnet      # ~6GB
@@ -71,6 +71,8 @@ sudo rm -rf /usr/local/share/boost # ~1.5GB
 ```
 
 ### Overlays for CI
+
+CI でテストが失敗するパッケージは、`flake.nix` の overlay で修正している。
 
 ```nix
 # flake.nix
@@ -84,13 +86,15 @@ overlays = [
 ];
 ```
 
-CI環境特有の問題（サンドボックス、ネットワーク制限）を回避。
+この overlay は、CI環境特有の問題（サンドボックス、ネットワーク制限）を回避するためのものである。
 
 ---
 
 ## 💾 Caching Strategy
 
 ### Double Cache Approach
+
+次の表は、CI のキャッシュを層ごとに分け、使うツールと用途を並べたものである。
 
 | Layer | Tool | Purpose |
 |-------|------|---------|
@@ -101,20 +105,20 @@ CI環境特有の問題（サンドボックス、ネットワーク制限）を
 ### Why Different Cache Tools?
 
 `magic-nix-cache` はホストのNix daemonイベントを購読するため、Dockerコンテナ内では動作しない。
-そのため verify-docker では `nix-community/cache-nix-action` を使用。
+そのため verify-docker では `nix-community/cache-nix-action` を使用する。
 
-詳細は [Evolution History - Phase 3](../explanation/cicd-evolution.md#phase-3-magic-nix-cache-の限界-216) を参照。
+詳細は [Evolution History - Phase 3](../explanation/cicd-evolution.md#phase-3-magic-nix-cache-の限界-216) に書いてある。
 
 ### Cache Update Strategy (purge → save)
 
-`cache-nix-action` は primary-key が HIT すると保存自体をスキップする仕様のため、
-何もしないと「一度保存された不完全なキャッシュ」が key が変わるまで凍結する。
-`verify-docker` では `purge: true` + `purge-primary-key: always` を指定し、
-Post Restore フェーズ（全ステップ完了後）で同じ key の古いキャッシュを毎回削除させてから
-保存させることで、実行のたびに最新の `/nix` store 内容で更新されるようにしている。
-purge の実行には `actions: write` 権限が必要（ジョブの `permissions` で付与）。
+`cache-nix-action` は、primary-key が HIT すると保存自体をスキップする仕様である。
+そのため、何もしないと「一度保存された不完全なキャッシュ」が key が変わるまで凍結する。
+`verify-docker` では `purge: true` + `purge-primary-key: always` を指定している。
+これにより、Post Restore フェーズ（全ステップ完了後）で同じ key の古いキャッシュを毎回削除させてから保存させ、
+実行のたびに最新の `/nix` store 内容で更新されるようにしている。
+purge の実行には `actions: write` 権限が必要で、ジョブの `permissions` で付与している。
 
-詳細・rustup再ビルド調査は [Evolution History - Phase 6](../explanation/cicd-evolution.md#phase-6-キャッシュ凍結問題-368) を参照。
+詳細と rustup 再ビルドの調査は [Evolution History - Phase 6](../explanation/cicd-evolution.md#phase-6-キャッシュ凍結問題-368) に書いてある。
 
 ---
 
