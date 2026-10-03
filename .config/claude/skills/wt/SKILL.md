@@ -146,13 +146,13 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 | モデル | 使いどころ |
 |--------|-----------|
 | `claude-opus-5-5`(既定) | 既存仕様の読み解き・選択肢の比較・指示書の前提と実態が食い違ったときに自分で実測して【相談】できることが要るタスク。1 ファイルでも挙動への影響が大きければこちら |
-| `claude-sonnet-5` | 手順・完了条件・検証方法が明確で、解釈の余地が小さいタスク(effort medium 相当)。複数ファイルでも機械的な置換ならこちら |
+| `claude-sonnet-5-5` | 手順・完了条件・検証方法が明確で、解釈の余地が小さいタスク(effort medium 相当)。複数ファイルでも機械的な置換ならこちら |
 
 目的や完了条件が曖昧な場合はどちらも起動しない(上の MUST NOT のとおり、workspace の準備完了だけ報告して終わる)。
 
 **Constraints:**
 - **MUST**: 既定の見直しは手順 7 の自己更新プロトコル(issue-first)で行う。単発の失敗で既定を戻さず、同種タスクの所要時間・差し戻し回数・費用を Sonnet 作業者と比較したうえで、Issue で既定を再評価する。現行の既定は 2026-09-27 の実測(N=1: Explore 3 モデル比較 + Opus 作業者 1 件。Sonnet 作業者との同条件比較は未実施)に基づく暫定運用で、数値の詳細は #600 と vault の比較ノートを参照
-- **SHOULD**: 定型タスクまで Opus にしない(単価が高い)。解釈の余地が小さいなら `claude-sonnet-5` を選ぶ
+- **SHOULD**: 定型タスクまで Opus にしない(単価が高い)。解釈の余地が小さいなら `claude-sonnet-5-5` を選ぶ
 
 #### effort の選択基準
 
@@ -166,7 +166,7 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 
 **Constraints:**
 - **MUST NOT**: `low` は /wt では使わない(under-thinking のリスクがあるため)
-- **SHOULD**: `medium` 以下では Sonnet 5 が指示を literal に解釈するため、作業指示プロンプトの完了条件を具体的に書く
+- **SHOULD**: `medium` 以下では Sonnet 作業者が指示を literal に解釈する(Sonnet 5 で観測、5.5 では未検証)ため、作業指示プロンプトの完了条件を具体的に書く
 
 #### 作業指示プロンプトのテンプレート
 
