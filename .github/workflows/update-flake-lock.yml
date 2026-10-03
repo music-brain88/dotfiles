@@ -44,7 +44,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # workflow_dispatch は任意の ref から実行できてしまうため、ref を明示的に
           # main へ固定する。固定しないと後段の force-push がその ref の HEAD を
@@ -64,7 +64,7 @@ jobs:
       # SHA pin: supply-chain 対策で mutable な @main を使わない (コメントは対応する tag)
       # SHA-pinned to avoid mutable @main refs; trailing comment shows the tag
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
 
       - name: Update flake.lock
         run: nix flake update
@@ -74,6 +74,7 @@ jobs:
         run: |
           if git diff --quiet -- flake.lock; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=flake.lock PR::flake.lock has no changes; skipped branch update and PR creation"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
@@ -126,16 +127,35 @@ jobs:
             -f path='flake.lock' \
             -F contents=@/tmp/flake-lock.b64
 
-      - name: Create pull request if none exists
+      # open な PR の有無だけで判定する。`gh pr view <branch>` は状態を問わず
+      # そのブランチの直近の PR を返すため、マージ済み PR (#438) があるだけで
+      # exit 0 になり、PR 作成が毎回黙ってスキップされていた (#655)。
+      # open な PR が既にある場合は、上の createCommitOnBranch によるコミットの
+      # 差し替えで PR の内容が更新されるので、新規作成はしない。
+      # どちらが起きたかを notice と job summary に必ず出し、黙って終わらせない。
+      # Decide based on open PRs only. `gh pr view <branch>` returns the branch's
+      # most recent PR regardless of state, so the merged PR #438 made it exit 0
+      # and PR creation was silently skipped on every run (#655).
+      # If an open PR already exists, the commit replaced above updates it, so no
+      # new PR is created. Always report which path was taken via a notice and
+      # the job summary instead of finishing silently.
+      - name: Create pull request or report update of the open one
         if: steps.diff.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.FLAKE_UPDATE_TOKEN || github.token }}
         run: |
-          if ! gh pr view update_flake_lock_action --json number >/dev/null 2>&1; then
-            gh pr create \
+          open_count="$(gh pr list --head update_flake_lock_action --base main --state open --json number --jq 'length')"
+          if [ "$open_count" -eq 0 ]; then
+            pr_url="$(gh pr create \
               --base main \
               --head update_flake_lock_action \
               --title 'build(nix): flake.lock を更新' \
               --body 'nix flake update による自動更新です。createCommitOnBranch 経由の Verified コミットなので、main の required_signatures を通過してマージできます。' \
-              --label nix
+              --label nix)"
+            message="Created pull request: ${pr_url}"
+          else
+            pr_url="$(gh pr list --head update_flake_lock_action --base main --state open --json url --jq '.[0].url')"
+            message="Updated existing open pull request: ${pr_url}"
           fi
+          echo "::notice title=flake.lock PR::${message}"
+          echo "${message}" >> "$GITHUB_STEP_SUMMARY"
