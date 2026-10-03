@@ -201,7 +201,17 @@ jobs:
       # fail the job — but per (1) it can also never succeed here, so we
       # skip the doomed API call (and its log noise) entirely on PR runs.
       - name: Restore Nix cache
-        uses: nix-community/cache-nix-action@v7
+        # Pinned to v6 on purpose (#659, re-upgrade tracked in #660).
+        # v7 awaits the post-save purge, so on push it deletes the cache
+        # it has just saved (same primary-key, no time filter) and main
+        # ends up with no cache. v6 never ran that purge (missing await +
+        # process.exit), which is why the saved cache survived.
+        # v6 に意図的に固定している(#659、v7 への再更新は #660 で追跡)。
+        # v7 は保存後の purge を await するため、push では保存した直後の
+        # キャッシュを同じ primary-key として削除し、main にキャッシュが
+        # 残らない。v6 は await 漏れと process.exit によりこの purge を
+        # 実行しておらず、そのため保存したキャッシュが残っていた。
+        uses: nix-community/cache-nix-action@v6
         with:
           primary-key: nix-docker-${{ runner.os }}-${{ hashFiles('**/*.nix', 'flake.lock') }}
           restore-prefixes-first-match: nix-docker-${{ runner.os }}-
