@@ -140,7 +140,8 @@ local config = {
   -- model = 'claude-sonnet-4', -- 使用するモデル
   -- model = 'claude-opus-4', -- 使用するモデル
   -- model = 'claude-opus-41', -- 使用するモデル
-  model = 'claude-opus-4.5', -- 使用するモデル
+  -- model = 'claude-opus-4.5', -- 使用するモデル
+  model = 'claude-opus-5.5', -- 使用するモデル
   -- model = 'claude-3.5-sonnet', -- 使用するモデル
   -- model = 'gemini-2.0-flash-001', -- 使用するモデル
   -- model = 'o1', -- 使用するモデル
@@ -205,7 +206,7 @@ vim.keymap.set('n', '<leader>cm', function()
     
     -- コミットメッセージ生成時のみ高速・低コストなモデルを使用
     require('CopilotChat').ask(formatted_prompt, {
-        model = 'gpt-5.6-luna'  -- このaskだけ定型タスク向けモデルを使用
+        model = 'gpt-6-luna'  -- このaskだけ定型タスク向けモデルを使用
     })
 end, { desc = "Generate Commit Message" })
 
