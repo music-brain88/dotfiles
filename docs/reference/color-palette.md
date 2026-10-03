@@ -14,8 +14,6 @@ onedarkpro.nvim の `lua/onedarkpro/themes/onedark.lua`（[GitHub](https://githu
 
 ## Base Palette
 
-次の表は、onedark テーマの base palette について、トークンごとの値と主な用途を並べたものです。
-
 | Token | Hex | 用途 |
 |---|---|---|
 | `bg` / `black` | `#282c34` | 背景 |
@@ -57,8 +55,6 @@ onedarkpro.nvim の `lua/onedarkpro/themes/onedark.lua`（[GitHub](https://githu
 **結論: `#1e2127` を据え置く**（2026-07-11、ユーザー確認済み）。onedark 公式値は `#282c34` です。しかし、ターミナルの背景だけはより暗い値を保つ方が目に優しいので、Neovim 内の onedark 背景とは軽微な差が残ることを許容しました。これは意図的な選択です。他の色（ANSI 16色・herdr のトークン等）は onedarkpro に統一しつつ、背景色のみユーザーの既存の好みを維持します。herdr の `panel_bg` も同じ `#1e2127` に揃え、WezTerm と herdr UI の背景を整合させました。
 
 ## 各設定への適用状況
-
-次の表は、各ツールの設定にこのパレットをどう適用しているかを並べたものです。
 
 | 設定 | 適用方法 |
 |---|---|

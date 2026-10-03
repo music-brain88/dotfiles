@@ -8,8 +8,6 @@
 
 ## 📁 Overview
 
-次の図は、リポジトリの主なディレクトリ構成を示す。
-
 ```
 dotfiles/
 ├── .config/                 # アプリケーション設定ファイル
@@ -35,8 +33,6 @@ dotfiles/
 
 ### Nix Configuration
 
-次の表は、Nix の設定を構成するルートファイルを並べたものである。
-
 | File | Description |
 |------|-------------|
 | `flake.nix` | Nix Flake のエントリーポイント。依存関係と出力を定義 |
@@ -45,23 +41,17 @@ dotfiles/
 
 ### In-repo Tools / 自作ツール
 
-次の表は、このリポジトリ内で開発している自作ツールを示す。
-
 | ディレクトリ | 説明 |
 |---|---|
 | `tools/standalone-check/` | 配布文書の自立可読性チェッカー(Rust)。`standalone-report-writing` skill の点検手順から呼ぶ。`flake.nix` の overlay で `pkgs.standalone-check` として定義し、`nix/modules/dev-tools.nix` の `home.packages` で配る。単体ビルドは `nix build .#standalone-check`、開発は `cargo test`(Issue #639) |
 
 ### Task Runner
 
-次の表は、タスクランナーの設定ファイルを示す。
-
 | File | Description |
 |------|-------------|
 | `.mise.toml` | mise タスク定義とツールバージョン管理 |
 
 ### Docker
-
-次の表は、Docker 関連のファイルを示す。
 
 | File | Description |
 |------|-------------|
@@ -75,8 +65,6 @@ dotfiles/
 
 ### Terminal & Shell
 
-次の表は、ターミナルとシェルの設定ディレクトリを並べたものである。
-
 | Directory | Description |
 |-----------|-------------|
 | `bash/` | Bash 設定 (bashrc, bash_profile) - Fish へのブートストラップ用 |
@@ -89,23 +77,17 @@ dotfiles/
 
 ### Editor
 
-次の表は、エディタの設定ディレクトリを示す。
-
 | Directory | Description |
 |-----------|-------------|
 | `nvim/` | Neovim 設定 (TOML ベースのプラグイン管理) |
 
 ### Window Managers
 
-次の表は、ウィンドウマネージャの設定ディレクトリを示す。
-
 | Directory | Description |
 |-----------|-------------|
 | `hypr/` | Hyprland 設定 (Wayland) |
 
 ### Notifications & Session
-
-次の表は、通知とセッション管理の設定ディレクトリを並べたものである。
 
 | Directory | Description |
 |-----------|-------------|
@@ -114,23 +96,17 @@ dotfiles/
 
 ### Status Bars
 
-次の表は、ステータスバーの設定ディレクトリを示す。
-
 | Directory | Description |
 |-----------|-------------|
 | `waybar/` | Waybar 設定 (Wayland) |
 
 ### Launchers
 
-次の表は、ランチャーの設定ディレクトリを示す。
-
 | Directory | Description |
 |-----------|-------------|
 | `wofi/` | Wofi ランチャー設定 (Wayland) |
 
 ### Version Control
-
-次の表は、バージョン管理の設定ディレクトリを示す。
 
 | Directory | Description |
 |-----------|-------------|
@@ -155,16 +131,12 @@ dotfiles/
 
 ### Security
 
-次の表は、セキュリティ関連の設定ディレクトリを並べたものである。
-
 | Directory | Description |
 |-----------|-------------|
 | `gnupg/` | GPG agent 設定 (`gpg-agent.conf`、パスフレーズキャッシュTTL、pinentry-programの明示) |
 | `pinentry/` | pinentry を curses/tty へ強制するフック (`preexec`、SSHセッションでのgnome3誤選択対策) |
 
 ### Media & Misc
-
-次の表は、メディア関連とその他の設定ディレクトリを並べたものである。
 
 | Directory | Description |
 |-----------|-------------|
@@ -180,7 +152,7 @@ dotfiles/
 
 ## 📁 nix/modules/ - Nix Modules
 
-Home Manager の設定は、`nix/modules/` の下でモジュールに分けている。次の表は、各モジュールの役割を並べたものである。
+Home Manager の設定は、`nix/modules/` の下でモジュールに分けている。
 
 | Module | Description |
 |--------|-------------|
@@ -202,7 +174,7 @@ profile 分割の設計意図は [architecture.md の Per-Host Profiles](../expl
 
 ## 📁 docs/ - Documentation (Diátaxis)
 
-`docs/` の文書は、Diátaxis (https://diataxis.fr) に沿って4象限に分類している。詳細は [docs/README.md](../README.md) に書いてある。次の表は、各ディレクトリと象限の対応を示す。
+`docs/` の文書は、Diátaxis (https://diataxis.fr) に沿って4象限に分類している。詳細は [docs/README.md](../README.md) に書いてある。
 
 | Directory | 象限 | Description |
 |-----------|------|-------------|
@@ -215,7 +187,7 @@ profile 分割の設計意図は [architecture.md の Per-Host Profiles](../expl
 
 ## 📁 llm/ - LLM Context Files
 
-`llm/` には、AI アシスタント向けのコンテキストファイルを置いている。次の表は、その構成を示す。
+`llm/` には、AI アシスタント向けのコンテキストファイルを置いている。
 
 | Directory/File | Description |
 |----------------|-------------|
@@ -226,8 +198,6 @@ profile 分割の設計意図は [architecture.md の Per-Host Profiles](../expl
 ## 📁 .github/ - GitHub Configuration
 
 ### Workflows
-
-次の表は、GitHub Actions のワークフローファイルを並べたものである。
 
 | File | Description |
 |------|-------------|

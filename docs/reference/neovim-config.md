@@ -19,7 +19,7 @@
 
 ### dpp.toml - Core Plugins
 
-`dpp.toml` は、起動時に読み込まれるコアプラグインを宣言する。次の表は、そのプラグインを並べたものである。
+`dpp.toml` は、起動時に読み込まれるコアプラグインを宣言する。
 
 | Plugin | Description |
 |--------|-------------|
@@ -33,7 +33,7 @@
 
 ### ddc_settings.toml - Completion
 
-`ddc_settings.toml` は、ddc.vimベースの補完システムを設定する。次の表は、補完ソースを並べたものである。
+`ddc_settings.toml` は、ddc.vimベースの補完システムを設定する。
 
 | Source | Description |
 |--------|-------------|
@@ -46,7 +46,7 @@
 
 ### ddu_settings.toml - File/Buffer Management
 
-`ddu_settings.toml` は、ddu.vimベースのファイラー＆検索システムを設定する。次の表は、モードごとの用途を並べたものである。
+`ddu_settings.toml` は、ddu.vimベースのファイラー＆検索システムを設定する。
 
 | Mode | Description |
 |------|-------------|
@@ -96,7 +96,7 @@ codecompanion.nvim は CopilotChat.nvimの後継である。`codecompanion.toml`
 
 ### mini/mini.toml - Mini.nvim Plugins
 
-`mini/mini.toml` は、軽量で高機能なmini.nvimプラグイン群を宣言する。次の表は、使っているプラグインを並べたものである。
+`mini/mini.toml` は、軽量で高機能なmini.nvimプラグイン群を宣言する。
 
 | Plugin | Description |
 |--------|-------------|
@@ -112,8 +112,6 @@ codecompanion.nvim は CopilotChat.nvimの後継である。`codecompanion.toml`
 > この節の内容は、dein→dpp移行([#478](https://github.com/music-brain88/dotfiles/pull/478))のフォローアップ([#479](https://github.com/music-brain88/dotfiles/issues/479))に当たる。dpp.vimは「本体ミニマル＋拡張分離」の設計思想を採っている。そのため、dein時代と異なり、プラグインの取得(インストール・更新)には`dpp-ext-installer`経由の明示的なアクション呼び出しが必要である。
 
 ### コマンド
-
-次の表は、プラグインのインストールと更新に使うコマンドを並べたものである。
 
 | Command | Description |
 |---------|-------------|
@@ -155,8 +153,6 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 
 ### Basic Navigation (init.lua)
 
-次の表は、`init.lua` で定義している基本的な移動のキーバインドを並べたものである。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `Ctrl+j` | Previous buffer | 前のバッファ |
@@ -168,8 +164,6 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 
 ### Terminal (neoterm)
 
-次の表は、neoterm でターミナルを操作するキーバインドを並べたものである。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `,rc` | Send file to REPL | ファイルをREPLに送信 |
@@ -179,7 +173,7 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 
 ### File Explorer (ddu-filer)
 
-`,m` でファイラーを起動する。次の表は、ファイラー内で使うキーを並べたものである。
+`,m` でファイラーを起動する。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -220,8 +214,6 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 
 ### LSP
 
-次の表は、LSP の機能を呼び出すキーバインドを並べたものである。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `ge` | Open diagnostic float | 診断フロート表示 |
@@ -245,8 +237,6 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 
 ### Completion (ddc.vim)
 
-次の表は、ddc.vim の補完を操作するキーバインドを並べたものである。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `Tab` | Select next completion | 次の補完候補 |
@@ -255,8 +245,6 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 | `Alt+]` | Copilot next suggestion | Copilot次の候補 |
 
 ### Snippets
-
-次の表は、スニペットを操作するキーバインドを並べたものである。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -267,7 +255,7 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 
 ### codecompanion (旧CopilotChatから付け替え)
 
-`<leader>ce`/`cr`/`ct`/`cF`は、ノーマルモードではバッファ全体を、ビジュアルモードでは選択範囲を対象にする(モードは自動判定する)。CopilotChat自体は、`:CopilotChat`コマンドで並行稼働している(キーマップはない)。次の表は、codecompanion のキーバインドを並べたものである。
+`<leader>ce`/`cr`/`ct`/`cF`は、ノーマルモードではバッファ全体を、ビジュアルモードでは選択範囲を対象にする(モードは自動判定する)。CopilotChat自体は、`:CopilotChat`コマンドで並行稼働している(キーマップはない)。
 
 | Keybind | Mode | Description | 説明 |
 |---------|------|-------------|------|
@@ -295,16 +283,12 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 
 #### mini.comment
 
-次の表は、mini.comment でコメントを操作するキーバインドを並べたものである。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `gc` | Toggle comment (motion) | コメントトグル（モーション） |
 | `gcc` | Toggle line comment | 行コメントトグル |
 
 #### mini.surround
-
-次の表は、mini.surround で囲み文字を操作するキーバインドを並べたものである。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -319,8 +303,6 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 ---
 
 ## 🔗 Related Files
-
-次の表は、Neovim の設定を構成する主なファイルを並べたものである。
 
 | File | Description |
 |------|-------------|

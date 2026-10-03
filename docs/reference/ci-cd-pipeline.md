@@ -94,8 +94,6 @@ overlays = [
 
 ### Double Cache Approach
 
-次の表は、CI のキャッシュを層ごとに分け、使うツールと用途を並べたものである。
-
 | Layer | Tool | Purpose |
 |-------|------|---------|
 | Docker | `type=gha` layer cache | Nix installation, base setup |

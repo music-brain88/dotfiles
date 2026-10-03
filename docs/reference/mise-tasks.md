@@ -13,8 +13,6 @@ mise tasks
 
 ## Nix Tasks
 
-次の表は、Nix 関連の mise タスクと、それぞれが実行する同等のコマンドを並べたものである。
-
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
 | `mise run nix:build` | Home Manager 設定をビルド (profile 自動判別) | `nix build .#homeConfigurations.<profile>.activationPackage` |
@@ -35,8 +33,6 @@ mise tasks
 
 ## Claude Code Tasks
 
-次の表は、Claude Code の設定を変える mise タスクと、同等の操作を並べたものである。
-
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
 | `mise run claude:effort <level>` | Claude Code の effort 設定(effortLevel/ultracode)を更新してNix経由で反映 (`low` / `medium` / `high` / `xhigh` / `ultracode`) | `.config/claude/settings.json` を jq で書き換え + `nix:switch` |
@@ -53,8 +49,6 @@ mise tasks
 
 ## Docker Tasks
 
-次の表は、Docker 関連の mise タスクと、それぞれが実行する同等のコマンドを並べたものである。
-
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
 | `mise run docker:build` | Docker イメージをビルド | `docker build -t arch .` |
@@ -68,8 +62,6 @@ mise tasks
 
 ## Neovim Tasks
 
-次の表は、Neovim 関連の mise タスクと、それぞれが実行する同等の操作を並べたものである。
-
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
 | `mise run nvim:ts-install` | `treesitter_parsers.lua` のリストに従い nvim-treesitter のパーサをインストール(冪等) | headless nvim 経由で `ts.install()` |
@@ -80,8 +72,6 @@ mise tasks
 ---
 
 ## Utility Tasks
-
-次の表は、その他の mise タスクと、それが実行する同等のコマンドを示す。
 
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
@@ -117,8 +107,6 @@ SOPS age タスクは、hexhive の Secrets(SOPS + age)で使う鍵を管理す�
 ---
 
 ## Hyprland Tasks
-
-次の表は、Hyprland 関連の mise タスクと、それが実行する同等のコマンドを示す。
 
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|

@@ -33,15 +33,11 @@ Fish shellのキーバインドは `.config/fish/functions/fish_user_key_binding
 
 ### Git Integration
 
-次の表は、Fish から Git を操作するキーバインドを示します。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `Ctrl+y` | Git branch checkout with skim | ブランチをskim選択してcheckout |
 
 ### Docker Integration
-
-次の表は、Fish から Docker を操作するキーバインドを示します。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -61,8 +57,6 @@ herdrの設定は `.config/herdr/config.toml` で定義されています。keyb
 
 ### Prefix Key
 
-次の表は、herdr の prefix キーを示します。
-
 | Key | Description |
 |-----|-------------|
 | `Ctrl+g` | Prefix key (prefixキー) |
@@ -80,7 +74,7 @@ herdrのナビゲーションは one-shot キーだけでなく、**モード層
 
 #### 俯瞰: セッションナビゲーター (`prefix + g`)
 
-セッションナビゲーターは、全 workspace × tab × pane をツリー表示します。次の表は、ナビゲーター内で使うキーを並べたものです。
+セッションナビゲーターは、全 workspace × tab × pane をツリー表示します。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -97,7 +91,7 @@ herdrのナビゲーションは one-shot キーだけでなく、**モード層
 
 #### 歩行: NAVIGATE モード (`prefix + w`)
 
-NAVIGATE モードに入ると、画面下部にバーが表示されます。モード滞在中はベアキー(prefixなし)で操作できます。次の表は、モード中に使うキーを並べたものです。
+NAVIGATE モードに入ると、画面下部にバーが表示されます。モード滞在中はベアキー(prefixなし)で操作できます。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -113,8 +107,6 @@ NAVIGATE モードに入ると、画面下部にバーが表示されます。�
 
 #### 直行: indexed ジャンプ
 
-次の表は、番号を指定して直行するキーバインドを並べたものです。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `prefix + 1..9` | Jump to tab | タブへ直行 |
@@ -123,15 +115,11 @@ NAVIGATE モードに入ると、画面下部にバーが表示されます。�
 
 #### 割り込み: 通知ジャンプ
 
-次の表は、通知を上げたペインへ割り込んで移動するキーバインドを示します。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `prefix + o` | Jump to the pane that raised a notification | 通知を上げたペインへジャンプ |
 
 ### Pane Operations
-
-次の表は、herdr のペイン操作のキーバインドを並べたものです。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -144,8 +132,6 @@ NAVIGATE モードに入ると、画面下部にバーが表示されます。�
 
 ### Tab (Window) Operations
 
-次の表は、herdr のタブ (ウィンドウ) 操作のキーバインドを並べたものです。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `prefix + c` | New tab | 新規タブ |
@@ -154,8 +140,6 @@ NAVIGATE モードに入ると、画面下部にバーが表示されます。�
 | `prefix + 1..9` | Jump to tab | タブへジャンプ |
 
 ### Session / Workspace
-
-次の表は、herdr のセッションとワークスペースを操作するキーバインドを並べたものです。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -168,7 +152,7 @@ NAVIGATE モードに入ると、画面下部にバーが表示されます。�
 
 ### Copy Mode
 
-`prefix + [` でコピーモードに入ります。コピーモードではviキーバインドを使用します。次の表は、コピーモードで使うキーを並べたものです。
+`prefix + [` でコピーモードに入ります。コピーモードではviキーバインドを使用します。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -196,16 +180,12 @@ Tmuxの設定は `.tmux.conf` で定義されています。
 
 ### Pane Operations
 
-次の表は、Tmux のペイン操作のキーバインドを並べたものです。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `prefix + \|` | Split pane vertically | ペインを縦に分割 |
 | `prefix + -` | Split pane horizontally | ペインを横に分割 |
 
 ### Pane Navigation (Vim-style)
-
-次の表は、Tmux で Vim 風にペインを移動するキーバインドを並べたものです。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -216,16 +196,12 @@ Tmuxの設定は `.tmux.conf` で定義されています。
 
 ### Window Navigation
 
-次の表は、Tmux のウィンドウを移動するキーバインドを並べたものです。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `prefix + Ctrl+h` | Previous window | 前のウィンドウへ |
 | `prefix + Ctrl+l` | Next window | 次のウィンドウへ |
 
 ### Pane Resizing
-
-次の表は、Tmux のペインのサイズを変えるキーバインドを並べたものです。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -236,8 +212,6 @@ Tmuxの設定は `.tmux.conf` で定義されています。
 
 ### Utility
 
-次の表は、Tmux のその他の便利なキーバインドを並べたものです。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `prefix + r` | Reload tmux config | 設定ファイルをリロード |
@@ -245,7 +219,7 @@ Tmuxの設定は `.tmux.conf` で定義されています。
 
 ### Copy Mode
 
-Tmux のコピーモードはviキーバインドを使用します。次の表は、コピーモードで使うキーと操作を並べたものです。
+Tmux のコピーモードはviキーバインドを使用します。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -267,8 +241,6 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 
 ### Application Launcher
 
-次の表は、Hyprland でアプリケーションを起動するキーバインドを並べたものです。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `Super + Enter` | Open terminal (WezTerm) | ターミナルを開く |
@@ -281,8 +253,6 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 
 ### Window Management
 
-次の表は、Hyprland のウィンドウ管理のキーバインドを並べたものです。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `Alt + F4` | Close active window | アクティブウィンドウを閉じる |
@@ -292,8 +262,6 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 | `Super + F` | Toggle fullscreen | フルスクリーン切り替え |
 
 ### Window Focus
-
-次の表は、Hyprland でウィンドウのフォーカスを移すキーバインドを並べたものです。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -305,8 +273,6 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 | `Alt + Shift + Tab` | Cycle windows in current workspace (reverse) | 現在のワークスペース内でウィンドウ切り替え（逆順） |
 
 ### Window Movement
-
-次の表は、Hyprland でウィンドウを移動するキーバインドを並べたものです。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -331,8 +297,6 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 
 ### Workspace Navigation
 
-次の表は、Hyprland のワークスペースを切り替えるキーバインドを並べたものです。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `Super + 1-9, 0` | Switch to workspace 1-10 (press the same number again to go back) | ワークスペース1-10に移動（同じ番号を再度押すと直前のワークスペースに戻る） |
@@ -349,8 +313,6 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 
 ### Screenshot
 
-次の表は、Hyprland のスクリーンショットのキーバインドを並べたものです。
-
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `Print` | Screenshot (region to clipboard) | 選択領域をクリップボードにコピー |
@@ -358,8 +320,6 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 | `Shift + Print` | Screenshot (region to file) | 選択領域をファイルに保存 |
 
 ### Media Controls
-
-次の表は、Hyprland のメディア操作のキーバインドを並べたものです。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -373,8 +333,6 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 | `XF86MonBrightnessDown` | Brightness down (-5%, hold to repeat) | 明るさダウン（長押しリピート対応） |
 
 ### System Management
-
-次の表は、Hyprland のシステム管理のキーバインドを並べたものです。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -392,8 +350,6 @@ Neovimのキーバインドは量が多いため、別ドキュメントにま�
 👉 **[neovim-config.md](./neovim-config.md#keybindings)** - Neovim キーバインド・設定リファレンス
 
 ### Quick Reference
-
-次の表は、Neovim でよく使うキーバインドをカテゴリごとに抜粋したものです。
 
 | Category | Key Examples | Description |
 |----------|--------------|-------------|
@@ -413,8 +369,6 @@ Neovimのキーバインドは量が多いため、別ドキュメントにま�
 
 ### Editor
 
-次の表は、エディタを起動するエイリアスを示します。
-
 | Alias | Command | Description |
 |-------|---------|-------------|
 | `vim` | `nvim` | Neovimをvimコマンドで起動 |
@@ -431,8 +385,6 @@ Neovimのキーバインドは量が多いため、別ドキュメントにま�
 
 ### Utility Functions
 
-次の表は、Fish で使える便利な関数を並べたものです。
-
 | Command | Description |
 |---------|-------------|
 | `reload` | Fish shellをリロード |
@@ -440,8 +392,6 @@ Neovimのキーバインドは量が多いため、別ドキュメントにま�
 ---
 
 ## 🔗 Related Files
-
-次の表は、この文書で扱う設定を定義しているファイルを並べたものです。
 
 | File | Description |
 |------|-------------|

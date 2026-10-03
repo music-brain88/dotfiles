@@ -129,8 +129,6 @@ gpg --list-secret-keys
 
 ## トラブルシューティング / Troubleshooting
 
-次の表は、GPG 署名でよく起きる症状と、利用者が行う対処を並べたものです。
-
 | 症状 | 対処 |
 |------|------|
 | 署名時に `No secret key` | `gpg --list-secret-keys` でサブキーに `ssb` があるか確認。無ければ `mise run gpg:import` |

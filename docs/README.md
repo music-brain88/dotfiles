@@ -84,8 +84,6 @@
 
 ### 特定のトピック
 
-次の表は、知りたいことから読むべきドキュメントを引けるようにしたものです。
-
 | 知りたいこと | ドキュメント |
 |-------------|-------------|
 | なぜNix + Symlinkなの？ | [explanation/architecture.md](./explanation/architecture.md) |

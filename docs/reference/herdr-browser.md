@@ -19,8 +19,6 @@ herdr-browser は、herdr の pane 内に実ブラウザ (Chromium) を描画す
 
 ## 要件
 
-次の表は、herdr-browser を動かすために必要な環境を並べたものである。
-
 | 項目 | 内容 |
 |------|------|
 | herdr | 0.7.4 以上 |
