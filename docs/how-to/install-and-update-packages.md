@@ -8,7 +8,7 @@
 
 ## Adding New Packages
 
-`home.nix` または対応するモジュールファイルに追加:
+新しいパッケージは、`home.nix` または対応するモジュールファイルの `home.packages` に追加します。
 
 ```nix
 # nix/modules/dev-tools.nix
@@ -27,6 +27,8 @@ home.packages = with pkgs; [
 
 ## Updating Packages
 
+全パッケージを更新するときは、`nix flake update` で flake のすべての入力を更新します。その後、更新した設定をビルドして有効にします。
+
 ```bash
 # Update all flake inputs (nixpkgs, home-manager, etc.)
 nix flake update
@@ -36,6 +38,8 @@ nix run home-manager/master -- switch --flake .#archie
 ```
 
 ### Updating Specific Package
+
+nixpkgs だけを更新するときは、`nix flake lock --update-input nixpkgs` を使います。
 
 ```bash
 # Update only nixpkgs
@@ -49,7 +53,7 @@ nix run home-manager/master -- switch --flake .#archie
 
 ## Overriding Package Versions
 
-特定のパッケージのバージョンを固定する場合:
+特定のパッケージのバージョンを固定する場合は、次のように `flake.nix` を書きます。
 
 ```nix
 # flake.nix
@@ -74,6 +78,8 @@ nix run home-manager/master -- switch --flake .#archie
 
 ## Rolling Back
 
+ロールバックするときは、`home-manager generations` で世代の一覧を確認し、戻したい世代の `activate` を実行します。
+
 ```bash
 # List all generations
 home-manager generations
@@ -89,6 +95,8 @@ home-manager generations | head -2 | tail -1 | awk '{print $7}' | xargs -I {} {}
 
 ## Garbage Collection
 
+古い世代を削除するときは、`nix-collect-garbage` を実行します。
+
 ```bash
 # Remove old generations
 nix-collect-garbage -d
@@ -102,6 +110,8 @@ nix-collect-garbage --delete-older-than 30d
 ---
 
 ## Development Shell
+
+`nix develop` を実行すると、Nix 用のツール(nil、nixpkgs-fmt、nix-tree)が使える開発シェルに入ります。
 
 ```bash
 # Enter development shell with Nix tools

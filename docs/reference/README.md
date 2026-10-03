@@ -1,6 +1,6 @@
 # Reference / リファレンス
 
-逆引き向け。特定の情報を調べるための技術的な一覧・仕様です。
+リファレンスは逆引き向けの文書で、特定の情報を調べるための技術的な一覧と仕様をまとめています。
 
 - [mise-tasks.md](./mise-tasks.md) — mise タスク一覧
 - [directory-structure.md](./directory-structure.md) — ディレクトリ構造

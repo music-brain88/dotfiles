@@ -2,20 +2,20 @@
 
 > **Diátaxis:** 📖 Reference
 
-herdr の pane 内に実ブラウザ (Chromium) を描画し、Chrome DevTools Protocol (CDP) 経由でエージェントに操作させつつ、司令塔や人間がその様子を目視できるようにするプラグイン。
+herdr-browser は、herdr の pane 内に実ブラウザ (Chromium) を描画するプラグインである。エージェントは Chrome DevTools Protocol (CDP) 経由でこのブラウザを操作し、司令塔や人間はその様子を目視できる。
 
 - リポジトリ: [ogulcancelik/herdr-browser](https://github.com/ogulcancelik/herdr-browser)
-- 作者は herdr 本体 ([herdrdev/herdr](https://github.com/herdrdev/herdr)) の作者本人であり、実質ファーストパーティ (`id = "official.browser"`)
-- 導入の背景・セキュリティレビュー結果は Issue [#520](https://github.com/music-brain88/dotfiles/issues/520) を参照
+- 作者は herdr 本体 ([herdrdev/herdr](https://github.com/herdrdev/herdr)) の作者本人であり、実質ファーストパーティである (`id = "official.browser"`)。
+- 導入の背景とセキュリティレビュー結果は、Issue [#520](https://github.com/music-brain88/dotfiles/issues/520) に書いてある。
 
 ---
 
 ## 何をするものか
 
-- herdr の pane に headless Chromium を描画し、Kitty graphics protocol 経由でリアルタイム表示する
-- CDP エンドポイントを公開し、Browser Use / Playwright / Playwright MCP / Chrome DevTools MCP 等の自動化クライアントから操作できる
-- 表示中のペインはマウス・キーボード入力もそのまま Chromium に転送されるため、自動化を見ながら人間が途中で操作を奪うこともできる
-- 想定運用: 司令塔がエージェントのブラウザ操作を艦隊ビュー越しに監視する「窓」として使う
+- herdr の pane に headless Chromium を描画し、Kitty graphics protocol 経由でリアルタイム表示する。
+- CDP エンドポイントを公開し、Browser Use / Playwright / Playwright MCP / Chrome DevTools MCP 等の自動化クライアントから操作できる。
+- 表示中のペインはマウス・キーボード入力もそのまま Chromium に転送されるため、自動化を見ながら人間が途中で操作を奪うこともできる。
+- 想定している運用では、司令塔がエージェントのブラウザ操作を艦隊ビュー越しに監視する「窓」として使う。
 
 ## 要件
 
@@ -27,57 +27,59 @@ herdr の pane 内に実ブラウザ (Chromium) を描画し、Chrome DevTools P
 | ブラウザ | Google Chrome または Chromium |
 | ターミナル | Kitty graphics protocol 対応 (WezTerm, kitty, Ghostty 等) |
 
-このリポジトリでは Bun を `nix/modules/dev-tools.nix` に、WezTerm/herdr 側の Kitty graphics 有効化をそれぞれ `.config/wezterm/wezterm.lua` / `.config/herdr/config.toml` に設定済み。
+このリポジトリでは、Bun を `nix/modules/dev-tools.nix` で入れている。WezTerm/herdr 側の Kitty graphics の有効化は、それぞれ `.config/wezterm/wezterm.lua` / `.config/herdr/config.toml` で設定済みである。
 
 ## プラグイン本体は Nix 管理外
 
-このリポジトリの多くのツールは Nix (Home Manager) で宣言的に管理されているが、herdr-browser プラグイン自体は `herdr plugin install` による**命令的インストール**であり、Nix の管理対象外。したがって `mise run nix:switch` では導入されず、下記のインストール手順を別途手動で実行する必要がある。
+このリポジトリの多くのツールは Nix (Home Manager) で宣言的に管理されているが、herdr-browser プラグイン自体は `herdr plugin install` による**命令的インストール**であり、Nix の管理対象外である。したがって `mise run nix:switch` では導入されず、利用者が「マージ後のインストール手順」節の手順を別途手動で実行する必要がある。
 
 ## マージ後のインストール手順
 
-このリポジトリの変更 (bun 追加・kitty graphics 有効化) がマージ・反映された後、以下を順に実行する。
+このリポジトリの変更 (bun 追加・kitty graphics 有効化) がマージ・反映された後、利用者は次の手順を順に実行する。
 
-1. `mise run nix:switch` — bun と Nix 側の設定変更を反映する
-2. `herdr server reload-config` — `.config/herdr/config.toml` の `[experimental] kitty_graphics = true` を反映する
-3. `herdr plugin install ogulcancelik/herdr-browser --yes` — プラグイン本体をインストールする
-4. WezTerm 上で browser pane を開き、描画を実機確認する (例: `herdr plugin pane open --plugin official.browser --entrypoint browser --placement split --direction right --focus`)
+1. `mise run nix:switch` — bun と Nix 側の設定変更を反映する。
+2. `herdr server reload-config` — `.config/herdr/config.toml` の `[experimental] kitty_graphics = true` を反映する。
+3. `herdr plugin install ogulcancelik/herdr-browser --yes` — プラグイン本体をインストールする。
+4. WezTerm 上で browser pane を開き、描画を実機確認する (例: `herdr plugin pane open --plugin official.browser --entrypoint browser --placement split --direction right --focus`)。
 
 ## device-auth 承認フロー
 
 `aws sso login --profile <x>` / `gh auth login -w` / `gcloud auth login` 等の device-auth 系 CLI は、承認用の URL を `$BROWSER` 環境変数 (aws cli v2 は Python `webbrowser` 経由、gh / gcloud も同様) 経由で開く。運用方針「terminal が主・ブラウザは副」に沿って、この承認 1 クリックのためだけに GUI ブラウザが開く摩擦を消すため、`$BROWSER` を herdr-browser の pane へ直行させるラッパースクリプトに差し替えている ([Issue #523](https://github.com/music-brain88/dotfiles/issues/523))。
 
 - ラッパー本体: [`.config/herdr/scripts/device_auth_browser.sh`](../../.config/herdr/scripts/device_auth_browser.sh)
-- `nix/modules/herdr.nix` が `~/.local/bin/device_auth_browser` へ symlink 配置し、`home.nix` の `sessionVariables.BROWSER` からそのパスを指す
-- `$BROWSER` はスペース区切りで引数付き指定を解釈しないツールがあるため、単一実行ファイルのラッパーにしてある(`herdr plugin pane open ...` のような複数引数コマンドを直接 `$BROWSER` には書けない)
+- `nix/modules/herdr.nix` が `~/.local/bin/device_auth_browser` へ symlink 配置し、`home.nix` の `sessionVariables.BROWSER` からそのパスを指す。
+- `$BROWSER` はスペース区切りで引数付き指定を解釈しないツールがあるため、単一実行ファイルのラッパーにしてある(`herdr plugin pane open ...` のような複数引数コマンドを直接 `$BROWSER` には書けない)。
 
 ### 挙動
 
-1. **WSL 判定**: `WSL_DISTRO_NAME` が set か `/proc/version` に `microsoft` を含む場合は WSL とみなし、herdr 環境判定に入る前に Windows 側の既定ブラウザへフォールバックする (`wslview` → `rundll32.exe url.dll,FileProtocolHandler` → `explorer.exe` の順で探す)。WSL2 では ConPTY が kitty graphics を剥ぐため herdr-browser は描画不可であり ([運用上の注意](#運用上の注意))、herdr が動いていても pane へは直行させない ([Issue #574](https://github.com/music-brain88/dotfiles/issues/574))
-2. **herdr 環境判定**: `HERDR_ENV=1` なら herdr 内とみなす。`HERDR_ENV` が立っていない場合は、SSH セッション (`SSH_CONNECTION` または `SSH_TTY` が set) でないことを条件に `herdr status server --json` でサーバソケットへの到達性を追加確認する。同一ホストへの SSH セッションはソケットには到達できてしまうため、`HERDR_ENV=1` でない限り必ず GUI ブラウザ (`xdg-open` 等) へフォールバックする。なお GUI フォールバック時は `BROWSER` を unset してから `xdg-open` を呼ぶ (desktop 判定不能な環境で xdg-open の generic モードが `$BROWSER` を参照し、このラッパー自身へ戻る無限ループを防ぐため)
-3. **プラグイン導入済み判定**: `herdr` / `jq` / `bun` が揃っているか、`herdr plugin list --plugin official.browser --json` の結果から `plugin_root` を解決できるかを確認する。`plugin_root` はハードコードせず毎回 CLI から解決する。いずれか欠けていれば GUI へフォールバックする
-4. **pane への navigate**: プラグインの CLI (`bun run <plugin_root>/src/cli.ts views`) で既存 view (可視 pane に紐づくもの) の有無を確認する
-   - 既存 view があれば `bun run <plugin_root>/src/cli.ts open <url>` を実行する(`ensureView()` が既存 view を自動選択して navigate する。`--view` フラグは `connect` 専用で `open` には無い)
-   - 既存 view が無ければ `herdr plugin pane open --plugin official.browser --entrypoint browser --placement overlay --focus --env HERDR_BROWSER_INITIAL_URL=<url>` で新規 pane を overlay 配置(承認だけの一時利用に向く transient/popup 的配置)で開き、初期 URL を渡す
-   - navigate 自体が失敗した場合も GUI ブラウザへフォールバックする
+ラッパーは、次の順に判定して承認 URL の開き先を決める。
 
-2 回目以降の承認は、pane 専用の Chrome プロファイル (`~/.local/state/herdr/plugins/official.browser/chrome-profiles/`、0700) に SSO セッションが残るためワンクリックで完了する想定。新規ログインでパスワード入力が必要になるケース(セッション切れの初回など)は、pane 内のブラウザで直接入力するかどうかは別途検討事項として残っている。
+1. **WSL 判定**: `WSL_DISTRO_NAME` が set か `/proc/version` に `microsoft` を含む場合は WSL とみなし、herdr 環境判定に入る前に Windows 側の既定ブラウザへフォールバックする (`wslview` → `rundll32.exe url.dll,FileProtocolHandler` → `explorer.exe` の順で探す)。WSL2 では ConPTY が kitty graphics を剥ぐため herdr-browser は描画不可であり ([運用上の注意](#運用上の注意))、herdr が動いていても pane へは直行させない ([Issue #574](https://github.com/music-brain88/dotfiles/issues/574))。
+2. **herdr 環境判定**: `HERDR_ENV=1` なら herdr 内とみなす。`HERDR_ENV` が立っていない場合は、SSH セッション (`SSH_CONNECTION` または `SSH_TTY` が set) でないことを条件に `herdr status server --json` でサーバソケットへの到達性を追加確認する。同一ホストへの SSH セッションはソケットには到達できてしまうため、`HERDR_ENV=1` でない限り必ず GUI ブラウザ (`xdg-open` 等) へフォールバックする。なお GUI フォールバック時は `BROWSER` を unset してから `xdg-open` を呼ぶ (desktop 判定不能な環境で xdg-open の generic モードが `$BROWSER` を参照し、このラッパー自身へ戻る無限ループを防ぐため)。
+3. **プラグイン導入済み判定**: `herdr` / `jq` / `bun` が揃っているか、`herdr plugin list --plugin official.browser --json` の結果から `plugin_root` を解決できるかを確認する。`plugin_root` はハードコードせず毎回 CLI から解決する。いずれか欠けていれば GUI へフォールバックする。
+4. **pane への navigate**: プラグインの CLI (`bun run <plugin_root>/src/cli.ts views`) で既存 view (可視 pane に紐づくもの) の有無を確認する。
+   - 既存 view があれば `bun run <plugin_root>/src/cli.ts open <url>` を実行する(`ensureView()` が既存 view を自動選択して navigate する。`--view` フラグは `connect` 専用で `open` には無い)。
+   - 既存 view が無ければ `herdr plugin pane open --plugin official.browser --entrypoint browser --placement overlay --focus --env HERDR_BROWSER_INITIAL_URL=<url>` で新規 pane を overlay 配置(承認だけの一時利用に向く transient/popup 的配置)で開き、初期 URL を渡す。
+   - navigate 自体が失敗した場合も GUI ブラウザへフォールバックする。
+
+2 回目以降の承認は、pane 専用の Chrome プロファイル (`~/.local/state/herdr/plugins/official.browser/chrome-profiles/`、0700) に SSO セッションが残るためワンクリックで完了する想定である。新規ログインでパスワード入力が必要になるケース(セッション切れの初回など)で、pane 内のブラウザに直接入力するかどうかは、別途検討事項として残っている。
 
 ### 実機確認手順 (マージ後)
 
-このラッパーの実装自体はコードレビューのみで完結しており、実際の承認フローの動作確認にはユーザーの認証情報が必要なため、マージ・`mise run nix:switch` によるライブ反映後にユーザー自身が以下を確認する。
+このラッパーの実装自体は、コードレビューのみで完結している。実際の承認フローの動作確認にはユーザーの認証情報が必要なため、マージ・`mise run nix:switch` によるライブ反映後にユーザー自身が次の項目を確認する。
 
-1. `mise run nix:switch` で `$BROWSER` 差し替えと symlink を反映する
-2. herdr-browser プラグインが未導入なら [マージ後のインストール手順](#マージ後のインストール手順) を先に実行する
-3. herdr 内 (WezTerm) のシェルから `aws sso login --profile <x>` を実行し、承認 URL が herdr-browser の pane (overlay) 内で開くこと・承認クリックがそのまま完結することを確認する
-4. `gh auth login -w` でも同様に pane 内で承認が完結することを確認する
-5. herdr 外 (例: 素の Alacritty や SSH 接続先) から同じコマンドを実行し、従来どおり GUI ブラウザ (Firefox 等) が開くことを確認する
+1. `mise run nix:switch` で `$BROWSER` 差し替えと symlink を反映する。
+2. herdr-browser プラグインが未導入なら [マージ後のインストール手順](#マージ後のインストール手順) を先に実行する。
+3. herdr 内 (WezTerm) のシェルから `aws sso login --profile <x>` を実行し、承認 URL が herdr-browser の pane (overlay) 内で開くこと・承認クリックがそのまま完結することを確認する。
+4. `gh auth login -w` でも同様に pane 内で承認が完結することを確認する。
+5. herdr 外 (例: 素の Alacritty や SSH 接続先) から同じコマンドを実行し、従来どおり GUI ブラウザ (Firefox 等) が開くことを確認する。
 
 ## 運用上の注意
 
-- **CDP はローカル限定**: CDP エンドポイントはそのブラウザビューへの完全な制御権を持つ。ループバック (127.0.0.1) に限定し、ネットワークに公開しないこと (プラグイン README にも明記されている運用上の要件)
-- **WezTerm 専用**: Alacritty は画像プロトコル (Kitty graphics) 非対応であり、設計方針として今後も非搭載の予定。フォールバック側のターミナルとして使う場合、browser pane はそもそも描画されない。herdr-browser は WezTerm 上でのみ使用する
-- **WSL2 は検証済み・描画不可 (native Arch 専用)**: Windows 11 + WSL2 Arch + Windows 側 WezTerm で 2026-08-05〜07 に検証した結果、browser pane はツールバー (テキスト) のみ表示され、ページ本体 (画像) が描画されない。herdr / plugin / Chromium / 両側の kitty graphics 設定はすべて正常 (plugin daemon の `metrics` でもフレーム送信は正常) で、herdr をバイパスして外側 PTY に直接 kitty graphics エスケープを書いても描画されないことを確認済み。**根本原因は `wsl.exe` と Windows 側ターミナルの間の ConPTY が kitty graphics protocol の APC エスケープ (`ESC _G ... ESC \`) を通さないこと**であり、両側の設定をどう整えても越えられない (参考: [microsoft/terminal#12166](https://github.com/microsoft/terminal/issues/12166))。回避策も検証済み: wezterm-mux-server + unix domain + `proxy_command` は GUI 側 codec タイムアウトで断念、WSLg 上の Linux 版 WezTerm では描画成功まで確認したが常用導線として重く plugin の IME 未サポートも重なり実用は断念。結論として **WSL 機では herdr-browser を使わない**。この決定に合わせ、device_auth_browser ラッパーは WSL を検知すると Windows 側の既定ブラウザへフォールバックする ([挙動](#挙動) の WSL 判定)。詳細な切り分けログは [Issue #569](https://github.com/music-brain88/dotfiles/issues/569) を参照。なお WSL 機で kitty graphics 系の画像全般が出ない症状も同じ ConPTY が原因 (browser plugin 固有ではない)
-- **prompt injection のリスクは構造的に残る**: エージェントにブラウザを操作させる以上、Web 由来の prompt injection リスクはこのプラグイン固有の問題ではなく、claude-in-chrome 等の他のブラウザ自動化と同質のものとして残る
+- **CDP はローカル限定**: CDP エンドポイントはそのブラウザビューへの完全な制御権を持つ。ループバック (127.0.0.1) に限定し、ネットワークに公開しないこと (プラグイン README にも明記されている運用上の要件である)。
+- **WezTerm 専用**: Alacritty は画像プロトコル (Kitty graphics) 非対応であり、設計方針として今後も非搭載の予定である。フォールバック側のターミナルとして使う場合、browser pane はそもそも描画されない。herdr-browser は WezTerm 上でのみ使用する。
+- **WSL2 は検証済み・描画不可 (native Arch 専用)**: Windows 11 + WSL2 Arch + Windows 側 WezTerm で 2026-08-05〜07 に検証した結果、browser pane はツールバー (テキスト) のみ表示され、ページ本体 (画像) が描画されない。herdr / plugin / Chromium / 両側の kitty graphics 設定はすべて正常 (plugin daemon の `metrics` でもフレーム送信は正常) で、herdr をバイパスして外側 PTY に直接 kitty graphics エスケープを書いても描画されないことを確認済み。**根本原因は `wsl.exe` と Windows 側ターミナルの間の ConPTY が kitty graphics protocol の APC エスケープ (`ESC _G ... ESC \`) を通さないこと**であり、両側の設定をどう整えても越えられない (参考: [microsoft/terminal#12166](https://github.com/microsoft/terminal/issues/12166))。回避策も検証済みである。wezterm-mux-server + unix domain + `proxy_command` は、GUI 側 codec タイムアウトで断念した。WSLg 上の Linux 版 WezTerm では描画成功まで確認したが、常用導線として重く plugin の IME 未サポートも重なったため、実用は断念した。結論として **WSL 機では herdr-browser を使わない**。この決定に合わせ、device_auth_browser ラッパーは WSL を検知すると Windows 側の既定ブラウザへフォールバックする ([挙動](#挙動) の WSL 判定)。詳細な切り分けログは [Issue #569](https://github.com/music-brain88/dotfiles/issues/569) に書いてある。なお、WSL 機で kitty graphics 系の画像全般が出ない症状も、同じ ConPTY が原因である (browser plugin 固有ではない)。
+- **prompt injection のリスクは構造的に残る**: エージェントにブラウザを操作させる以上、Web 由来の prompt injection リスクはこのプラグイン固有の問題ではなく、claude-in-chrome 等の他のブラウザ自動化と同質のものとして残る。
 
 ## 関連
 

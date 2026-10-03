@@ -61,7 +61,7 @@ dotfiles/
 
 ## 📁 .config/ - Application Configurations
 
-各アプリケーションの設定ファイルを格納。
+`.config/` には、各アプリケーションの設定ファイルを格納している。
 
 ### Terminal & Shell
 
@@ -114,12 +114,14 @@ dotfiles/
 
 ### AI Assistant Skills
 
-スキルは配線経路によって2層に分かれる:
+スキルは、配線経路によって次の 2 層に分かれる。
 
-- **tool-neutral 層**(`skills/`): エージェント横断の共有 SOP(例: `learn`、`session-log`、`distill`)。`home.nix` で `.claude/skills/<name>` と `.copilot/skills/<name>` の両方へのマウントに解決され、単一ソースからドリフトしない(Issue #404)
-- **Claude 専用層**(`claude/skills/`): harness 固有の運用スキル(例: `wt`、`wtclean`、`herdr`)。これらは `.claude` 全体の recursive マウント(`home.nix` の `".claude"` エントリ)でそのまま配布され、tool-neutral 層のような個別スキル単位の上書きマウントは持たない(個別の `.claude/skills/<name>` エントリが `home.nix` に存在するのは、あくまで tool-neutral 層の共有スキルを上書きするためのもの)
+- **tool-neutral 層**(`skills/`): エージェント横断の共有 SOP を置く(例: `learn`、`session-log`、`distill`)。`home.nix` で `.claude/skills/<name>` と `.copilot/skills/<name>` の両方へのマウントに解決され、単一ソースからドリフトしない(Issue #404)。
+- **Claude 専用層**(`claude/skills/`): harness 固有の運用スキルを置く(例: `wt`、`wtclean`、`herdr`)。これらは `.claude` 全体の recursive マウント(`home.nix` の `".claude"` エントリ)でそのまま配布され、tool-neutral 層のような個別スキル単位の上書きマウントは持たない(個別の `.claude/skills/<name>` エントリが `home.nix` に存在するのは、あくまで tool-neutral 層の共有スキルを上書きするためである)。
 
-新しいスキルを追加する際は「特定 harness(Claude Code)の機能に依存するか」で配置を判断する — 依存しなければ tool-neutral 層、依存すれば Claude 専用層に置く。
+新しいスキルを追加する際は、「特定 harness(Claude Code)の機能に依存するか」で配置を判断する。依存しなければ tool-neutral 層に置き、依存すれば Claude 専用層に置く。
+
+次の表は、スキルとエージェント設定に関わるディレクトリを並べたものである。
 
 | Directory | Description |
 |-----------|-------------|
@@ -150,7 +152,7 @@ dotfiles/
 
 ## 📁 nix/modules/ - Nix Modules
 
-Home Manager の設定をモジュール化。
+Home Manager の設定は、`nix/modules/` の下でモジュールに分けている。
 
 | Module | Description |
 |--------|-------------|
@@ -166,13 +168,13 @@ Home Manager の設定をモジュール化。
 | `desktop.nix` | GUI 設定群 (hypr, waybar, wezterm, alacritty, wofi, mako, mpd, ncmpcpp, fontconfig) — native profile のみ |
 | `wsl.nix` | WSL 固有: Obsidian vault symlink と Windows 側 WezTerm/Alacritty 設定の配布 — wsl profile のみ |
 
-profile 分割の設計意図は [architecture.md の Per-Host Profiles](../explanation/architecture.md#per-host-profiles) を参照。
+profile 分割の設計意図は [architecture.md の Per-Host Profiles](../explanation/architecture.md#per-host-profiles) に書いてある。
 
 ---
 
 ## 📁 docs/ - Documentation (Diátaxis)
 
-Diátaxis (https://diataxis.fr) に沿って4象限に分類。詳細は [docs/README.md](../README.md) を参照。
+`docs/` の文書は、Diátaxis (https://diataxis.fr) に沿って4象限に分類している。詳細は [docs/README.md](../README.md) に書いてある。
 
 | Directory | 象限 | Description |
 |-----------|------|-------------|
@@ -185,7 +187,7 @@ Diátaxis (https://diataxis.fr) に沿って4象限に分類。詳細は [docs/R
 
 ## 📁 llm/ - LLM Context Files
 
-AI アシスタント向けのコンテキストファイル。
+`llm/` には、AI アシスタント向けのコンテキストファイルを置いている。
 
 | Directory/File | Description |
 |----------------|-------------|
@@ -206,6 +208,8 @@ AI アシスタント向けのコンテキストファイル。
 | `workflows/update-flake-lock.yml` | flake inputs の週次自動更新 (毎週月曜 03:00 UTC、更新 PR を自動作成) |
 
 ### Instructions & Templates
+
+次の表は、GitHub Copilot 向けの指示ファイルと、Issue・PR のテンプレートを並べたものである。
 
 | Directory/File | Description |
 |-----------------|-------------|

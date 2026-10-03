@@ -23,7 +23,7 @@ Fish shellのキーバインドは `.config/fish/functions/fish_user_key_binding
 
 ### Fuzzy Finder (skim)
 
-[skim](https://github.com/lotabout/skim) を使ったファジーファインダー連携。
+次の表は、[skim](https://github.com/lotabout/skim) を使ったファジーファインダー連携のキーバインドを並べたものです。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -45,9 +45,9 @@ Fish shellのキーバインドは `.config/fish/functions/fish_user_key_binding
 
 ### skim Tips
 
-- `Ctrl+t` のファイル検索では `bat` によるシンタックスハイライト付きプレビューが表示される
-- `Ctrl+y` のブランチ選択では最新20件のコミットログがプレビュー表示される
-- `Alt+d` のDocker選択では `p` キーでプレビュー（ログ）の表示/非表示を切り替え
+- `Ctrl+t` のファイル検索では `bat` によるシンタックスハイライト付きプレビューが表示されます。
+- `Ctrl+y` のブランチ選択では最新20件のコミットログがプレビュー表示されます。
+- `Alt+d` のDocker選択では `p` キーでプレビュー（ログ）の表示/非表示を切り替えられます。
 
 ---
 
@@ -74,7 +74,7 @@ herdrのナビゲーションは one-shot キーだけでなく、**モード層
 
 #### 俯瞰: セッションナビゲーター (`prefix + g`)
 
-全 workspace × tab × pane をツリー表示。
+セッションナビゲーターは、全 workspace × tab × pane をツリー表示します。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -91,7 +91,7 @@ herdrのナビゲーションは one-shot キーだけでなく、**モード層
 
 #### 歩行: NAVIGATE モード (`prefix + w`)
 
-画面下部にバー表示。モード滞在中はベアキー(prefixなし)で操作できる。
+NAVIGATE モードに入ると、画面下部にバーが表示されます。モード滞在中はベアキー(prefixなし)で操作できます。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -152,7 +152,7 @@ herdrのナビゲーションは one-shot キーだけでなく、**モード層
 
 ### Copy Mode
 
-`prefix + [` でコピーモードに入る。viキーバインドを使用。
+`prefix + [` でコピーモードに入ります。コピーモードではviキーバインドを使用します。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -160,7 +160,7 @@ herdrのナビゲーションは one-shot キーだけでなく、**モード層
 | `y` | Copy to clipboard | クリップボードにコピー |
 | `q` / `Esc` | Exit copy mode | コピーモードを抜ける |
 
-マウス操作はネイティブ対応 (クリック・ドラッグ選択・境界ドラッグでリサイズ)。
+herdr はマウス操作にネイティブに対応しています (クリック・ドラッグ選択・境界ドラッグでリサイズ)。
 
 ---
 
@@ -219,7 +219,7 @@ Tmuxの設定は `.tmux.conf` で定義されています。
 
 ### Copy Mode
 
-コピーモードはviキーバインドを使用。
+Tmux のコピーモードはviキーバインドを使用します。
 
 | Keybind | Description | 説明 |
 |---------|-------------|------|
@@ -365,7 +365,7 @@ Neovimのキーバインドは量が多いため、別ドキュメントにま�
 
 ## 🔧 Shell Aliases
 
-`.config/fish/config.fish` で定義されているエイリアス。
+この節は、`.config/fish/config.fish` で定義されているエイリアスを並べます。
 
 ### Editor
 

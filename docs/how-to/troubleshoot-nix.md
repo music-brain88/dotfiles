@@ -39,17 +39,17 @@ Existing file '/home/archie/.config/starship.toml' would be clobbered
 Existing file '/home/archie/.config/fish/config.fish' would be clobbered
 ```
 
-これは Home Manager が管理したいファイルが既に存在していて、上書きしていいかわからないから止まっている状態。
+このエラーは、Home Manager が管理したいファイルが既に存在するときに出ます。Home Manager は既存ファイルを上書きしてよいかわからないので、そこで処理を止めます。
 
-**Solution**: `-b backup` オプションを使って既存ファイルを自動バックアップ:
+**Solution**: `-b backup` オプションを付けて実行すると、Home Manager が既存ファイルを自動でバックアップします。
 
 ```bash
 nix run home-manager/master -- switch --flake .#archie -b backup
 ```
 
-これで既存ファイルは `.backup` 拡張子付きでリネームされる（例: `starship.toml.backup`）。
+これで既存ファイルは `.backup` 拡張子付きでリネームされます（例: `starship.toml.backup`）。
 
-**リストア方法**:
+**リストア方法**: バックアップから戻すときは、ファイルを手動で戻すか、Home Manager の世代でロールバックします。
 
 ```bash
 # バックアップから手動で戻す
@@ -82,7 +82,7 @@ nix search nixpkgs xxx
 
 ### nix-tree
 
-依存関係ツリーを可視化:
+`nix-tree` は依存関係ツリーを可視化します。`nix develop` で開発シェルに入ってから実行します。
 
 ```bash
 # Enter dev shell
@@ -94,7 +94,7 @@ nix-tree
 
 ### nix repl
 
-Nix expressionを対話的に評価:
+`nix repl` は、Nix expressionを対話的に評価します。
 
 ```bash
 nix repl
@@ -104,7 +104,7 @@ nix repl
 
 ### Verbose output
 
-詳細なビルドログを表示:
+詳細なビルドログを表示するときは、`--show-trace --verbose` を付けてビルドします。
 
 ```bash
 nix build --show-trace --verbose .#homeConfigurations.archie.activationPackage

@@ -4,6 +4,8 @@
 
 個別の設計判断の記録は [adr/](./adr/) にあります。
 
+次の表は、4つの象限ごとに、目的と、その象限を読むべき場面を並べたものです。
+
 | 象限 | 目的 | こんなときに |
 |------|------|-------------|
 | 🎓 **Tutorials** | 学習向け | まっさらな状態から手を動かして環境を作りたい |
@@ -15,7 +17,7 @@
 
 ## 🎓 Tutorials / チュートリアル
 
-学習向け。何も知らない状態から手を動かして環境を作り上げるための、順を追ったガイドです。
+チュートリアルは学習向けの文書で、何も知らない状態から手を動かして環境を作り上げるための、順を追ったガイドです。
 
 - [tutorials/getting-started.md](./tutorials/getting-started.md) - Nixのインストールから初回セットアップまで
 
@@ -23,7 +25,7 @@
 
 ## 🔧 How-to Guides / ハウツーガイド
 
-作業向け。すでに基本を理解している人が、特定の目的を達成するためのガイドです。
+ハウツーガイドは作業向けの文書で、すでに基本を理解している人が特定の目的を達成するためのものです。
 
 - [how-to/install-and-update-packages.md](./how-to/install-and-update-packages.md) - パッケージの追加・更新・ロールバック
 - [how-to/customize-your-fork.md](./how-to/customize-your-fork.md) - フォークして自分用にカスタマイズする
@@ -39,7 +41,7 @@
 
 ## 📖 Reference / リファレンス
 
-逆引き向け。特定の情報を調べるための技術的な一覧・仕様です。
+リファレンスは逆引き向けの文書で、特定の情報を調べるための技術的な一覧と仕様をまとめています。
 
 - [reference/mise-tasks.md](./reference/mise-tasks.md) - mise タスク一覧
 - [reference/directory-structure.md](./reference/directory-structure.md) - ディレクトリ構造
@@ -56,7 +58,7 @@
 
 ## 💡 Explanation / 解説
 
-理解向け。設計や背景にある「なぜ」を説明するドキュメントです。
+解説は理解向けの文書で、設計や背景にある「なぜ」を説明します。
 
 - [explanation/architecture.md](./explanation/architecture.md) - 設計思想、Nix+Symlinkハイブリッドの理由
 - [explanation/shell-boot-flow.md](./explanation/shell-boot-flow.md) - シェルの起動フローとBash/Fishの役割分担

@@ -33,7 +33,7 @@ onedarkpro.nvim の `lua/onedarkpro/themes/onedark.lua`（[GitHub](https://githu
 
 ## ANSI 16色
 
-onedarkpro.nvim が WezTerm 向けに生成する値（`bright_*` は base 色を `helpers.lighten(color, 10)` で明るくした値）。
+次の表は、onedarkpro.nvim が WezTerm 向けに生成する ANSI 16色の値です（`bright_*` は base 色を `helpers.lighten(color, 10)` で明るくした値です）。
 
 | # | 名前 | Normal | Bright |
 |---|---|---|---|
@@ -46,13 +46,13 @@ onedarkpro.nvim が WezTerm 向けに生成する値（`bright_*` は base 色�
 | 6 | cyan | `#56b6c2` | `#7bc6d0` |
 | 7 | white | `#abb2bf` | `#c8cdd5` |
 
-カーソル・選択範囲: `cursor_bg` / `selection_bg` = purple (`#c678dd`)、`cursor_fg` / `selection_fg` = bg (`#282c34`) / fg (`#abb2bf`)。
+カーソルと選択範囲には、`cursor_bg` / `selection_bg` に purple (`#c678dd`) を使い、`cursor_fg` / `selection_fg` に bg (`#282c34`) / fg (`#abb2bf`) を使います。
 
 ## 背景色についての判断
 
-`background = #1e2127` は onedarkpro の onedark 値 `#282c34` より暗い値です。WezTerm 設定のコメントにある通り、これは Alacritty 時代から踏襲された値で、ユーザーが意図的に暗くしている可能性があるため、本 Issue では機械的に上書きしませんでした。
+`background = #1e2127` は onedarkpro の onedark 値 `#282c34` より暗い値です。WezTerm 設定のコメントにある通り、これは Alacritty 時代から踏襲された値です。ユーザーが意図的に暗くしている可能性があるため、Issue #403 では機械的に上書きしませんでした。
 
-**結論: `#1e2127` を据え置き**（2026-07-11、ユーザー確認済み）。onedark 公式値は `#282c34` ですが、ターミナルの背景だけはより暗い値を保つ方が目に優しく、Neovim 内の onedark 背景とは軽微な差が残ることを許容する、という意図的な選択です。他の色（ANSI 16色・herdr のトークン等）は onedarkpro に統一しつつ、背景色のみユーザーの既存の好みを維持します。herdr の `panel_bg` も同じ `#1e2127` に揃え、WezTerm と herdr UI の背景を整合させました。
+**結論: `#1e2127` を据え置く**（2026-07-11、ユーザー確認済み）。onedark 公式値は `#282c34` です。しかし、ターミナルの背景だけはより暗い値を保つ方が目に優しいので、Neovim 内の onedark 背景とは軽微な差が残ることを許容しました。これは意図的な選択です。他の色（ANSI 16色・herdr のトークン等）は onedarkpro に統一しつつ、背景色のみユーザーの既存の好みを維持します。herdr の `panel_bg` も同じ `#1e2127` に揃え、WezTerm と herdr UI の背景を整合させました。
 
 ## 各設定への適用状況
 
@@ -60,27 +60,27 @@ onedarkpro.nvim が WezTerm 向けに生成する値（`bright_*` は base 色�
 |---|---|
 | Neovim | onedarkpro.nvim 本体（基準そのもの、変更なし） |
 | WezTerm | [`.config/wezterm/wezterm.lua`](../../.config/wezterm/wezterm.lua) の `config.colors` に値をコピー |
-| herdr | [`.config/herdr/config.toml`](../../.config/herdr/config.toml) の `[theme]` / `[theme.custom]` に値をコピー（詳細は下記） |
-| Alacritty | **対象外**。[#393](https://github.com/music-brain88/dotfiles/issues/393) で WezTerm への移行が進行中のため、本 Issue のスコープからは除外 |
+| herdr | [`.config/herdr/config.toml`](../../.config/herdr/config.toml) の `[theme]` / `[theme.custom]` に値をコピー（詳細は「herdr のテーマ設定手段 調査結果」節） |
+| Alacritty | **対象外**。[#393](https://github.com/music-brain88/dotfiles/issues/393) で WezTerm への移行が進行中のため、Issue #403 のスコープからは除外 |
 
-値の管理方針は「各設定ファイルにコピー + このドキュメントへの出典コメント」です。共通パレット定義ファイルから生成する方式は今回のスコープ外としました（将来 Alacritty 移行が完了し、複数ツールの同期が定常的に必要になった時点で再検討）。
+値の管理方針は「各設定ファイルにコピー + このドキュメントへの出典コメント」です。共通パレット定義ファイルから生成する方式は、Issue #403 のスコープ外としました（将来 Alacritty 移行が完了し、複数ツールの同期が定常的に必要になった時点で再検討します）。
 
 ## herdr のテーマ設定手段 調査結果
 
 herdr は `config.toml` に `[theme]` セクションを持ち、以下の手段でカラーをカスタマイズできます（`herdr --default-config` および https://herdr.dev/docs/configuration/ で確認）。
 
-- `[theme] name = "..."` — built-in テーマを選択。`one-dark` を含む以下が選択可能: `catppuccin` / `catppuccin-latte` / `terminal` / `tokyo-night` / `tokyo-night-day` / `dracula` / `nord` / `gruvbox` / `gruvbox-light` / `one-dark` / `one-light` / `solarized` / `solarized-light` / `kanagawa` / `kanagawa-lotus` / `rose-pine` / `rose-pine-dawn` / `vesper`
-- `[theme] auto_switch` / `dark_name` / `light_name` — ホスト端末の明暗に追従したテーマ切り替え（本 Issue では未使用）
-- `[theme.custom]` — 個別カラートークンの上書き。**公式ドキュメントで明示されているトークンは `panel_bg` / `accent` / `red` / `green` / `blue` / `yellow` の6つのみ**（`cyan` / `magenta` / `background` / `foreground` 等の完全なトークン一覧は非公開）。値は hex / named color / `rgb(r,g,b)` / `reset` などのエイリアスを受け付ける
+- `[theme] name = "..."` — built-in テーマを選択します。選択できるテーマは `catppuccin` / `catppuccin-latte` / `terminal` / `tokyo-night` / `tokyo-night-day` / `dracula` / `nord` / `gruvbox` / `gruvbox-light` / `one-dark` / `one-light` / `solarized` / `solarized-light` / `kanagawa` / `kanagawa-lotus` / `rose-pine` / `rose-pine-dawn` / `vesper` です。
+- `[theme] auto_switch` / `dark_name` / `light_name` — ホスト端末の明暗に追従してテーマを切り替えます（Issue #403 では使っていません）。
+- `[theme.custom]` — 個別カラートークンを上書きします。**公式ドキュメントで明示されているトークンは `panel_bg` / `accent` / `red` / `green` / `blue` / `yellow` の6つのみです**（`cyan` / `magenta` / `background` / `foreground` 等の完全なトークン一覧は非公開です）。値は hex / named color / `rgb(r,g,b)` / `reset` などのエイリアスを受け付けます。
 
-herdr は独自のクローズドソースバイナリで配布されており、`[theme.custom]` の全トークン名をソースから確認する手段がありません（本 Issue の制約上、稼働中デーモンへの設定投入・リロードによる実地確認も対象外）。そのため今回は以下の方針としました。
+herdr は独自のクローズドソースバイナリで配布されており、`[theme.custom]` の全トークン名をソースから確認する手段がありません（Issue #403 の制約上、稼働中デーモンへの設定投入・リロードによる実地確認も対象外にしました）。そのため、Issue #403 では次の方針を採りました。
 
-- `[theme] name = "one-dark"` を採用（herdr組み込みの one-dark テーマを土台にする）
-- 文書化済みの `[theme.custom]` トークン（`red` / `green` / `yellow` / `blue` / `accent`）を onedarkpro の基準値で上書き
-- `panel_bg` は背景色の判断（上記）と連動するため、その結論に合わせて設定
-- `cyan` / `magenta` など非公開トークンは対象外（herdr 組み込みの `one-dark` テーマの値に委ねる）
+- `[theme] name = "one-dark"` を採用しました（herdr組み込みの one-dark テーマを土台にします）。
+- 文書化済みの `[theme.custom]` トークン（`red` / `green` / `yellow` / `blue` / `accent`）を、onedarkpro の基準値で上書きしました。
+- `panel_bg` は「背景色についての判断」節の結論と連動するため、その結論に合わせて設定しました。
+- `cyan` / `magenta` など非公開トークンは対象外にしました（herdr 組み込みの `one-dark` テーマの値に委ねます）。
 
-herdr 自体のテーマ設定は「完全に onedarkpro 値へ統一」までは到達できていません（トークン仕様が非公開なため）が、「設定可能」であることは確認できたため、Issue のスコープには含めています。
+herdr 自体のテーマ設定は、「完全に onedarkpro 値へ統一」までは到達できていません（トークン仕様が非公開なため）。ただし「設定可能」であることは確認できたため、Issue #403 のスコープには含めています。
 
 ---
 

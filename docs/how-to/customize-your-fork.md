@@ -8,14 +8,14 @@
 
 ## Changing User Information
 
-`home.nix` を編集:
+フォークした利用者は、まず `home.nix` のユーザー名とホームディレクトリを自分のものに書き換えます。
 
 ```nix
 home.username = "your-username";
 home.homeDirectory = "/home/your-username";
 ```
 
-`.config/git/config.local.sample` を `~/.gitconfig.local` にコピーして編集:
+次に、`.config/git/config.local.sample` を `~/.gitconfig.local` にコピーし、名前・メールアドレス・署名鍵を自分のものに書き換えます。
 
 ```bash
 cp .config/git/config.local.sample ~/.gitconfig.local
@@ -34,7 +34,9 @@ cp .config/git/config.local.sample ~/.gitconfig.local
 
 ## Creating New Module
 
-1. `nix/modules/` に新しいモジュールファイルを作成:
+新しい Nix モジュールを追加するときは、次の 2 つの手順を行います。
+
+1. `nix/modules/` に新しいモジュールファイルを作成します。
 
 ```nix
 # nix/modules/custom.nix
@@ -49,7 +51,7 @@ cp .config/git/config.local.sample ~/.gitconfig.local
 }
 ```
 
-2. `home.nix` でモジュールをインポート:
+2. `home.nix` の `imports` にモジュールを追加します。
 
 ```nix
 imports = [

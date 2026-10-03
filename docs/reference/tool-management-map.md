@@ -33,16 +33,16 @@
 | claude (Claude Code)                                               | Native installer     | `~/.local/bin/claude` → `~/.local/share/claude/versions/`                  |
 | copilot-quorum                                                     | 手動                 | 自作ツール。ローカルリポジトリからビルドして `~/.local/bin` に配置         |
 
-> **Note:** `mise ls` に上表にない宣言なしのツールが出る場合、過去の手動インストールの残りです。宣言化するか削除してください([install-unmanaged-tools.md のトラブルシューティング](../how-to/install-unmanaged-tools.md#トラブルシューティング--troubleshooting) 参照)。
+> **Note:** `mise ls` に「ツール別管轄」の表にない宣言なしのツールが出る場合、過去の手動インストールの残りです。宣言化するか削除してください([install-unmanaged-tools.md のトラブルシューティング](../how-to/install-unmanaged-tools.md#トラブルシューティング--troubleshooting) 参照)。
 
 ---
 
 ## 各層の理由 / Why This Layering
 
-- **Nix が基本**: 再現性のため、CLI ツールは原則 Nix で宣言する([architecture.md](../explanation/architecture.md) の設計思想)
-- **更新の速い AI CLI は Nix に入れない**: Claude Code のようにほぼ毎日更新されるツールを Nix 管理にすると、自己更新が効かず nixpkgs / overlay の bump 追随が常時必要になる。実際に nixpkgs bump で copilot-cli overlay が壊れた事故(#380)があり、native installer の自動更新に任せる方が総コストが低い(#486)
-- **WM / GUI 層は OS**: Wayland compositor やグラフィックドライバはシステム統合が必要で、ユーザー空間の Home Manager に閉じない。バイナリは pacman、設定は Nix が symlink するという分担
-- **言語ランタイムは mise**: プロジェクトごとのバージョン固定は mise の担当([architecture.md の言語ランタイムのバージョン方針](../explanation/architecture.md) 参照)
+- **Nix が基本**: 再現性のため、CLI ツールは原則 Nix で宣言する([architecture.md](../explanation/architecture.md) の設計思想)。
+- **更新の速い AI CLI は Nix に入れない**: Claude Code のようにほぼ毎日更新されるツールを Nix 管理にすると、自己更新が効かず nixpkgs / overlay の bump 追随が常時必要になる。実際に nixpkgs bump で copilot-cli overlay が壊れた事故(#380)があった。そのため、native installer の自動更新に任せる方が総コストが低い(#486)。
+- **WM / GUI 層は OS**: Wayland compositor やグラフィックドライバはシステム統合が必要で、ユーザー空間の Home Manager に閉じない。そのため、バイナリは pacman で入れ、設定は Nix が symlink する。
+- **言語ランタイムは mise**: プロジェクトごとのバージョン固定は mise が担当する([architecture.md の言語ランタイムのバージョン方針](../explanation/architecture.md) 参照)。
 
 ---
 
@@ -50,11 +50,11 @@
 
 新しいツールを導入するとき、どの層に置くかは次の基準で決めます。
 
-0. **そもそも宣言に載せるか(前段ゲート)**: PoC 中のツールや、状態・認証(鍵・トークン)が本体のツールは、層を割り当てる前に「まだ宣言に載せない」と判断する。宣言化は決定の凍結 — PoC → 統合の確度が固まってから層を決める(例: tailscale は統合設計が固まるまで暫定で OS 層)
-1. **更新頻度と主導権**: ほぼ毎日更新されるツールは Nix 管理に向かない。mise / native installer に任せる。ただし見るべきは頻度そのものより**リリースの主導権が誰にあるか** — 自作ツール(herdr 等)は更新が速くても bump 追従が自分の作業の一部なので Nix (overlay) でよい。逆に gcc / make / rustup のようなビルドツールチェーン(一番の土台)は再現性が最優先なので Nix
-2. **システム統合の必要性**: Wayland compositor やグラフィックドライバ等、ユーザ空間に閉じないツールは OS 層に置く
-3. **プロジェクト依存性**: 基本的に Nix 管理で行うが、そのプロジェクトを再現する最低限の必要なツールは mise に置く。mise はランタイムのバージョン管理とする
-4. **宣言化のコスト**: 1と似た理由ではあるが、再現性のために Nix 管理にする場合、Nixpkgs / overlay の bump 追従が必要となる。端末ごとに確実に構築する場合は Nix
+0. **そもそも宣言に載せるか(前段ゲート)**: PoC 中のツールや、状態・認証(鍵・トークン)が本体のツールは、層を割り当てる前に「まだ宣言に載せない」と判断する。宣言化すると決定が凍結されるので、PoC → 統合の確度が固まってから層を決める(例: tailscale は統合設計が固まるまで暫定で OS 層に置く)。
+1. **更新頻度と主導権**: ほぼ毎日更新されるツールは Nix 管理に向かない。mise / native installer に任せる。ただし見るべきは、頻度そのものより**リリースの主導権が誰にあるか**である。自作ツール(herdr 等)は更新が速くても bump 追従が自分の作業の一部なので、Nix (overlay) でよい。逆に gcc / make / rustup のようなビルドツールチェーン(一番の土台)は再現性が最優先なので、Nix に置く。
+2. **システム統合の必要性**: Wayland compositor やグラフィックドライバ等、ユーザ空間に閉じないツールは OS 層に置く。
+3. **プロジェクト依存性**: 基本的に Nix 管理で行うが、そのプロジェクトを再現する最低限の必要なツールは mise に置く。mise はランタイムのバージョン管理に使う。
+4. **宣言化のコスト**: 1と似た理由ではあるが、再現性のために Nix 管理にする場合、Nixpkgs / overlay の bump 追従が必要となる。端末ごとに確実に構築する場合は Nix に置く。
 
 ---
 
