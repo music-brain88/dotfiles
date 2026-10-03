@@ -37,8 +37,20 @@ jobs:
     steps:
       - uses: release-drafter/release-drafter@v7
 
+  # fork と Dependabot の PR では GITHUB_TOKEN が読み取り専用になり、
+  # pull-requests: write を宣言してもラベルを付けられない (403 でジョブが失敗する)。
+  # これらの PR ではジョブ自体をスキップする。v6 でも同じ PR にはラベルを
+  # 付けられていなかったので (エラーが握りつぶされていただけ)、結果は変わらない。
+  # pull_request_target は書き込み権限のトークンを fork に渡すので使わない。
+  # Fork and Dependabot PRs get a read-only GITHUB_TOKEN, so labeling fails with
+  # 403 even with pull-requests: write. Skip the job for them; v6 could not
+  # label these PRs either (the error was just swallowed). pull_request_target
+  # is avoided because it hands a write-capable token to fork-triggered runs.
   autolabel:
-    if: github.event_name == 'pull_request'
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
     permissions:
       contents: read
       pull-requests: write
