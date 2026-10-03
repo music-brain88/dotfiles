@@ -161,7 +161,7 @@ local prompt_library = {
   }),
 }
 
--- コミットメッセージ生成: 高頻度・定型タスク向けに copilot HTTP アダプタ + gpt-5.6-luna を固定
+-- コミットメッセージ生成: 高頻度・定型タスク向けに copilot HTTP アダプタ + gpt-6-luna を固定
 -- (旧: CopilotChat.ask()へのmodelベタ書き → prompt libraryのopts.adapterによる正統な置き換え)
 local commit_prompt_template = [[#git:staged\nGenerate a commit message using this format:
 type(scope): message
@@ -202,14 +202,14 @@ Changes to review:
 
 prompt_library["Generate Commit Message"] = {
   interaction = "chat",
-  description = "コミットメッセージ生成(gpt-5.6-luna固定)",
+  description = "コミットメッセージ生成(gpt-6-luna固定)",
   opts = {
     alias = "g-commit",
     modes = { "n" },
     auto_submit = true,
     adapter = {
       name = "copilot",
-      model = "gpt-5.6-luna",
+      model = "gpt-6-luna",
     },
   },
   prompts = {

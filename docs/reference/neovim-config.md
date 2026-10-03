@@ -82,7 +82,7 @@ codecompanion.nvim は CopilotChat.nvimの後継である。`codecompanion.toml`
 
 | Adapter | Type | 用途 |
 |---------|------|------|
-| `copilot` | HTTP | デフォルトアダプタ。既存Copilotサブスクのトークンを利用(APIキー不要)。`<leader>cm`のコミットメッセージ生成はここで`gpt-5.6-luna`に固定 |
+| `copilot` | HTTP | デフォルトアダプタ。既存Copilotサブスクのトークンを利用(APIキー不要)。`<leader>cm`のコミットメッセージ生成はここで`gpt-6-luna`に固定 |
 | `claude_code` | ACP | 主軸。Claude Code本体(Skills/MCP/CLAUDE.md込み)がチャットの脳になる。要`claude-agent-acp`ラッパー(別途インストール) |
 | `gemini_cli` | ACP | 複数CLI併用の実証用。CLI追加が「アダプタ宣言1つ」で完結することを示す |
 
@@ -91,7 +91,7 @@ codecompanion.nvim は CopilotChat.nvimの後継である。`codecompanion.toml`
 カスタムプロンプト(prompt library)として、次のプロンプトを定義している。各プロンプトには`g-`接頭辞のaliasを付けて、組み込みプロンプトとの衝突を回避している。
 - Explain, Review, Tests, Refactor, Debug
 - Optimize, Document, Architecture, Security
-- Commit (コミットメッセージ生成、gpt-5.6-luna固定)
+- Commit (コミットメッセージ生成、gpt-6-luna固定)
 - Analyze Buffers (旧`CopilotAnalyzeAllBuffers`/`CopilotAnalyzeSelection`を`#{buffers:all}`/選択範囲コンテキストで代替)
 
 ### mini/mini.toml - Mini.nvim Plugins
@@ -268,7 +268,7 @@ dpp.vimは起動時に`state.vim`/`startup.vim`を読み込むだけで、dein�
 | `<leader>cD` | n | Generate documentation | ドキュメント生成 |
 | `<leader>ca` | n | Architecture analysis | アーキテクチャ分析 |
 | `<leader>cs` | n | Security analysis | セキュリティ分析 |
-| `<leader>cm` | n | Generate commit message (gpt-5.6-luna) | コミットメッセージ生成 |
+| `<leader>cm` | n | Generate commit message (gpt-6-luna) | コミットメッセージ生成 |
 | `<leader>cF` | n/v | Analyze all buffers / selection | 全バッファ/選択範囲分析 |
 
 次の表は、チャットバッファ内で使える codecompanion 組み込みのキーを並べたものである。
