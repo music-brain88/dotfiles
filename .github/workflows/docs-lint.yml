@@ -38,7 +38,7 @@ jobs:
       docs: ${{ steps.filter.outputs.docs }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -70,7 +70,7 @@ jobs:
     steps:
       - name: Checkout repository
         if: needs.changes.outputs.docs == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # lychee validates that linked files/URLs resolve, but it does NOT
       # validate #anchor fragments against actual headings. Bilingual

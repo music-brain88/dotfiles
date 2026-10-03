@@ -1,5 +1,22 @@
 name: Release Drafter
 
+# release-drafter v7 で Autolabeler が別 action に分離されたため、ジョブを 2 つに分ける。
+# - update_release_draft: main への push でだけドラフトリリースを更新する。
+#   pull_request で drafter を走らせると refs/pull/N/merge を target_commitish に
+#   しようとして API に拒否される (v6 では握りつぶされ success 扱い、v7 では失敗になる)。
+# - autolabel: PR タイトル (conventional commits) からラベルを付ける。
+#   ラベルはドラフトのカテゴリ分けと version-resolver が使う。
+# どちらも設定は .github/release-drafter.yml を読む。
+# release-drafter v7 split Autolabeler into its own action, so this workflow has
+# two jobs:
+# - update_release_draft: updates the draft release only on pushes to main.
+#   Running the drafter on pull_request tries to use refs/pull/N/merge as
+#   target_commitish, which the API rejects (swallowed as success in v6, a
+#   failure in v7).
+# - autolabel: labels PRs from their conventional-commit titles; the labels
+#   drive the draft's categories and the version-resolver.
+# Both read .github/release-drafter.yml.
+
 on:
   push:
     branches:
@@ -12,11 +29,19 @@ permissions:
 
 jobs:
   update_release_draft:
+    if: github.event_name == 'push'
     permissions:
       contents: write
+      pull-requests: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: release-drafter/release-drafter@v7
+
+  autolabel:
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - uses: release-drafter/release-drafter@v6
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: release-drafter/release-drafter/autolabeler@v7

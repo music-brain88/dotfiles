@@ -44,7 +44,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # workflow_dispatch は任意の ref から実行できてしまうため、ref を明示的に
           # main へ固定する。固定しないと後段の force-push がその ref の HEAD を
@@ -64,7 +64,7 @@ jobs:
       # SHA pin: supply-chain 対策で mutable な @main を使わない (コメントは対応する tag)
       # SHA-pinned to avoid mutable @main refs; trailing comment shows the tag
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
 
       - name: Update flake.lock
         run: nix flake update
