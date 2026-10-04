@@ -159,7 +159,9 @@
         meta.description = "Run shellcheck from the locked nixpkgs over every tracked *.sh";
         program = pkgs.lib.getExe (pkgs.writeShellApplication {
           name = "shellcheck-all";
-          runtimeInputs = with pkgs; [ shellcheck git findutils ];
+          # git は ls-files にしか使わないので、perl や docs を引き込まない gitMinimal にする
+          # git is only used for ls-files; gitMinimal avoids pulling perl and docs into the closure
+          runtimeInputs = with pkgs; [ shellcheck gitMinimal findutils ];
           text = ''
             # どのディレクトリから呼ばれても、対象はリポジトリ全体の追跡済み *.sh
             # Always lint every tracked *.sh, wherever we are invoked from
