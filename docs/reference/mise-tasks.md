@@ -31,6 +31,16 @@ mise tasks
 
 ---
 
+## Lint Tasks
+
+| Task | Description | Equivalent Command |
+|------|-------------|---------------------|
+| `mise run lint:shellcheck` | 追跡済みの `*.sh` をすべて shellcheck にかける。版は `flake.lock` の nixpkgs が固定する版で、CI の `check` ジョブと同じ版・同じ対象になる | `nix run .#shellcheck` |
+
+shellcheck の定義の正は `flake.nix` の `apps.${system}.shellcheck` である。CI の `check` ジョブも同じ app を呼ぶので、手元で通れば CI でも通る。mise が無い環境では、等価コマンドの `nix run .#shellcheck` を直接実行する。シェルの PATH の `shellcheck` は版が異なりうるので、CI と揃えたいときは使わない（[#665](https://github.com/music-brain88/dotfiles/issues/665)）。
+
+---
+
 ## Claude Code Tasks
 
 | Task | Description | Equivalent Command |
