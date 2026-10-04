@@ -16,6 +16,13 @@
 #   workspace_picker (prefix+w) = NAVIGATE モード、滞在中はベアキーで見回り操作
 #                                 NAVIGATE mode; bare keys for look-around ops while active
 
+# 初回の通知設定の案内を出さない。この config.toml は home-manager が配っていて書き込めず、herdr は案内を見たことを自分で記録できない。
+# 行が無いと起動のたびに案内が出て、閉じるたびに書き込みエラーになるため、ここで宣言する。[theme] より前に置くこと (表の見出しより後のキーはその表の値になる)。
+# Skip the first-run notification setup. This file is deployed read-only by home-manager, so herdr cannot record that
+# onboarding was seen. Without this line it shows on every start and errors on every dismiss, hence we declare it here.
+# Keep it above [theme]: keys after a table header belong to that table.
+onboarding = false
+
 # Neovim の onedarkpro.nvim (onedark) に統一したカラー。基準表・出典は
 # docs/reference/color-palette.md を参照。[theme.custom] で公式に文書化されて
 # いるトークンは panel_bg/accent/red/green/blue/yellow の6つのみで、
