@@ -227,18 +227,44 @@ note() {
 # Generic readers / 汎用の読み取り
 # ---------------------------------------------------------------------------
 # Print the value of a frontmatter key (surrounding quotes removed).
-# frontmatter のキーの値を出す(前後の引用符は外す)。
+# A top-level key wins. Only when it is missing, the direct children of a
+# top-level "metadata:" are read: Claude Code moves the keys of files written
+# with the Write tool in the memory directory there (#668). Keys under any
+# other parent, or nested deeper under metadata, are never read.
+# frontmatter のキーの値を出す(前後の引用符は外す)。一番上の階層のキーを優先する。
+# 一番上の階層に無いときだけ、一番上の階層の「metadata:」の直下(1 段だけ)を読む。
+# Claude Code は、記憶のディレクトリに Write ツールで書かれたファイルのキーを
+# そこへ移すためである(#668)。ほかの親キーの下や、metadata のさらに下は読まない。
 fm_get() {
   awk -v key="$2" -v q="'" '
+    function val(s) { sub(/^[^:]*:[ \t]*/, "", s); sub(/[ \t]+$/, "", s)
+      if (substr(s, 1, 1) == "\"" || substr(s, 1, 1) == q) s = substr(s, 2, length(s) - 2)
+      return s }
     NR == 1 { if ($0 != "---") exit; infm = 1; next }
     infm && $0 == "---" { exit }
+    # Blank and comment lines do not end a block / 空行とコメントの行はブロックを終えない
+    infm && $0 ~ /^[ \t]*(#.*)?$/ { next }
+    infm && $0 ~ /^[ \t]/ {
+      # An indented line: only the direct children of metadata count; the first
+      # child sets their indent. Keep the value and print it only when no
+      # top-level key turns up (exit jumps to END, hence the "top" flag).
+      # インデントされた行: metadata の直下だけを見る。最初の子の行がその幅を決める。
+      # 値は控えておき、一番上の階層のキーが無いときだけ出す(exit は END に飛ぶ
+      # ので、「top」の印で出し分ける)。
+      if (!inmeta || nested_found) next
+      ind = $0; sub(/[^ \t].*/, "", ind)
+      if (child == "") child = ind
+      if (ind != child) next
+      k = substr($0, length(ind) + 1); sub(/:.*/, "", k)
+      if (k == key) { nested = val($0); nested_found = 1 }
+      next
+    }
     infm {
+      inmeta = ($0 ~ /^metadata:[ \t]*$/); child = ""
       k = $0; sub(/:.*/, "", k)
-      if (k != key) next
-      v = $0; sub(/^[^:]*:[ \t]*/, "", v); sub(/[ \t]+$/, "", v)
-      if (substr(v, 1, 1) == "\"" || substr(v, 1, 1) == q) v = substr(v, 2, length(v) - 2)
-      print v; exit
-    }' "$1"
+      if (k == key) { print val($0); top = 1; exit }
+    }
+    END { if (!top && nested_found) print nested }' "$1"
 }
 
 # Succeed when the file has the "## <heading>" line.
