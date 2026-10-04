@@ -114,6 +114,25 @@ write_state() {
   } >"$mem/$file"
 }
 
+# write_state_nested [file] [as_of] [session_id] [top-level lines] < extra lines
+# The state file as Claude Code rewrites it after the Write tool (observed with
+# Claude Code 2.1.289 on 2026-10-04, #668): session_id and as_of move under
+# "metadata:". The optional 4th argument adds top-level lines before metadata.
+# Claude Code が Write ツールの後に書き換えた形の状態ファイル(2026-10-04 に
+# Claude Code 2.1.289 で観測。#668)。session_id と as_of は「metadata:」の下に移る。
+# 4 番目の引数は、metadata の前に一番上の階層の行を足す。
+write_state_nested() {
+  local file="${1:-state_commander-proj.md}" asof="${2:-2026-10-04 18:00}" sid="${3:-$session}"
+  {
+    printf -- '---\nname: state-commander-proj\ndescription: commander-proj の状態(%s 時点)。\n%s' "$asof" "${4:-}"
+    printf 'metadata:\n  node_type: memory\n  type: project\n  kind: state\n  session_id: %s\n  as_of: %s\n' "$sid" "$asof"
+    printf '  originSessionId: 00000000-0000-0000-0000-000000000000\n  modified: 2026-10-04T11:12:36.839Z\n---\n\n'
+    printf '# 司令塔の状態\n\n## 稼働中の worker\n\nなし\n\n## 残っているもの\n\n'
+    cat
+    printf '\n## 次の入口\n\n- 新しいセッションで #700 を委任する\n'
+  } >"$mem/$file"
+}
+
 # wb_file <rel> <kind> <unit> <created> [body]: a work product / 作業物を作る
 wb_file() {
   mkdir -p "$(dirname "$wb/$1")"
@@ -267,6 +286,78 @@ test_p1_without_session_id_takes_todays_newest() {
   run_gate "$(printf '{"cwd":"%s","background_tasks":[]}' "$repo")"
   assert_exit 0
   assert_out_has 'state_new.md を自分のものとみなした'
+}
+
+# ---------------------------------------------------------------------------
+# P1 with the frontmatter rewritten by Claude Code (#668)
+# Claude Code が書き換えた frontmatter での P1(#668)
+# ---------------------------------------------------------------------------
+test_nested_fm_passes() {
+  new_case
+  write_state_nested </dev/null
+  ! grep -qE '^(session_id|as_of):' "$mem/state_commander-proj.md" || flunk 'fixture has top-level keys'
+  run_gate "$(hook_input)"
+  assert_exit 0
+  assert_out_has '検問を通過した'
+}
+
+test_nested_fm_old_as_of_blocks() {
+  new_case
+  write_state_nested state_commander-proj.md '2026-10-03 23:50' </dev/null
+  run_gate "$(hook_input)"
+  assert_exit 2
+  assert_err_has '今日(2026-10-04)の時点ではない'
+}
+
+test_nested_fm_other_session_is_not_mine() {
+  new_case
+  write_state_nested state_commander-proj.md '2026-10-04 18:00' 'other-session' </dev/null
+  run_gate "$(hook_input)"
+  assert_exit 2
+  assert_err_has "このセッション(session_id: $session)の状態ファイルが"
+}
+
+test_nested_fm_top_level_wins() {
+  new_case
+  # metadata says another session and yesterday; the top level says this
+  # session and today / metadata は別のセッションと昨日、一番上の階層はこのセッションと今日
+  write_state_nested state_commander-proj.md '2026-10-03 10:00' 'other-session' \
+    "session_id: $session"$'\n''as_of: 2026-10-04 18:00'$'\n' </dev/null
+  run_gate "$(hook_input)"
+  assert_exit 0
+  # The reverse: another session at the top level hides this session in metadata
+  # 逆向き: 一番上の階層の別のセッションが、metadata のこのセッションより優先される
+  write_state_nested state_commander-proj.md '2026-10-04 18:00' "$session" \
+    $'session_id: other-session\n' </dev/null
+  run_gate "$(hook_input)"
+  assert_exit 2
+  assert_err_has "このセッション(session_id: $session)の状態ファイルが"
+}
+
+test_nested_fm_reads_only_direct_children_of_metadata() {
+  new_case
+  # Under another parent, and one level too deep under metadata
+  # ほかの親キーの下と、metadata の 1 段深すぎる下
+  {
+    printf -- '---\nname: state-commander-proj\nother:\n  session_id: %s\n  as_of: 2026-10-04 18:00\n' "$session"
+    printf 'metadata:\n  deep:\n    session_id: %s\n    as_of: 2026-10-04 18:00\n---\n' "$session"
+    printf '\n## 次の入口\n\n- 新しいセッションで #700 を委任する\n'
+  } >"$mem/state_commander-proj.md"
+  run_gate "$(hook_input)"
+  assert_exit 2
+  assert_err_has "このセッション(session_id: $session)の状態ファイルが"
+}
+
+test_nested_fm_without_session_id_takes_todays_newest() {
+  new_case
+  # The newest is in the middle of the glob order, so the comparison must work
+  # いちばん新しいファイルを glob 順の真ん中に置き、比較が効くことを確かめる
+  write_state state_a.md '2026-10-04 09:00' 'x' </dev/null
+  write_state_nested state_b.md '2026-10-04 18:00' 'y' </dev/null
+  write_state_nested state_c.md '2026-10-04 12:00' 'z' </dev/null
+  run_gate "$(printf '{"cwd":"%s","background_tasks":[]}' "$repo")"
+  assert_exit 0
+  assert_out_has 'state_b.md を自分のものとみなした'
 }
 
 # ---------------------------------------------------------------------------
@@ -617,6 +708,23 @@ test_p6_stale_state_file_is_not_a_root() {
   assert_file_has "$wb/_reachability.md" "| \`$mem/state_commander-proj-2.md\` | 2026-09-15 10:00 | 19 |"
   assert_file_has "$wb/_reachability.md" 'state_commander-proj-3.md` は as_of が読めないので'
   [ -f "$mem/state_commander-proj-2.md" ] || flunk 'the gate deleted a stale state file'
+}
+
+test_p6_nested_stale_state_file_is_not_a_root() {
+  new_case
+  write_state_nested </dev/null
+  write_state_nested state_commander-proj-2.md '2026-09-15 10:00' 'old-session' </dev/null
+  printf -- '- [[from-stale]]\n' >>"$mem/state_commander-proj-2.md"
+  write_state_nested state_commander-proj-3.md 'いつか' 'odd-session' </dev/null
+  printf -- '- [[from-unreadable]]\n' >>"$mem/state_commander-proj-3.md"
+  wb_file from-stale.md brief feat/a 2026-08-01
+  wb_file from-unreadable.md brief feat/b 2026-08-01
+  run_gate "$(hook_input)"
+  assert_exit 0
+  assert_state from-stale.md candidate
+  assert_state from-unreadable.md reached
+  assert_file_has "$wb/_reachability.md" "| \`$mem/state_commander-proj-2.md\` | 2026-09-15 10:00 | 19 |"
+  assert_file_has "$wb/_reachability.md" 'state_commander-proj-3.md` は as_of が読めないので'
 }
 
 test_p6_gate_never_deletes_work_products() {
