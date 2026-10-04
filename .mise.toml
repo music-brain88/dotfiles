@@ -40,6 +40,16 @@ description = "Garbage collect old Nix generations"
 run = "nix-collect-garbage -d"
 
 # =============================================================================
+# Lint Tasks
+# =============================================================================
+
+[tasks."lint:shellcheck"]
+description = "Run shellcheck (locked nixpkgs version) over every tracked *.sh, same as CI"
+# 定義の正は flake.nix の apps.shellcheck。CI も同じ app を呼ぶので、版も対象も CI と一致する (#665)。
+# The definition lives in flake.nix (apps.shellcheck); CI runs the same app, so version and targets match CI.
+run = "nix run .#shellcheck"
+
+# =============================================================================
 # Claude Code Tasks
 # =============================================================================
 

@@ -150,6 +150,28 @@
       # Expose the in-repo tool so `nix build .#standalone-check` works on its own
       packages.${system}.standalone-check = pkgs.standalone-check;
 
+      # shellcheck の入口: CI と mise の lint:shellcheck の両方がこれを呼ぶ (#665)。
+      # 版の正は flake.lock の nixpkgs。runner や手元の PATH の shellcheck は使わない。
+      # Single shellcheck entry point shared by CI and `mise run lint:shellcheck` (#665).
+      # The version comes from the locked nixpkgs, never from whatever is on PATH.
+      apps.${system}.shellcheck = {
+        type = "app";
+        meta.description = "Run shellcheck from the locked nixpkgs over every tracked *.sh";
+        program = pkgs.lib.getExe (pkgs.writeShellApplication {
+          name = "shellcheck-all";
+          runtimeInputs = with pkgs; [ shellcheck git findutils ];
+          text = ''
+            # どのディレクトリから呼ばれても、対象はリポジトリ全体の追跡済み *.sh
+            # Always lint every tracked *.sh, wherever we are invoked from
+            cd "$(git rev-parse --show-toplevel)"
+            # CI のログで版を確かめられるように先に表示する
+            # Print the version first so CI logs show which shellcheck ran
+            shellcheck --version
+            git ls-files '*.sh' | xargs --no-run-if-empty shellcheck
+          '';
+        });
+      };
+
       # Development shell for testing
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = with pkgs; [

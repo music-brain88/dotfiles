@@ -74,12 +74,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      # shellcheck は ubuntu-latest にプリインストール済み
-      # shellcheck is preinstalled on ubuntu-latest runners
-      - name: Shellcheck
-        run: |
-          git ls-files '*.sh' | xargs --no-run-if-empty shellcheck
-
       # SHA pin: supply-chain 対策で mutable な @main を使わない (コメントは対応する tag)
       # SHA-pinned to avoid mutable @main refs; trailing comment shows the tag
       - name: Install Nix
@@ -89,6 +83,13 @@ jobs:
         uses: DeterminateSystems/magic-nix-cache-action@84c0677f58dcedf3b91f8223ce36a9ea5b3c84b7 # v15
         with:
           use-flakehub: false
+
+      # runner にプリインストールの shellcheck ではなく、flake.lock の nixpkgs の版を使う。
+      # 手元の `mise run lint:shellcheck` と同じ flake app を呼ぶので、版も対象も一致する (#665)。
+      # Use the locked nixpkgs shellcheck, not the runner's preinstalled one. This is the
+      # same flake app `mise run lint:shellcheck` runs, so version and targets match (#665).
+      - name: Shellcheck
+        run: nix run .#shellcheck
 
       - name: Check flake
         run: nix flake check --no-build
