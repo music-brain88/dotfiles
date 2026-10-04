@@ -26,6 +26,11 @@
 #   1 the gate itself failed unexpectedly (non-blocking; the hook stays registered)
 #     検問自身が想定外に失敗した(止めない。hook は登録されたまま残る)
 #   3 --where found no vault / --where で vault が見つからない
+#
+# The ERR trap does not see a command substitution that fails inside a
+# condition (if, [[ ]], ||), so take such values into a variable first.
+# 条件式(if・[[ ]]・||)の中のコマンド置換の失敗は ERR の trap に拾われないので、
+# 値は先に変数へ取り出してから比べる。
 set -Eeuo pipefail
 
 # ---------------------------------------------------------------------------
@@ -147,7 +152,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     --session) session_id="${2:-}"; shift ;;
     --cwd) cwd_arg="${2:-}"; shift ;;
-    -h | --help) sed -n '2,30p' "$0"; finish 0 ;;
+    -h | --help) sed -n '2,33p' "$0"; finish 0 ;;
     *) echo "close_gate.sh: unknown argument: $1" >&2; finish 64 ;;
   esac
   shift
@@ -478,8 +483,8 @@ state_template() {
 # Find this commander's state file and classify the others (stale or root).
 # この司令塔の状態ファイルを探し、ほかの状態ファイルを「古い」と「根」に分ける。
 select_states() {
-  local f sid asof days latest=''
-  local -a own=() todays=()
+  local f sid asof days row latest='' latest_asof=''
+  local -a own=() todays=() # todays: "file<TAB>as_of"
   for f in "$mem_dir/$state_prefix"*.md; do
     [ -f "$f" ] || continue
     if [ ! -r "$f" ]; then
@@ -500,7 +505,7 @@ select_states() {
       continue
     fi
     if [ -z "$session_id" ] && [ "${asof%% *}" = "$today" ]; then
-      todays+=("$f")
+      todays+=("$f"$'\t'"$asof")
     fi
     days="$(days_since "${asof%% *}")"
     if [ -n "$days" ] && [ "$days" -gt "$dormant_days" ]; then
@@ -509,10 +514,13 @@ select_states() {
   done
   if [ -z "$session_id" ] && [ "${#todays[@]}" -gt 0 ]; then
     # No session ID in the input: take the newest state file written today.
+    # Compare the as_of values read above; on a tie the first in the glob order stays.
     # 入力に session_id が無い: 今日書かれた中でいちばん新しい状態ファイルを採る。
-    for f in "${todays[@]}"; do
-      if [ -z "$latest" ] || [[ "$(fm_get "$f" "$fm_as_of")" > "$(fm_get "$latest" "$fm_as_of")" ]]; then
-        latest="$f"
+    # 比べるのは上で読んだ as_of の値。同じ値なら glob 順で先に出たほうを残す。
+    for row in "${todays[@]}"; do
+      if [ -z "$latest" ] || [[ "${row##*$'\t'}" > "$latest_asof" ]]; then
+        latest="${row%$'\t'*}"
+        latest_asof="${row##*$'\t'}"
       fi
     done
     own=("$latest")

@@ -281,11 +281,28 @@ test_p1_duplicate_session_blocks() {
 
 test_p1_without_session_id_takes_todays_newest() {
   new_case
-  write_state state_old.md '2026-10-04 09:00' 'x' </dev/null
-  write_state state_new.md '2026-10-04 18:00' 'y' </dev/null
+  # The newest is in the middle of the glob order, so the comparison must work
+  # (the first or the last in the glob order would pass a broken comparison).
+  # いちばん新しいファイルを glob 順の真ん中に置き、比較が効くことを確かめる
+  # (先頭や末尾に置くと、壊れた比較でも通ってしまう)。
+  write_state state_a.md '2026-10-04 09:00' 'x' </dev/null
+  write_state state_b.md '2026-10-04 18:00' 'y' </dev/null
+  write_state state_c.md '2026-10-04 12:00' 'z' </dev/null
   run_gate "$(printf '{"cwd":"%s","background_tasks":[]}' "$repo")"
   assert_exit 0
-  assert_out_has 'state_new.md を自分のものとみなした'
+  assert_out_has 'state_b.md を自分のものとみなした'
+}
+
+test_p1_without_session_id_tie_keeps_first_in_glob_order() {
+  new_case
+  # Two files share the newest as_of: the first one in the glob order is kept.
+  # いちばん新しい as_of が 2 枚で同じ: glob 順で先に出たほうを残す。
+  write_state state_a.md '2026-10-04 09:00' 'x' </dev/null
+  write_state state_b.md '2026-10-04 18:00' 'y' </dev/null
+  write_state state_c.md '2026-10-04 18:00' 'z' </dev/null
+  run_gate "$(printf '{"cwd":"%s","background_tasks":[]}' "$repo")"
+  assert_exit 0
+  assert_out_has 'state_b.md を自分のものとみなした'
 }
 
 # ---------------------------------------------------------------------------
@@ -830,6 +847,52 @@ test_unexpected_failure_exits_1_and_is_recorded() {
   assert_err_has '終了コード 2'
   assert_err_has 'このターンは止めない'
   [ "$(jq -r '.result' "$wb/_gate_log.jsonl")" = 'error' ] || flunk 'error was not recorded'
+}
+
+test_failed_as_of_read_exits_1_and_is_recorded() {
+  new_case
+  write_state state_a.md '2026-10-04 09:00' 'x' </dev/null
+  write_state state_b.md '2026-10-04 18:00' 'y' </dev/null
+  write_state state_c.md '2026-10-04 12:00' 'z' </dev/null
+  mkdir -p "$wb" "$case_dir/failawk-bin"
+  # A fake awk that fails only the n-th read of as_of by fm_get (FAIL_AT = n).
+  # Failing each read in turn shows that none of them is swallowed, e.g. by a
+  # command substitution inside a condition.
+  # fm_get が as_of を読む n 回目だけ失敗する偽の awk(FAIL_AT = n)。読む呼び出しを
+  # 1 つずつ失敗させ、どれも握りつぶされない(条件式の中の置換など)ことを確かめる。
+  cat >"$case_dir/failawk-bin/awk" <<EOF
+#!/usr/bin/env bash
+case " \$* " in
+  *' key=as_of '*)
+    n=\$((\$(cat "$case_dir/awk_count" 2>/dev/null || echo 0) + 1))
+    echo "\$n" >"$case_dir/awk_count"
+    if [ "\$n" -eq "\${FAIL_AT:-0}" ]; then : >"$case_dir/awk_failed"; exit 7; fi
+    ;;
+esac
+exec "$(command -v awk)" "\$@"
+EOF
+  chmod +x "$case_dir/failawk-bin/awk"
+  local n input name="$current" covered=''
+  input="$(printf '{"cwd":"%s","background_tasks":[]}' "$repo")"
+  for n in $(seq 1 20); do
+    current="$name (read #$n of as_of failed)"
+    rm -f "$case_dir/awk_count" "$case_dir/awk_failed" "$wb/_gate_log.jsonl"
+    rc=0
+    PATH="$case_dir/failawk-bin:$PATH" FAIL_AT="$n" WTCLOSE_VAULT="$vault" WTCLOSE_NOW="$now" \
+      WTCLOSE_GH="$root/bin/fake_gh" bash "$gate" <<<"$input" >"$case_dir/out" 2>"$case_dir/err" || rc=$?
+    out="$(cat "$case_dir/out")"
+    err="$(cat "$case_dir/err")"
+    # Every read has been failed once / すべての読み取りを 1 回ずつ失敗させ終えた
+    [ -f "$case_dir/awk_failed" ] || { covered=1; break; }
+    [ "$rc" -ne 2 ] || flunk 'the gate must not exit 2'
+    assert_exit 1
+    assert_err_has 'wtclose の検問は、条件を確かめられなかった'
+    [[ "$err" =~ [0-9]+\ 行目、終了コード\ 7 ]] || flunk 'stderr lacks the line number and the exit code'
+    [ "$(jq -r '.result' "$wb/_gate_log.jsonl")" = 'error' ] || flunk 'error was not recorded'
+  done
+  current="$name"
+  [ "$n" -gt 3 ] || flunk "as_of was read only $((n - 1)) times; the fake awk did not take effect"
+  [ -n "$covered" ] || flunk 'as_of was read 20 times or more'
 }
 
 test_unexpected_failure_before_places_exits_1() {
