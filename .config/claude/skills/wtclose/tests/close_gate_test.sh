@@ -756,6 +756,94 @@ test_vault_below_a_dot_directory() {
 }
 
 # ---------------------------------------------------------------------------
+# Temporary list file, impossible times, paths with spaces (review 2)
+# 一覧の一時ファイル、存在しない日時、空白を含むパス(レビュー 2)
+# ---------------------------------------------------------------------------
+assert_no_temp_list() {
+  local left
+  left="$(find "$wb" -maxdepth 1 -name '._reachability.md.*' 2>/dev/null)"
+  [ -z "$left" ] || flunk "temporary list left behind: $left"
+}
+
+test_temp_list_never_left_behind() {
+  new_case
+  run_gate "$(hook_input)"          # block / 停止
+  assert_exit 2
+  assert_no_temp_list
+  write_state </dev/null
+  run_gate "$(hook_input)"          # pass / 通過
+  assert_exit 0
+  assert_no_temp_list
+  WTCLOSE_FAULT=2 run_gate "$(hook_input)" # unexpected exit / 想定外の終了
+  assert_exit 1
+  assert_no_temp_list
+  rm -f "$wb/_reachability.md"
+  mkdir -p "$wb/_reachability.md/x"  # the rename fails / 置き換えが失敗する
+  run_gate "$(hook_input)"
+  assert_exit 2
+  assert_err_has '[P7] 一覧'
+  assert_no_temp_list
+}
+
+test_concurrent_gates_both_write_a_whole_list() {
+  new_case
+  write_state </dev/null
+  wb_file a.md brief feat/a 2026-10-01
+  local i rc1 rc2
+  for i in 1 2 3; do
+    rc1=0
+    rc2=0
+    WTCLOSE_VAULT="$vault" WTCLOSE_NOW="$now" WTCLOSE_GH="$root/bin/fake_gh" \
+      bash "$gate" <<<"$(hook_input)" >/dev/null 2>"$case_dir/e1" &
+    local p1=$!
+    WTCLOSE_VAULT="$vault" WTCLOSE_NOW="$now" WTCLOSE_GH="$root/bin/fake_gh" \
+      bash "$gate" <<<"$(hook_input)" >/dev/null 2>"$case_dir/e2" &
+    local p2=$!
+    wait "$p1" || rc1=$?
+    wait "$p2" || rc2=$?
+    if [ "$rc1" -ne 0 ] || [ "$rc2" -ne 0 ]; then flunk "run $i: rc1=$rc1 rc2=$rc2 $(cat "$case_dir/e1" "$case_dir/e2")"; fi
+    assert_file_has "$wb/_reachability.md" '| `a.md` |'
+    assert_no_temp_list
+  done
+}
+
+test_impossible_times_are_unreadable() {
+  new_case
+  write_state state_commander-proj.md '2026-10-04 99:99' </dev/null
+  run_gate "$(hook_input)"
+  assert_exit 2
+  assert_err_has "as_of が読めない(値: '2026-10-04 99:99')"
+  write_state </dev/null
+  write_state state_other.md '2026-02-30 10:00' 'other-session' </dev/null
+  run_gate "$(hook_input)"
+  assert_exit 0
+  assert_file_has "$wb/_reachability.md" 'state_other.md` は as_of が読めないので'
+}
+
+test_p8_impossible_time_blocks() {
+  new_case
+  printf -- '- [PR の状態は未確認] 2026-10-04 99:99\n' | write_state
+  FAKE_GH_MODE=fail run_gate "$(hook_input)"
+  assert_exit 2
+  assert_err_has '[P8]'
+}
+
+test_p4_worktree_path_with_spaces() {
+  new_case
+  local wt="$case_dir/My Repo/wt x"
+  mkdir -p "$case_dir/My Repo"
+  git -C "$repo" worktree add -q -b feat/space "$wt"
+  printf -- '- [worker 稼働中] worktree `%s` 実装中\n' "$wt" | write_state
+  run_gate "$(hook_input)"
+  assert_exit 0
+  printf -- '- [worker 稼働中] worktree %s\n' "$wt" | write_state
+  run_gate "$(hook_input)"
+  assert_exit 2
+  assert_err_has "残っている worktree $wt(feat/space)が"
+  assert_err_has "worktree \`$wt\` <補足>"
+}
+
+# ---------------------------------------------------------------------------
 # Record / 記録
 # ---------------------------------------------------------------------------
 test_log_records_blocks_and_passes() {

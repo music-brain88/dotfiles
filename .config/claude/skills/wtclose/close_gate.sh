@@ -94,6 +94,7 @@ err_context=''
 mode='hook'
 tmp_dir=''
 wb_dir=''
+index_tmp=''
 
 finish() {
   clean_exit=1
@@ -113,6 +114,7 @@ on_exit() {
   local rc=$? msg
   trap - ERR
   [ -z "$tmp_dir" ] || rm -rf "$tmp_dir"
+  [ -z "$index_tmp" ] || rm -f "$index_tmp"
   [ -z "$clean_exit" ] || return 0
   msg="wtclose の検問は、条件を確かめられなかった(close_gate.sh の ${err_context:-終了コード ${rc}})。このターンは止めない。hook は登録されたまま残るので、次のターンの終わりにもう一度確かめる。同じ失敗が続くなら、ユーザーに報告する。"
   printf '%s\n' "$msg" >&2
@@ -308,6 +310,15 @@ is_own_repo() {
   [ -n "$own_repo" ] && [ "${1,,}" = "${own_repo,,}" ]
 }
 
+# The only checker of "YYYY-MM-DD HH:MM" values (as_of and P8 lines): the shape
+# must match and date -d must round-trip it, so "99:99" or "02-30" are unreadable.
+# 「YYYY-MM-DD HH:MM」の値(as_of と P8 の行)を確かめるのはこの関数だけ。形が合い、
+# date -d で往復して同じ値に戻ることを求めるので、「99:99」や「02-30」は読めない扱いになる。
+valid_stamp() {
+  [[ "$1" =~ $as_of_re ]] || return 1
+  [ "$(date -d "$1" '+%Y-%m-%d %H:%M' 2>/dev/null)" = "$1" ]
+}
+
 is_reason_kind() {
   local k
   for k in "${reason_kinds[@]}"; do
@@ -457,7 +468,7 @@ select_states() {
       own+=("$f")
       continue
     fi
-    if ! [[ "$asof" =~ $as_of_re ]]; then
+    if ! valid_stamp "$asof"; then
       # Unreadable as_of: keep it as a root (do not forget) / 読めない時点: 根に残す
       unreadable_states+=("$f")
       continue
@@ -505,7 +516,7 @@ check_p1() {
     note "P1: 状態ファイル ${f} を読めないので、根として扱えなかった(chmod u+r で読めるようにする)"
   done
   asof="$(fm_get "$own_state" "$fm_as_of")"
-  if ! [[ "$asof" =~ $as_of_re ]]; then
+  if ! valid_stamp "$asof"; then
     fail P1 "$(basename "$own_state") の ${fm_as_of} が読めない(値: '${asof}')" \
       "frontmatter に「${fm_as_of}: ${now}」の形(YYYY-MM-DD HH:MM、ローカル時刻)で時点を書く"
   elif [ "${asof%% *}" != "$today" ]; then
@@ -571,30 +582,42 @@ collect_real_state() {
 #   wt<TAB><path><TAB><kind> | p8<TAB><date> | p8bad<TAB><line> | bad<TAB><line>
 # 「残っているもの」の行を読むのはこの関数だけ。正規化したレコードを出す。
 parse_remaining() {
-  local line tag rest
+  local line tag rest p8_date p8_time
   local re_item='^[[:space:]]*[-*][[:space:]]+\[([^]]+)\][[:space:]]*(.*)$'
   local re_pr="^PR[[:space:]]*(${repo_re})?#([0-9]+)"
   # The backticks are literal: the path may be written as code. / バッククォートは文字どおり
   # shellcheck disable=SC2016
-  local re_wt='^worktree[[:space:]]+`?([^[:space:]`]+)'
-  local re_p8='^([0-9]{4}-[0-9]{2}-[0-9]{2})[[:space:]]+[0-9]{2}:[0-9]{2}'
+  # A path in backticks is read up to the closing backtick (it may contain spaces);
+  # a bare path ends at the first space. / バッククォートで囲んだパスは閉じまで読む
+  # (空白を含めてよい)。囲んでいないパスは最初の空白までである。
+  local re_wt_quoted='^worktree[[:space:]]+`([^`]+)`'
+  local re_wt='^worktree[[:space:]]+([^[:space:]`]+)'
+  local re_p8='^([0-9]{4}-[0-9]{2}-[0-9]{2})[[:space:]]+([0-9]{2}:[0-9]{2})'
   while IFS= read -r line; do
     [[ "$line" =~ $re_item ]] || continue
     tag="${BASH_REMATCH[1]}"
     rest="${BASH_REMATCH[2]}"
     if [ "$tag" = "$pr_unverified_tag" ]; then
+      # Copy the match first: valid_stamp runs its own [[ =~ ]] and resets BASH_REMATCH.
+      # 先に取り出す。valid_stamp の中の [[ =~ ]] が BASH_REMATCH を上書きするため。
+      p8_date=''
+      p8_time=''
       if [[ "$rest" =~ $re_p8 ]]; then
-        printf 'p8\t%s\n' "${BASH_REMATCH[1]}"
+        p8_date="${BASH_REMATCH[1]}"
+        p8_time="${BASH_REMATCH[2]}"
+      fi
+      if [ -n "$p8_date" ] && valid_stamp "$p8_date $p8_time"; then
+        printf 'p8\t%s\n' "$p8_date"
       else
         printf 'p8bad\t%s\n' "$line"
       fi
     elif ! is_reason_kind "$tag"; then
-      if [[ "$rest" =~ $re_pr ]] || [[ "$rest" =~ $re_wt ]]; then
+      if [[ "$rest" =~ $re_pr ]] || [[ "$rest" =~ $re_wt_quoted ]] || [[ "$rest" =~ $re_wt ]]; then
         printf 'bad\t%s\n' "$line"
       fi
     elif [[ "$rest" =~ $re_pr ]]; then
       printf 'pr\t%s\t%s\t%s\n' "${BASH_REMATCH[2]}" "$tag" "${BASH_REMATCH[1]}"
-    elif [[ "$rest" =~ $re_wt ]]; then
+    elif [[ "$rest" =~ $re_wt_quoted ]] || [[ "$rest" =~ $re_wt ]]; then
       printf 'wt\t%s\t%s\n' "$(norm_path "${BASH_REMATCH[1]}")" "$tag"
     fi
   done < <(section_body "$1" "$sec_remaining")
@@ -629,29 +652,29 @@ check_p4_p8() {
 
   # PRs (only when gh worked) / PR(gh が使えたときだけ)
   if [ "$gh_ok" -eq 1 ]; then
-    for num in $(printf '%s\n' "${!open_pr_branch[@]}" | sort -n); do
-      [ -z "${listed_pr[$num]:-}" ] || continue
+    while IFS= read -r num; do
+      if [ -z "$num" ] || [ -n "${listed_pr[$num]:-}" ]; then continue; fi
       fail P4 "open の PR #${num}(${open_pr_branch[$num]})が「## ${sec_remaining}」に書いてない" \
         "「- [マージ待ち] PR #${num} <補足>」の形で書く。種類は ${kinds_text} から選ぶ(司令塔が作っていない PR は「別のセッションの管轄」)"
-    done
+    done < <(printf '%s\n' "${!open_pr_branch[@]}" | sort -n)
     # Written but not open here: recorded, not blocked (it may be another repository's).
     # 書いてあるが自分のリポジトリでは open でない: 止めずに記録する(他のリポジトリのものかもしれない)。
-    for num in $(printf '%s\n' "${!listed_pr[@]}" | sort -n); do
-      [ -z "${open_pr_branch[$num]:-}" ] || continue
+    while IFS= read -r num; do
+      if [ -z "$num" ] || [ -n "${open_pr_branch[$num]:-}" ]; then continue; fi
       note "P4: 「${sec_remaining}」の PR #${num} は、このリポジトリでは open ではない(終わったものなら消す。他のリポジトリのものなら PR owner/repo#${num} と修飾子を付ける)"
-    done
+    done < <(printf '%s\n' "${!listed_pr[@]}" | sort -n)
   fi
 
   # Worktrees / worktree
-  for path in $(printf '%s\n' "${!wt_branch[@]}" | sort); do
-    [ -z "${listed_wt[$path]:-}" ] || continue
+  while IFS= read -r path; do
+    if [ -z "$path" ] || [ -n "${listed_wt[$path]:-}" ]; then continue; fi
     fail P4 "残っている worktree ${path}(${wt_branch[$path]:-detached})が「## ${sec_remaining}」に書いてない" \
-      "「- [worker 稼働中] worktree ${path} <補足>」の形で書く。種類は ${kinds_text} から選ぶ(司令塔が作っていない worktree は「別のセッションの管轄」)"
-  done
-  for path in $(printf '%s\n' "${!listed_wt[@]}" | sort); do
-    [ -z "${wt_branch[$path]+set}" ] || continue
+      "「- [worker 稼働中] worktree \`${path}\` <補足>」の形で書く(パスはバッククォートで囲む)。種類は ${kinds_text} から選ぶ(司令塔が作っていない worktree は「別のセッションの管轄」)"
+  done < <(printf '%s\n' "${!wt_branch[@]}" | sort)
+  while IFS= read -r path; do
+    if [ -z "$path" ] || [ -n "${wt_branch[$path]+set}" ]; then continue; fi
     note "P4: 「${sec_remaining}」の worktree ${path} は、このリポジトリの git worktree list に無い(消したものなら行を消す。他のリポジトリのものならそのままでよい)"
-  done
+  done < <(printf '%s\n' "${!listed_wt[@]}" | sort)
 
   # P8: gh failed / gh が失敗した
   if [ "$gh_ok" -eq 0 ]; then
@@ -1002,11 +1025,22 @@ build_reachability() {
   done
 
   created_idx=''
-  if [ -r "$wb_dir/$index_name" ]; then
+  if [ -f "$wb_dir/$index_name" ] && [ -r "$wb_dir/$index_name" ]; then
     created_idx="$(fm_get "$wb_dir/$index_name" created)"
   fi
-  # Write to a temporary file, then rename (never leaves a half-written list).
-  # 一時ファイルに書いてから名前を変える(書きかけの一覧を残さない)。
+  # Write to a unique temporary file, then rename it (never leaves a half-written
+  # list; with two commanders the later writer wins). The name starts with "." so
+  # the listing of work products skips it; on_exit removes it if we die midway.
+  # 一意の一時ファイルに書いてから名前を変える(書きかけの一覧を残さない。司令塔が
+  # 2 体なら後から書いたほうが残る)。名前は「.」で始まるので作業物の列挙に入らない。
+  # 途中で終わったときは on_exit が消す。
+  if ! index_tmp="$(mktemp "$wb_dir/.${index_name}.XXXXXX" 2>"$tmp_dir/write.err")"; then
+    index_tmp=''
+    fail P7 "一覧の一時ファイルを ${wb_dir} に作れない: $(head -n 1 "$tmp_dir/write.err")" \
+      "ディレクトリの権限と空き容量を確かめる。直せなければユーザーに報告する"
+    fail P6 "一覧を書けなかったので、忘れる候補を出せない" "P7 を直す"
+    return
+  fi
   if ! {
     printf -- '---\ntype: agent-workbench\nkind: index\nunit: wtclose\ncreated: %s\nupdated: %s\n---\n\n' "${created_idx:-$today}" "$now"
     printf '# 作業記憶の到達一覧(%s)\n\n' "$project"
@@ -1035,13 +1069,16 @@ build_reachability() {
       printf '\n'
     fi
     printf '## 一覧\n\n| path | last_reached | state | note |\n|---|---|---|---|\n%s' "$all_rows"
-  } >"$wb_dir/.${index_name}.tmp" 2>"$tmp_dir/write.err" \
-    || ! mv -f "$wb_dir/.${index_name}.tmp" "$wb_dir/$index_name" 2>>"$tmp_dir/write.err"; then
+  } >"$index_tmp" 2>"$tmp_dir/write.err" \
+    || ! mv -fT "$index_tmp" "$wb_dir/$index_name" 2>>"$tmp_dir/write.err"; then
+    rm -f "$index_tmp"
+    index_tmp=''
     fail P7 "一覧 ${wb_dir}/${index_name} を書けなかった: $(head -n 1 "$tmp_dir/write.err")" \
       "ディレクトリの権限と空き容量を確かめる。直せなければユーザーに報告する"
     fail P6 "一覧を書けなかったので、忘れる候補を出せない" "P7 を直す"
     return
   fi
+  index_tmp=''
   if [ "$candidate_count" -gt 0 ] || [ "${#stale_states[@]}" -gt 0 ]; then
     note "P6: 忘れる候補 ${candidate_count} 件・古い状態ファイル ${#stale_states[@]} 件を一覧に出した(${wb_dir}/${index_name})。ユーザーに見せ、OK をもらってから消す"
   fi
