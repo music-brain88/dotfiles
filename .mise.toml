@@ -81,6 +81,12 @@ else
 fi
 """
 
+[tasks."claude:wtclose-test"]
+description = "Run the tests of the wtclose close gate script (fixtures only, never touches the real vault)"
+# 一時ディレクトリの fixture と偽の gh だけで検問スクリプトを試す。実物の vault には触らない。
+# Exercises close_gate.sh with temporary fixtures and a fake gh; the real vault is never touched.
+run = "bash .config/claude/skills/wtclose/tests/close_gate_test.sh"
+
 [tasks."docker:build"]
 description = "Build docker image"
 run = "docker build -t arch ."
