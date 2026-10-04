@@ -9,6 +9,8 @@ description: "タスクの説明からブランチ名を自動生成し、herdr 
 
 タスクの説明からブランチ名を自動生成し、herdr の worktree + workspace を立ち上げます。
 
+司令塔はセッションを締めるときに `wtclose` を呼ぶ。締めの条件は、`wtclose` の Stop hook が呼ぶ検問スクリプトが確かめる(#658)。
+
 ## Parameters
 
 - **タスク説明**(必須): ユーザーが `/wt` に続けて入力する自然文。ブランチ名の生成、worktree/workspace の作成、および該当する場合はエージェントへの作業指示プロンプト作成の入力になる(実体は末尾の [引数](#引数) セクション参照)
@@ -69,7 +71,7 @@ worktree 作成直後に以下を行う:
 - **MUST**: allowlist を配置する: `mkdir -p <worktree-path>/.claude && cp ~/.claude/templates/wt-settings.local.json <worktree-path>/.claude/settings.local.json`
   - コピー元は `<repo-root>/.config/claude/templates/...` ではなく `~/.claude/templates/...` を使う。`<repo-root>` は `/wt` を呼び出した対象リポジトリ次第で変わり、dotfiles 以外のリポジトリではこのテンプレートを含まないため
   - `~/.claude` への反映は home-manager 経由(`home.nix` の `home.file ".claude".source = ./.config/claude`)で、`mise run nix:switch` 実行時に `/nix/store` スナップショットへの per-file symlink が生成される方式。テンプレートを追加・変更したら `mise run nix:switch` を実行しないと `~/.claude/templates/` に反映されない(詳細: Troubleshooting「allowlist テンプレートの cp 失敗」参照)
-  - 定型で安全な操作(`git`・`gh`・`mise`・`herdr` の一部サブコマンド、司令塔がタスク指示を置くスクラッチパッドの読み取り)を宣言的に許可し、作業者の permission 往復(A類)を設計で消す。詳細は allowlist テンプレート本体を参照
+  - 定型で安全な操作(`git`・`gh`・`mise`・`herdr` の一部サブコマンド、司令塔がタスク指示を置く作業記憶 `~/Documents/Obsidian/AgentMemory/workbench/` の読み書き、vault が無い機械でタスク指示を置くスクラッチパッドの読み取り)を宣言的に許可し、作業者の permission 往復(A類)を設計で消す。詳細は allowlist テンプレート本体を参照
 
 ### 4. エージェントの起動(任意)
 
@@ -104,9 +106,39 @@ gpg-connect-agent 'keyinfo --list' /bye | grep "$KEYGRIP" | awk '{print $7}'  # 
 - **SHOULD**: 冷えている(7列目が `1` でない)場合、ユーザーに1回署名(`echo test | gpg --clearsign -o /dev/null`)によるキャッシュ温めを依頼する
 - **MAY**: 温めは委任と並行に進めてよいが、worker がコミットに到達する前に温まっているのが望ましい
 
+#### 作業物の置き場(作業記憶)
+
+司令塔は、指示書・判定表・報告・供養ログを、vault の作業記憶 `AgentMemory/workbench/<project>/` に置く(#658)。これらはセッションとマシンを跨いで読まれるため、セッションが終わると消えるスクラッチパッドには置かない。`herdr agent wait` の待ち受けログは、そのセッションの中だけで使うので、スクラッチパッドに残す(手順5(2) 参照)。
+
+作業記憶の場所は、締めの検問スクリプトが求める。検問と同じ求め方(記憶の配線 `autoMemoryDirectory` を先に見る)を使うため、司令塔は自分で組み立てない:
+
+```bash
+wb="$(bash ~/.claude/skills/wtclose/close_gate.sh --where workbench_dir)" && mkdir -p "$wb"
+```
+
+作業記憶に置く md は、先頭に次の frontmatter を持つ:
+
+```yaml
+---
+type: agent-workbench
+kind: brief
+unit: <branch-name>
+created: <YYYY-MM-DD>
+---
+```
+
+**Constraints:**
+- **MUST**: `kind` は `brief`(指示書)・`verdict`(判定表)・`report`(報告)・`memorial`(供養ログ)・`handoff`(HANDOFF.md の写し)のどれかにする。`index` は検問が書く一覧の専用で、司令塔は使わない
+- **MUST**: `unit` は、作業物が属する作業のブランチ名にする(指示書を書く時点では PR 番号がまだ無いため)。PR 番号で書く場合は `"#663"` のように引用符で囲む(囲まないと YAML が `#` から後ろをコメントとして読む)
+- **SHOULD**: 1 つの記憶に複数のリポジトリを束ねている場合は、`unit` にリポジトリの修飾子を付ける(`"owner/repo#663"`、`"owner/repo@feat/x"`)。修飾子を省いた `unit` は、検問が走っているリポジトリの単位として読まれる
+- **MUST**: ファイル名は `<YYYYMMDD>-<kind>-<ブランチ名の / と _ を - に置き換えたもの>.md` にする(例: `20261004-brief-feat-wtclose-close-gate.md`)。同じ日に同じ組み合わせがもう 1 つ要るときは `-2` を付ける
+- **MUST NOT**: 作った後で別のフォルダへ移さない。メモリや起動プロンプトが絶対パスで参照する
+- **MUST**: 次のセッションでも読む作業物は、状態ファイル・セッションノート・メモリのどれかからリンクする。どこからも辿れなくなって 14 日を過ぎた作業物は、締めの検問が忘れる候補として一覧に出す(消すのはユーザーの OK の後)
+- **MUST**: `--where` が失敗する環境(vault が無い機械)では、従来どおり司令塔自身のスクラッチパッドディレクトリに置く
+
 #### pane の用意とエージェント起動
 
-pane の用意とエージェント起動は分離された2段構成になっている。まず worktree 専用 workspace のルート pane(手順3で控えた `result.root_pane.pane_id`)から下に pane を割り、作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
+pane の用意とエージェント起動は分離された2段構成になっている。まず worktree 専用 workspace のルート pane(手順3で控えた `result.root_pane.pane_id`)から下に pane を割り、作業指示は作業記憶(上記「作業物の置き場」参照)にファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
 
 ```bash
 herdr pane split --pane <root-pane-id> --direction down --cwd <worktree-path>
@@ -115,11 +147,18 @@ herdr pane split --pane <root-pane-id> --direction down --cwd <worktree-path>
 新しい pane-id は応答 JSON の `result.pane.pane_id` から取得する。続けて作業指示をファイルに書き、エージェントを起動する:
 
 ```bash
-cat > <司令塔のスクラッチパッドディレクトリ>/task-<branch-name>.md <<'PROMPT'
+cat > "$wb/<YYYYMMDD>-brief-<branch-slug>.md" <<'PROMPT'
+---
+type: agent-workbench
+kind: brief
+unit: <branch-name>
+created: <YYYY-MM-DD>
+---
+
 <作業指示プロンプト（複数行可）>
 PROMPT
 
-herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --pane <new-pane-id> -- --model <model> --effort <effort> --permission-mode auto "<司令塔のスクラッチパッドディレクトリ>/task-<branch-name>.md をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。"
+herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --pane <new-pane-id> -- --model <model> --effort <effort> --permission-mode auto "<作業記憶のディレクトリ>/<YYYYMMDD>-brief-<branch-slug>.md をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。"
 ```
 
 **Constraints:**
@@ -129,7 +168,7 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 - **MUST**: pane split 直後に `herdr agent start` を投げない。split 直後は pane 内のシェルがまだ使える状態になっておらず、`agent_pane_busy`(`agent target pane <pane-id> is not an available shell`)で拒否されうる。`herdr pane process-info --pane <new-pane-id>` の `result.process_info.foreground_processes[].name` で前面プロセスがシェルになったことを確認してから起動し、確認できなければ数秒待って再試行する(詳細: Troubleshooting「pane split 直後の agent start が agent_pane_busy で拒否される」参照)
 - **MUST NOT**: `herdr agent start` に `--workspace` / `--cwd` / `--split` / `--focus` を渡さない。herdr 0.7.5 で廃止され `unknown option` エラーになる。pane はあらかじめ `pane split` で用意し、`agent start` には `--pane <pane split で得た pane-id>` を渡す
 - **MUST**: `--kind claude` が実行ファイルの正典を与えるため、`--` 以降には実行ファイル名(`claude`)を含めず、引数のみを渡す
-- **MUST**: 作業指示プロンプトは `AGENT_ARG` に直接 inline しない。複数行 heredoc をそのまま渡すと `invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(詳細: Troubleshooting「長文プロンプトの inline 渡しが拒否される」参照)。作業指示は司令塔自身のスクラッチパッドディレクトリにファイルとして書き、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする
+- **MUST**: 作業指示プロンプトは `AGENT_ARG` に直接 inline しない。複数行 heredoc をそのまま渡すと `invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(詳細: Troubleshooting「長文プロンプトの inline 渡しが拒否される」参照)。作業指示は作業記憶(上記「作業物の置き場」参照)にファイルとして書き、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする。起動プロンプトの `<パス>` は、`$wb` を展開した絶対パスで書く
 - **MUST**: 起動プロンプトには「自分で読む(サブエージェント委任禁止)」を明記する(上記の文言に含まれている「あなた自身が読み(サブエージェントに委任しない)」を削らない)。「読み、実行してください」だけだと作業者本人が読むか委任するかが曖昧になり、fork サブエージェントへの委任という遠回りな解釈を許して初手で止まりうる(詳細: Troubleshooting「起動プロンプトのファイル読みを fork サブエージェントに委任して初手で止まる」参照)
 - **MUST**: エージェント名はセッション全体でユニーク制約があるため、固定名 `claude` ではなくブランチ名由来の名前にする。変換ルール: ブランチ名から prefix(`fix/` 等)を除き、`_` と `/` を `-` に置換して `claude-` を前置する(例: `fix/wt_agent_start_options` → `claude-wt-agent-start-options`)。herdr の agent 名は 1〜32 文字に制限されており(超過すると `invalid_agent_name: agent name must start with a lowercase letter and contain only lowercase letters, digits, '-' or '_' (1-32 characters)` で起動に失敗する)、変換後の名前が32文字を超える場合は、意味が保たれる範囲で単語を間引いて32文字以内に短縮する(ユニーク性が保てればよい)。実例(2026-08-01、#539): `fix/wt_agent_prompt_submit_check` → `claude-wt-agent-prompt-submit-check`(35文字)が拒否され、`claude-wt-prompt-submit-check`(29文字)に短縮して復旧した
 - **MUST**: 作業者モデル(`--model <model>`)は下記「作業者モデルの選択基準」で決め、既定は `claude-opus-5-5`(司令塔=メインセッションが計画とレビュー、作業者が実装を担う分業は変わらない)。ユーザーが入力内で別モデルを指定した場合はそれに従う
@@ -243,7 +282,7 @@ herdr agent prompt "commander-<repo名>" "【報告】<branch>: <一行サマリ
 
 #### (1) 下り=指示
 
-委任時の指示は手順4のファイル渡し方式(スクラッチパッドへのファイル書き込み+1行の起動プロンプト)で渡す。委任後に追加の指示を送りたい場合は、`herdr agent prompt <agent-name> "<追加指示のテキスト>"` の1コマンドで送る。agent 名を直接ターゲットにできるため pane-id の引き直しが不要になる。作業者からの【相談】(手順4テンプレート「## 相談」参照)への回答もこの手順で送る(詳細な判別・応答フローは下記(2)「相談 idle の判別」参照):
+委任時の指示は手順4のファイル渡し方式(作業記憶へのファイル書き込み+1行の起動プロンプト)で渡す。委任後に追加の指示を送りたい場合は、`herdr agent prompt <agent-name> "<追加指示のテキスト>"` の1コマンドで送る。agent 名を直接ターゲットにできるため pane-id の引き直しが不要になる。作業者からの【相談】(手順4テンプレート「## 相談」参照)への回答もこの手順で送る(詳細な判別・応答フローは下記(2)「相談 idle の判別」参照):
 
 ```bash
 herdr agent prompt <agent-name> "<追加指示のテキスト>"
@@ -414,12 +453,28 @@ worktree ルートに以下の5点セットで書く:
 #### HANDOFF.md のライフサイクル
 
 1. **untracked のまま置く**: `/wtclean` の未コミット変更チェックが、引き継ぎ文書の残る worktree を誤って削除しない安全弁として偶然機能する(`/wtclean` 側の複数 worker 対応は #552 参照)
-2. **削除前に司令塔のスクラッチパッドへアーカイブする**: `cp` で司令塔自身のスクラッチパッドディレクトリ(手順4「pane の用意とエージェント起動」参照)へコピーする。削除後は worktree 側に実体が残らないため、アーカイブを削除より先に行う
+2. **削除前に作業記憶へアーカイブする**: `cp` で作業記憶(手順4「作業物の置き場」参照)へ `<YYYYMMDD>-handoff-<branch-slug>.md` としてコピーし、先頭に `kind: handoff` の frontmatter を付ける。HANDOFF.md は `/wtclean` の供養の素材で、供養は別のセッションで行われることがある。セッションが終わると消えるスクラッチパッドに置くと、供養の前に失われうる。削除後は worktree 側に実体が残らないため、アーカイブを削除より先に行う
 3. **PR 作成前に削除する**: アーカイブ済みであることを確認したうえで削除する
 
 **Constraints:**
 - **MUST**: アーカイブしてから削除する(逆順にすると供養素材が失われる)
 - **MUST NOT**: HANDOFF.md をコミットに含めない(上記「HANDOFF.md の様式」の Constraint と同じ理由)
+
+### 9. 司令塔の context 使用率の自己確認(途中の書き出し)
+
+司令塔は、作業の途中で自分の context 使用率を確かめ、閾値を超えたら途中の状態を状態ファイルに書き出す(#658)。自動の要約(compaction)が走ると、冒頭で読んだ SOP や判定の途中の結論が会話から落ちうるため、要約の前に状態を会話の外へ逃がしておく。
+
+```bash
+herdr pane read "$HERDR_PANE_ID" --source visible
+```
+
+**Constraints:**
+- **MUST**: 司令塔は、worker の完了報告を処理するたびと PR をマージするたびに、上記のコマンドで自分の pane の末尾のステータスラインを読み、context 使用率(💭 n%)を確かめる
+- **MUST**: 使用率が 70% を超えたら、司令塔は途中の状態を状態ファイルに書き出し、新しいセッションで続けるか締めるかをユーザーに相談する。70% は暫定の閾値で、運用して見直す
+- **MUST**: 状態ファイルの置き場と書式は、`~/.claude/skills/wtclose/SKILL.md` の「状態ファイルの書式」節に従う。司令塔はこの節を Read ツールで読む
+- **MUST NOT**: 途中の書き出しのために `wtclose` を Skill ツールや `/wtclose` で呼ばない。呼んだ時点で締めの検問(Stop hook)が登録され、締めの条件がそろうまでターンを終えられなくなる
+- **MUST**: ステータスラインが切り詰められて 💭 の値が読めない場合、司令塔は使用率を推測で埋めず、閾値を超えたものとして書き出す(Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)
+- **MUST**: 締めるときは `wtclose` を呼ぶ。途中の書き出しは締めの代わりにならない
 
 ## Examples
 
@@ -440,7 +495,7 @@ mise trust は絶対パス単位で管理されるため、新規 worktree は�
 auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザーの明示許可がない」として拒否されることがある。その場合は AskUserQuestion 等でユーザーに auto mode 起動の許可を明示的に確認してから再実行する。
 
 ### 長文プロンプトの inline 渡しが拒否される
-`herdr agent start` の `--` 以降(`AGENT_ARG`)に複数行 heredoc の作業指示プロンプトをそのまま渡すと、`invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(2026-07-30、#520 で実機確認)。回避策: 作業指示を司令塔自身のスクラッチパッドディレクトリにファイルとして書き、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする(手順4参照)。allowlist テンプレート(手順3「worktree の準備」参照)は「司令塔がタスク指示を置くスクラッチパッドの読み取り」を既に許可しており、この方式と整合している。
+`herdr agent start` の `--` 以降(`AGENT_ARG`)に複数行 heredoc の作業指示プロンプトをそのまま渡すと、`invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(2026-07-30、#520 で実機確認)。回避策: 作業指示をファイルとして書き(置き場は手順4「作業物の置き場」の作業記憶。当時はスクラッチパッドだった)、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする(手順4参照)。allowlist テンプレート(手順3「worktree の準備」参照)は「司令塔がタスク指示を置く作業記憶の読み書き」を既に許可しており、この方式と整合している。
 
 ### pane split 直後の agent start が agent_pane_busy で拒否される
 2026-09-27 の並行運用で、司令塔が `herdr pane split` の直後に同じコマンド列で `herdr agent start` を投げたところ、`agent_pane_busy`(`agent target pane w4V:p2 is not an available shell`)で拒否された(#614)。pane split 直後は pane 内のシェルがまだ起動しておらず、前面プロセスがシェルとして使える状態になるまでラグがあるため、直後の `agent start` はタイミング依存で失敗しうる。同日 2 回発生し(#596・#611 の worker 起動時)、2 回目は 5 秒待ってから同じコマンドを再実行して成功した。`agent_pane_busy` を受けたら失敗扱いにせず、数秒後に同じコマンドを再実行する(2 回目で通る)。予防策として、起動前に `herdr pane process-info --pane <pane-id>` で前面プロセスがシェルになったことを確認する(手順4「pane の用意とエージェント起動」参照)。

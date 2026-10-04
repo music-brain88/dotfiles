@@ -25,7 +25,9 @@
       "Bash(gh release view *)",
       "Bash(mise *)",
       "Bash(herdr *)",
-      "Read(//tmp/claude-*/**)"
+      "Read(//tmp/claude-*/**)",
+      "Read(~/Documents/Obsidian/AgentMemory/workbench/**)",
+      "Edit(~/Documents/Obsidian/AgentMemory/workbench/**)"
     ]
   },
   "autoMemoryEnabled": false
