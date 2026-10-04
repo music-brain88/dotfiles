@@ -100,7 +100,7 @@ finish() {
   exit "$1"
 }
 
-# shellcheck disable=SC2329 # invoked by the ERR trap / ERR の trap から呼ばれる
+# shellcheck disable=SC2317,SC2329 # invoked by the ERR trap / ERR の trap から呼ばれる
 on_err() {
   # In a subshell, just leave: the parent shell records the failure.
   # サブシェルでは抜けるだけにする。失敗は親のシェルが控える。
@@ -108,7 +108,7 @@ on_err() {
   [ -n "$err_context" ] || err_context="${2} 行目、終了コード ${1}: ${3}"
 }
 
-# shellcheck disable=SC2329 # invoked by the EXIT trap / EXIT の trap から呼ばれる
+# shellcheck disable=SC2317,SC2329 # invoked by the EXIT trap / EXIT の trap から呼ばれる
 on_exit() {
   local rc=$? msg
   trap - ERR
@@ -1083,7 +1083,7 @@ write_log() {
 
 # Record an unexpected failure (called from on_exit; only when the workbench exists).
 # 想定外の失敗を記録する(on_exit から呼ぶ。作業記憶があるときだけ書く)。
-# shellcheck disable=SC2329 # invoked from on_exit / on_exit から呼ばれる
+# shellcheck disable=SC2317,SC2329 # invoked from on_exit / on_exit から呼ばれる
 write_error_log() {
   if [ -z "$wb_dir" ] || [ ! -d "$wb_dir" ]; then return 0; fi
   printf '{"ts":%s,"project":%s,"session_id":%s,"mode":%s,"result":"error","failed":[],"reasons":%s,"notes":%s,"stop_hook_active":%s,"candidates":0,"elapsed_ms":%d}\n' \
