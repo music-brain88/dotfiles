@@ -43,6 +43,7 @@ set -euo pipefail
 case "${FAKE_GH_MODE:-ok}" in
   ok) [ -z "${FAKE_GH_PRS:-}" ] || cat "$FAKE_GH_PRS" ;;
   fail) echo "error connecting to api.github.com" >&2; exit 1 ;;
+  ansi) printf '\033[31merror\033[0m: bad \001 response\n' >&2; exit 1 ;;
 esac
 EOF
 chmod +x "$root/bin/fake_gh"
@@ -650,6 +651,108 @@ test_p7_unwritable_workbench_blocks() {
   assert_exit 2
   assert_err_has '[P7]'
   assert_err_has '[P6]'
+}
+
+# ---------------------------------------------------------------------------
+# Unreadable files and unexpected failures / 読めないファイルと想定外の失敗
+# exit 2 must only mean "conditions are unmet, here is how to pass".
+# exit 2 は「条件がそろっていない。こう書けば通る」のときだけに使う。
+# ---------------------------------------------------------------------------
+is_root() { [ "$(id -u)" -eq 0 ]; } # root ignores permissions / root は権限を無視する
+
+test_unreadable_own_state_blocks_with_reason() {
+  new_case
+  is_root && return 0
+  write_state </dev/null
+  chmod 000 "$mem/state_commander-proj.md"
+  run_gate "$(hook_input)"
+  chmod 644 "$mem/state_commander-proj.md"
+  assert_exit 2
+  assert_err_has "[P1] 状態ファイル $mem/state_commander-proj.md を読めない"
+  assert_err_has "chmod u+r $mem/state_commander-proj.md"
+  assert_err_lacks 'awk: fatal'
+  [ "$(wc -l <"$wb/_gate_log.jsonl")" -eq 1 ] || flunk 'the block was not recorded'
+}
+
+test_unreadable_other_state_is_noted() {
+  new_case
+  is_root && return 0
+  write_state </dev/null
+  write_state state_other.md '2026-10-04 12:00' 'other-session' </dev/null
+  chmod 000 "$mem/state_other.md"
+  run_gate "$(hook_input)"
+  chmod 644 "$mem/state_other.md"
+  assert_exit 0
+  assert_out_has 'state_other.md を読めないので、根として扱えなかった'
+}
+
+test_unreadable_workbench_dir_is_skipped() {
+  new_case
+  is_root && return 0
+  write_state </dev/null
+  mkdir -p "$wb/locked"
+  wb_file ok.md brief feat/a 2026-10-01
+  chmod 000 "$wb/locked"
+  run_gate "$(hook_input)"
+  chmod 755 "$wb/locked"
+  assert_exit 0
+  assert_out_has 'P7: 作業記憶の中の読めない場所を飛ばした'
+  assert_state ok.md dormant
+  [ "$(wc -l <"$wb/_gate_log.jsonl")" -eq 1 ] || flunk 'the run was not recorded'
+}
+
+test_unreadable_work_product_is_noted() {
+  new_case
+  is_root && return 0
+  write_state </dev/null
+  wb_file secret.md brief feat/a 2026-10-01
+  chmod 000 "$wb/secret.md"
+  run_gate "$(hook_input)"
+  chmod 644 "$wb/secret.md"
+  assert_exit 0
+  [[ "$(row secret.md 4)" == *'読めないので frontmatter を確かめていない'* ]] || flunk "note: $(row secret.md 4)"
+}
+
+test_unexpected_failure_exits_1_and_is_recorded() {
+  new_case
+  write_state </dev/null
+  WTCLOSE_FAULT=2 run_gate "$(hook_input)"
+  assert_exit 1
+  assert_err_has 'wtclose の検問は、条件を確かめられなかった'
+  assert_err_has '終了コード 2'
+  assert_err_has 'このターンは止めない'
+  [ "$(jq -r '.result' "$wb/_gate_log.jsonl")" = 'error' ] || flunk 'error was not recorded'
+}
+
+test_unexpected_failure_before_places_exits_1() {
+  new_case
+  now='bogus'
+  run_gate "$(hook_input)"
+  assert_exit 1
+  assert_err_has 'wtclose の検問は、条件を確かめられなかった'
+}
+
+test_log_escapes_control_characters() {
+  new_case
+  write_state </dev/null
+  FAKE_GH_MODE=ansi run_gate "$(hook_input)"
+  assert_exit 2
+  jq -e . "$wb/_gate_log.jsonl" >/dev/null || flunk 'log line is not valid JSON'
+  jq -r '.reasons[]' "$wb/_gate_log.jsonl" | grep -qF 'gh pr list が失敗した' || flunk 'reason is missing'
+}
+
+test_vault_below_a_dot_directory() {
+  new_case
+  mkdir -p "$case_dir/.hidden"
+  mv "$vault" "$case_dir/.hidden/vault"
+  vault="$case_dir/.hidden/vault"
+  mem="$vault/AgentMemory/proj"
+  wb="$vault/AgentMemory/workbench/proj"
+  printf -- '- [[linked]]\n' | write_state
+  wb_file linked.md brief feat/a 2026-09-01
+  run_gate "$(hook_input)"
+  assert_exit 0
+  assert_state linked.md reached
 }
 
 # ---------------------------------------------------------------------------

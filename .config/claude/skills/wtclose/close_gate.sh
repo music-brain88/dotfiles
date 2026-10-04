@@ -19,7 +19,14 @@
 #
 # The gate never deletes or moves work products.
 # 検問は作業物を消さないし、移さない。
-set -euo pipefail
+#
+# Exit codes / 終了コード:
+#   0 pass (or the gate was skipped) / 通過(または検問を省いた)
+#   2 some conditions are unmet; only emit_result returns 2 / 条件がそろわない(emit_result だけが返す)
+#   1 the gate itself failed unexpectedly (non-blocking; the hook stays registered)
+#     検問自身が想定外に失敗した(止めない。hook は登録されたまま残る)
+#   3 --where found no vault / --where で vault が見つからない
+set -Eeuo pipefail
 
 # ---------------------------------------------------------------------------
 # Format contract / 書式の契約
@@ -62,20 +69,67 @@ gh_timeout="${WTCLOSE_GH_TIMEOUT:-20}"     # P8 (seconds / 秒)
 # WTCLOSE_NOW     : current local time "YYYY-MM-DD HH:MM" / 現在時刻
 # WTCLOSE_GH      : gh command / gh の代わりに呼ぶコマンド
 # WTCLOSE_GIT     : git command / git の代わりに呼ぶコマンド
+# WTCLOSE_FAULT   : exit code of a forced failure, to test the safety net
+#                   安全網を試すために起こす失敗の終了コード
 # ---------------------------------------------------------------------------
 vault_override="${WTCLOSE_VAULT:-}"
 default_vault="$HOME/Documents/Obsidian"
 gh_cmd="${WTCLOSE_GH:-gh}"
 git_cmd="${WTCLOSE_GIT:-git}"
 
+# ---------------------------------------------------------------------------
+# Safety net / 安全網
+# Every intended exit goes through finish. Any other exit (a failed command
+# under set -e, an unbound variable, ...) is an unexpected failure: the gate
+# reports it, records it when it can, and exits 1 instead of 2, so that an
+# accident never looks like "conditions are unmet" to Claude Code.
+# 意図した終わり方は、すべて finish を通る。それ以外の終わり方(set -e の下で
+# 失敗したコマンド、未定義の変数など)は想定外の失敗として扱う。検問はそれを
+# 報告し、書けるときは記録し、2 ではなく 1 で終える。事故が Claude Code に
+# 「条件がそろっていない」と読まれないようにするためである。
+# ---------------------------------------------------------------------------
+main_pid=$$
+clean_exit=''
+err_context=''
+mode='hook'
+tmp_dir=''
+wb_dir=''
+
+finish() {
+  clean_exit=1
+  exit "$1"
+}
+
+# shellcheck disable=SC2329 # invoked by the ERR trap / ERR の trap から呼ばれる
+on_err() {
+  # In a subshell, just leave: the parent shell records the failure.
+  # サブシェルでは抜けるだけにする。失敗は親のシェルが控える。
+  [ "$BASHPID" = "$main_pid" ] || exit "$1"
+  [ -n "$err_context" ] || err_context="${2} 行目、終了コード ${1}: ${3}"
+}
+
+# shellcheck disable=SC2329 # invoked by the EXIT trap / EXIT の trap から呼ばれる
+on_exit() {
+  local rc=$? msg
+  trap - ERR
+  [ -z "$tmp_dir" ] || rm -rf "$tmp_dir"
+  [ -z "$clean_exit" ] || return 0
+  msg="wtclose の検問は、条件を確かめられなかった(close_gate.sh の ${err_context:-終了コード ${rc}})。このターンは止めない。hook は登録されたまま残るので、次のターンの終わりにもう一度確かめる。同じ失敗が続くなら、ユーザーに報告する。"
+  printf '%s\n' "$msg" >&2
+  if [ "$mode" = 'check' ]; then printf '%s\n' "$msg"; fi
+  write_error_log "$msg" 2>/dev/null || true
+  exit 1
+}
+
+trap 'on_err "$?" "$LINENO" "$BASH_COMMAND"' ERR
+trap on_exit EXIT
+
 started_ns="$(date +%s%N)"
 tmp_dir="$(mktemp -d)"
-trap 'rm -rf "$tmp_dir"' EXIT
 
 # ---------------------------------------------------------------------------
 # Arguments and hook input / 引数と hook 入力
 # ---------------------------------------------------------------------------
-mode='hook'
 session_id=''
 cwd_arg=''
 where_key=''
@@ -91,8 +145,8 @@ while [ "$#" -gt 0 ]; do
       ;;
     --session) session_id="${2:-}"; shift ;;
     --cwd) cwd_arg="${2:-}"; shift ;;
-    -h | --help) sed -n '2,23p' "$0"; exit 0 ;;
-    *) echo "close_gate.sh: unknown argument: $1" >&2; exit 64 ;;
+    -h | --help) sed -n '2,30p' "$0"; finish 0 ;;
+    *) echo "close_gate.sh: unknown argument: $1" >&2; finish 64 ;;
   esac
   shift
 done
@@ -230,6 +284,12 @@ json_str() {
   s="${s//$'\n'/\\n}"
   s="${s//$'\t'/\\t}"
   s="${s//$'\r'/}"
+  # Drop the other control characters (e.g. ANSI escapes from gh) so that a
+  # log line always stays valid JSON / ほかの制御文字(gh の ANSI エスケープなど)を
+  # 落とし、記録の行がいつも JSON として読めるようにする
+  if [[ "$s" == *[[:cntrl:]]* ]]; then
+    s="$(printf '%s' "$s" | LC_ALL=C tr -d '\001-\037\177')"
+  fi
   printf '"%s"' "$s"
 }
 
@@ -366,7 +426,8 @@ resolve_own_repo() {
 # ---------------------------------------------------------------------------
 own_state=''
 stale_states=()   # "file<TAB>as_of<TAB>days"
-unreadable_states=()
+unreadable_states=() # as_of cannot be parsed / as_of の値が読めない
+locked_states=()     # the file itself cannot be read / ファイル自体を読めない
 
 state_template() {
   local s
@@ -384,6 +445,12 @@ select_states() {
   local -a own=() todays=()
   for f in "$mem_dir/$state_prefix"*.md; do
     [ -f "$f" ] || continue
+    if [ ! -r "$f" ]; then
+      # Cannot tell whose it is; reported by check_p1 or as a note.
+      # 誰のものか分からない。check_p1 か注意で報告する。
+      locked_states+=("$f")
+      continue
+    fi
     sid="$(fm_get "$f" "$fm_session")"
     asof="$(fm_get "$f" "$fm_as_of")"
     if [ -n "$session_id" ] && [ "$sid" = "$session_id" ]; then
@@ -424,12 +491,19 @@ select_states() {
 # P1: the state file exists and its as_of is today.
 # P1: 状態ファイルがあり、as_of が今日である。
 check_p1() {
-  local asof
+  local asof f
   if [ -z "$own_state" ]; then
+    for f in "${locked_states[@]}"; do
+      fail P1 "状態ファイル ${f} を読めない(権限が無い)。このセッションの状態ファイルかどうかを確かめられない" \
+        "自分の状態ファイルなら「chmod u+r ${f}」で読めるようにする"
+    done
     fail P1 "このセッション(${fm_session}: ${session_id:-不明})の状態ファイルが ${mem_dir}/ に無い" \
       "${mem_dir}/${state_prefix}<司令塔の名前>.md を次の雛形で書く(既存の自分のファイルがあれば上書きし、${fm_session} を今のセッションに直す):"$'\n'"$(state_template)"
     return
   fi
+  for f in "${locked_states[@]}"; do
+    note "P1: 状態ファイル ${f} を読めないので、根として扱えなかった(chmod u+r で読めるようにする)"
+  done
   asof="$(fm_get "$own_state" "$fm_as_of")"
   if ! [[ "$asof" =~ $as_of_re ]]; then
     fail P1 "$(basename "$own_state") の ${fm_as_of} が読めない(値: '${asof}')" \
@@ -752,7 +826,8 @@ BEGIN {
       else state = "dormant"
     }
     if (rel in unote) note_ = note_ (note_ == "" ? "" : "、") unote[rel]
-    if (missing[rel] != "") note_ = note_ (note_ == "" ? "" : "、") "frontmatter に無い: " missing[rel]
+    if (missing[rel] == "!unreadable") note_ = note_ (note_ == "" ? "" : "、") "読めないので frontmatter を確かめていない"
+    else if (missing[rel] != "") note_ = note_ (note_ == "" ? "" : "、") "frontmatter に無い: " missing[rel]
     print rel "\t" last "\t" state "\t" days "\t" note_
   }
 }
@@ -769,15 +844,17 @@ workbench_meta() {
       if (substr(s, 1, 1) == "\"" || substr(s, 1, 1) == q) s = substr(s, 2, length(s) - 2)
       return s }
     /\.md$/ {
-      rel = $0; f = base "/" rel; n = 0; infm = 0
+      rel = $0; f = base "/" rel; n = 0; infm = 0; r = 0
       split("", v)
-      while ((getline line < f) > 0) {
+      while ((r = (getline line < f)) > 0) {
         n++
         if (n == 1) { if (line != "---") break; infm = 1; continue }
         if (line == "---") break
         k = line; sub(/:.*/, "", k); if (!(k in v)) v[k] = val(line)
       }
       close(f)
+      # An unreadable file is marked, not fatal / 読めないファイルは印を付けるだけにする
+      if (r < 0) { print rel "\037\037\037\037!unreadable"; next }
       miss = ""
       split("type kind unit created", req, " ")
       for (i = 1; i <= 4; i++) if (!(req[i] in v) || v[req[i]] == "") miss = miss (miss == "" ? "" : ", ") req[i]
@@ -821,9 +898,28 @@ match_units() {
   done <"$tmp_dir/meta"
 }
 
+# find_readable <dir> <label> <out> [tests...]: write the paths relative to dir,
+# sorted. Places find cannot read are skipped and noted, never fatal.
+# Searching from "." keeps "! -path '*/.*'" from matching a dot directory above dir.
+# dir からの相対パスを並べて out に書く。find が読めない場所は飛ばして注意に残し、
+# 失敗にはしない。「.」から探すので、dir より上の . で始まるディレクトリに
+# 「! -path '*/.*'」が当たらない。
+find_readable() {
+  local dir="$1" label="$2" out="$3"
+  shift 3
+  (cd "$dir" && find . "$@") 2>"$tmp_dir/find.err" | sed 's|^\./||' | LC_ALL=C sort >"$out" || true
+  if [ -s "$tmp_dir/find.err" ]; then
+    note "${label}の中の読めない場所を飛ばした: $(head -n 3 "$tmp_dir/find.err" | tr '\n' ' ')"
+  fi
+}
+
 # Print "rel<TAB>last_reached" from the previous list / 前回の一覧から日付を読み戻す
 previous_dates() {
   [ -f "$wb_dir/$index_name" ] || return 0
+  if [ ! -r "$wb_dir/$index_name" ]; then
+    note "P6: 前回の一覧 ${wb_dir}/${index_name} を読めないので、最後に辿れた日を引き継がなかった"
+    return 0
+  fi
   awk '
     /^## / { insec = ($0 == "## 一覧"); next }
     insec && /^\| `/ {
@@ -843,8 +939,8 @@ build_reachability() {
     return
   fi
 
-  (cd "$wb_dir" && find . -type f ! -name "$index_name" ! -name "$log_name" ! -path '*/.*' \
-    | sed 's|^\./||' | LC_ALL=C sort) >"$tmp_dir/files"
+  find_readable "$wb_dir" 'P7: 作業記憶' "$tmp_dir/files" \
+    -type f ! -name "$index_name" ! -name "$log_name" ! -path '*/.*'
   workbench_meta >"$tmp_dir/meta"
   previous_dates >"$tmp_dir/prev"
 
@@ -855,16 +951,24 @@ build_reachability() {
   for row in "${stale_states[@]}"; do
     is_stale[${row%%$'\t'*}]=1
   done
+  : >"$tmp_dir/mem_files"
+  : >"$tmp_dir/note_files"
+  if [ -d "$mem_dir" ]; then
+    find_readable "$mem_dir" 'P7: 記憶' "$tmp_dir/mem_files" -type f -name '*.md' ! -path '*/.*'
+  fi
+  if [ -d "$vault/$notes_rel" ]; then
+    find_readable "$vault/$notes_rel" 'P7: セッションノート' "$tmp_dir/note_files" -type f -name '*.md' ! -path '*/.*'
+  fi
   {
-    if [ -d "$mem_dir" ]; then
-      find -H "$mem_dir" -type f -name '*.md' ! -path '*/.*' | while IFS= read -r f; do
-        [ -n "${is_stale[$f]:-}" ] || printf 'R\t%s\n' "$f"
-      done
-    fi
-    if [ -d "$vault/$notes_rel" ]; then
-      find -H "$vault/$notes_rel" -type f -name '*.md' ! -path '*/.*' | sed 's/^/R\t/'
-    fi
-    grep '\.md$' "$tmp_dir/files" | sed 's/^/W\t/' || true
+    while IFS= read -r f; do
+      [ -n "${is_stale[$mem_dir/$f]:-}" ] || printf 'R\t%s/%s\n' "$mem_dir" "$f"
+    done <"$tmp_dir/mem_files"
+    while IFS= read -r f; do
+      printf 'R\t%s/%s/%s\n' "$vault" "$notes_rel" "$f"
+    done <"$tmp_dir/note_files"
+    while IFS= read -r f; do
+      [[ "$f" != *.md ]] || printf 'W\t%s\n' "$f"
+    done <"$tmp_dir/files"
   } >"$tmp_dir/sources"
 
   write_reach_awk
@@ -898,7 +1002,7 @@ build_reachability() {
   done
 
   created_idx=''
-  if [ -f "$wb_dir/$index_name" ]; then
+  if [ -r "$wb_dir/$index_name" ]; then
     created_idx="$(fm_get "$wb_dir/$index_name" created)"
   fi
   # Write to a temporary file, then rename (never leaves a half-written list).
@@ -977,6 +1081,17 @@ write_log() {
     >>"$wb_dir/$log_name" 2>/dev/null || note "記録 ${wb_dir}/${log_name} に書けなかった"
 }
 
+# Record an unexpected failure (called from on_exit; only when the workbench exists).
+# 想定外の失敗を記録する(on_exit から呼ぶ。作業記憶があるときだけ書く)。
+# shellcheck disable=SC2329 # invoked from on_exit / on_exit から呼ばれる
+write_error_log() {
+  if [ -z "$wb_dir" ] || [ ! -d "$wb_dir" ]; then return 0; fi
+  printf '{"ts":%s,"project":%s,"session_id":%s,"mode":%s,"result":"error","failed":[],"reasons":%s,"notes":%s,"stop_hook_active":%s,"candidates":0,"elapsed_ms":%d}\n' \
+    "$(json_str "${ts:-}")" "$(json_str "${project:-}")" "$(json_str "${session_id:-}")" "$(json_str "$mode")" \
+    "$(json_array "$1")" "$(json_array "${notes[@]}")" "${stop_hook_active:-false}" "$(elapsed_ms)" \
+    >>"$wb_dir/$log_name"
+}
+
 # ---------------------------------------------------------------------------
 # Output / 出力
 # ---------------------------------------------------------------------------
@@ -986,13 +1101,13 @@ skip_gate() {
   local msg="wtclose の検問を省いた: $1"
   if [ "$mode" = 'where' ]; then
     printf '%s\n' "$msg" >&2
-    exit 3
+    finish 3
   elif [ "$mode" = 'check' ]; then
     printf '%s\n' "$msg"
   else
     printf '{"systemMessage":%s}\n' "$(json_str "$msg")"
   fi
-  exit 0
+  finish 0
 }
 
 # Print the result and exit: 2 when any condition is unmet, 0 otherwise.
@@ -1015,7 +1130,7 @@ emit_result() {
     else
       cat "$tmp_dir/report" >&2
     fi
-    exit 2
+    finish 2
   fi
   local msg="wtclose の検問を通過した。/compact で続けず、新しいセッションで続けて。"
   [ -z "$notes_text" ] || msg+=$'\n'"記録した注意:"$'\n'"$notes_text"
@@ -1024,7 +1139,7 @@ emit_result() {
   else
     printf '{"systemMessage":%s}\n' "$(json_str "$msg")"
   fi
-  exit 0
+  finish 0
 }
 
 # ---------------------------------------------------------------------------
@@ -1042,9 +1157,9 @@ if [ "$mode" = 'where' ]; then
     project) printf '%s\n' "$project" ;;
     memory_dir) printf '%s\n' "$mem_dir" ;;
     workbench_dir) printf '%s\n' "$wb_dir" ;;
-    *) echo "close_gate.sh: unknown key for --where: $where_key" >&2; exit 64 ;;
+    *) echo "close_gate.sh: unknown key for --where: $where_key" >&2; finish 64 ;;
   esac
-  exit 0
+  finish 0
 fi
 
 select_states
@@ -1055,5 +1170,7 @@ collect_real_state
 check_p4_p8
 check_p5
 build_reachability
+# Forced failure for the tests of the safety net / 安全網のテストのための失敗
+[ -z "${WTCLOSE_FAULT:-}" ] || (exit "$WTCLOSE_FAULT")
 write_log
 emit_result
