@@ -200,6 +200,33 @@ fn is_verbal(clause: &str) -> bool {
     }
 }
 
+fn is_kanji(c: char) -> bool {
+    matches!(c, '\u{4E00}'..='\u{9FFF}' | '\u{3400}'..='\u{4DBF}' | '\u{F900}'..='\u{FAFF}' | '々')
+}
+
+/// 「例の」の直前がこの語なら、例そのものを指す「例の」とみなす。
+/// If "例の" follows one of these, it points at the example itself.
+const REI_NO_REFERRERS: &[&str] = &["この", "その", "次の", "上の", "表の", "以下の"];
+
+/// 文脈依存語のうち最初に当たったものを返す。「例の」は、漢字の語の一部(「事例の」「判例の」)と、
+/// 例そのものを指す書き方(「この例の」「表の例の」)を除く。
+/// Returns the first context-dependent word, skipping "例の" inside a kanji compound
+/// or right after a demonstrative that points at the example itself.
+fn find_context_word(text: &str) -> Option<&str> {
+    re_context_words()
+        .find_iter(text)
+        .find(|m| {
+            if m.as_str() != "例の" {
+                return true;
+            }
+            let before = &text[..m.start()];
+            let after_kanji = last_char(before).is_some_and(is_kanji);
+            let after_referrer = REI_NO_REFERRERS.iter().any(|w| before.ends_with(w));
+            !after_kanji && !after_referrer
+        })
+        .map(|m| m.as_str())
+}
+
 fn strip_inline(s: &str) -> String {
     let s = re_inline_code().replace_all(s, "code");
     let s = re_bold().replace_all(&s, "$1");
@@ -453,8 +480,10 @@ fn check_text(file: &str, content: &str) -> Vec<Finding> {
         match b.kind {
             Kind::Heading | Kind::Fence | Kind::Code | Kind::Ignored | Kind::Blank => continue,
             Kind::Table => {
-                let unquoted = re_quoted().replace_all(&b.text, "「」");
-                if re_context_words().is_match(&unquoted) {
+                // 段落と同じく、インラインコード(コマンドの出力などの引用)は検査しない
+                let uncoded = re_inline_code().replace_all(&b.text, "code");
+                let unquoted = re_quoted().replace_all(&uncoded, "「」");
+                if find_context_word(&unquoted).is_some() {
                     add(
                         "CONTEXT",
                         b.start,
@@ -472,11 +501,11 @@ fn check_text(file: &str, content: &str) -> Vec<Finding> {
             continue;
         }
         let unquoted = re_quoted().replace_all(&plain, "「」");
-        if let Some(m) = re_context_words().find(&unquoted) {
+        if let Some(w) = find_context_word(&unquoted) {
             add(
                 "CONTEXT",
                 b.start,
-                format!("直前の会話を前提にする語がある: {}", m.as_str()),
+                format!("直前の会話を前提にする語がある: {w}"),
                 &plain,
                 "WARN",
             );
@@ -944,6 +973,54 @@ mod tests {
         let f = check_text("t.md", "# 確認\n\n先方が確認する。\n");
         assert_eq!(f.len(), 1);
         assert_eq!(f[0].code, "CONTEXT");
+    }
+
+    #[test]
+    fn rei_no_in_compound_or_pointing_at_example_is_not_context() {
+        // Issue #651 の再現の表の 4 文
+        for s in [
+            "先行事例の調査の文書が、同じ語を使う。",
+            "表の例の行を見ると、数値が分かる。",
+            "この例のとおりに書く。",
+            "経過の例に挙げた「実測した」は、範囲が広い。",
+        ] {
+            let f = check_text("t.md", &format!("# 題\n\n{s}\n"));
+            assert!(f.is_empty(), "{s}: {f:?}");
+        }
+    }
+
+    #[test]
+    fn rei_no_pointing_at_shared_object_is_context() {
+        for s in [
+            "例の件を進める。",
+            "依頼者は、例のやつを確認する。",
+            "依頼者は確認した。例の件は済んだ。",
+            "まず例の件を片付ける。",
+        ] {
+            let f = check_text("t.md", &format!("# 題\n\n{s}\n"));
+            assert_eq!(f.len(), 1, "{s}: {f:?}");
+            assert_eq!(f[0].code, "CONTEXT");
+            assert!(f[0].message.ends_with("例の"), "{s}: {f:?}");
+        }
+    }
+
+    #[test]
+    fn table_context_ignores_inline_code() {
+        let head = "# 題\n\n次の表は、入力と結果を示す。\n\n| 入力 | 結果 |\n|---|---|\n";
+        let f = check_text("t.md", &format!("{head}| この例のとおり | `… 例の` |\n"));
+        assert!(f.is_empty(), "{f:?}");
+        let f = check_text("t.md", &format!("{head}| 例の件 | `ok` |\n"));
+        assert_eq!(f.len(), 1, "{f:?}");
+        assert_eq!(f[0].code, "CONTEXT");
+    }
+
+    #[test]
+    fn skipped_rei_no_does_not_hide_later_context_word() {
+        assert_eq!(
+            find_context_word("判例の要旨は、さっき読んだ。"),
+            Some("さっき")
+        );
+        assert_eq!(find_context_word("この例のとおりに書く。"), None);
     }
 
     #[test]
