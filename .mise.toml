@@ -97,6 +97,12 @@ description = "Run the tests of the wtclose close gate script (fixtures only, ne
 # Exercises close_gate.sh with temporary fixtures and a fake gh; the real vault is never touched.
 run = "bash .config/claude/skills/wtclose/tests/close_gate_test.sh"
 
+[tasks."claude:wtclean-test"]
+description = "Run the tests of the wtclean harvest search script (fixtures only, never reads the real vault)"
+# 一時ディレクトリのノートと偽の gh だけで収穫ステップの検索スクリプトを試す。実物の vault は読まない。
+# Exercises harvest_search.sh with temporary notes and a fake gh; the real vault is never read.
+run = "bash .config/claude/skills/wtclean/tests/harvest_search_test.sh"
+
 [tasks."docker:build"]
 description = "Build docker image"
 run = "docker build -t arch ."
