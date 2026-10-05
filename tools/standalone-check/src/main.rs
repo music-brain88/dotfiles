@@ -2,7 +2,7 @@
 //! Mechanical checks for standalone readability of distributed Japanese documents.
 //!
 //! 検査項目 / Checks:
-//!   MAIN     節の冒頭に主文(句点で終わる文)がなく、表や箇条書きで始まっている
+//!   MAIN     節の冒頭の段落に主文(句点で終わる文)がない、または表や箇条書きで始まっている
 //!   TAIGEN   段落や文が句点で終わらない、または名詞で終わる(体言止め)
 //!   LIST     20 字以上の箇条書き項目が句点で終わらない
 //!   CONTEXT  直前の会話を前提にする語(こっち、先方、例の、さっき など)
@@ -12,7 +12,7 @@
 //! 判定は物理行ではなく段落単位で行う。連続する本文行・引用行は 1 つの段落に結合し、
 //! 箇条書きは続きの行(インデント行、または空行を挟まない直後の行)を項目に結合する。
 //! 行に "standalone: ignore" を含む HTML コメントを置くと、その行は検査しない。
-//! 重さ: WARN(終了コード 1 の対象)と INFO(確認だけ)。MAIN の箇条書き始まりは INFO。
+//! 重さ: WARN(終了コード 1 の対象)と INFO(確認だけ)。MAIN の表始まりと箇条書き始まりは INFO。
 //!
 //! 終了コード / Exit code:
 //!   0  WARN なし(INFO と yomiyasu の info は影響しない)
@@ -422,9 +422,9 @@ fn check_text(file: &str, content: &str) -> Vec<Finding> {
                 Kind::Table => add(
                     "MAIN",
                     b2.start,
-                    "節の冒頭が表で始まり、表が何を並べているかの主文がない".into(),
+                    "節の冒頭が表で始まる(見出しが主文を兼ねているか確認する)".into(),
                     lines[b2.start].trim(),
-                    "WARN",
+                    "INFO",
                 ),
                 Kind::List => add(
                     "MAIN",

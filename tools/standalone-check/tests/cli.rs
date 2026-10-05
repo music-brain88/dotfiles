@@ -66,14 +66,28 @@ fn warn_codes(o: &Output) -> Vec<String> {
 }
 
 #[test]
-fn bad_sample_reports_six_warnings() {
+fn bad_sample_reports_five_warnings_and_table_info() {
     let o = run(&[fixture("bad_sample.md").to_str().unwrap()]);
     assert_eq!(o.status.code(), Some(1));
     let codes = warn_codes(&o);
-    assert_eq!(codes.len(), 6, "{}", stdout(&o));
-    for c in ["MAIN", "CONTEXT", "TAIGEN", "TSUIKU", "TOUTEN", "LIST"] {
+    assert_eq!(codes.len(), 5, "{}", stdout(&o));
+    for c in ["CONTEXT", "TAIGEN", "TSUIKU", "TOUTEN", "LIST"] {
         assert!(codes.iter().any(|x| x == c), "missing {c}: {codes:?}");
     }
+    // 見出し直下の表は箇条書きと同じく INFO(Issue #650)
+    assert!(stdout(&o).contains("[INFO][MAIN] 節の冒頭が表で始まる"));
+}
+
+#[test]
+fn table_right_after_heading_is_info_and_exits_zero() {
+    let o = run(&[fixture("table_head.md").to_str().unwrap()]);
+    let out = stdout(&o);
+    assert_eq!(o.status.code(), Some(0), "{out}");
+    assert!(warn_codes(&o).is_empty(), "{out}");
+    assert!(
+        out.contains("[INFO][MAIN] 節の冒頭が表で始まる(見出しが主文を兼ねているか確認する)"),
+        "{out}"
+    );
 }
 
 #[test]
