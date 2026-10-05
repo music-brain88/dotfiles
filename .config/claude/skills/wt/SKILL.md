@@ -225,6 +225,28 @@ herdr agent prompt claude-<branch-name 由来のユニーク名> "<作業記憶�
 - **MUST NOT**: `low` は /wt では使わない(under-thinking のリスクがあるため)
 - **SHOULD**: `medium` 以下では Sonnet 作業者が指示を literal に解釈する(Sonnet 5 で観測、5.5 では未検証)ため、作業指示プロンプトの完了条件を具体的に書く
 
+#### 同一ファイルの並列編集(区画分け)
+
+同じファイルに独立した追記が複数たまり(例: この SKILL.md への SOP 追記が十数件)、1 worker に全部を任せると context が逼迫する場合、司令塔はファイルを区画に分けて複数 worker に並列で編集させてよい。区画分けをしないと、司令塔は「1 worker で直列に消化して context の逼迫を受け入れる」か「コンフリクトを前提に後着 PR を rebase に差し戻す」かの二択になる。実例は Troubleshooting「同一ファイルを 2 worker で区画分けして並列編集した(merge-tree で事前確認)」を参照。
+
+区画の割り当ての例(2026-10-05、この SKILL.md を 4 worker で並列編集したときの割り当て):
+
+| worker | 区画 1(手順の本文) | 区画 2(Troubleshooting) |
+|---|---|---|
+| #630 | 手順 5(1) の Constraints | 既存節「agent prompt がユーザー由来の pending テキストを置換で消しうる」の節内 |
+| #631 | 「effort の選択基準」の直後に新小節 | ファイル末尾に新節(末尾追記はこの worker だけ) |
+| #664 | 「pane の用意とエージェント起動」 | 「pane split 直後の agent start が agent_pane_busy で拒否される」の直後に新節 |
+| #666 | 「GPG パスフレーズキャッシュの事前チェック」 | 既存節「keygrip 特定の awk が [E] サブキーを拾ってキャッシュを誤判定する」の節内 |
+
+**Constraints:**
+- **MUST**: 司令塔は各 worker の作業指示で、追記の挿入位置を既存見出しの名前で明示する(「`### X` の直後に新節」「`#### Y` の節内」)。行番号は並行作業でずれるので、行番号を書く場合も見出し名と併記した補助情報に留める
+- **MUST**: 司令塔はファイル末尾への追記を 1 worker だけに割り当てる。2 worker がそれぞれ末尾に追記すると、両方の hunk が同じ末尾の文脈行を持つため必ずコンフリクトする
+- **MUST**: 司令塔は各 worker の作業指示に、他の worker の区画を「編集禁止区画」として列挙する。完了条件には「`git diff main -- <file>` で、自分の区画以外に差分が無いことを確認し、確認結果を最終報告に書く」を入れる
+- **MUST**: 司令塔は挿入位置同士を、最低でも既存の 1 節分(数行以上)離す。git の 3-way merge は、各 hunk の文脈行(前後 3 行)が重ならなければ自動で通る
+- **MUST**: 両 PR が出た時点で、司令塔は `git fetch origin` のあと `git merge-tree --write-tree --merge-base <base> origin/<A> origin/<B>` で clean merge を事前に確認する。`<base>` は両ブランチが分岐した main のコミットで、`git merge-base origin/<A> origin/<B>` で引ける。exit code 0 なら clean で、1 ならコンフリクトがあり、出力に該当ファイルが列挙される
+- **SHOULD**: dotfiles は squash マージなので、司令塔は先着 PR をマージしたあと、後着 PR を `gh pr update-branch <PR番号>` で main を取り込む形で玉突きする(手順 6 のマージ世話)。先着 PR 以外の変更が main に入っていなければ、merge-tree で確認した clean merge がそのまま再現する
+- **SHOULD**: 自分の区画をまたぐ追記(どの worker の区画にも属さない箇所への注意書き等)が必要になったら、worker はその場で書かずに最終報告に書き、司令塔はそれを別 Issue に切り出して次の PR に回す(#629 の実例)
+
 #### 作業指示プロンプトのテンプレート
 
 ````
@@ -310,7 +332,9 @@ herdr agent prompt <agent-name> "<追加指示のテキスト>"
 - **MUST**: `<agent-name>` は手順4でエージェントに付けたユニーク名をそのまま使う。pane-id の引き直しは不要
 - **MUST**: 実行前に対象の agent 名を必ず確認する(宛先を誤ると、無関係なエージェントに指示が届いてしまう。`agent prompt` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない)
 - **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は `agent prompt` を使わない(chat 入力欄への送信になるため、ハイライトされている選択肢を誤確定させる罠がある。`send-text` + Enter でこの誤確定による実害が実際に出ており(詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)、`agent prompt` も同じくメニュー表示中の pane に送信する以上、予防的に避ける)。メニューの選択肢確定自体は従来どおり `herdr pane send-keys <pane-id> Enter` で行う(pane-id は `herdr agent get <agent-name>` で都度引く。詳細: Troubleshooting「pane-id は非永続」参照)
-- **MUST**: 送信前の `herdr agent read` では、メニュー表示の有無に加えて**入力欄の pending テキストの有無**も確認する。`agent prompt` は入力欄の pending テキストを新テキストで置換するため、ユーザー由来と思われるテキスト(【相談】【報告】プレフィックスが付いていない未送信テキスト)が残っている場合は置換で消さず、ユーザーに確認するか、送達(手動 Enter)を待ってから送る(詳細: Troubleshooting「agent prompt がユーザー由来の pending テキストを置換で消しうる」参照)
+- **MUST**: 送信前の `herdr agent read` では、メニュー表示の有無に加えて**入力欄の pending テキストの有無**も確認する。`agent prompt` は入力欄の pending テキストを新テキストで置換するため、ユーザー由来と思われるテキスト(【相談】【報告】プレフィックスが付いていない未送信テキスト)が残っている場合は置換で消さず、ユーザーに確認するか、送達(手動 Enter)を待ってから送る(詳細: Troubleshooting「agent prompt がユーザー由来の pending テキストを置換で消しうる」参照)。ただし Claude Code は直前の assistant 出力から次のプロンプト候補(placeholder)を生成して入力欄に薄字で表示し、`herdr agent read` や `herdr pane read` のテキスト出力では placeholder とユーザーが手で打った未送信テキスト(実入力)を区別できない。pending テキストを見つけたら、次の Constraint の基準で placeholder か実入力かを判別してから扱いを決める
+- **MUST**: pending テキストが placeholder か実入力かは次の基準で判別する。placeholder の特徴は、(a) worker のターン終了直後に出現し、内容が worker の最終出力の続きとして自然である(例: 最終報告で PR を作った直後の「CI 終わったら報告して」「PRのマージをお願い」)、(b) 【相談】【報告】プレフィックスが無い、(c) 時間を置いて `herdr pane read <pane-id> --source visible` を取り直すと内容が変わるか消える、の 3 点である。実入力の特徴は、ターンをまたいでも同じ文言が残ること、ユーザーが在席していることの 2 点である。placeholder と判別できたテキストは置換してよく、そのまま `agent prompt` を送る。ユーザーへの確認は判別に迷う場合に限る。ユーザーが不在で判別できない場合は placeholder とみなして送ってよいが、送る前に置換で消える文言を司令塔のログ(会話内の出力)にそのまま書き残し、実入力だった場合にユーザーが復元できるようにする
+- **SHOULD**: placeholder と実入力の判別は、まず `herdr pane read <pane-id> --source visible --format ansi | grep -a '❯' | tail -1 | cat -v` で ANSI 属性を見て機械的に行う(pane-id は `herdr agent get <agent-name>` で引く)。Claude Code は placeholder を dim(SGR 2)で描画し、herdr の ANSI 出力はそれを `\e[2m` のまま返すため、`❯` の後ろに続く SGR 0 のリセット(`^[[0m`)を読み飛ばし、その次が `^[[2m` で始まる薄字だけなら placeholder であり(実測では `❯ ^[[0m^[[2m<文言>` の形)、SGR の付かない文字が続けば実入力である(Claude Code 2.1.289 + herdr 0.9.1 で実測。詳細: Troubleshooting「agent prompt がユーザー由来の pending テキストを置換で消しうる」参照)。ターン終了後のプロンプト候補のほか、起動直後の例文(`Try "..."`)や、キューに入ったメッセージの案内(`Press up to edit queued messages`)も同じ dim の placeholder である。ANSI 属性で判別できた場合は、上記 (c) の時間を置いた取り直しを省いてよい。Claude Code や herdr の版上げで描画が変わり、ANSI 出力に `\e[2m` が見当たらなくなった場合は、上記 (a)〜(c) の基準に戻る
 - **MUST**: `agent prompt` 送信後は `herdr agent get <agent-name>` で `working` へ遷移したことを確認する。コマンドは `agent_prompted` を正常に返すが、それだけでは submit の成否を判定できない(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)。遷移せずテキストが入力欄に残っている場合は、`herdr agent read` で pane の状態(メニュー非表示であること。上記 Constraint 参照)を確認したうえで `herdr pane send-keys <pane-id> Enter` で submit する(pane-id は `herdr agent get <agent-name>` で引く)
 - **MUST**: レビュー差し戻し等、委任後に追加の作業ラウンドを送る前に、`herdr agent get <agent-name>` で pane-id を引いたうえで `herdr pane read <pane-id> --source visible` を実行し、末尾行の pane 下部ステータスラインで context 使用率(💭 n%)を確認する。50% を超えている場合は追加ラウンドを送らず、(a) 司令塔が直接対応する、(b) 新 worker へ引き継ぐ(引き継ぎブリーフ = 元ブリーフ + ここまでの成果物参照(PR URL / コミット)+ 残作業のみ。引き継ぎ指示・HANDOFF.md・後任ブリーフの具体手順は手順8「引き継ぎモード」参照)、のいずれかを選ぶ。ユーザーより先に司令塔が検知すべきシグナルであり、閾値超過を検知したら対応方針とあわせてユーザーに報告する(詳細: Troubleshooting「レビュー差し戻しラウンドによる worker context の逼迫」参照)
 - **MUST**: pane 幅が狭くステータスラインが `…` で切り詰められ 💭 の値が読めない場合、herdr CLI に幅非依存で context 使用率を取得できる経路は無い(実機調査済み。詳細: Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)。読めない場合は使用率を推測で埋めず、保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す
@@ -578,6 +602,17 @@ push の不達を前提に主チャネル(手順5(2)の `agent wait` + `agent re
 ### agent prompt がユーザー由来の pending テキストを置換で消しうる
 2026-08-12 の /wt 運用(Issue #553 → PR #579、worker 3 体 + 司令塔の並行運用)で、司令塔が Copilot レビュー差し戻し指示を `herdr agent prompt` で worker へ送った際、宛先 worker pane の chat 入力欄にユーザーが手で打った未送信テキスト(「PR #579の内容とレビュー結果を確認して」)が残っており、`agent prompt` の置換仕様(#520/#528 で実機確認済み。上記「send-keys Enter が chat 入力を submit できないことがある」参照)により消えた(#580)。消えたテキストは司令塔の差し戻し指示と実質重複していたため実害はなかったが、構造としては**ユーザーの未送信入力を司令塔が無断で消しうる**。同一セッション内で別 worker pane にもユーザー由来と思われる未送信テキスト(「PR #578のCI結果を確認して」)が置かれているのを観測しており、ユーザーが worker pane に直接入力する運用は一回きりではない。送信前の `herdr agent read` はメニュー誤確定の防止(#498)だけでなく、pending テキストの保全のためにも行う(手順5(1)の Constraint 参照。関連: #572)。
 
+逆向きの偽陽性も観測している(#630)。2026-09-28 の docs 掃除の /wt 運用(worker 6 体 + 司令塔の並行運用)で、司令塔が一度も `agent prompt` を送っていない worker pane の入力行(`❯` 行)に「CI 終わったら報告して」「CIの結果見て報告して」「PRのマージをお願い」などの文言が表示され、ターンをまたぐと「アンカー切れの件で Issue 作って」のように内容が変わった。ユーザーは不在で、何も入力していなかった。これは Claude Code が直前の assistant 出力から生成して入力欄に薄字で表示するプロンプト候補(placeholder)であり、`herdr agent read` / `herdr pane read` のテキスト出力では薄字と実入力の区別が付かないため、上記の保全チェックを字義どおり適用すると worker がターンを終えるたびに「ユーザー入力が残っている」と判定して司令塔がユーザー確認で止まる(この運用では 6 worker × 複数ラウンドで毎回該当した)。このときの司令塔は、内容が worker 自身の最終報告に対応していること、【相談】【報告】プレフィックスが無いこと、ターンをまたいで内容が変わることから placeholder と判断して `agent prompt` を送り、置換後の submit も正常で実害はなかった。この判断基準を手順5(1)の Constraint に判別基準として書き足し、保全の目的(実入力を消さない)は維持したまま placeholder を無視できるようにした。なお、上記 2026-08-12 の実例(「PR #579の内容とレビュー結果を確認して」)が実入力だったのか placeholder だったのかは、今となっては検証できない。
+
+ANSI 出力で placeholder を機械的に判別できるかは、2026-10-05 に実測した(#630)。herdr 0.9.1 の `herdr pane read --source visible --format ansi` は、pane に出した SGR 2 を `\e[2m` のまま返す(自分で split した pane で `printf '\033[2m...'` を出して確認)。Claude Code 2.1.289 は入力欄の placeholder を `\e[2m` で描画しており、ターンを終えて idle になった worker pane の placeholder(「Copilot のレビューが付いたら対応して」)は `❯` の後ろが `^[[0m^[[2m` で始まっていた。一方、テスト用に起動した claude pane の入力欄に `herdr pane send-text` で Enter なしで入れた文字列(実入力の代わり)には SGR が付かず、素の文字だった。テキスト出力ではどちらも `❯ <文言>` と同じ見た目になるが、ANSI 出力ではこの差で判別できるため、手順5(1)の SHOULD にコマンド例として載せた。スクリプトで判定したい場合は、dim の区間と残りの SGR を取り除き、残った文字列が空かどうかを見る。出力が空なら入力欄は空か placeholder だけであり、空でなければ実入力が残っている:
+
+```bash
+herdr pane read <pane-id> --source visible --format ansi | grep -a '❯' | tail -1 \
+  | sed -E $'s/\x1b\\[2m[^\x1b]*//g; s/\x1b\\[[0-9;]*m//g; s/\r//g; s/^.*❯//; s/\xc2\xa0//g; s/^[[:space:]]+|[[:space:]]+$//g'
+```
+
+この判定は入力欄の 1 行目(`❯` を含む行)だけを見る。また、実測は Claude Code と herdr の上記の版に限られる。版上げ後に placeholder が `\e[2m` 以外(例: RGB のグレー指定)で描画されるようになると、この判定は placeholder を実入力と誤判定する(安全側の誤り)ため、その場合は手順5(1)の (a)〜(c) の基準に戻る。
+
 ### GPG 署名コミットは worker pane から pinentry を出せない
 worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
 
@@ -669,3 +704,8 @@ Claude Code は、ユーザープロンプト中に `ultra` と `code` を連結
 - 作業指示プロンプトにこのキーワードを連結形のまま書かない。「`ultra` と `code` を連結したキーワード」のように分割して書くか、「dynamic workflow のオプトインキーワード(#489 参照)」のように間接表記する。キーワード自体を扱うタスクでも同様で、コミットメッセージ・PR タイトル・PR 本文にも連結形を書かないよう作業指示に明記する
 - この SOP 自体もスキル起動時にセッションへ読み込まれるため、SKILL.md に連結形を書くと /wt を使うたびに誤発火しうる。この節も含め、SOP への追記では連結形を使わない
 - 発火した場合の標準対処: `herdr agent read` でダイアログ表示を確認し、人間の判断で辞退(No)する場合は `herdr pane send-keys <pane-id> 3` でダイアログを辞退してから、逐次実装で進める旨の補足指示を送る(送信手順は手順5(1) の標準手順に従う)
+
+### 同一ファイルを 2 worker で区画分けして並列編集した(merge-tree で事前確認)
+2026-09-28 の docs 掃除(司令塔が 6 worker を並行運用したセッション)で、この SKILL.md への SOP 追記が 13 件たまり、1 worker に全部を任せると context が逼迫する状況になった。司令塔は追記を 2 worker に区画分けし、#623 が 5 件(手順 6 の仮 CLEAN 対処と、headless nvim 検証・キーワード誤発火の Troubleshooting)、#625 が 8 件(起動・対話プロトコル周りの運用知見)を並列に消化した。司令塔は各 worker の作業指示で挿入位置を既存見出しの直後として指定し、相手の区画を編集禁止区画として列挙した。両 PR が出た時点で、司令塔は `git merge-tree --write-tree --merge-base <base> origin/<A> origin/<B>` で clean merge を事前に確認した。先着の #623 をマージしたあと、後着の #625 は `gh pr update-branch` で main を取り込み、コンフリクトなしで通ってそのままマージできた。
+
+副作用として、手順 4「作業指示プロンプトのテンプレート」への注意書き(headless nvim 検証の代替手順とキーワード回避)はどちらの worker の区画にも属さなかったため、2 つの PR には入れず、別 Issue の #629 に切り出して次の PR に回した。この手順は手順 4「同一ファイルの並列編集(区画分け)」に還流した(#631)。
