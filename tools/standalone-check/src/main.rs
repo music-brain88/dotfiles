@@ -227,6 +227,69 @@ fn find_context_word(text: &str) -> Option<&str> {
         .map(|m| m.as_str())
 }
 
+/// コードスパンを code に置き換える。開きと同じ長さのバッククォートの並びで閉じたものだけを
+/// コードスパンとみなし、閉じない並びは文字のまま残す(CommonMark の規則)。
+/// Masks code spans; a backtick run only closes on a run of the same length.
+fn mask_code_spans(s: &str) -> String {
+    // バッククォートは ASCII なので、UTF-8 のバイト列で数えても文字の途中で切れない
+    let b = s.as_bytes();
+    let run_end = |mut i: usize| {
+        while i < b.len() && b[i] == b'`' {
+            i += 1;
+        }
+        i
+    };
+    let mut out = String::new();
+    let (mut i, mut last) = (0, 0);
+    while i < b.len() {
+        if b[i] != b'`' {
+            i += 1;
+            continue;
+        }
+        let open = i;
+        i = run_end(i);
+        let n = i - open;
+        let mut j = i;
+        while j < b.len() {
+            if b[j] != b'`' {
+                j += 1;
+                continue;
+            }
+            let k = run_end(j);
+            if k - j == n {
+                out.push_str(&s[last..open]);
+                out.push_str("code");
+                last = k;
+                i = k;
+                break;
+            }
+            j = k;
+        }
+    }
+    out.push_str(&s[last..]);
+    out
+}
+
+/// 表の行を、エスケープされていない `|` で区切ったセルごとにコードスパンを置き換える。
+/// Masks code spans per table cell so that backticks never pair across cell boundaries.
+fn mask_table_code_spans(row: &str) -> String {
+    let mut cells = Vec::new();
+    let (mut start, mut escaped) = (0, false);
+    for (i, c) in row.char_indices() {
+        if c == '|' && !escaped {
+            cells.push(&row[start..i]);
+            start = i + 1;
+        }
+        escaped = c == '\\' && !escaped;
+    }
+    cells.push(&row[start..]);
+    cells
+        .into_iter()
+        .map(mask_code_spans)
+        .collect::<Vec<_>>()
+        .join("|")
+}
+
 fn strip_inline(s: &str) -> String {
     let s = re_inline_code().replace_all(s, "code");
     let s = re_bold().replace_all(&s, "$1");
@@ -480,8 +543,9 @@ fn check_text(file: &str, content: &str) -> Vec<Finding> {
         match b.kind {
             Kind::Heading | Kind::Fence | Kind::Code | Kind::Ignored | Kind::Blank => continue,
             Kind::Table => {
-                // 段落と同じく、インラインコード(コマンドの出力などの引用)は検査しない
-                let uncoded = re_inline_code().replace_all(&b.text, "code");
+                // 段落と同じく、インラインコード(コマンドの出力などの引用)は検査しない。
+                // バッククォートがセルをまたいで対にならないよう、セルごとに置き換える
+                let uncoded = mask_table_code_spans(&b.text);
                 let unquoted = re_quoted().replace_all(&uncoded, "「」");
                 if find_context_word(&unquoted).is_some() {
                     add(
@@ -1012,6 +1076,28 @@ mod tests {
         let f = check_text("t.md", &format!("{head}| 例の件 | `ok` |\n"));
         assert_eq!(f.len(), 1, "{f:?}");
         assert_eq!(f[0].code, "CONTEXT");
+    }
+
+    #[test]
+    fn table_code_masking_stays_within_cells() {
+        let head = "# 題\n\n次の表は、入力と結果を示す。\n\n| a | b | c |\n|---|---|---|\n";
+        for row in [
+            "| ` | 例の件を確認する | ` |",
+            "| `` ` `` | 例の件を確認する | `ok` |",
+            "| a \\| ` | 例の件を確認する | ` |",
+        ] {
+            let f = check_text("t.md", &format!("{head}{row}\n"));
+            assert_eq!(f.len(), 1, "{row}: {f:?}");
+            assert_eq!(f[0].code, "CONTEXT");
+        }
+    }
+
+    #[test]
+    fn mask_code_spans_matches_backtick_run_length() {
+        assert_eq!(mask_code_spans("a `x` b"), "a code b");
+        assert_eq!(mask_code_spans("`` ` `` 例の"), "code 例の");
+        assert_eq!(mask_code_spans("` 例の"), "` 例の");
+        assert_eq!(mask_code_spans("``a` 例の"), "``a` 例の");
     }
 
     #[test]
