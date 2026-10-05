@@ -138,13 +138,13 @@ created: <YYYY-MM-DD>
 
 #### pane の用意とエージェント起動
 
-pane の用意とエージェント起動は分離された2段構成になっている。まず worktree 専用 workspace のルート pane(手順3で控えた `result.root_pane.pane_id`)から下に pane を割り、作業指示は作業記憶(上記「作業物の置き場」参照)にファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
+司令塔は、pane の用意とエージェント起動を分けて行う。エージェント起動はさらに、起動プロンプトを付けない `herdr agent start`(1 段目)と、名前宛ての `herdr agent prompt` による起動プロンプトの送達(2 段目)に分ける。herdr 0.9.1 では、起動プロンプトを引数に付けた `agent start` がタイムアウトし、worker に名前が付かないため(詳細: Troubleshooting「起動プロンプト付きの agent start が 0.9.1 でタイムアウトし worker に名前が付かない」参照)。まず worktree 専用 workspace のルート pane(手順3で控えた `result.root_pane.pane_id`)から下に pane を割り、作業指示は作業記憶(上記「作業物の置き場」参照)にファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
 
 ```bash
 herdr pane split --pane <root-pane-id> --direction down --cwd <worktree-path>
 ```
 
-新しい pane-id は応答 JSON の `result.pane.pane_id` から取得する。続けて作業指示をファイルに書き、エージェントを起動する:
+新しい pane-id は応答 JSON の `result.pane.pane_id` から取得する。続けて作業指示をファイルに書き、起動プロンプトを付けずにエージェントを起動する(1 段目):
 
 ```bash
 cat > "$wb/<YYYYMMDD>-brief-<branch-slug>.md" <<'PROMPT'
@@ -158,8 +158,22 @@ created: <YYYY-MM-DD>
 <作業指示プロンプト（複数行可）>
 PROMPT
 
-herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --pane <new-pane-id> -- --model <model> --effort <effort> --permission-mode auto "<作業記憶のディレクトリ>/<YYYYMMDD>-brief-<branch-slug>.md をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。"
+herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --pane <new-pane-id> -- --model <model> --effort <effort> --permission-mode auto
 ```
+
+1 段目が成功すると、`agent start` は終了コード 0 を返し、結果 JSON の `result.agent` に付けた名前(`name`)・`"agent_status":"idle"`・`"interactive_ready":true` が入る(2026-10-05 の実測では約 4.0 秒で戻った)。司令塔は、これと `herdr agent get <名前>` の成功で名前が登録されたことを確かめる。続けて司令塔は、手順5(1)の Constraints のとおり `herdr agent read` で、メニューが出ていないことと、入力欄に未送信のテキストが残っていないことを確かめる。そのうえで、起動プロンプトを名前宛ての `agent prompt` で渡す(2 段目):
+
+```bash
+herdr agent get claude-<branch-name 由来のユニーク名>
+herdr agent read claude-<branch-name 由来のユニーク名> --source visible
+
+herdr agent prompt claude-<branch-name 由来のユニーク名> "<作業記憶のディレクトリ>/<YYYYMMDD>-brief-<branch-slug>.md をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。" --wait --until working --until blocked
+```
+
+2 段目の後、司令塔は手順5(1)の標準手順で `working` への遷移を確かめる。司令塔は `herdr agent get <名前>` で状態を読み、次のように分ける:
+- `working` なら、司令塔は手順5(2)の `herdr agent wait` を仕掛ける
+- `blocked` なら、worker は承認待ちのメニューを出している。司令塔は Enter で追撃せず、下記 Constraints の blocked の項のとおりユーザーに知らせる
+- どちらでもなければ、司令塔は `herdr agent read` でメニューが出ていないことを確かめたうえで、`herdr pane send-keys <pane-id> Enter` で追撃する(詳細: 手順5「(1) 下り=指示」の Constraints 参照)
 
 **Constraints:**
 - **MUST**: pane の用意は `herdr pane split` で行う。split 元の `--pane` には手順3の `result.root_pane.pane_id`(worktree 専用 workspace のルート pane)を使う。司令塔自身の pane(`$HERDR_PANE_ID`)を split 元にすると、worker pane が司令塔の workspace 側に作られてしまい、worker を worktree 専用 workspace に置く設計(旧構文の `--workspace` 指定が担っていた部分)が壊れる
@@ -168,8 +182,12 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 - **MUST**: pane split 直後に `herdr agent start` を投げない。split 直後は pane 内のシェルがまだ使える状態になっておらず、`agent_pane_busy`(`agent target pane <pane-id> is not an available shell`)で拒否されうる。`herdr pane process-info --pane <new-pane-id>` の `result.process_info.foreground_processes[].name` で前面プロセスがシェルになったことを確認してから起動し、確認できなければ数秒待って再試行する(詳細: Troubleshooting「pane split 直後の agent start が agent_pane_busy で拒否される」参照)
 - **MUST NOT**: `herdr agent start` に `--workspace` / `--cwd` / `--split` / `--focus` を渡さない。herdr 0.7.5 で廃止され `unknown option` エラーになる。pane はあらかじめ `pane split` で用意し、`agent start` には `--pane <pane split で得た pane-id>` を渡す
 - **MUST**: `--kind claude` が実行ファイルの正典を与えるため、`--` 以降には実行ファイル名(`claude`)を含めず、引数のみを渡す
-- **MUST**: 作業指示プロンプトは `AGENT_ARG` に直接 inline しない。複数行 heredoc をそのまま渡すと `invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(詳細: Troubleshooting「長文プロンプトの inline 渡しが拒否される」参照)。作業指示は作業記憶(上記「作業物の置き場」参照)にファイルとして書き、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする。起動プロンプトの `<パス>` は、`$wb` を展開した絶対パスで書く
+- **MUST NOT**: `agent start` の `--` 以降に起動プロンプトを付けない。herdr 0.9.1 では、起動プロンプト付きの `agent start` は worker を起動するものの、約 30 秒(既定の `--timeout 30000`)後に `timeout` エラーと終了コード 1 を返し、worker に名前が付かない(2026-10-05 に 5 体中 5 体で再現。詳細: Troubleshooting「起動プロンプト付きの agent start が 0.9.1 でタイムアウトし worker に名前が付かない」参照)
+- **MUST**: 2 段目に進む前に、1 段目の終了コードが 0 であること、結果 JSON の `result.agent.name` が付けた名前で `result.agent.interactive_ready` が `true` であること、`herdr agent get <名前>` が成功することを確かめる。1 段目が `timeout` を返した場合や、`agent get` が `agent_not_found` を返した場合は、名前宛ての 2 段目を送らず、Troubleshooting「起動プロンプト付きの agent start が 0.9.1 でタイムアウトし worker に名前が付かない」の回復手順に従う
+- **MUST**: 作業指示プロンプトは起動プロンプトに直接 inline しない。作業指示は作業記憶(上記「作業物の置き場」参照)にファイルとして書き、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にして、2 段目の `agent prompt` で渡す。起動プロンプトの `<パス>` は、`$wb` を展開した絶対パスで書く。複数行 heredoc を `agent start` の `AGENT_ARG` にそのまま渡すと `invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否された(詳細: Troubleshooting「長文プロンプトの inline 渡しが拒否される」参照)。`agent prompt` の `<TEXT>` に複数行を渡したときの挙動は確かめていない
 - **MUST**: 起動プロンプトには「自分で読む(サブエージェント委任禁止)」を明記する(上記の文言に含まれている「あなた自身が読み(サブエージェントに委任しない)」を削らない)。「読み、実行してください」だけだと作業者本人が読むか委任するかが曖昧になり、fork サブエージェントへの委任という遠回りな解釈を許して初手で止まりうる(詳細: Troubleshooting「起動プロンプトのファイル読みを fork サブエージェントに委任して初手で止まる」参照)
+- **MUST**: 2 段目の `agent prompt` には `--wait --until working --until blocked` を付ける。`--until` を省いた `--wait` は `idle` / `done` / `blocked` のどれかまで待つため、起動プロンプトでは worker の最初のターン(作業全体)が終わるまで戻らない。2026-10-05 の実測では、司令塔が `--wait --timeout 60000` で送ったところ、60,039 ms 後に `timeout`(`timed out waiting for agent status`)と終了コード 1 が返った。このとき submit は成功しており、直後の `herdr agent get` は `agent_status: "working"`・`interactive_ready: true` を返し、名前も保たれていた。`--until working --until blocked` を付けると受理の直後に戻るという挙動は、`herdr agent prompt --help`(0.9.1)の記述に基づく(help は、submit 後 5000 ms 以内に `working` か `blocked` を観測できなければ `agent_prompt_stalled` を返すとも書いている)。2026-10-05 に司令塔がこの 2 段で worker 3 体を起動して確かめた: 1 段目(起動プロンプトなしの `agent start`)は 3 体とも 3.5〜4.0 秒で終了コード 0 を返し、結果 JSON に名前と `interactive_ready: true` が入っていた。2 段目(`agent prompt <名前> "<起動プロンプト>" --wait --until working --until blocked --timeout 30000`)は 3 体とも 0.5〜0.6 秒で終了コード 0 と `agent_status: "working"` を返し、`agent_prompt_stalled` は出なかった
+- **MUST**: 2 段目が `agent_prompt_stalled` や `timeout` を返しても、submit の成否は戻り値で決めず、上記の手順5(1)の `herdr agent get` で確かめる(2026-10-05 の実測では、`timeout` が返っても submit は成功していた)
 - **MUST**: エージェント名はセッション全体でユニーク制約があるため、固定名 `claude` ではなくブランチ名由来の名前にする。変換ルール: ブランチ名から prefix(`fix/` 等)を除き、`_` と `/` を `-` に置換して `claude-` を前置する(例: `fix/wt_agent_start_options` → `claude-wt-agent-start-options`)。herdr の agent 名は 1〜32 文字に制限されており(超過すると `invalid_agent_name: agent name must start with a lowercase letter and contain only lowercase letters, digits, '-' or '_' (1-32 characters)` で起動に失敗する)、変換後の名前が32文字を超える場合は、意味が保たれる範囲で単語を間引いて32文字以内に短縮する(ユニーク性が保てればよい)。実例(2026-08-01、#539): `fix/wt_agent_prompt_submit_check` → `claude-wt-agent-prompt-submit-check`(35文字)が拒否され、`claude-wt-prompt-submit-check`(29文字)に短縮して復旧した
 - **MUST**: 作業者モデル(`--model <model>`)は下記「作業者モデルの選択基準」で決め、既定は `claude-opus-5-5`(司令塔=メインセッションが計画とレビュー、作業者が実装を担う分業は変わらない)。ユーザーが入力内で別モデルを指定した場合はそれに従う
 - **MUST**: `--permission-mode auto` で起動する。定型操作は自動承認され、判断が必要な操作だけが blocked として表面化する
@@ -519,10 +537,26 @@ mise trust は絶対パス単位で管理されるため、新規 worktree は�
 auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザーの明示許可がない」として拒否されることがある。その場合は AskUserQuestion 等でユーザーに auto mode 起動の許可を明示的に確認してから再実行する。
 
 ### 長文プロンプトの inline 渡しが拒否される
-`herdr agent start` の `--` 以降(`AGENT_ARG`)に複数行 heredoc の作業指示プロンプトをそのまま渡すと、`invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(2026-07-30、#520 で実機確認)。回避策: 作業指示をファイルとして書き(置き場は手順4「作業物の置き場」の作業記憶。当時はスクラッチパッドだった)、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする(手順4参照)。allowlist テンプレート(手順3「worktree の準備」参照)は「司令塔がタスク指示を置く作業記憶の読み書き」を既に許可しており、この方式と整合している。
+`herdr agent start` の `--` 以降(`AGENT_ARG`)に複数行 heredoc の作業指示プロンプトをそのまま渡すと、`invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(2026-07-30、#520 で実機確認)。回避策: 作業指示をファイルとして書き(置き場は手順4「作業物の置き場」の作業記憶。当時はスクラッチパッドだった)、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする。#520 の当時は、この 1 行を `agent start` の引数で渡していた。herdr 0.9.1 では起動プロンプト付きの `agent start` がタイムアウトして worker に名前が付かないため、司令塔はこの 1 行を `agent start` には付けず、起動後に名前宛ての `herdr agent prompt` で渡す(手順4「pane の用意とエージェント起動」の 2 段目と、下記「起動プロンプト付きの agent start が 0.9.1 でタイムアウトし worker に名前が付かない」参照)。allowlist テンプレート(手順3「worktree の準備」参照)は「司令塔がタスク指示を置く作業記憶の読み書き」を既に許可しており、この方式と整合している。
 
 ### pane split 直後の agent start が agent_pane_busy で拒否される
 2026-09-27 の並行運用で、司令塔が `herdr pane split` の直後に同じコマンド列で `herdr agent start` を投げたところ、`agent_pane_busy`(`agent target pane w4V:p2 is not an available shell`)で拒否された(#614)。pane split 直後は pane 内のシェルがまだ起動しておらず、前面プロセスがシェルとして使える状態になるまでラグがあるため、直後の `agent start` はタイミング依存で失敗しうる。同日 2 回発生し(#596・#611 の worker 起動時)、2 回目は 5 秒待ってから同じコマンドを再実行して成功した。`agent_pane_busy` を受けたら失敗扱いにせず、数秒後に同じコマンドを再実行する(2 回目で通る)。予防策として、起動前に `herdr pane process-info --pane <pane-id>` で前面プロセスがシェルになったことを確認する(手順4「pane の用意とエージェント起動」参照)。
+
+### 起動プロンプト付きの agent start が 0.9.1 でタイムアウトし worker に名前が付かない
+2026-10-04、herdr 0.9.1(クライアント・サーバーとも)の環境で、司令塔は当時の手順4のとおり、起動プロンプトを `herdr agent start` の引数に付けて worker を起動した。約 30 秒後に `{"error":{"code":"timeout","message":"timed out waiting for agent startup"}}` が返り、worker に名前が付かなかった(#664)。worker 自体は起動しており、起動プロンプトの作業を進めていた。`herdr agent get <名前>` は `agent_not_found` を返し、`herdr agent list` ではその worker が `name: null` で載っていた。司令塔は、pane ID を宛先にして `agent get`・`agent wait`・`agent read`・`agent prompt` を通し、セッションの最後まで pane ID で運用した。
+
+2026-10-05、司令塔は同じ形(`herdr agent start <名前> --kind claude --pane <pane-id> -- --model <model> --effort <effort> --permission-mode auto "<起動プロンプト 1 行>"`)で 5 体の worker を並行に起動し、5 体とも同じ結果になった(5/5 で再現)。5 体とも、約 30 秒(既定の `--timeout 30000`)後に `timeout` エラーと終了コード 1 が返り、直後の `herdr agent get <名前>` は `agent_not_found` を返した。`herdr agent list` では、5 体とも `name: null`・`agent_status: "working"` で、`cwd` は正しい worktree だった。worker は起動プロンプトを受け取って作業しており、うち 1 体が送った【相談】(`herdr agent prompt "commander-dotfiles" "…"`)は司令塔に届いた。同じ日、司令塔は 6 体目を起動プロンプトなしで起動した。`agent start` は約 4.0 秒で終了コード 0 を返し、結果 JSON の `result.agent` には付けた名前・`"agent_status":"idle"`・`"interactive_ready":true` が入っていた。直後の `herdr agent get <名前>` も成功した。続けて司令塔が名前宛ての `herdr agent prompt <名前> "<起動プロンプト 1 行>" --wait --timeout 60000` で起動プロンプトを渡したところ、起動プロンプトは worker に届いた。ただし `--wait` は 60,039 ms 後に `timeout`(`timed out waiting for agent status`)と終了コード 1 を返した。`--until` を省いた `--wait` は `idle` / `done` / `blocked` まで待つので、worker の最初のターンが終わるまで戻らないためである。直後の `herdr agent get <名前>` は `agent_status: "working"`・`interactive_ready: true` を返し、名前も保たれていた。
+
+原因は確かめていない。推測(未検証)は次のとおり: 起動プロンプトを引数で渡すと、worker はすぐ `working` に入る。そのため herdr は「入力待ち(interactive readiness)」を `--timeout` の間に観測できず、タイムアウトする。名前の登録は、起動が成功したときにだけ行われる。`herdr agent start --help`(0.9.1)の文面「The pane must be at its interactive shell prompt. Success means the expected agent was detected in the same terminal and is ready for input.」と、末尾の案内「next: herdr agent prompt <TARGET> <TEXT> --wait」は、この推測と整合する。
+
+司令塔は、手順4の 2 段(起動プロンプトなしの `agent start` → 名前宛ての `agent prompt`)で worker を起動する。それでも `agent start` が `timeout` を返した場合や、起動プロンプト付きで起動してしまった場合は、司令塔は `herdr agent get <名前>` と `herdr agent list` で対象の pane の worker の状態を確かめ、次の 3 つに分けて回復する。2026-10-04 と 2026-10-05 に観測したのは 2 つ目だけで、1 つ目と 3 つ目は観測していない:
+1. 名前付きで載っている場合(`herdr agent get <名前>` が成功する)。司令塔は名前を宛先にしてそのまま続ける。起動プロンプトをまだ渡していなければ、司令塔は手順4の 2 段目から行う
+2. 名前なしで載っている場合(`herdr agent list` で、対象の pane ID の worker が `name: null` で、`cwd` が対象の worktree)。司令塔は、そのセッションの間、その worker の宛先を名前ではなく pane ID にして手順5を回す(`agent get`・`agent wait`・`agent read`・`agent prompt` は pane ID 宛てで通る。2026-10-04 に 4 つとも、2026-10-05 に `agent prompt` を実機で確かめた)。起動プロンプトをまだ渡していない場合(起動プロンプトなしの 1 段目がタイムアウトした場合)は、司令塔は 2 段目の `agent prompt` も pane ID 宛てで送る。pane ID は非永続なので(下記「pane-id は非永続」参照)、司令塔は pane ID 宛てに送る前に `herdr agent list` で pane ID と `cwd` の対応を確かめ直す
+3. 一覧に載っていない場合。司令塔は `herdr pane read <pane-id> --source recent` で pane の状態を確かめる。pane がシェルのプロンプトに戻っていれば、司令塔は手順4の 1 段目をやり直す。それ以外の状態(claude が動いているように見えるのに herdr が検知していない等)では、司令塔は推測で続けず、ユーザーに報告する
+
+どの場合も、司令塔は名前の付かなかった worker を `herdr agent rename` で名付け直さない(手順3「司令塔の自己命名」の MUST NOT)。
+
+worker から司令塔への push(【相談】【報告】)は、司令塔の名前を宛先にするので、worker に名前が付かなくても影響を受けない(2026-10-05 に、名前の付かなかった worker の【相談】が司令塔に届いた)。
 
 ### 起動プロンプトのファイル読みを fork サブエージェントに委任して初手で止まる
 2026-09-27 の 7 体並行運用で、作業者 1 体(Sonnet 5 / effort high)が当時の起動プロンプト「<パス> を読み、その内容全体をあなたへの作業指示として忠実に実行してください。」を受けて、ファイルを自分で読まず Agent ツール(`subagent_type: fork`)に読ませ、そのままターンを終えて done になった(#609)。fork の結果通知が届かず、司令塔が `agent prompt` で「サブエージェントに委任せず自分で cat して実行」と差し替えるまで止まった(約 8 分のロス)。起動プロンプトが「読み、実行してください」だけだと、作業者本人が読むか委任するかが曖昧で、fork への委任という遠回りな解釈を許してしまう。起動プロンプトには「あなた自身が読み(サブエージェントに委任しない)」を明記する(手順4「pane の用意とエージェント起動」参照)。
