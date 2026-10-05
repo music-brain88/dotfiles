@@ -2,7 +2,7 @@
 //! Mechanical checks for standalone readability of distributed Japanese documents.
 //!
 //! 検査項目 / Checks:
-//!   MAIN     節の冒頭に主文(句点で終わる文)がなく、表や箇条書きで始まっている
+//!   MAIN     節の冒頭の段落に主文(句点で終わる文)がない、または表や箇条書きで始まっている
 //!   TAIGEN   段落や文が句点で終わらない、または名詞で終わる(体言止め)
 //!   LIST     20 字以上の箇条書き項目が句点で終わらない
 //!   CONTEXT  直前の会話を前提にする語(こっち、先方、例の、さっき など)
@@ -12,7 +12,7 @@
 //! 判定は物理行ではなく段落単位で行う。連続する本文行・引用行は 1 つの段落に結合し、
 //! 箇条書きは続きの行(インデント行、または空行を挟まない直後の行)を項目に結合する。
 //! 行に "standalone: ignore" を含む HTML コメントを置くと、その行は検査しない。
-//! 重さ: WARN(終了コード 1 の対象)と INFO(確認だけ)。MAIN の箇条書き始まりは INFO。
+//! 重さ: WARN(終了コード 1 の対象)と INFO(確認だけ)。MAIN の表始まりと箇条書き始まりは INFO。
 //!
 //! 終了コード / Exit code:
 //!   0  WARN なし(INFO と yomiyasu の info は影響しない)
@@ -198,6 +198,96 @@ fn is_verbal(clause: &str) -> bool {
         Some(c) => is_hiragana(c) && !PARTICLES.contains(&c),
         None => false,
     }
+}
+
+fn is_kanji(c: char) -> bool {
+    matches!(c, '\u{4E00}'..='\u{9FFF}' | '\u{3400}'..='\u{4DBF}' | '\u{F900}'..='\u{FAFF}' | '々')
+}
+
+/// 「例の」の直前がこの語なら、例そのものを指す「例の」とみなす。
+/// If "例の" follows one of these, it points at the example itself.
+const REI_NO_REFERRERS: &[&str] = &["この", "その", "次の", "上の", "表の", "以下の"];
+
+/// 文脈依存語のうち最初に当たったものを返す。「例の」は、漢字の語の一部(「事例の」「判例の」)と、
+/// 例そのものを指す書き方(「この例の」「表の例の」)を除く。
+/// Returns the first context-dependent word, skipping "例の" inside a kanji compound
+/// or right after a demonstrative that points at the example itself.
+fn find_context_word(text: &str) -> Option<&str> {
+    re_context_words()
+        .find_iter(text)
+        .find(|m| {
+            if m.as_str() != "例の" {
+                return true;
+            }
+            let before = &text[..m.start()];
+            let after_kanji = last_char(before).is_some_and(is_kanji);
+            let after_referrer = REI_NO_REFERRERS.iter().any(|w| before.ends_with(w));
+            !after_kanji && !after_referrer
+        })
+        .map(|m| m.as_str())
+}
+
+/// コードスパンを code に置き換える。開きと同じ長さのバッククォートの並びで閉じたものだけを
+/// コードスパンとみなし、閉じない並びは文字のまま残す(CommonMark の規則)。
+/// Masks code spans; a backtick run only closes on a run of the same length.
+fn mask_code_spans(s: &str) -> String {
+    // バッククォートは ASCII なので、UTF-8 のバイト列で数えても文字の途中で切れない
+    let b = s.as_bytes();
+    let run_end = |mut i: usize| {
+        while i < b.len() && b[i] == b'`' {
+            i += 1;
+        }
+        i
+    };
+    let mut out = String::new();
+    let (mut i, mut last) = (0, 0);
+    while i < b.len() {
+        if b[i] != b'`' {
+            i += 1;
+            continue;
+        }
+        let open = i;
+        i = run_end(i);
+        let n = i - open;
+        let mut j = i;
+        while j < b.len() {
+            if b[j] != b'`' {
+                j += 1;
+                continue;
+            }
+            let k = run_end(j);
+            if k - j == n {
+                out.push_str(&s[last..open]);
+                out.push_str("code");
+                last = k;
+                i = k;
+                break;
+            }
+            j = k;
+        }
+    }
+    out.push_str(&s[last..]);
+    out
+}
+
+/// 表の行を、エスケープされていない `|` で区切ったセルごとにコードスパンを置き換える。
+/// Masks code spans per table cell so that backticks never pair across cell boundaries.
+fn mask_table_code_spans(row: &str) -> String {
+    let mut cells = Vec::new();
+    let (mut start, mut escaped) = (0, false);
+    for (i, c) in row.char_indices() {
+        if c == '|' && !escaped {
+            cells.push(&row[start..i]);
+            start = i + 1;
+        }
+        escaped = c == '\\' && !escaped;
+    }
+    cells.push(&row[start..]);
+    cells
+        .into_iter()
+        .map(mask_code_spans)
+        .collect::<Vec<_>>()
+        .join("|")
 }
 
 fn strip_inline(s: &str) -> String {
@@ -422,9 +512,9 @@ fn check_text(file: &str, content: &str) -> Vec<Finding> {
                 Kind::Table => add(
                     "MAIN",
                     b2.start,
-                    "節の冒頭が表で始まり、表が何を並べているかの主文がない".into(),
+                    "節の冒頭が表で始まる(見出しが主文を兼ねているか確認する)".into(),
                     lines[b2.start].trim(),
-                    "WARN",
+                    "INFO",
                 ),
                 Kind::List => add(
                     "MAIN",
@@ -453,8 +543,11 @@ fn check_text(file: &str, content: &str) -> Vec<Finding> {
         match b.kind {
             Kind::Heading | Kind::Fence | Kind::Code | Kind::Ignored | Kind::Blank => continue,
             Kind::Table => {
-                let unquoted = re_quoted().replace_all(&b.text, "「」");
-                if re_context_words().is_match(&unquoted) {
+                // 段落と同じく、インラインコード(コマンドの出力などの引用)は検査しない。
+                // バッククォートがセルをまたいで対にならないよう、セルごとに置き換える
+                let uncoded = mask_table_code_spans(&b.text);
+                let unquoted = re_quoted().replace_all(&uncoded, "「」");
+                if find_context_word(&unquoted).is_some() {
                     add(
                         "CONTEXT",
                         b.start,
@@ -472,11 +565,11 @@ fn check_text(file: &str, content: &str) -> Vec<Finding> {
             continue;
         }
         let unquoted = re_quoted().replace_all(&plain, "「」");
-        if let Some(m) = re_context_words().find(&unquoted) {
+        if let Some(w) = find_context_word(&unquoted) {
             add(
                 "CONTEXT",
                 b.start,
-                format!("直前の会話を前提にする語がある: {}", m.as_str()),
+                format!("直前の会話を前提にする語がある: {w}"),
                 &plain,
                 "WARN",
             );
@@ -944,6 +1037,76 @@ mod tests {
         let f = check_text("t.md", "# 確認\n\n先方が確認する。\n");
         assert_eq!(f.len(), 1);
         assert_eq!(f[0].code, "CONTEXT");
+    }
+
+    #[test]
+    fn rei_no_in_compound_or_pointing_at_example_is_not_context() {
+        // Issue #651 の再現の表の 4 文
+        for s in [
+            "先行事例の調査の文書が、同じ語を使う。",
+            "表の例の行を見ると、数値が分かる。",
+            "この例のとおりに書く。",
+            "経過の例に挙げた「実測した」は、範囲が広い。",
+        ] {
+            let f = check_text("t.md", &format!("# 題\n\n{s}\n"));
+            assert!(f.is_empty(), "{s}: {f:?}");
+        }
+    }
+
+    #[test]
+    fn rei_no_pointing_at_shared_object_is_context() {
+        for s in [
+            "例の件を進める。",
+            "依頼者は、例のやつを確認する。",
+            "依頼者は確認した。例の件は済んだ。",
+            "まず例の件を片付ける。",
+        ] {
+            let f = check_text("t.md", &format!("# 題\n\n{s}\n"));
+            assert_eq!(f.len(), 1, "{s}: {f:?}");
+            assert_eq!(f[0].code, "CONTEXT");
+            assert!(f[0].message.ends_with("例の"), "{s}: {f:?}");
+        }
+    }
+
+    #[test]
+    fn table_context_ignores_inline_code() {
+        let head = "# 題\n\n次の表は、入力と結果を示す。\n\n| 入力 | 結果 |\n|---|---|\n";
+        let f = check_text("t.md", &format!("{head}| この例のとおり | `… 例の` |\n"));
+        assert!(f.is_empty(), "{f:?}");
+        let f = check_text("t.md", &format!("{head}| 例の件 | `ok` |\n"));
+        assert_eq!(f.len(), 1, "{f:?}");
+        assert_eq!(f[0].code, "CONTEXT");
+    }
+
+    #[test]
+    fn table_code_masking_stays_within_cells() {
+        let head = "# 題\n\n次の表は、入力と結果を示す。\n\n| a | b | c |\n|---|---|---|\n";
+        for row in [
+            "| ` | 例の件を確認する | ` |",
+            "| `` ` `` | 例の件を確認する | `ok` |",
+            "| a \\| ` | 例の件を確認する | ` |",
+        ] {
+            let f = check_text("t.md", &format!("{head}{row}\n"));
+            assert_eq!(f.len(), 1, "{row}: {f:?}");
+            assert_eq!(f[0].code, "CONTEXT");
+        }
+    }
+
+    #[test]
+    fn mask_code_spans_matches_backtick_run_length() {
+        assert_eq!(mask_code_spans("a `x` b"), "a code b");
+        assert_eq!(mask_code_spans("`` ` `` 例の"), "code 例の");
+        assert_eq!(mask_code_spans("` 例の"), "` 例の");
+        assert_eq!(mask_code_spans("``a` 例の"), "``a` 例の");
+    }
+
+    #[test]
+    fn skipped_rei_no_does_not_hide_later_context_word() {
+        assert_eq!(
+            find_context_word("判例の要旨は、さっき読んだ。"),
+            Some("さっき")
+        );
+        assert_eq!(find_context_word("この例のとおりに書く。"), None);
     }
 
     #[test]
