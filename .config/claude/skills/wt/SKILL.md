@@ -91,19 +91,22 @@ worktree 作成直後に以下を行う:
 worker はコミット時に GPG 署名で詰まりやすい(worker pane は tty を持たず pinentry を表示できない構造的制約。詳細: Troubleshooting「GPG 署名コミットは worker pane から pinentry を出せない」参照)。委任前にキャッシュの有無を確認し、冷えていれば温めておく。
 
 ```bash
-KEYID=$(git config user.signingkey)
-[ -n "$KEYID" ] || { echo "git config user.signingkey is not set" >&2; exit 1; }
-KEYGRIP=$(gpg --list-secret-keys --with-keygrip "$KEYID" 2>/dev/null \
-  | awk '/^ssb/ && /\[S\]/ {found=1; next} found && /Keygrip/ {gsub(/ /,"",$0); sub(/Keygrip=/,""); print; exit}')
-[ -n "$KEYGRIP" ] || { echo "No [S] subkey keygrip found for $KEYID — cannot identify the signing key" >&2; exit 1; }
-gpg-connect-agent 'keyinfo --list' /bye | grep "$KEYGRIP" | awk '{print $7}'  # 1 = cached
+bash ~/.claude/skills/wt/gpg_cache_check.sh
 ```
 
+スクリプトの結果は stdout の 1 行と終了コードで返る:
+
+| stdout | 終了コード | 意味 |
+|--------|-----------|------|
+| `cached=1` | 0 | 署名鍵のパスフレーズがキャッシュされている |
+| `cached=0` | 1 | キャッシュされていない(冷えている) |
+| (なし) | 2 | 署名鍵を特定できない、または gpg-agent に問い合わせられない。理由は stderr に出る |
+
 **Constraints:**
-- **MUST**: 署名鍵の keygrip は次の手順で特定する: `git config user.signingkey` で鍵IDを取得し、`gpg --list-secret-keys --with-keygrip` の出力から同じ鍵に属する `[S]` フラグ付きサブキー(ssb)行の直後にある `Keygrip` を読む(`user.signingkey` は primary 鍵の ID を指すが、実際の署名には `[S]` サブキーの keygrip が使われるため。実機確認済み)
-- **MUST**: 上記 keygrip で `gpg-connect-agent 'keyinfo --list' /bye` の出力(`S KEYINFO <keygrip> D - - <cached> P - - -` 形式)をフィルタし、7列目が `1` かどうかでキャッシュの有無を確認する(実機確認済み)
-- **MUST**: `KEYID`(`user.signingkey` 未設定)または `KEYGRIP`([S] サブキーが無い鍵構成)が空なら、agent に問い合わせる前に失敗させ「署名鍵を特定できない」と報告する(上記ワンライナーの `[ -n ... ] ||` ガード。`.mise.toml` の `gpg:*` タスクと同じ流儀)。空文字で `grep "$KEYGRIP"` すると全 KEYINFO 行にマッチし、無関係な鍵の cached フラグを署名鍵のものと誤読しうるため(PR #625 のレビュー指摘)
-- **SHOULD**: 冷えている(7列目が `1` でない)場合、ユーザーに1回署名(`echo test | gpg --clearsign -o /dev/null`)によるキャッシュ温めを依頼する
+- **MUST**: キャッシュの確認は同梱スクリプト `gpg_cache_check.sh` で行い、keygrip の特定や KEYINFO の読み取りを SKILL.md の本文や司令塔の手書きのワンライナーで行わない。Claude Code は skill を引数つきで呼ぶと、本文にある位置引数の形(ドル記号と数字)を引数の語に置き換えるため、本文に書いた awk は呼び方次第で壊れる(#666)。スクリプトのファイルは置き換えの対象にならない
+- **MUST**: スクリプトは署名鍵を次の手順で特定する: `git config user.signingkey` で鍵 ID を取得し、`gpg --list-secret-keys --with-keygrip` の出力から同じ鍵に属する `[S]` フラグ付きサブキー(ssb)行の直後にある `Keygrip` を読む(`user.signingkey` は primary 鍵の ID を指すが、実際の署名には `[S]` サブキーの keygrip が使われるため。実機確認済み)。次に `gpg-connect-agent 'keyinfo --list' /bye` の出力(`S KEYINFO <keygrip> D - - <cached> P - - -` 形式)から keygrip が一致する行を選び、cached の列(7 列目)が `1` かどうかでキャッシュの有無を判定する(実機確認済み)。手順を変えるときはスクリプトとこの説明を一緒に直す
+- **MUST**: 終了コード 2 を受けたら、キャッシュの有無を推測せず、stderr の理由(`user.signingkey` 未設定・[S] サブキーが無い鍵構成など)を添えて「署名鍵を特定できない」とユーザーに報告する。スクリプトは鍵 ID や keygrip が空のとき、agent に問い合わせる前に終了コード 2 で止まる。空の keygrip で照会すると全 KEYINFO 行にマッチし、無関係な鍵の cached フラグを署名鍵のものと誤読しうるため(PR #625 のレビュー指摘)
+- **SHOULD**: 冷えている(`cached=0`)場合、ユーザーに1回署名(`echo test | gpg --clearsign -o /dev/null`)によるキャッシュ温めを依頼する
 - **MAY**: 温めは委任と並行に進めてよいが、worker がコミットに到達する前に温まっているのが望ましい
 
 #### 作業物の置き場(作業記憶)
@@ -621,15 +624,9 @@ worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示でき
 ### keygrip 特定の awk が [E] サブキーを拾ってキャッシュを誤判定する
 2026-08-31、GVA-NyaN の /wt 運用で、司令塔が GPG パスフレーズキャッシュの事前チェック(手順4)を実装した際、keygrip 特定の awk が「最初の ssb 行」の Keygrip を拾う形になっていた(#583)。鍵構成が `ssb [E]`(暗号化)→ `ssb [S]`(署名)の順だったため [E] サブキーの keygrip でキャッシュを照会してしまい、実際には温まっていた署名キャッシュを「冷えている(`-`)」と誤判定して、ユーザーに不要なキャッシュ温めを依頼した。SOP の散文(「[S] フラグ付き ssb 行の直後の Keygrip を読む」)は正しく、司令塔が都度書いた awk が仕様を満たしていなかった。[E] が先に並ぶのは gpg の既定出力順で、ssb が複数ある鍵構成では誰でも踏みうる。
 
-```bash
-# NG: 最初の ssb の keygrip を拾う([S] 判定がない)
-awk '/^ssb/{s=1} s && /Keygrip/{print $3; exit}'
+誤っていた awk は、[S] フラグを見ずに、最初の ssb 行の後に現れた Keygrip 行の 3 列目を出していた。正しい awk は、`[S]` フラグ付きの ssb 行を見つけてから、その直後の Keygrip 行を読む。どちらの awk も、今は同梱スクリプト `gpg_cache_check.sh` のコメントにだけ載せている(正しい方はスクリプトの本体)。SKILL.md に awk を載せないのは、本文にある位置引数の形が skill の引数で置き換えられて壊れるため(#666。2026-10-04 と 2026-10-05 に観測。2026-10-05 の観測では、置き換えは 0 始まりの語番号で行われ、該当する語が無い番号はそのまま残り、`$HERDR_PANE_ID` のような名前つきの変数は置き換えられなかった)。
 
-# OK: [S] フラグ付き ssb の直後の keygrip を拾う(手順4のワンライナー)
-awk '/^ssb/ && /\[S\]/ {found=1; next} found && /Keygrip/ {gsub(/ /,"",$0); sub(/Keygrip=/,""); print; exit}'
-```
-
-OK 例は 2026-08-31 に WSL2 + ed25519 primary [SC] / cv25519 ssb [E] / ed25519 ssb [S] 構成で、[S] サブキーの keygrip を正しく選択し cached=`1` を返すことを確認済み(2026-09-28 に Arch Linux の同構成でも再確認)。awk を都度手書きせず、手順4のワンライナーをそのまま使う。なお OK 例の awk も、`user.signingkey` 未設定や [S] サブキーの無い鍵構成では空文字を返す。空のまま `grep` に渡すと全 KEYINFO 行にマッチしてしまうため、手順4のワンライナーの空チェック(`[ -n "$KEYGRIP" ] ||` ガード)とセットで使う。
+正しい手順は、2026-08-31 に WSL2 + ed25519 primary [SC] / cv25519 ssb [E] / ed25519 ssb [S] 構成で、[S] サブキーの keygrip を正しく選択し cached=`1` を返すことを確認済み(2026-09-28 に Arch Linux の同構成でも再確認。2026-10-05 にスクリプト化した版でも同じ構成で `cached=1` を確認)。awk を都度手書きせず、手順4の `bash ~/.claude/skills/wt/gpg_cache_check.sh` を使う。スクリプトは、`user.signingkey` 未設定や [S] サブキーの無い鍵構成で keygrip が空になると、agent に問い合わせる前に終了コード 2 で止まる(空の keygrip で照会すると全 KEYINFO 行にマッチしてしまうため)。[E] が先に並ぶ鍵構成での誤判定は、同梱テスト `tests/gpg_cache_check_test.sh` が回帰として確かめる。
 
 ### pane-id は非永続
 pane-id はセッション中に compact されうる非永続 ID(詳細は `.config/claude/skills/herdr/SKILL.md` 参照)。
