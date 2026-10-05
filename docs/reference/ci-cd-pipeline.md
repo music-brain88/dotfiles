@@ -8,8 +8,8 @@
 
 ## 📚 Table of Contents
 
-- [Pipeline Details](#pipeline-details)
-- [Caching Strategy](#caching-strategy)
+- [Pipeline Details](#-pipeline-details)
+- [Caching Strategy](#-caching-strategy)
 
 ---
 

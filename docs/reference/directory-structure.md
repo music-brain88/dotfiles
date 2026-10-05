@@ -168,7 +168,7 @@ Home Manager の設定は、`nix/modules/` の下でモジュールに分けて�
 | `desktop.nix` | GUI 設定群 (hypr, waybar, wezterm, alacritty, wofi, mako, mpd, ncmpcpp, fontconfig) — native profile のみ |
 | `wsl.nix` | WSL 固有: Obsidian vault symlink と Windows 側 WezTerm/Alacritty 設定の配布 — wsl profile のみ |
 
-profile 分割の設計意図は [architecture.md の Per-Host Profiles](../explanation/architecture.md#per-host-profiles) に書いてある。
+profile 分割の設計意図は [architecture.md の Per-Host Profiles](../explanation/architecture.md#-per-host-profiles) に書いてある。
 
 ---
 

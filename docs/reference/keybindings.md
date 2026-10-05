@@ -8,12 +8,12 @@
 
 ## 📚 Table of Contents
 
-- [Fish Shell](#fish-shell)
-- [herdr](#herdr)
-- [Tmux](#tmux-deprecated-herdrへ移行中) *(deprecated)*
-- [Hyprland](#hyprland)
-- [Neovim](#neovim) *(separate document)*
-- [Shell Aliases](#shell-aliases)
+- [Fish Shell](#-fish-shell)
+- [herdr](#-herdr)
+- [Tmux](#%EF%B8%8F-tmux-deprecated-herdrへ移行中) *(deprecated)*
+- [Hyprland](#-hyprland)
+- [Neovim](#-neovim) *(separate document)*
+- [Shell Aliases](#-shell-aliases)
 
 ---
 
@@ -347,7 +347,7 @@ Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
 
 Neovimのキーバインドは量が多いため、別ドキュメントにまとめています。
 
-👉 **[neovim-config.md](./neovim-config.md#keybindings)** - Neovim キーバインド・設定リファレンス
+👉 **[neovim-config.md](./neovim-config.md#%EF%B8%8F-keybindings)** - Neovim キーバインド・設定リファレンス
 
 ### Quick Reference
 

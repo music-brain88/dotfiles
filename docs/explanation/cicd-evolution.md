@@ -8,11 +8,11 @@
 
 ## 📚 Table of Contents
 
-- [Problem Statement](#problem-statement)
-- [Solution: Hybrid Docker + Nix Pipeline](#solution-hybrid-docker--nix-pipeline)
-- [Evolution History](#evolution-history)
-- [Lessons Learned](#lessons-learned)
-- [Future Improvements](#future-improvements)
+- [Problem Statement](#%EF%B8%8F-problem-statement)
+- [Solution: Hybrid Docker + Nix Pipeline](#-solution-hybrid-docker--nix-pipeline)
+- [Evolution History](#-evolution-history)
+- [Lessons Learned](#-lessons-learned)
+- [Future Improvements](#-future-improvements)
 
 ---
 

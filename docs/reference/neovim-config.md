@@ -8,10 +8,10 @@
 
 ## 📚 Table of Contents
 
-- [TOML File Structure](#toml-file-structure)
-- [Plugin Management (dpp)](#plugin-management-dpp)
-- [Keybindings](#keybindings)
-- [Related Files](#related-files)
+- [TOML File Structure](#-toml-file-structure)
+- [Plugin Management (dpp)](#-plugin-management-dpp)
+- [Keybindings](#%EF%B8%8F-keybindings)
+- [Related Files](#-related-files)
 
 ---
 
