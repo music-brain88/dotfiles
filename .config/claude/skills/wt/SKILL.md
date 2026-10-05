@@ -161,15 +161,19 @@ PROMPT
 herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --pane <new-pane-id> -- --model <model> --effort <effort> --permission-mode auto
 ```
 
-1 段目が成功すると、`agent start` は終了コード 0 を返し、結果 JSON の `result.agent` に付けた名前(`name`)・`"agent_status":"idle"`・`"interactive_ready":true` が入る(2026-10-05 の実測では約 4.0 秒で戻った)。司令塔は、これと `herdr agent get <名前>` の成功で名前が登録されたことを確かめてから、起動プロンプトを名前宛ての `agent prompt` で渡す(2 段目):
+1 段目が成功すると、`agent start` は終了コード 0 を返し、結果 JSON の `result.agent` に付けた名前(`name`)・`"agent_status":"idle"`・`"interactive_ready":true` が入る(2026-10-05 の実測では約 4.0 秒で戻った)。司令塔は、これと `herdr agent get <名前>` の成功で名前が登録されたことを確かめる。続けて司令塔は、手順5(1)の Constraints のとおり `herdr agent read` で、メニューが出ていないことと、入力欄に未送信のテキストが残っていないことを確かめる。そのうえで、起動プロンプトを名前宛ての `agent prompt` で渡す(2 段目):
 
 ```bash
 herdr agent get claude-<branch-name 由来のユニーク名>
+herdr agent read claude-<branch-name 由来のユニーク名> --source visible
 
 herdr agent prompt claude-<branch-name 由来のユニーク名> "<作業記憶のディレクトリ>/<YYYYMMDD>-brief-<branch-slug>.md をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。" --wait --until working --until blocked
 ```
 
-2 段目の後、司令塔は手順5(1)の標準手順で `working` への遷移を確かめる。`herdr agent get <名前>` で `working` を確かめ、遷移していなければ `herdr agent read` でメニューが出ていないことを確かめたうえで `herdr pane send-keys <pane-id> Enter` で追撃する(詳細: 手順5「(1) 下り=指示」の Constraints 参照)。`working` を確かめたら、手順5(2)の `herdr agent wait` を仕掛ける。
+2 段目の後、司令塔は手順5(1)の標準手順で `working` への遷移を確かめる。司令塔は `herdr agent get <名前>` で状態を読み、次のように分ける:
+- `working` なら、司令塔は手順5(2)の `herdr agent wait` を仕掛ける
+- `blocked` なら、worker は承認待ちのメニューを出している。司令塔は Enter で追撃せず、下記 Constraints の blocked の項のとおりユーザーに知らせる
+- どちらでもなければ、司令塔は `herdr agent read` でメニューが出ていないことを確かめたうえで、`herdr pane send-keys <pane-id> Enter` で追撃する(詳細: 手順5「(1) 下り=指示」の Constraints 参照)
 
 **Constraints:**
 - **MUST**: pane の用意は `herdr pane split` で行う。split 元の `--pane` には手順3の `result.root_pane.pane_id`(worktree 専用 workspace のルート pane)を使う。司令塔自身の pane(`$HERDR_PANE_ID`)を split 元にすると、worker pane が司令塔の workspace 側に作られてしまい、worker を worktree 専用 workspace に置く設計(旧構文の `--workspace` 指定が担っていた部分)が壊れる
@@ -521,10 +525,12 @@ auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザ�
 
 原因は確かめていない。推測(未検証)は次のとおり: 起動プロンプトを引数で渡すと、worker はすぐ `working` に入る。そのため herdr は「入力待ち(interactive readiness)」を `--timeout` の間に観測できず、タイムアウトする。名前の登録は、起動が成功したときにだけ行われる。`herdr agent start --help`(0.9.1)の文面「The pane must be at its interactive shell prompt. Success means the expected agent was detected in the same terminal and is ready for input.」と、末尾の案内「next: herdr agent prompt <TARGET> <TEXT> --wait」は、この推測と整合する。
 
-司令塔は、手順4の 2 段(起動プロンプトなしの `agent start` → 名前宛ての `agent prompt`)で worker を起動する。それでも `agent start` が `timeout` を返した場合や、起動プロンプト付きで起動してしまった場合は、次の手順で回復する:
-1. 司令塔は `herdr agent list` で、対象の pane ID の worker が `name: null` で載っていて、`cwd` が対象の worktree であることを確かめる
-2. 司令塔は、そのセッションの間、その worker の宛先を名前ではなく pane ID にして手順5を回す(`agent get`・`agent wait`・`agent read`・`agent prompt` は pane ID 宛てで通る。2026-10-04 に 4 つとも、2026-10-05 に `agent prompt` を実機で確かめた)。起動プロンプトをまだ渡していない場合(起動プロンプトなしの 1 段目がタイムアウトした場合)は、2 段目の `agent prompt` も pane ID 宛てで送る。pane ID は非永続なので(下記「pane-id は非永続」参照)、司令塔は pane ID 宛てに送る前に `herdr agent list` で pane ID と `cwd` の対応を確かめ直す
-3. 司令塔は、名前の付かなかった worker を `herdr agent rename` で名付け直さない(手順3「司令塔の自己命名」の MUST NOT)
+司令塔は、手順4の 2 段(起動プロンプトなしの `agent start` → 名前宛ての `agent prompt`)で worker を起動する。それでも `agent start` が `timeout` を返した場合や、起動プロンプト付きで起動してしまった場合は、司令塔は `herdr agent get <名前>` と `herdr agent list` で対象の pane の worker の状態を確かめ、次の 3 つに分けて回復する。2026-10-04 と 2026-10-05 に観測したのは 2 つ目だけで、1 つ目と 3 つ目は観測していない:
+1. 名前付きで載っている場合(`herdr agent get <名前>` が成功する)。司令塔は名前を宛先にしてそのまま続ける。起動プロンプトをまだ渡していなければ、司令塔は手順4の 2 段目から行う
+2. 名前なしで載っている場合(`herdr agent list` で、対象の pane ID の worker が `name: null` で、`cwd` が対象の worktree)。司令塔は、そのセッションの間、その worker の宛先を名前ではなく pane ID にして手順5を回す(`agent get`・`agent wait`・`agent read`・`agent prompt` は pane ID 宛てで通る。2026-10-04 に 4 つとも、2026-10-05 に `agent prompt` を実機で確かめた)。起動プロンプトをまだ渡していない場合(起動プロンプトなしの 1 段目がタイムアウトした場合)は、司令塔は 2 段目の `agent prompt` も pane ID 宛てで送る。pane ID は非永続なので(下記「pane-id は非永続」参照)、司令塔は pane ID 宛てに送る前に `herdr agent list` で pane ID と `cwd` の対応を確かめ直す
+3. 一覧に載っていない場合。司令塔は `herdr pane read <pane-id> --source recent` で pane の状態を確かめる。pane がシェルのプロンプトに戻っていれば、司令塔は手順4の 1 段目をやり直す。それ以外の状態(claude が動いているように見えるのに herdr が検知していない等)では、司令塔は推測で続けず、ユーザーに報告する
+
+どの場合も、司令塔は名前の付かなかった worker を `herdr agent rename` で名付け直さない(手順3「司令塔の自己命名」の MUST NOT)。
 
 worker から司令塔への push(【相談】【報告】)は、司令塔の名前を宛先にするので、worker に名前が付かなくても影響を受けない(2026-10-05 に、名前の付かなかった worker の【相談】が司令塔に届いた)。
 
