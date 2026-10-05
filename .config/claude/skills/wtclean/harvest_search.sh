@@ -81,6 +81,9 @@ pr="$1"
 notes_dir="${2:-$default_notes_dir}"
 [[ "$pr" =~ ^[0-9]+$ ]] || fail "PR number must be digits: $pr"
 [ -d "$notes_dir" ] || fail "notes directory not found: $notes_dir"
+# Without these, the glob below silently matches nothing and reads as "no hit"
+# これが無いと、下のグロブが黙って何にも一致せず「ヒットなし」に見える
+[ -r "$notes_dir" ] && [ -x "$notes_dir" ] || fail "notes directory is not readable: $notes_dir"
 
 # ---------------------------------------------------------------------------
 # This repository's owner/repo / 自分の owner/repo
@@ -109,8 +112,10 @@ resolve_repo() {
   url="$(git remote get-url origin 2>/dev/null)" || url=''
   url="${url%/}"
   url="${url%.git}"
-  if [[ "$url" =~ github\.com[:/]+([$repo_chars]+/[$repo_chars]+)$ ]]; then
-    echo "${BASH_REMATCH[1]}"
+  # The host must be exactly github.com, not a name that merely ends with it
+  # ホストは github.com ちょうどに限る。github.com で終わるだけの名前は通さない
+  if [[ "$url" =~ ^(git@github\.com:|https?://([^@/]+@)?github\.com/|ssh://([^@/]+@)?github\.com(:[0-9]+)?/)([$repo_chars]+/[$repo_chars]+)$ ]]; then
+    echo "${BASH_REMATCH[5]}"
     return 0
   fi
   if [ -z "$url" ]; then
@@ -134,8 +139,10 @@ end='([^0-9]|$)'
 # (1) this owner/repo#N; the owner must not be glued to a longer name
 #     自分の owner/repo#N。owner の前に名前の文字が続かないこと
 pat_self_ref="(^|[^$repo_chars])$repo_re#$pr$end"
-# (2) github.com/this owner/repo/pull/N / 自分のリポジトリの PR の URL
-pat_self_url="(^|[^A-Za-z0-9_-])github\\.com/$repo_re/pull/$pr$end"
+# (2) github.com/this owner/repo/pull/N; the host must not be a longer name
+#     such as not.github.com
+#     自分のリポジトリの PR の URL。not.github.com のような長いホスト名は除く
+pat_self_url="(^|[^$repo_chars])github\\.com/$repo_re/pull/$pr$end"
 # (3) after every qualified x/y#M is removed, a #N is left
 #     修飾付きの x/y#M をすべて取り除いたあとに、#N が残る
 pat_qualified="[$repo_chars]+/[$repo_chars]+#[0-9]+"

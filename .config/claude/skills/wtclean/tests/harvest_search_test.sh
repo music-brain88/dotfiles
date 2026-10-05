@@ -204,6 +204,15 @@ test_longer_owner_does_not_hit() {
   assert_exit 1
 }
 
+# A host that merely ends with github.com is another site (review of PR #686)
+# github.com で終わるだけのホストは別のサイト(PR #686 のレビュー指摘)
+test_subdomain_url_does_not_hit() {
+  new_case
+  note other 'https://not.github.com/music-brain88/dotfiles/pull/663 と https://notgithub.com/music-brain88/dotfiles/pull/663'
+  run_search 663 "$notes"
+  assert_exit 1
+}
+
 # A dot in the repository name is literal / リポジトリ名のドットは文字どおり
 test_dot_in_repo_name_is_literal() {
   new_case
@@ -277,6 +286,27 @@ test_gh_and_origin_both_fail() {
   assert_err_has 'no origin remote'
 }
 
+test_origin_ssh_scheme_fallback_when_gh_fails() {
+  new_case ssh://git@github.com:22/music-brain88/dotfiles.git
+  export FAKE_GH_REPO=''
+  note own 'music-brain88/dotfiles#663'
+  run_search 663 "$notes"
+  assert_hits own
+}
+
+# A host that merely ends with github.com is not GitHub (review of PR #686)
+# github.com で終わるだけのホストは GitHub ではない(PR #686 のレビュー指摘)
+test_lookalike_origin_host_fails() {
+  local url
+  for url in https://notgithub.com/acme/repo.git git@notgithub.com:acme/repo.git; do
+    new_case "$url"
+    export FAKE_GH_REPO=''
+    run_search 663 "$notes"
+    assert_exit 2
+    assert_err_has 'origin is not a GitHub repository URL'
+  done
+}
+
 test_non_github_origin_fails() {
   new_case https://gitlab.com/music-brain88/dotfiles.git
   export FAKE_GH_REPO=''
@@ -301,6 +331,19 @@ test_missing_notes_dir() {
   run_search 663 "$case_dir/nowhere"
   assert_exit 2
   assert_err_has 'notes directory not found'
+}
+
+# An unreadable directory must not read as "no hit" (review of PR #686)
+# 読めないディレクトリを「ヒットなし」と見せない(PR #686 のレビュー指摘)
+test_unreadable_notes_dir() {
+  [ "$(id -u)" -ne 0 ] || return 0 # root ignores permissions / root は権限を無視する
+  new_case
+  note own '#663'
+  chmod 000 "$notes"
+  run_search 663 "$notes"
+  chmod 755 "$notes"
+  assert_exit 2
+  assert_err_has 'notes directory is not readable'
 }
 
 test_no_arguments() {
