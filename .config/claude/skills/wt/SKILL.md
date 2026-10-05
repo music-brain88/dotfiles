@@ -207,6 +207,28 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 - **MUST NOT**: `low` は /wt では使わない(under-thinking のリスクがあるため)
 - **SHOULD**: `medium` 以下では Sonnet 作業者が指示を literal に解釈する(Sonnet 5 で観測、5.5 では未検証)ため、作業指示プロンプトの完了条件を具体的に書く
 
+#### 同一ファイルの並列編集(区画分け)
+
+同じファイルに独立した追記が複数たまり(例: この SKILL.md への SOP 追記が十数件)、1 worker に全部を任せると context が逼迫する場合、司令塔はファイルを区画に分けて複数 worker に並列で編集させてよい。区画分けをしないと、司令塔は「1 worker で直列に消化して context の逼迫を受け入れる」か「コンフリクトを前提に後着 PR を rebase に差し戻す」かの二択になる。実例は Troubleshooting「同一ファイルを 2 worker で区画分けして並列編集した(merge-tree で事前確認)」を参照。
+
+区画の割り当ての例(2026-10-05、この SKILL.md を 4 worker で並列編集したときの割り当て):
+
+| worker | 区画 1(手順の本文) | 区画 2(Troubleshooting) |
+|---|---|---|
+| #630 | 手順 5(1) の Constraints | 既存節「agent prompt がユーザー由来の pending テキストを置換で消しうる」の節内 |
+| #631 | 「effort の選択基準」の直後に新小節 | ファイル末尾に新節(末尾追記はこの worker だけ) |
+| #664 | 「pane の用意とエージェント起動」 | 「pane split 直後の agent start が agent_pane_busy で拒否される」の直後に新節 |
+| #666 | 「GPG パスフレーズキャッシュの事前チェック」 | 既存節「keygrip 特定の awk が [E] サブキーを拾ってキャッシュを誤判定する」の節内 |
+
+**Constraints:**
+- **MUST**: 司令塔は各 worker の作業指示で、追記の挿入位置を既存見出しの名前で明示する(「`### X` の直後に新節」「`#### Y` の節内」)。行番号は並行作業でずれるので、行番号を書く場合も見出し名と併記した補助情報に留める
+- **MUST**: 司令塔はファイル末尾への追記を 1 worker だけに割り当てる。2 worker がそれぞれ末尾に追記すると、両方の hunk が同じ末尾の文脈行を持つため必ずコンフリクトする
+- **MUST**: 司令塔は各 worker の作業指示に、他の worker の区画を「編集禁止区画」として列挙する。完了条件には「`git diff main -- <file>` で、自分の区画以外に差分が無いことを確認し、確認結果を最終報告に書く」を入れる
+- **MUST**: 司令塔は挿入位置同士を、最低でも既存の 1 節分(数行以上)離す。git の 3-way merge は、各 hunk の文脈行(前後 3 行)が重ならなければ自動で通る
+- **MUST**: 両 PR が出た時点で、司令塔は `git fetch origin` のあと `git merge-tree --write-tree --merge-base <base> origin/<A> origin/<B>` で clean merge を事前に確認する。`<base>` は両ブランチが分岐した main のコミットで、`git merge-base origin/<A> origin/<B>` で引ける。exit code 0 なら clean で、1 ならコンフリクトがあり、出力に該当ファイルが列挙される
+- **SHOULD**: dotfiles は squash マージなので、司令塔は先着 PR をマージしたあと、後着 PR を `gh pr update-branch <PR番号>` で main を取り込む形で玉突きする(手順 6 のマージ世話)。先着 PR 以外の変更が main に入っていなければ、merge-tree で確認した clean merge がそのまま再現する
+- **SHOULD**: 自分の区画をまたぐ追記(どの worker の区画にも属さない箇所への注意書き等)が必要になったら、worker はその場で書かずに最終報告に書き、司令塔はそれを別 Issue に切り出して次の PR に回す(#629 の実例)
+
 #### 作業指示プロンプトのテンプレート
 
 ````
@@ -648,3 +670,8 @@ Claude Code は、ユーザープロンプト中に `ultra` と `code` を連結
 - 作業指示プロンプトにこのキーワードを連結形のまま書かない。「`ultra` と `code` を連結したキーワード」のように分割して書くか、「dynamic workflow のオプトインキーワード(#489 参照)」のように間接表記する。キーワード自体を扱うタスクでも同様で、コミットメッセージ・PR タイトル・PR 本文にも連結形を書かないよう作業指示に明記する
 - この SOP 自体もスキル起動時にセッションへ読み込まれるため、SKILL.md に連結形を書くと /wt を使うたびに誤発火しうる。この節も含め、SOP への追記では連結形を使わない
 - 発火した場合の標準対処: `herdr agent read` でダイアログ表示を確認し、人間の判断で辞退(No)する場合は `herdr pane send-keys <pane-id> 3` でダイアログを辞退してから、逐次実装で進める旨の補足指示を送る(送信手順は手順5(1) の標準手順に従う)
+
+### 同一ファイルを 2 worker で区画分けして並列編集した(merge-tree で事前確認)
+2026-09-28 の docs 掃除(司令塔が 6 worker を並行運用したセッション)で、この SKILL.md への SOP 追記が 13 件たまり、1 worker に全部を任せると context が逼迫する状況になった。司令塔は追記を 2 worker に区画分けし、#623 が 5 件(手順 6 の仮 CLEAN 対処と、headless nvim 検証・キーワード誤発火の Troubleshooting)、#625 が 8 件(起動・対話プロトコル周りの運用知見)を並列に消化した。司令塔は各 worker の作業指示で挿入位置を既存見出しの直後として指定し、相手の区画を編集禁止区画として列挙した。両 PR が出た時点で、司令塔は `git merge-tree --write-tree --merge-base <base> origin/<A> origin/<B>` で clean merge を事前に確認した。先着の #623 をマージしたあと、後着の #625 は `gh pr update-branch` で main を取り込み、コンフリクトなしで通ってそのままマージできた。
+
+副作用として、手順 4「作業指示プロンプトのテンプレート」への注意書き(headless nvim 検証の代替手順とキーワード回避)はどちらの worker の区画にも属さなかったため、2 つの PR には入れず、別 Issue の #629 に切り出して次の PR に回した。この手順は手順 4「同一ファイルの並列編集(区画分け)」に還流した(#631)。
