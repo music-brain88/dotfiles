@@ -91,19 +91,22 @@ worktree 作成直後に以下を行う:
 worker はコミット時に GPG 署名で詰まりやすい(worker pane は tty を持たず pinentry を表示できない構造的制約。詳細: Troubleshooting「GPG 署名コミットは worker pane から pinentry を出せない」参照)。委任前にキャッシュの有無を確認し、冷えていれば温めておく。
 
 ```bash
-KEYID=$(git config user.signingkey)
-[ -n "$KEYID" ] || { echo "git config user.signingkey is not set" >&2; exit 1; }
-KEYGRIP=$(gpg --list-secret-keys --with-keygrip "$KEYID" 2>/dev/null \
-  | awk '/^ssb/ && /\[S\]/ {found=1; next} found && /Keygrip/ {gsub(/ /,"",$0); sub(/Keygrip=/,""); print; exit}')
-[ -n "$KEYGRIP" ] || { echo "No [S] subkey keygrip found for $KEYID — cannot identify the signing key" >&2; exit 1; }
-gpg-connect-agent 'keyinfo --list' /bye | grep "$KEYGRIP" | awk '{print $7}'  # 1 = cached
+bash ~/.claude/skills/wt/gpg_cache_check.sh
 ```
 
+スクリプトの結果は stdout の 1 行と終了コードで返る:
+
+| stdout | 終了コード | 意味 |
+|--------|-----------|------|
+| `cached=1` | 0 | 署名鍵のパスフレーズがキャッシュされている |
+| `cached=0` | 1 | キャッシュされていない(冷えている) |
+| (なし) | 2 | 署名鍵を特定できない、または gpg-agent に問い合わせられない。理由は stderr に出る |
+
 **Constraints:**
-- **MUST**: 署名鍵の keygrip は次の手順で特定する: `git config user.signingkey` で鍵IDを取得し、`gpg --list-secret-keys --with-keygrip` の出力から同じ鍵に属する `[S]` フラグ付きサブキー(ssb)行の直後にある `Keygrip` を読む(`user.signingkey` は primary 鍵の ID を指すが、実際の署名には `[S]` サブキーの keygrip が使われるため。実機確認済み)
-- **MUST**: 上記 keygrip で `gpg-connect-agent 'keyinfo --list' /bye` の出力(`S KEYINFO <keygrip> D - - <cached> P - - -` 形式)をフィルタし、7列目が `1` かどうかでキャッシュの有無を確認する(実機確認済み)
-- **MUST**: `KEYID`(`user.signingkey` 未設定)または `KEYGRIP`([S] サブキーが無い鍵構成)が空なら、agent に問い合わせる前に失敗させ「署名鍵を特定できない」と報告する(上記ワンライナーの `[ -n ... ] ||` ガード。`.mise.toml` の `gpg:*` タスクと同じ流儀)。空文字で `grep "$KEYGRIP"` すると全 KEYINFO 行にマッチし、無関係な鍵の cached フラグを署名鍵のものと誤読しうるため(PR #625 のレビュー指摘)
-- **SHOULD**: 冷えている(7列目が `1` でない)場合、ユーザーに1回署名(`echo test | gpg --clearsign -o /dev/null`)によるキャッシュ温めを依頼する
+- **MUST**: キャッシュの確認は同梱スクリプト `gpg_cache_check.sh` で行い、keygrip の特定や KEYINFO の読み取りを SKILL.md の本文や司令塔の手書きのワンライナーで行わない。Claude Code は skill を引数つきで呼ぶと、本文にある位置引数の形(ドル記号と数字)を引数の語に置き換えるため、本文に書いた awk は呼び方次第で壊れる(#666)。スクリプトのファイルは置き換えの対象にならない
+- **MUST**: スクリプトは署名鍵を次の手順で特定する: `git config user.signingkey` で鍵 ID を取得し、`gpg --list-secret-keys --with-keygrip` の出力から同じ鍵に属する `[S]` フラグ付きサブキー(ssb)行の直後にある `Keygrip` を読む(`user.signingkey` は primary 鍵の ID を指すが、実際の署名には `[S]` サブキーの keygrip が使われるため。実機確認済み)。次に `gpg-connect-agent 'keyinfo --list' /bye` の出力(`S KEYINFO <keygrip> D - - <cached> P - - -` 形式)から keygrip が一致する行を選び、cached の列(7 列目)が `1` かどうかでキャッシュの有無を判定する(実機確認済み)。手順を変えるときはスクリプトとこの説明を一緒に直す
+- **MUST**: 終了コード 2 を受けたら、キャッシュの有無を推測せず、stderr の理由(`user.signingkey` 未設定・[S] サブキーが無い鍵構成など)を添えて「署名鍵を特定できない」とユーザーに報告する。スクリプトは鍵 ID や keygrip が空のとき、agent に問い合わせる前に終了コード 2 で止まる。空の keygrip で照会すると全 KEYINFO 行にマッチし、無関係な鍵の cached フラグを署名鍵のものと誤読しうるため(PR #625 のレビュー指摘)
+- **SHOULD**: 冷えている(`cached=0`)場合、ユーザーに1回署名(`echo test | gpg --clearsign -o /dev/null`)によるキャッシュ温めを依頼する
 - **MAY**: 温めは委任と並行に進めてよいが、worker がコミットに到達する前に温まっているのが望ましい
 
 #### 作業物の置き場(作業記憶)
@@ -138,13 +141,13 @@ created: <YYYY-MM-DD>
 
 #### pane の用意とエージェント起動
 
-pane の用意とエージェント起動は分離された2段構成になっている。まず worktree 専用 workspace のルート pane(手順3で控えた `result.root_pane.pane_id`)から下に pane を割り、作業指示は作業記憶(上記「作業物の置き場」参照)にファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
+司令塔は、pane の用意とエージェント起動を分けて行う。エージェント起動はさらに、起動プロンプトを付けない `herdr agent start`(1 段目)と、名前宛ての `herdr agent prompt` による起動プロンプトの送達(2 段目)に分ける。herdr 0.9.1 では、起動プロンプトを引数に付けた `agent start` がタイムアウトし、worker に名前が付かないため(詳細: Troubleshooting「起動プロンプト付きの agent start が 0.9.1 でタイムアウトし worker に名前が付かない」参照)。まず worktree 専用 workspace のルート pane(手順3で控えた `result.root_pane.pane_id`)から下に pane を割り、作業指示は作業記憶(上記「作業物の置き場」参照)にファイルとして書く(長文プロンプトを直接 inline できない理由は下記 Constraints 参照):
 
 ```bash
 herdr pane split --pane <root-pane-id> --direction down --cwd <worktree-path>
 ```
 
-新しい pane-id は応答 JSON の `result.pane.pane_id` から取得する。続けて作業指示をファイルに書き、エージェントを起動する:
+新しい pane-id は応答 JSON の `result.pane.pane_id` から取得する。続けて作業指示をファイルに書き、起動プロンプトを付けずにエージェントを起動する(1 段目):
 
 ```bash
 cat > "$wb/<YYYYMMDD>-brief-<branch-slug>.md" <<'PROMPT'
@@ -158,8 +161,22 @@ created: <YYYY-MM-DD>
 <作業指示プロンプト（複数行可）>
 PROMPT
 
-herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --pane <new-pane-id> -- --model <model> --effort <effort> --permission-mode auto "<作業記憶のディレクトリ>/<YYYYMMDD>-brief-<branch-slug>.md をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。"
+herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --pane <new-pane-id> -- --model <model> --effort <effort> --permission-mode auto
 ```
+
+1 段目が成功すると、`agent start` は終了コード 0 を返し、結果 JSON の `result.agent` に付けた名前(`name`)・`"agent_status":"idle"`・`"interactive_ready":true` が入る(2026-10-05 の実測では約 4.0 秒で戻った)。司令塔は、これと `herdr agent get <名前>` の成功で名前が登録されたことを確かめる。続けて司令塔は、手順5(1)の Constraints のとおり `herdr agent read` で、メニューが出ていないことと、入力欄に未送信のテキストが残っていないことを確かめる。そのうえで、起動プロンプトを名前宛ての `agent prompt` で渡す(2 段目):
+
+```bash
+herdr agent get claude-<branch-name 由来のユニーク名>
+herdr agent read claude-<branch-name 由来のユニーク名> --source visible
+
+herdr agent prompt claude-<branch-name 由来のユニーク名> "<作業記憶のディレクトリ>/<YYYYMMDD>-brief-<branch-slug>.md をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。" --wait --until working --until blocked
+```
+
+2 段目の後、司令塔は手順5(1)の標準手順で `working` への遷移を確かめる。司令塔は `herdr agent get <名前>` で状態を読み、次のように分ける:
+- `working` なら、司令塔は手順5(2)の `herdr agent wait` を仕掛ける
+- `blocked` なら、worker は承認待ちのメニューを出している。司令塔は Enter で追撃せず、下記 Constraints の blocked の項のとおりユーザーに知らせる
+- どちらでもなければ、司令塔は `herdr agent read` でメニューが出ていないことを確かめたうえで、`herdr pane send-keys <pane-id> Enter` で追撃する(詳細: 手順5「(1) 下り=指示」の Constraints 参照)
 
 **Constraints:**
 - **MUST**: pane の用意は `herdr pane split` で行う。split 元の `--pane` には手順3の `result.root_pane.pane_id`(worktree 専用 workspace のルート pane)を使う。司令塔自身の pane(`$HERDR_PANE_ID`)を split 元にすると、worker pane が司令塔の workspace 側に作られてしまい、worker を worktree 専用 workspace に置く設計(旧構文の `--workspace` 指定が担っていた部分)が壊れる
@@ -168,8 +185,12 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 - **MUST**: pane split 直後に `herdr agent start` を投げない。split 直後は pane 内のシェルがまだ使える状態になっておらず、`agent_pane_busy`(`agent target pane <pane-id> is not an available shell`)で拒否されうる。`herdr pane process-info --pane <new-pane-id>` の `result.process_info.foreground_processes[].name` で前面プロセスがシェルになったことを確認してから起動し、確認できなければ数秒待って再試行する(詳細: Troubleshooting「pane split 直後の agent start が agent_pane_busy で拒否される」参照)
 - **MUST NOT**: `herdr agent start` に `--workspace` / `--cwd` / `--split` / `--focus` を渡さない。herdr 0.7.5 で廃止され `unknown option` エラーになる。pane はあらかじめ `pane split` で用意し、`agent start` には `--pane <pane split で得た pane-id>` を渡す
 - **MUST**: `--kind claude` が実行ファイルの正典を与えるため、`--` 以降には実行ファイル名(`claude`)を含めず、引数のみを渡す
-- **MUST**: 作業指示プロンプトは `AGENT_ARG` に直接 inline しない。複数行 heredoc をそのまま渡すと `invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(詳細: Troubleshooting「長文プロンプトの inline 渡しが拒否される」参照)。作業指示は作業記憶(上記「作業物の置き場」参照)にファイルとして書き、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする。起動プロンプトの `<パス>` は、`$wb` を展開した絶対パスで書く
+- **MUST NOT**: `agent start` の `--` 以降に起動プロンプトを付けない。herdr 0.9.1 では、起動プロンプト付きの `agent start` は worker を起動するものの、約 30 秒(既定の `--timeout 30000`)後に `timeout` エラーと終了コード 1 を返し、worker に名前が付かない(2026-10-05 に 5 体中 5 体で再現。詳細: Troubleshooting「起動プロンプト付きの agent start が 0.9.1 でタイムアウトし worker に名前が付かない」参照)
+- **MUST**: 2 段目に進む前に、1 段目の終了コードが 0 であること、結果 JSON の `result.agent.name` が付けた名前で `result.agent.interactive_ready` が `true` であること、`herdr agent get <名前>` が成功することを確かめる。1 段目が `timeout` を返した場合や、`agent get` が `agent_not_found` を返した場合は、名前宛ての 2 段目を送らず、Troubleshooting「起動プロンプト付きの agent start が 0.9.1 でタイムアウトし worker に名前が付かない」の回復手順に従う
+- **MUST**: 作業指示プロンプトは起動プロンプトに直接 inline しない。作業指示は作業記憶(上記「作業物の置き場」参照)にファイルとして書き、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にして、2 段目の `agent prompt` で渡す。起動プロンプトの `<パス>` は、`$wb` を展開した絶対パスで書く。複数行 heredoc を `agent start` の `AGENT_ARG` にそのまま渡すと `invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否された(詳細: Troubleshooting「長文プロンプトの inline 渡しが拒否される」参照)。`agent prompt` の `<TEXT>` に複数行を渡したときの挙動は確かめていない
 - **MUST**: 起動プロンプトには「自分で読む(サブエージェント委任禁止)」を明記する(上記の文言に含まれている「あなた自身が読み(サブエージェントに委任しない)」を削らない)。「読み、実行してください」だけだと作業者本人が読むか委任するかが曖昧になり、fork サブエージェントへの委任という遠回りな解釈を許して初手で止まりうる(詳細: Troubleshooting「起動プロンプトのファイル読みを fork サブエージェントに委任して初手で止まる」参照)
+- **MUST**: 2 段目の `agent prompt` には `--wait --until working --until blocked` を付ける。`--until` を省いた `--wait` は `idle` / `done` / `blocked` のどれかまで待つため、起動プロンプトでは worker の最初のターン(作業全体)が終わるまで戻らない。2026-10-05 の実測では、司令塔が `--wait --timeout 60000` で送ったところ、60,039 ms 後に `timeout`(`timed out waiting for agent status`)と終了コード 1 が返った。このとき submit は成功しており、直後の `herdr agent get` は `agent_status: "working"`・`interactive_ready: true` を返し、名前も保たれていた。`--until working --until blocked` を付けると受理の直後に戻るという挙動は、`herdr agent prompt --help`(0.9.1)の記述に基づく(help は、submit 後 5000 ms 以内に `working` か `blocked` を観測できなければ `agent_prompt_stalled` を返すとも書いている)。2026-10-05 に司令塔がこの 2 段で worker 3 体を起動して確かめた: 1 段目(起動プロンプトなしの `agent start`)は 3 体とも 3.5〜4.0 秒で終了コード 0 を返し、結果 JSON に名前と `interactive_ready: true` が入っていた。2 段目(`agent prompt <名前> "<起動プロンプト>" --wait --until working --until blocked --timeout 30000`)は 3 体とも 0.5〜0.6 秒で終了コード 0 と `agent_status: "working"` を返し、`agent_prompt_stalled` は出なかった
+- **MUST**: 2 段目が `agent_prompt_stalled` や `timeout` を返しても、submit の成否は戻り値で決めず、上記の手順5(1)の `herdr agent get` で確かめる(2026-10-05 の実測では、`timeout` が返っても submit は成功していた)
 - **MUST**: エージェント名はセッション全体でユニーク制約があるため、固定名 `claude` ではなくブランチ名由来の名前にする。変換ルール: ブランチ名から prefix(`fix/` 等)を除き、`_` と `/` を `-` に置換して `claude-` を前置する(例: `fix/wt_agent_start_options` → `claude-wt-agent-start-options`)。herdr の agent 名は 1〜32 文字に制限されており(超過すると `invalid_agent_name: agent name must start with a lowercase letter and contain only lowercase letters, digits, '-' or '_' (1-32 characters)` で起動に失敗する)、変換後の名前が32文字を超える場合は、意味が保たれる範囲で単語を間引いて32文字以内に短縮する(ユニーク性が保てればよい)。実例(2026-08-01、#539): `fix/wt_agent_prompt_submit_check` → `claude-wt-agent-prompt-submit-check`(35文字)が拒否され、`claude-wt-prompt-submit-check`(29文字)に短縮して復旧した
 - **MUST**: 作業者モデル(`--model <model>`)は下記「作業者モデルの選択基準」で決め、既定は `claude-opus-5-5`(司令塔=メインセッションが計画とレビュー、作業者が実装を担う分業は変わらない)。ユーザーが入力内で別モデルを指定した場合はそれに従う
 - **MUST**: `--permission-mode auto` で起動する。定型操作は自動承認され、判断が必要な操作だけが blocked として表面化する
@@ -206,6 +227,28 @@ herdr agent start claude-<branch-name 由来のユニーク名> --kind claude --
 **Constraints:**
 - **MUST NOT**: `low` は /wt では使わない(under-thinking のリスクがあるため)
 - **SHOULD**: `medium` 以下では Sonnet 作業者が指示を literal に解釈する(Sonnet 5 で観測、5.5 では未検証)ため、作業指示プロンプトの完了条件を具体的に書く
+
+#### 同一ファイルの並列編集(区画分け)
+
+同じファイルに独立した追記が複数たまり(例: この SKILL.md への SOP 追記が十数件)、1 worker に全部を任せると context が逼迫する場合、司令塔はファイルを区画に分けて複数 worker に並列で編集させてよい。区画分けをしないと、司令塔は「1 worker で直列に消化して context の逼迫を受け入れる」か「コンフリクトを前提に後着 PR を rebase に差し戻す」かの二択になる。実例は Troubleshooting「同一ファイルを 2 worker で区画分けして並列編集した(merge-tree で事前確認)」を参照。
+
+区画の割り当ての例(2026-10-05、この SKILL.md を 4 worker で並列編集したときの割り当て):
+
+| worker | 区画 1(手順の本文) | 区画 2(Troubleshooting) |
+|---|---|---|
+| #630 | 手順 5(1) の Constraints | 既存節「agent prompt がユーザー由来の pending テキストを置換で消しうる」の節内 |
+| #631 | 「effort の選択基準」の直後に新小節 | ファイル末尾に新節(末尾追記はこの worker だけ) |
+| #664 | 「pane の用意とエージェント起動」 | 「pane split 直後の agent start が agent_pane_busy で拒否される」の直後に新節 |
+| #666 | 「GPG パスフレーズキャッシュの事前チェック」 | 既存節「keygrip 特定の awk が [E] サブキーを拾ってキャッシュを誤判定する」の節内 |
+
+**Constraints:**
+- **MUST**: 司令塔は各 worker の作業指示で、追記の挿入位置を既存見出しの名前で明示する(「`### X` の直後に新節」「`#### Y` の節内」)。行番号は並行作業でずれるので、行番号を書く場合も見出し名と併記した補助情報に留める
+- **MUST**: 司令塔はファイル末尾への追記を 1 worker だけに割り当てる。2 worker がそれぞれ末尾に追記すると、両方の hunk が同じ末尾の文脈行を持つため必ずコンフリクトする
+- **MUST**: 司令塔は各 worker の作業指示に、他の worker の区画を「編集禁止区画」として列挙する。完了条件には「`git diff main -- <file>` で、自分の区画以外に差分が無いことを確認し、確認結果を最終報告に書く」を入れる
+- **MUST**: 司令塔は挿入位置同士を、最低でも既存の 1 節分(数行以上)離す。git の 3-way merge は、各 hunk の文脈行(前後 3 行)が重ならなければ自動で通る
+- **MUST**: 両 PR が出た時点で、司令塔は `git fetch origin` のあと `git merge-tree --write-tree --merge-base <base> origin/<A> origin/<B>` で clean merge を事前に確認する。`<base>` は両ブランチが分岐した main のコミットで、`git merge-base origin/<A> origin/<B>` で引ける。exit code 0 なら clean で、1 ならコンフリクトがあり、出力に該当ファイルが列挙される
+- **SHOULD**: dotfiles は squash マージなので、司令塔は先着 PR をマージしたあと、後着 PR を `gh pr update-branch <PR番号>` で main を取り込む形で玉突きする(手順 6 のマージ世話)。先着 PR 以外の変更が main に入っていなければ、merge-tree で確認した clean merge がそのまま再現する
+- **SHOULD**: 自分の区画をまたぐ追記(どの worker の区画にも属さない箇所への注意書き等)が必要になったら、worker はその場で書かずに最終報告に書き、司令塔はそれを別 Issue に切り出して次の PR に回す(#629 の実例)
 
 #### 作業指示プロンプトのテンプレート
 
@@ -292,7 +335,9 @@ herdr agent prompt <agent-name> "<追加指示のテキスト>"
 - **MUST**: `<agent-name>` は手順4でエージェントに付けたユニーク名をそのまま使う。pane-id の引き直しは不要
 - **MUST**: 実行前に対象の agent 名を必ず確認する(宛先を誤ると、無関係なエージェントに指示が届いてしまう。`agent prompt` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない)
 - **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は `agent prompt` を使わない(chat 入力欄への送信になるため、ハイライトされている選択肢を誤確定させる罠がある。`send-text` + Enter でこの誤確定による実害が実際に出ており(詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)、`agent prompt` も同じくメニュー表示中の pane に送信する以上、予防的に避ける)。メニューの選択肢確定自体は従来どおり `herdr pane send-keys <pane-id> Enter` で行う(pane-id は `herdr agent get <agent-name>` で都度引く。詳細: Troubleshooting「pane-id は非永続」参照)
-- **MUST**: 送信前の `herdr agent read` では、メニュー表示の有無に加えて**入力欄の pending テキストの有無**も確認する。`agent prompt` は入力欄の pending テキストを新テキストで置換するため、ユーザー由来と思われるテキスト(【相談】【報告】プレフィックスが付いていない未送信テキスト)が残っている場合は置換で消さず、ユーザーに確認するか、送達(手動 Enter)を待ってから送る(詳細: Troubleshooting「agent prompt がユーザー由来の pending テキストを置換で消しうる」参照)
+- **MUST**: 送信前の `herdr agent read` では、メニュー表示の有無に加えて**入力欄の pending テキストの有無**も確認する。`agent prompt` は入力欄の pending テキストを新テキストで置換するため、ユーザー由来と思われるテキスト(【相談】【報告】プレフィックスが付いていない未送信テキスト)が残っている場合は置換で消さず、ユーザーに確認するか、送達(手動 Enter)を待ってから送る(詳細: Troubleshooting「agent prompt がユーザー由来の pending テキストを置換で消しうる」参照)。ただし Claude Code は直前の assistant 出力から次のプロンプト候補(placeholder)を生成して入力欄に薄字で表示し、`herdr agent read` や `herdr pane read` のテキスト出力では placeholder とユーザーが手で打った未送信テキスト(実入力)を区別できない。pending テキストを見つけたら、次の Constraint の基準で placeholder か実入力かを判別してから扱いを決める
+- **MUST**: pending テキストが placeholder か実入力かは次の基準で判別する。placeholder の特徴は、(a) worker のターン終了直後に出現し、内容が worker の最終出力の続きとして自然である(例: 最終報告で PR を作った直後の「CI 終わったら報告して」「PRのマージをお願い」)、(b) 【相談】【報告】プレフィックスが無い、(c) 時間を置いて `herdr pane read <pane-id> --source visible` を取り直すと内容が変わるか消える、の 3 点である。実入力の特徴は、ターンをまたいでも同じ文言が残ること、ユーザーが在席していることの 2 点である。placeholder と判別できたテキストは置換してよく、そのまま `agent prompt` を送る。ユーザーへの確認は判別に迷う場合に限る。ユーザーが不在で判別できない場合は placeholder とみなして送ってよいが、送る前に置換で消える文言を司令塔のログ(会話内の出力)にそのまま書き残し、実入力だった場合にユーザーが復元できるようにする
+- **SHOULD**: placeholder と実入力の判別は、まず `herdr pane read <pane-id> --source visible --format ansi | grep -a '❯' | tail -1 | cat -v` で ANSI 属性を見て機械的に行う(pane-id は `herdr agent get <agent-name>` で引く)。Claude Code は placeholder を dim(SGR 2)で描画し、herdr の ANSI 出力はそれを `\e[2m` のまま返すため、`❯` の後ろに続く SGR 0 のリセット(`^[[0m`)を読み飛ばし、その次が `^[[2m` で始まる薄字だけなら placeholder であり(実測では `❯ ^[[0m^[[2m<文言>` の形)、SGR の付かない文字が続けば実入力である(Claude Code 2.1.289 + herdr 0.9.1 で実測。詳細: Troubleshooting「agent prompt がユーザー由来の pending テキストを置換で消しうる」参照)。ターン終了後のプロンプト候補のほか、起動直後の例文(`Try "..."`)や、キューに入ったメッセージの案内(`Press up to edit queued messages`)も同じ dim の placeholder である。ANSI 属性で判別できた場合は、上記 (c) の時間を置いた取り直しを省いてよい。Claude Code や herdr の版上げで描画が変わり、ANSI 出力に `\e[2m` が見当たらなくなった場合は、上記 (a)〜(c) の基準に戻る
 - **MUST**: `agent prompt` 送信後は `herdr agent get <agent-name>` で `working` へ遷移したことを確認する。コマンドは `agent_prompted` を正常に返すが、それだけでは submit の成否を判定できない(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)。遷移せずテキストが入力欄に残っている場合は、`herdr agent read` で pane の状態(メニュー非表示であること。上記 Constraint 参照)を確認したうえで `herdr pane send-keys <pane-id> Enter` で submit する(pane-id は `herdr agent get <agent-name>` で引く)
 - **MUST**: レビュー差し戻し等、委任後に追加の作業ラウンドを送る前に、`herdr agent get <agent-name>` で pane-id を引いたうえで `herdr pane read <pane-id> --source visible` を実行し、末尾行の pane 下部ステータスラインで context 使用率(💭 n%)を確認する。50% を超えている場合は追加ラウンドを送らず、(a) 司令塔が直接対応する、(b) 新 worker へ引き継ぐ(引き継ぎブリーフ = 元ブリーフ + ここまでの成果物参照(PR URL / コミット)+ 残作業のみ。引き継ぎ指示・HANDOFF.md・後任ブリーフの具体手順は手順8「引き継ぎモード」参照)、のいずれかを選ぶ。ユーザーより先に司令塔が検知すべきシグナルであり、閾値超過を検知したら対応方針とあわせてユーザーに報告する(詳細: Troubleshooting「レビュー差し戻しラウンドによる worker context の逼迫」参照)
 - **MUST**: pane 幅が狭くステータスラインが `…` で切り詰められ 💭 の値が読めない場合、herdr CLI に幅非依存で context 使用率を取得できる経路は無い(実機調査済み。詳細: Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)。読めない場合は使用率を推測で埋めず、保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す
@@ -495,10 +540,26 @@ mise trust は絶対パス単位で管理されるため、新規 worktree は�
 auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザーの明示許可がない」として拒否されることがある。その場合は AskUserQuestion 等でユーザーに auto mode 起動の許可を明示的に確認してから再実行する。
 
 ### 長文プロンプトの inline 渡しが拒否される
-`herdr agent start` の `--` 以降(`AGENT_ARG`)に複数行 heredoc の作業指示プロンプトをそのまま渡すと、`invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(2026-07-30、#520 で実機確認)。回避策: 作業指示をファイルとして書き(置き場は手順4「作業物の置き場」の作業記憶。当時はスクラッチパッドだった)、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする(手順4参照)。allowlist テンプレート(手順3「worktree の準備」参照)は「司令塔がタスク指示を置く作業記憶の読み書き」を既に許可しており、この方式と整合している。
+`herdr agent start` の `--` 以降(`AGENT_ARG`)に複数行 heredoc の作業指示プロンプトをそのまま渡すと、`invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(2026-07-30、#520 で実機確認)。回避策: 作業指示をファイルとして書き(置き場は手順4「作業物の置き場」の作業記憶。当時はスクラッチパッドだった)、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする。#520 の当時は、この 1 行を `agent start` の引数で渡していた。herdr 0.9.1 では起動プロンプト付きの `agent start` がタイムアウトして worker に名前が付かないため、司令塔はこの 1 行を `agent start` には付けず、起動後に名前宛ての `herdr agent prompt` で渡す(手順4「pane の用意とエージェント起動」の 2 段目と、下記「起動プロンプト付きの agent start が 0.9.1 でタイムアウトし worker に名前が付かない」参照)。allowlist テンプレート(手順3「worktree の準備」参照)は「司令塔がタスク指示を置く作業記憶の読み書き」を既に許可しており、この方式と整合している。
 
 ### pane split 直後の agent start が agent_pane_busy で拒否される
 2026-09-27 の並行運用で、司令塔が `herdr pane split` の直後に同じコマンド列で `herdr agent start` を投げたところ、`agent_pane_busy`(`agent target pane w4V:p2 is not an available shell`)で拒否された(#614)。pane split 直後は pane 内のシェルがまだ起動しておらず、前面プロセスがシェルとして使える状態になるまでラグがあるため、直後の `agent start` はタイミング依存で失敗しうる。同日 2 回発生し(#596・#611 の worker 起動時)、2 回目は 5 秒待ってから同じコマンドを再実行して成功した。`agent_pane_busy` を受けたら失敗扱いにせず、数秒後に同じコマンドを再実行する(2 回目で通る)。予防策として、起動前に `herdr pane process-info --pane <pane-id>` で前面プロセスがシェルになったことを確認する(手順4「pane の用意とエージェント起動」参照)。
+
+### 起動プロンプト付きの agent start が 0.9.1 でタイムアウトし worker に名前が付かない
+2026-10-04、herdr 0.9.1(クライアント・サーバーとも)の環境で、司令塔は当時の手順4のとおり、起動プロンプトを `herdr agent start` の引数に付けて worker を起動した。約 30 秒後に `{"error":{"code":"timeout","message":"timed out waiting for agent startup"}}` が返り、worker に名前が付かなかった(#664)。worker 自体は起動しており、起動プロンプトの作業を進めていた。`herdr agent get <名前>` は `agent_not_found` を返し、`herdr agent list` ではその worker が `name: null` で載っていた。司令塔は、pane ID を宛先にして `agent get`・`agent wait`・`agent read`・`agent prompt` を通し、セッションの最後まで pane ID で運用した。
+
+2026-10-05、司令塔は同じ形(`herdr agent start <名前> --kind claude --pane <pane-id> -- --model <model> --effort <effort> --permission-mode auto "<起動プロンプト 1 行>"`)で 5 体の worker を並行に起動し、5 体とも同じ結果になった(5/5 で再現)。5 体とも、約 30 秒(既定の `--timeout 30000`)後に `timeout` エラーと終了コード 1 が返り、直後の `herdr agent get <名前>` は `agent_not_found` を返した。`herdr agent list` では、5 体とも `name: null`・`agent_status: "working"` で、`cwd` は正しい worktree だった。worker は起動プロンプトを受け取って作業しており、うち 1 体が送った【相談】(`herdr agent prompt "commander-dotfiles" "…"`)は司令塔に届いた。同じ日、司令塔は 6 体目を起動プロンプトなしで起動した。`agent start` は約 4.0 秒で終了コード 0 を返し、結果 JSON の `result.agent` には付けた名前・`"agent_status":"idle"`・`"interactive_ready":true` が入っていた。直後の `herdr agent get <名前>` も成功した。続けて司令塔が名前宛ての `herdr agent prompt <名前> "<起動プロンプト 1 行>" --wait --timeout 60000` で起動プロンプトを渡したところ、起動プロンプトは worker に届いた。ただし `--wait` は 60,039 ms 後に `timeout`(`timed out waiting for agent status`)と終了コード 1 を返した。`--until` を省いた `--wait` は `idle` / `done` / `blocked` まで待つので、worker の最初のターンが終わるまで戻らないためである。直後の `herdr agent get <名前>` は `agent_status: "working"`・`interactive_ready: true` を返し、名前も保たれていた。
+
+原因は確かめていない。推測(未検証)は次のとおり: 起動プロンプトを引数で渡すと、worker はすぐ `working` に入る。そのため herdr は「入力待ち(interactive readiness)」を `--timeout` の間に観測できず、タイムアウトする。名前の登録は、起動が成功したときにだけ行われる。`herdr agent start --help`(0.9.1)の文面「The pane must be at its interactive shell prompt. Success means the expected agent was detected in the same terminal and is ready for input.」と、末尾の案内「next: herdr agent prompt <TARGET> <TEXT> --wait」は、この推測と整合する。
+
+司令塔は、手順4の 2 段(起動プロンプトなしの `agent start` → 名前宛ての `agent prompt`)で worker を起動する。それでも `agent start` が `timeout` を返した場合や、起動プロンプト付きで起動してしまった場合は、司令塔は `herdr agent get <名前>` と `herdr agent list` で対象の pane の worker の状態を確かめ、次の 3 つに分けて回復する。2026-10-04 と 2026-10-05 に観測したのは 2 つ目だけで、1 つ目と 3 つ目は観測していない:
+1. 名前付きで載っている場合(`herdr agent get <名前>` が成功する)。司令塔は名前を宛先にしてそのまま続ける。起動プロンプトをまだ渡していなければ、司令塔は手順4の 2 段目から行う
+2. 名前なしで載っている場合(`herdr agent list` で、対象の pane ID の worker が `name: null` で、`cwd` が対象の worktree)。司令塔は、そのセッションの間、その worker の宛先を名前ではなく pane ID にして手順5を回す(`agent get`・`agent wait`・`agent read`・`agent prompt` は pane ID 宛てで通る。2026-10-04 に 4 つとも、2026-10-05 に `agent prompt` を実機で確かめた)。起動プロンプトをまだ渡していない場合(起動プロンプトなしの 1 段目がタイムアウトした場合)は、司令塔は 2 段目の `agent prompt` も pane ID 宛てで送る。pane ID は非永続なので(下記「pane-id は非永続」参照)、司令塔は pane ID 宛てに送る前に `herdr agent list` で pane ID と `cwd` の対応を確かめ直す
+3. 一覧に載っていない場合。司令塔は `herdr pane read <pane-id> --source recent` で pane の状態を確かめる。pane がシェルのプロンプトに戻っていれば、司令塔は手順4の 1 段目をやり直す。それ以外の状態(claude が動いているように見えるのに herdr が検知していない等)では、司令塔は推測で続けず、ユーザーに報告する
+
+どの場合も、司令塔は名前の付かなかった worker を `herdr agent rename` で名付け直さない(手順3「司令塔の自己命名」の MUST NOT)。
+
+worker から司令塔への push(【相談】【報告】)は、司令塔の名前を宛先にするので、worker に名前が付かなくても影響を受けない(2026-10-05 に、名前の付かなかった worker の【相談】が司令塔に届いた)。
 
 ### 起動プロンプトのファイル読みを fork サブエージェントに委任して初手で止まる
 2026-09-27 の 7 体並行運用で、作業者 1 体(Sonnet 5 / effort high)が当時の起動プロンプト「<パス> を読み、その内容全体をあなたへの作業指示として忠実に実行してください。」を受けて、ファイルを自分で読まず Agent ツール(`subagent_type: fork`)に読ませ、そのままターンを終えて done になった(#609)。fork の結果通知が届かず、司令塔が `agent prompt` で「サブエージェントに委任せず自分で cat して実行」と差し替えるまで止まった(約 8 分のロス)。起動プロンプトが「読み、実行してください」だけだと、作業者本人が読むか委任するかが曖昧で、fork への委任という遠回りな解釈を許してしまう。起動プロンプトには「あなた自身が読み(サブエージェントに委任しない)」を明記する(手順4「pane の用意とエージェント起動」参照)。
@@ -544,6 +605,17 @@ push の不達を前提に主チャネル(手順5(2)の `agent wait` + `agent re
 ### agent prompt がユーザー由来の pending テキストを置換で消しうる
 2026-08-12 の /wt 運用(Issue #553 → PR #579、worker 3 体 + 司令塔の並行運用)で、司令塔が Copilot レビュー差し戻し指示を `herdr agent prompt` で worker へ送った際、宛先 worker pane の chat 入力欄にユーザーが手で打った未送信テキスト(「PR #579の内容とレビュー結果を確認して」)が残っており、`agent prompt` の置換仕様(#520/#528 で実機確認済み。上記「send-keys Enter が chat 入力を submit できないことがある」参照)により消えた(#580)。消えたテキストは司令塔の差し戻し指示と実質重複していたため実害はなかったが、構造としては**ユーザーの未送信入力を司令塔が無断で消しうる**。同一セッション内で別 worker pane にもユーザー由来と思われる未送信テキスト(「PR #578のCI結果を確認して」)が置かれているのを観測しており、ユーザーが worker pane に直接入力する運用は一回きりではない。送信前の `herdr agent read` はメニュー誤確定の防止(#498)だけでなく、pending テキストの保全のためにも行う(手順5(1)の Constraint 参照。関連: #572)。
 
+逆向きの偽陽性も観測している(#630)。2026-09-28 の docs 掃除の /wt 運用(worker 6 体 + 司令塔の並行運用)で、司令塔が一度も `agent prompt` を送っていない worker pane の入力行(`❯` 行)に「CI 終わったら報告して」「CIの結果見て報告して」「PRのマージをお願い」などの文言が表示され、ターンをまたぐと「アンカー切れの件で Issue 作って」のように内容が変わった。ユーザーは不在で、何も入力していなかった。これは Claude Code が直前の assistant 出力から生成して入力欄に薄字で表示するプロンプト候補(placeholder)であり、`herdr agent read` / `herdr pane read` のテキスト出力では薄字と実入力の区別が付かないため、上記の保全チェックを字義どおり適用すると worker がターンを終えるたびに「ユーザー入力が残っている」と判定して司令塔がユーザー確認で止まる(この運用では 6 worker × 複数ラウンドで毎回該当した)。このときの司令塔は、内容が worker 自身の最終報告に対応していること、【相談】【報告】プレフィックスが無いこと、ターンをまたいで内容が変わることから placeholder と判断して `agent prompt` を送り、置換後の submit も正常で実害はなかった。この判断基準を手順5(1)の Constraint に判別基準として書き足し、保全の目的(実入力を消さない)は維持したまま placeholder を無視できるようにした。なお、上記 2026-08-12 の実例(「PR #579の内容とレビュー結果を確認して」)が実入力だったのか placeholder だったのかは、今となっては検証できない。
+
+ANSI 出力で placeholder を機械的に判別できるかは、2026-10-05 に実測した(#630)。herdr 0.9.1 の `herdr pane read --source visible --format ansi` は、pane に出した SGR 2 を `\e[2m` のまま返す(自分で split した pane で `printf '\033[2m...'` を出して確認)。Claude Code 2.1.289 は入力欄の placeholder を `\e[2m` で描画しており、ターンを終えて idle になった worker pane の placeholder(「Copilot のレビューが付いたら対応して」)は `❯` の後ろが `^[[0m^[[2m` で始まっていた。一方、テスト用に起動した claude pane の入力欄に `herdr pane send-text` で Enter なしで入れた文字列(実入力の代わり)には SGR が付かず、素の文字だった。テキスト出力ではどちらも `❯ <文言>` と同じ見た目になるが、ANSI 出力ではこの差で判別できるため、手順5(1)の SHOULD にコマンド例として載せた。スクリプトで判定したい場合は、dim の区間と残りの SGR を取り除き、残った文字列が空かどうかを見る。出力が空なら入力欄は空か placeholder だけであり、空でなければ実入力が残っている:
+
+```bash
+herdr pane read <pane-id> --source visible --format ansi | grep -a '❯' | tail -1 \
+  | sed -E $'s/\x1b\\[2m[^\x1b]*//g; s/\x1b\\[[0-9;]*m//g; s/\r//g; s/^.*❯//; s/\xc2\xa0//g; s/^[[:space:]]+|[[:space:]]+$//g'
+```
+
+この判定は入力欄の 1 行目(`❯` を含む行)だけを見る。また、実測は Claude Code と herdr の上記の版に限られる。版上げ後に placeholder が `\e[2m` 以外(例: RGB のグレー指定)で描画されるようになると、この判定は placeholder を実入力と誤判定する(安全側の誤り)ため、その場合は手順5(1)の (a)〜(c) の基準に戻る。
+
 ### GPG 署名コミットは worker pane から pinentry を出せない
 worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
 
@@ -552,15 +624,9 @@ worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示でき
 ### keygrip 特定の awk が [E] サブキーを拾ってキャッシュを誤判定する
 2026-08-31、GVA-NyaN の /wt 運用で、司令塔が GPG パスフレーズキャッシュの事前チェック(手順4)を実装した際、keygrip 特定の awk が「最初の ssb 行」の Keygrip を拾う形になっていた(#583)。鍵構成が `ssb [E]`(暗号化)→ `ssb [S]`(署名)の順だったため [E] サブキーの keygrip でキャッシュを照会してしまい、実際には温まっていた署名キャッシュを「冷えている(`-`)」と誤判定して、ユーザーに不要なキャッシュ温めを依頼した。SOP の散文(「[S] フラグ付き ssb 行の直後の Keygrip を読む」)は正しく、司令塔が都度書いた awk が仕様を満たしていなかった。[E] が先に並ぶのは gpg の既定出力順で、ssb が複数ある鍵構成では誰でも踏みうる。
 
-```bash
-# NG: 最初の ssb の keygrip を拾う([S] 判定がない)
-awk '/^ssb/{s=1} s && /Keygrip/{print $3; exit}'
+誤っていた awk は、[S] フラグを見ずに、最初の ssb 行の後に現れた Keygrip 行の 3 列目を出していた。正しい awk は、`[S]` フラグ付きの ssb 行を見つけてから、その直後の Keygrip 行を読む。どちらの awk も、今は同梱スクリプト `gpg_cache_check.sh` のコメントにだけ載せている(正しい方はスクリプトの本体)。SKILL.md に awk を載せないのは、本文にある位置引数の形が skill の引数で置き換えられて壊れるため(#666。2026-10-04 と 2026-10-05 に観測。2026-10-05 の観測では、置き換えは 0 始まりの語番号で行われ、該当する語が無い番号はそのまま残り、`$HERDR_PANE_ID` のような名前つきの変数は置き換えられなかった)。
 
-# OK: [S] フラグ付き ssb の直後の keygrip を拾う(手順4のワンライナー)
-awk '/^ssb/ && /\[S\]/ {found=1; next} found && /Keygrip/ {gsub(/ /,"",$0); sub(/Keygrip=/,""); print; exit}'
-```
-
-OK 例は 2026-08-31 に WSL2 + ed25519 primary [SC] / cv25519 ssb [E] / ed25519 ssb [S] 構成で、[S] サブキーの keygrip を正しく選択し cached=`1` を返すことを確認済み(2026-09-28 に Arch Linux の同構成でも再確認)。awk を都度手書きせず、手順4のワンライナーをそのまま使う。なお OK 例の awk も、`user.signingkey` 未設定や [S] サブキーの無い鍵構成では空文字を返す。空のまま `grep` に渡すと全 KEYINFO 行にマッチしてしまうため、手順4のワンライナーの空チェック(`[ -n "$KEYGRIP" ] ||` ガード)とセットで使う。
+正しい手順は、2026-08-31 に WSL2 + ed25519 primary [SC] / cv25519 ssb [E] / ed25519 ssb [S] 構成で、[S] サブキーの keygrip を正しく選択し cached=`1` を返すことを確認済み(2026-09-28 に Arch Linux の同構成でも再確認。2026-10-05 にスクリプト化した版でも同じ構成で `cached=1` を確認)。awk を都度手書きせず、手順4の `bash ~/.claude/skills/wt/gpg_cache_check.sh` を使う。スクリプトは、`user.signingkey` 未設定や [S] サブキーの無い鍵構成で keygrip が空になると、agent に問い合わせる前に終了コード 2 で止まる(空の keygrip で照会すると全 KEYINFO 行にマッチしてしまうため)。[E] が先に並ぶ鍵構成での誤判定は、同梱テスト `tests/gpg_cache_check_test.sh` が回帰として確かめる。
 
 ### pane-id は非永続
 pane-id はセッション中に compact されうる非永続 ID(詳細は `.config/claude/skills/herdr/SKILL.md` 参照)。
@@ -635,3 +701,8 @@ Claude Code は、ユーザープロンプト中に `ultra` と `code` を連結
 - 作業指示プロンプトにこのキーワードを連結形のまま書かない。「`ultra` と `code` を連結したキーワード」のように分割して書くか、「dynamic workflow のオプトインキーワード(#489 参照)」のように間接表記する。キーワード自体を扱うタスクでも同様で、コミットメッセージ・PR タイトル・PR 本文にも連結形を書かないよう作業指示に明記する
 - この SOP 自体もスキル起動時にセッションへ読み込まれるため、SKILL.md に連結形を書くと /wt を使うたびに誤発火しうる。この節も含め、SOP への追記では連結形を使わない
 - 発火した場合の標準対処: `herdr agent read` でダイアログ表示を確認し、人間の判断で辞退(No)する場合は `herdr pane send-keys <pane-id> 3` でダイアログを辞退してから、逐次実装で進める旨の補足指示を送る(送信手順は手順5(1) の標準手順に従う)
+
+### 同一ファイルを 2 worker で区画分けして並列編集した(merge-tree で事前確認)
+2026-09-28 の docs 掃除(司令塔が 6 worker を並行運用したセッション)で、この SKILL.md への SOP 追記が 13 件たまり、1 worker に全部を任せると context が逼迫する状況になった。司令塔は追記を 2 worker に区画分けし、#623 が 5 件(手順 6 の仮 CLEAN 対処と、headless nvim 検証・キーワード誤発火の Troubleshooting)、#625 が 8 件(起動・対話プロトコル周りの運用知見)を並列に消化した。司令塔は各 worker の作業指示で挿入位置を既存見出しの直後として指定し、相手の区画を編集禁止区画として列挙した。両 PR が出た時点で、司令塔は `git merge-tree --write-tree --merge-base <base> origin/<A> origin/<B>` で clean merge を事前に確認した。先着の #623 をマージしたあと、後着の #625 は `gh pr update-branch` で main を取り込み、コンフリクトなしで通ってそのままマージできた。
+
+副作用として、手順 4「作業指示プロンプトのテンプレート」への注意書き(headless nvim 検証の代替手順とキーワード回避)はどちらの worker の区画にも属さなかったため、2 つの PR には入れず、別 Issue の #629 に切り出して次の PR に回した。この手順は手順 4「同一ファイルの並列編集(区画分け)」に還流した(#631)。
