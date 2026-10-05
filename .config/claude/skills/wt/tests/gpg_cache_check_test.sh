@@ -66,6 +66,18 @@ ssb   cv25519 2024-01-01 [E]
       Keygrip = $grip_enc
 EOF
 
+# An [S] record without a Keygrip line, followed by another record
+# Keygrip 行の無い [S] のレコードの後に、別のレコードが続く
+cat >"$root/listing_s_without_grip" <<EOF
+sec   ed25519 2024-01-01 [SC]
+      0123456789ABCDEF0123456789ABCDEF01234567
+      Keygrip = $grip_primary
+uid           [ultimate] test <test@example.invalid>
+ssb   ed25519 2024-01-01 [S]
+ssb   cv25519 2024-01-01 [E]
+      Keygrip = $grip_enc
+EOF
+
 # keyinfo_<flags>: the cached flag of primary, [E] and [S] in that order
 # keyinfo_<フラグ>: primary・[E]・[S] の cached フラグをこの順に並べる
 write_keyinfo() {
@@ -143,6 +155,13 @@ export FAKE_KEYINFO="$root/keyinfo_sign_warm"
 # Review of PR #625: an empty keygrip must not reach the agent query.
 # PR #625 のレビュー指摘: 空の keygrip で agent に問い合わせない。
 run_case "no [S] subkey" 2 "" "no [S] subkey keygrip found"
+
+reset_env
+export FAKE_LISTING="$root/listing_s_without_grip"
+export FAKE_KEYINFO="$root/keyinfo_sign_warm"
+# Review of PR #680: the [S] record must not borrow the next record's keygrip.
+# PR #680 のレビュー指摘: [S] のレコードが次のレコードの keygrip を借りない。
+run_case "[S] subkey without Keygrip line" 2 "" "no [S] subkey keygrip found"
 
 reset_env
 unset FAKE_LISTING

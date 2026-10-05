@@ -70,8 +70,13 @@ key_id="$(git config user.signingkey 2>/dev/null)" || key_id=''
 # 最初の ssb 行の Keygrip を拾ってはいけない。gpg は既定で ssb [E] を ssb [S]
 # より先に並べる。以前の awk は最初の ssb の Keygrip 行の 3 列目を出していたため、
 # [E] サブキーで照会し、温まっていたキャッシュを冷えていると誤判定した(#583)。
+#
+# The state is reset at every key record (sec or ssb line), so that an [S]
+# record without a Keygrip line never borrows the keygrip of the next record.
+# 鍵のレコード(sec 行と ssb 行)ごとに状態を戻す。Keygrip 行の無い [S] の
+# レコードが、次のレコードの keygrip を借りないようにするため。
 listing="$(gpg --list-secret-keys --with-keygrip "$key_id" 2>/dev/null)" || listing=''
-keygrip="$(awk '/^ssb/ && /\[S\]/ {found=1; next} found && /Keygrip/ {gsub(/ /,"",$0); sub(/Keygrip=/,""); print; exit}' \
+keygrip="$(awk '/^(sec|ssb)/ {found = (/^ssb/ && /\[S\]/); next} found && /Keygrip/ {gsub(/ /,"",$0); sub(/Keygrip=/,""); print; exit}' \
   <<<"$listing")"
 # An empty keygrip would match every KEYINFO line and read the cached flag of
 # an unrelated key, so stop before asking the agent (review of PR #625).
