@@ -8,12 +8,12 @@
 
 ## 📚 Table of Contents
 
-- [Design Philosophy](#design-philosophy)
-- [Hybrid Approach](#hybrid-approach)
-- [Module Structure](#module-structure)
-- [Per-Host Profiles](#per-host-profiles)
-- [Configuration Strategies](#configuration-strategies)
-- [CI/CD Architecture](#cicd-architecture)
+- [Design Philosophy](#-design-philosophy)
+- [Hybrid Approach](#-hybrid-approach)
+- [Module Structure](#-module-structure)
+- [Per-Host Profiles](#-per-host-profiles)
+- [Configuration Strategies](#%EF%B8%8F-configuration-strategies)
+- [CI/CD Architecture](#-cicd-architecture)
 
 ---
 

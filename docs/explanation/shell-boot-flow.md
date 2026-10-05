@@ -8,10 +8,10 @@
 
 ## 📚 Table of Contents
 
-- [Background](#background)
-- [Boot Flow](#boot-flow)
-- [File Responsibilities](#file-responsibilities)
-- [Why This Architecture](#why-this-architecture)
+- [Background](#-background)
+- [Boot Flow](#-boot-flow)
+- [File Responsibilities](#-file-responsibilities)
+- [Why This Architecture](#-why-this-architecture)
 
 ---
 
