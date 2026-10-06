@@ -213,8 +213,12 @@ line+="\033[22;48;2;${BASE_RGB}m\033[22;38;2;$(hex2rgb "#AFD700")m${ARROW}"
 # username (bg:#3388FF fg:#EEEEEE)
 seg "#3388FF" "#EEEEEE" "$(whoami)"
 
-# hostname (bg:#AFD700 fg:#111111)
-seg "#AFD700" "#111111" "$(hostname -s 2>/dev/null || hostname)"
+# hostname (bg:#AFD700 fg:#111111) — 最初のドットより前の短い名前 / short name before the first dot
+# NOTE: hostname コマンドは入っていない環境がある (WSL2 の Arch Linux など) ので、bash が起動時に
+# 設定する変数 HOSTNAME を使う。外部コマンドを呼ばないので、コマンドの有無に左右されない (#690)
+# The hostname command is missing on some setups (e.g. Arch Linux on WSL2), so use bash's own
+# HOSTNAME variable, which needs no external command (#690)
+seg "#AFD700" "#111111" "${HOSTNAME%%.*}"
 
 # directory (bg:#6F6A70 fg:#EEEEEE) — プロジェクト相対、ホームは ~ 表示
 # NOTE: 置換側の \~ は必須 — 素の ~ だとチルダ展開されて $HOME に戻ってしまう
