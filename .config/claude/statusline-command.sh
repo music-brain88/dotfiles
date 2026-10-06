@@ -3,7 +3,7 @@
 # starship.toml (Myth Dark Pointed) の配色と pointed セグメントを 24bit カラーで忠実に再現する
 # Faithful port of .config/starship/starship.toml: colored pills with U+E0B0 arrows on a #464347 base band
 #
-# Segments: user > host > dir > git branch > git status > model > context gauge
+# Segments: user > host > dir > git branch > git status > model (→ subagent default) > effort > context gauge
 # Base-band text (cmd_duration style): session duration / cost / lines changed / rate limits (5h & 7d)
 
 set -euo pipefail
@@ -177,6 +177,34 @@ effort_color() {
   echo "#EEEEEE"
 }
 
+# ---------- subagent model label ----------
+
+# サブエージェントの既定モデルを表示名にする (#688) / format the default subagent model for display (#688)
+# 引数: $1 = CLAUDE_CODE_SUBAGENT_MODEL の値。エイリアス ("opus") か完全な ID ("claude-opus-5-5[1m]")
+#       value of CLAUDE_CODE_SUBAGENT_MODEL: an alias ("opus") or a full ID ("claude-opus-5-5[1m]")
+# 出力: "Opus" や "Opus 5.5" を echo する。未設定・inherit・default のときは何も出さない
+#       echo "Opus" or "Opus 5.5"; print nothing when unset, inherit, or default
+# NOTE: 出すのは既定値だけ。Agent 呼び出しの model 引数や agent 定義の model: はこの値より優先される
+# Only the default is shown: an explicit model on the Agent call or in the agent definition wins over it
+subagent_model_label() {
+  local v=${1,,} family version=""
+  # 完全な ID は claude-<family>-<major>[-<minor>][-<date>] の形。前に "us.anthropic." などが付くこともある
+  # Full IDs look like claude-<family>-<major>[-<minor>][-<date>], optionally prefixed (e.g. "us.anthropic.")
+  local re='claude-([a-z]+)-([0-9]+)(-([0-9]{1,2})([^0-9]|$))?'
+  v=${v%%\[*}  # "[1m]" などの接尾辞を落とす / drop suffixes such as "[1m]"
+  case "$v" in
+    "" | inherit | default) return 0 ;;
+  esac
+  if [[ $v =~ $re ]]; then
+    family=${BASH_REMATCH[1]}
+    version=${BASH_REMATCH[2]}
+    [ -n "${BASH_REMATCH[4]:-}" ] && version+=".${BASH_REMATCH[4]}"
+  else
+    family=$v
+  fi
+  echo "${family^}${version:+ $version}"
+}
+
 # ---------- build segments ----------
 
 # 先頭キャップ: ベース帯の左端 (starship の format 先頭と同じ #AFD700 の三角)
@@ -233,7 +261,23 @@ if git -C "$current_dir" rev-parse --git-dir > /dev/null 2>&1; then
 fi
 
 # model (bg:#FF6AC1 fg:#111111) — テーマのアクセントピンク / theme accent pink
-seg "#FF6AC1" "#111111" "⚡ $model"
+# サブエージェントの既定モデルが本体と別のファミリーなら "Fable 5.1 → Opus" のように並べる (#688)。
+# 値は settings.json の env で設定した CLAUDE_CODE_SUBAGENT_MODEL で、Claude Code から引き継がれる
+# When the default subagent model is another family, show it as "Fable 5.1 → Opus" (#688).
+# CLAUDE_CODE_SUBAGENT_MODEL is set in settings.json's env and inherited from Claude Code
+model_text="⚡ $model"
+subagent_label=$(subagent_model_label "${CLAUDE_CODE_SUBAGENT_MODEL:-}")
+if [ -n "$subagent_label" ]; then
+  main_family=${model,,}
+  main_family=${main_family#claude }
+  main_family=${main_family%% *}
+  sub_family=${subagent_label,,}
+  sub_family=${sub_family%% *}
+  if [ "$sub_family" != "$main_family" ]; then
+    model_text+=" → $subagent_label"
+  fi
+fi
+seg "#FF6AC1" "#111111" "$model_text"
 
 # effort (bg: レベル別色 fg:#111111) — model の右隣にエフォートを表示
 # effort pill right after the model; hidden when the model has no effort support
