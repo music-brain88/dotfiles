@@ -47,7 +47,7 @@ herdr 0.9.2 以降、プラグインは標準の Kitty graphics を pane の PTY
 
 - `HERDR_BROWSER_TRANSPORT` が `direct-kitty` のとき、viewer は herdr の API を呼ばずに最初から PTY に直接書く (`src/graphicsTransport.ts`)。この切り替えはプラグインの README には書かれていない。
 - `nix/modules/herdr.nix` が `home.sessionVariables` で `HERDR_BROWSER_TRANSPORT = "direct-kitty"` を宣言している。home-manager はこの値を `hm-session-vars.sh` に書き、ログインシェルがそれを読む。herdr サーバーはログインシェル (`fish --login --command herdr`) から起動され、プラグインの pane コマンド (`bun run src/viewer.ts`) はサーバーの環境を継承する。
-- 利用者は、この環境変数を変えた後に `mise run nix:switch` を実行し、さらに herdr サーバーを再起動する必要がある。再起動しないと、既存のシェルや常駐している herdr サーバーは古い環境のまま動き続け、新しい値は viewer に届かない。herdr サーバーを再起動すると全 pane が止まるので、利用者は動いているエージェントが無いときに再起動する。
+- 利用者は、この環境変数を変えた後に `mise run nix:switch` を実行する。さらに、herdr サーバーを止めて新しく開いたターミナルから起動し直す必要がある。switch を実行した古いシェルは switch 前の環境のままであり、そのシェルから起動した herdr サーバーも古い環境を継承するので、新しい値は viewer に届かない。古いシェルを使い続けるなら、起動の前に `exec fish` で環境を読み直す。herdr サーバーを止めると全 pane が止まるので、利用者は動いているエージェントが無いときに行う。
 - 描画が PTY に直接書く経路で行われていることは、診断行で確かめられる。利用者がプラグイン設定 (`~/.config/herdr/plugins/config/official.browser/browser.json`) に `"showDiagnostics": true` を入れると、viewer は `transport=kitty-pty` で始まる診断行を出す。
 
 ## 上流の deprecated と後継
@@ -67,8 +67,8 @@ herdr 0.9.2 以降、プラグインは標準の Kitty graphics を pane の PTY
 プラグインを新しい機械に入れるとき、利用者は次の手順を順に実行する。
 
 1. `mise run nix:switch` を実行し、bun と `HERDR_BROWSER_TRANSPORT` などの Nix 側の設定を反映する。
-2. herdr サーバーを再起動し、`HERDR_BROWSER_TRANSPORT` をサーバーの環境に入れる (理由は「herdr 0.9.2 以降の描画経路」節)。
-3. `herdr plugin install ogulcancelik/herdr-browser --ref be6888b --yes` を実行し、プラグイン本体をインストールする。上流の既定ブランチは `herdr-plugin.toml` を削除しているので、`--ref` で deprecated になる前のコミットを指定する。`--ref` を付けないとインストールできない見込みだが、この手順は未検証である。
+2. `herdr server stop` で herdr サーバーを止める。次に、新しく開いた WezTerm のウィンドウ (ログイン fish) から `herdr` を起動し、`HERDR_BROWSER_TRANSPORT` をサーバーの環境に入れる (理由は「herdr 0.9.2 以降の描画経路」節)。switch を実行した古いシェルから起動すると、サーバーは switch 前の環境を継承するので、`HERDR_BROWSER_TRANSPORT` が viewer に届かない。古いシェルを使い続けるなら、起動の前に `exec fish` で環境を読み直す。
+3. `herdr plugin install ogulcancelik/herdr-browser --ref be6888b71cf4eb5939ee79a746bd1a1c22ade046 --yes` を実行し、プラグイン本体をインストールする。上流の既定ブランチは `herdr-plugin.toml` を削除しているので、`--ref` で deprecated になる前のコミットを指定する。`--ref` には完全な 40 桁の commit SHA を書く。短縮形は `git fetch` が remote ref として解決できない。この ref を `git fetch --depth 1` で取得できることは確認したが、`herdr plugin install` の実行自体は未検証である。
 4. WezTerm 上で browser pane を開き、描画を実機確認する (例: `herdr plugin pane open --plugin official.browser --entrypoint browser --placement split --direction right --focus`)。
 
 ## device-auth 承認フロー
