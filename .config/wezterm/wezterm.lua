@@ -51,12 +51,12 @@ config.window_background_opacity = 0.8
 config.enable_tab_bar = false
 config.window_padding = { left = 0, right = 0, top = 0, bottom = 0 }
 
--- Kitty graphics protocol (WezTerm はデフォルト OFF)。herdr 側の experimental
--- kitty_graphics と対で有効化が必要 (herdr-browser プラグイン等が利用)。
+-- Kitty graphics protocol (WezTerm はデフォルト OFF)。herdr 側は 0.9.0 以降
+-- 既定で有効なので、WezTerm 側でこれを有効にすれば herdr-browser プラグイン等が描画できる。
 -- Alacritty は非対応のため、フォールバック側では描画されない。
--- Kitty graphics protocol (off by default in WezTerm). Must be enabled
--- alongside herdr's experimental kitty_graphics setting (used by plugins such
--- as herdr-browser). Alacritty doesn't support it, so the fallback terminal
+-- Kitty graphics protocol (off by default in WezTerm). herdr enables it by
+-- default since 0.9.0, so turning it on here lets plugins such as
+-- herdr-browser render. Alacritty doesn't support it, so the fallback terminal
 -- won't render these panes. See docs/reference/herdr-browser.md.
 config.enable_kitty_graphics = true
 
