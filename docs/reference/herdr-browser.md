@@ -28,7 +28,7 @@ herdr-browser は、herdr の pane 内に実ブラウザ (Chromium) を描画す
 | ブラウザ | Google Chrome または Chromium が要る |
 | ターミナル | Kitty graphics protocol に対応している必要がある (WezTerm, kitty, Ghostty 等) |
 
-herdr の版を 0.9.2 以上としている理由は、このリポジトリの設定が 0.9.2 以降の herdr に合わせてあるからである。0.9.2 で herdr 固有の pane graphics API が廃止されたので、このリポジトリはプラグインを `HERDR_BROWSER_TRANSPORT=direct-kitty` で動かす (「herdr 0.9.2 以降の描画経路」節)。また、herdr の Kitty graphics は 0.9.0 から既定で有効になったので、`.config/herdr/config.toml` は Kitty graphics の設定を持たない。
+herdr の版を 0.9.2 以上としている理由は、このリポジトリの設定が 0.9.2 以降の herdr に合わせてあるからである。0.9.2 で herdr 固有の pane graphics API が廃止されたので、このリポジトリはプラグインを `HERDR_BROWSER_TRANSPORT=direct-kitty` で動かし (「herdr 0.9.2 以降の描画経路」節)、セル 1 個のピクセル寸法を `HERDR_BROWSER_CELL_WIDTH` と `HERDR_BROWSER_CELL_HEIGHT` で渡す (「herdr 0.9.2 以降のセル寸法」節)。また、herdr の Kitty graphics は 0.9.0 から既定で有効になったので、`.config/herdr/config.toml` は Kitty graphics の設定を持たない。
 
 このリポジトリでは、Bun を `nix/modules/dev-tools.nix` で入れている。WezTerm 側の Kitty graphics は `.config/wezterm/wezterm.lua` の `enable_kitty_graphics = true` で有効にしてある。
 
@@ -50,6 +50,52 @@ herdr 0.9.2 以降、プラグインは標準の Kitty graphics を pane の PTY
 - 利用者は、この環境変数を変えた後に `mise run nix:switch` を実行する。さらに、herdr サーバーを止めて新しく開いたターミナルから起動し直す必要がある。switch を実行した古いシェルは switch 前の環境のままであり、そのシェルから起動した herdr サーバーも古い環境を継承するので、新しい値は viewer に届かない。古いシェルを使い続けるなら、起動の前に `exec fish` で環境を読み直す。herdr サーバーを止めると全 pane が止まるので、利用者は動いているエージェントが無いときに行う。
 - 描画が PTY に直接書く経路で行われていることは、診断行で確かめられる。利用者がプラグイン設定 (`~/.config/herdr/plugins/config/official.browser/browser.json`) に `"showDiagnostics": true` を入れると、viewer は `transport=kitty-pty` で始まる診断行を出す。
 
+## herdr 0.9.2 以降のセル寸法
+
+このリポジトリは、環境変数 `HERDR_BROWSER_CELL_WIDTH=11` と `HERDR_BROWSER_CELL_HEIGHT=22` で、セル 1 個のピクセル寸法を viewer に渡している ([Issue #699](https://github.com/music-brain88/dotfiles/issues/699))。この 2 つを渡さないと、viewer は起動後に 1 回でも描き直した時点で、描き直しを止められなくなる。
+
+### ループが起きる仕組み
+
+viewer (`src/viewer.ts`) は描くたびに、セル寸法を次の順に探す。1 から 3 の結果は 1 秒だけ覚えておき、どれからも得られないときは、描くたびに 4 を行う。
+
+1. herdr の API `pane.graphics.info` を呼ぶ。herdr 0.9.2 はこの API を廃止したので、呼び出しは毎回失敗する。
+2. 環境変数 `HERDR_CELL_WIDTH_PX` と `HERDR_CELL_HEIGHT_PX` を読む。herdr 0.9.3 の本体は、この 2 つを plugin の pane に設定しない。
+3. 環境変数 `HERDR_BROWSER_CELL_WIDTH` と `HERDR_BROWSER_CELL_HEIGHT` を読む。
+4. 端末に `ESC[16t` を送って寸法を問い合わせ、答え (例: `ESC[6;22;11t`) を 80 ms 待つ。
+
+4 の答えは、問い合わせ専用の受け口と、viewer の普段のキー入力の受け口の両方に届く。キー入力の受け口は、答えを Esc キーと文字列 `[6;22;11t` だと読み違える。viewer はそのキーを Chrome に送り、描き直しを要求する。その描き直しが 4 の問い合わせをまた出すので、ループが閉じる。
+
+起動時の最初の描画は、キー入力の受け口を作る前に終わる。そのため、viewer は起動しただけではループに入らず、起動後に 1 回でも描き直したときにループに入る。ループ中の viewer は画像を約 0.13 秒ごとに送り直し、herdr はそのたびに画像を差し替える。herdr には、差し替えの瞬間に一瞬空白が出る未解決のバグ (herdrdev/herdr#3676) があるので、pane がちらついて見える。
+
+### このリポジトリの設定
+
+3 の 2 つの環境変数が得られると、viewer は寸法の取得元を `env-cell` として扱い、`ESC[16t` を送らない。片方だけ設定すると、もう片方はフォールバック値になるので、2 つとも設定する。
+
+| 環境変数 | 値 | 意味 |
+|------|----|------|
+| `HERDR_BROWSER_CELL_WIDTH` | `11` | セル 1 個の幅 (ピクセル) |
+| `HERDR_BROWSER_CELL_HEIGHT` | `22` | セル 1 個の高さ (ピクセル) |
+
+`nix/modules/herdr.nix` が `home.sessionVariables` で、`HERDR_BROWSER_TRANSPORT` と同じ場所にこの 2 つを宣言している。値は native 機の WezTerm の現在のフォント (`.config/wezterm/wezterm.lua` の `HackGen35 Console NF`、`font_size = 14.0`) に合わせたものである。2026-10-11 に、一時的な browser pane で次の結果を確かめた。
+
+| 条件 | キーを送った後の viewer の書き込み |
+|------|------------------------------------|
+| 2 つの環境変数なし | 毎秒 58〜75 KB が 8 秒間止まらなかった |
+| 2 つの環境変数あり | 6 KB を 1 回書いた後、毎秒 80〜128 バイトに戻った |
+
+### 値の測り方
+
+利用者は、次の 2 通りのどちらかでセル寸法を測れる。2 通りの結果は、現在のフォントで一致した。
+
+- herdr の split pane で `ESC[16t` を端末に送り、答え `ESC[6;<高さ>;<幅>t` を読む。現在のフォントでは `ESC[6;22;11t` が返り、高さは 22、幅は 11 である。
+- `wezterm cli list --format json` が返す pane のピクセル寸法を、セル数で割る。現在のフォントでは 171×68 セル・1881×1496 ピクセルが返る。幅は 1881÷171=11、高さは 1496÷68=22 になる。
+
+### 測り直しと反映
+
+利用者は、WezTerm のフォントの大きさや DPI を変えたとき、上の 2 通りのどちらかで測り直す。測り直したら、`nix/modules/herdr.nix` の値を書き換える。この値は viewer が画像の大きさをセル数からピクセルへ換算する基準なので、実際のセルの大きさと合わせておく。
+
+変更を反映するには、「herdr 0.9.2 以降の描画経路」節と同じ手順を踏む。利用者は `mise run nix:switch` を実行し、herdr サーバーを止めて新しく開いたターミナルから起動し直す。herdr サーバーの環境が viewer に引き継がれるためである。
+
 ## 上流の deprecated と後継
 
 上流の ogulcancelik/herdr-browser は、2026-08-22 のコミット ab5c60b (「chore: deprecate herdr browser」) で deprecated になった。このコミットは `herdr-plugin.toml` を削除し、README に deprecated の警告を入れた。README は後継として [zenbu-labs/terminal-browser](https://github.com/zenbu-labs/terminal-browser) を指名している。
@@ -66,8 +112,8 @@ herdr 0.9.2 以降、プラグインは標準の Kitty graphics を pane の PTY
 
 プラグインを新しい機械に入れるとき、利用者は次の手順を順に実行する。
 
-1. `mise run nix:switch` を実行し、bun と `HERDR_BROWSER_TRANSPORT` などの Nix 側の設定を反映する。
-2. `herdr server stop` で herdr サーバーを止める。次に、新しく開いた WezTerm のウィンドウ (ログイン fish) から `herdr` を起動し、`HERDR_BROWSER_TRANSPORT` をサーバーの環境に入れる (理由は「herdr 0.9.2 以降の描画経路」節)。switch を実行した古いシェルから起動すると、サーバーは switch 前の環境を継承するので、`HERDR_BROWSER_TRANSPORT` が viewer に届かない。古いシェルを使い続けるなら、起動の前に `exec fish` で環境を読み直す。
+1. `mise run nix:switch` を実行し、bun と、`HERDR_BROWSER_TRANSPORT`・`HERDR_BROWSER_CELL_WIDTH`・`HERDR_BROWSER_CELL_HEIGHT` などの Nix 側の設定を反映する。
+2. `herdr server stop` で herdr サーバーを止める。次に、新しく開いた WezTerm のウィンドウ (ログイン fish) から `herdr` を起動する。これで `HERDR_BROWSER_TRANSPORT` とセル寸法の 2 つの環境変数が、サーバーの環境に入る (理由は「herdr 0.9.2 以降の描画経路」節と「herdr 0.9.2 以降のセル寸法」節)。switch を実行した古いシェルから起動すると、サーバーは switch 前の環境を継承するので、この 3 つが viewer に届かない。古いシェルを使い続けるなら、起動の前に `exec fish` で環境を読み直す。
 3. `herdr plugin install ogulcancelik/herdr-browser --ref be6888b71cf4eb5939ee79a746bd1a1c22ade046 --yes` を実行し、プラグイン本体をインストールする。上流の既定ブランチは `herdr-plugin.toml` を削除しているので、`--ref` で deprecated になる前のコミットを指定する。`--ref` には完全な 40 桁の commit SHA を書く。短縮形は `git fetch` が remote ref として解決できない。この ref を `git fetch --depth 1` で取得できることは確認したが、`herdr plugin install` の実行自体は未検証である。
 4. WezTerm 上で browser pane を開き、描画を実機確認する (例: `herdr plugin pane open --plugin official.browser --entrypoint browser --placement split --direction right --focus`)。
 
@@ -117,5 +163,6 @@ herdr 0.9.2 以降、プラグインは標準の Kitty graphics を pane の PTY
 - [Issue #569](https://github.com/music-brain88/dotfiles/issues/569) - WSL2 検証結果 (ConPTY により描画不可) の詳細
 - [Issue #574](https://github.com/music-brain88/dotfiles/issues/574) - WSL ガード追加 (承認 URL を Windows 側ブラウザへ)
 - [Issue #693](https://github.com/music-brain88/dotfiles/issues/693) - herdr 0.9.2 の pane graphics API 廃止への対応 (`HERDR_BROWSER_TRANSPORT=direct-kitty`)
+- [Issue #699](https://github.com/music-brain88/dotfiles/issues/699) - viewer が問い合わせの答えをキー入力と読み違えて描き直し続けるので、`HERDR_BROWSER_CELL_WIDTH` と `HERDR_BROWSER_CELL_HEIGHT` で止める。
 - [reference/nix-modules.md](./nix-modules.md) - Nixモジュール構成 (bun は dev-tools.nix)
 - [explanation/architecture.md](../explanation/architecture.md) - Nix + Symlink ハイブリッドの設計思想
