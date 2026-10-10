@@ -48,10 +48,11 @@
 
 ### herdr.nix
 
-`herdr.nix` は、herdr (agent multiplexer、tmuxの後継) に関する次の 3 つを管理します。
+`herdr.nix` は、herdr (agent multiplexer、tmuxの後継) に関する次の 4 つを管理します。
 - herdr パッケージ (flake.nix の overlay 経由で新しい nixpkgs から供給)
 - `.config/herdr/config.toml` のシンボリックリンク (keybindは旧tmux設定互換)
 - device-auth 承認URLをherdr-browser paneに直行させる `$BROWSER` ラッパー (Issue #523)
+- herdr-browser 用の環境変数 `HERDR_BROWSER_TRANSPORT`・`HERDR_BROWSER_CELL_WIDTH`・`HERDR_BROWSER_CELL_HEIGHT` を `home.sessionVariables` で宣言する (Issue #693, #699)。
 
 ### neovim.nix
 
