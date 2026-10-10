@@ -36,7 +36,7 @@
   # (Issue #699)。値の 11×22 は、WezTerm の HackGen35 Console NF 14pt の 1 セルの
   # ピクセル寸法である。フォントの大きさや DPI を変えたら測り直す。
   # HERDR_BROWSER_CELL_WIDTH / HERDR_BROWSER_CELL_HEIGHT hand the viewer the pixel size
-  # of one terminal cell directly. Since herdr v0.9.2 herdr no longer provides it,
+  # of one terminal cell directly. From herdr v0.9.2 on, herdr no longer provides it,
   # so the viewer queries the terminal with ESC[16t on every draw. It misreads the reply
   # as key input, redraws, and queries again, which makes the pane flicker. Setting both
   # variables lets the viewer skip the query (Issue #699). The 11x22 values are the pixel
