@@ -95,6 +95,106 @@
           (final: prev: {
             herdr = inputs.nixpkgs-herdr.legacyPackages.${system}.herdr;
           })
+          # terminal-browser (zenbu-labs/terminal-browser、MIT): Electron の画面外の描画で
+          # ページを描き、kitty graphics で端末へ送るブラウザ。device-auth の承認ページを
+          # herdr の pane で開くために使う (Issue #701)。nixpkgs には無いので、GitHub の
+          # release の linux-x64 tarball を版と hash で固定して包む。配るのは native 機だけ
+          # (nix/modules/terminal-browser.nix)。詳細は docs/reference/terminal-browser.md。
+          # terminal-browser (zenbu-labs/terminal-browser, MIT): renders pages with Electron's
+          # offscreen rendering and streams them to the terminal over kitty graphics. Used to
+          # open device-auth approval pages in a herdr pane (Issue #701). Not in nixpkgs, so the
+          # linux-x64 release tarball is pinned by version and hash here. Shipped on the native
+          # machine only (nix/modules/terminal-browser.nix). See docs/reference/terminal-browser.md.
+          (final: prev: {
+            terminal-browser = prev.stdenv.mkDerivation (finalAttrs: {
+              pname = "terminal-browser";
+              version = "0.13.4";
+              src = prev.fetchurl {
+                url = "https://github.com/zenbu-labs/terminal-browser/releases/download/v${finalAttrs.version}/terminal-browser-linux-x64.tar.gz";
+                hash = "sha256-YnfaqrqxZxGrPxlhzf+tnvrF5wrFXVB24shkltZJ06Q=";
+              };
+              # tarball の中身は terminal-browser/ の下にまとまっている
+              # The tarball keeps everything under terminal-browser/
+              sourceRoot = "terminal-browser";
+
+              nativeBuildInputs = [ prev.autoPatchelfHook prev.makeWrapper ];
+              # electron/pixel (Electron 本体)、chrome_crashpad_handler、ネイティブモジュール
+              # pixel.node、同梱の .so が NEEDED に書いている共有ライブラリ。
+              # Shared libraries listed as NEEDED by electron/pixel (the Electron binary),
+              # chrome_crashpad_handler, the pixel.node native module, and the bundled .so files.
+              buildInputs = with prev; [
+                stdenv.cc.cc.lib
+                glib
+                nspr
+                nss
+                at-spi2-core
+                cups
+                dbus
+                cairo
+                gtk3
+                pango
+                libx11
+                libxcomposite
+                libxdamage
+                libxext
+                libxfixes
+                libxrandr
+                libxcb
+                libxkbcommon
+                libgbm
+                expat
+                systemd
+                alsa-lib
+              ];
+              # Electron は GPU と Vulkan のライブラリを NEEDED ではなく dlopen で読むので、
+              # rpath に足しておく (nixpkgs の electron の electronLibPath と同じ考え方)。
+              # LD_LIBRARY_PATH にしないのは、terminal-browser が起動する herdr や ps に漏らさないため。
+              # Electron dlopen()s its GPU and Vulkan libraries instead of listing them as NEEDED,
+              # so add them to the rpath (same idea as electronLibPath in nixpkgs' electron).
+              # Not LD_LIBRARY_PATH, which would leak into herdr, ps and friends it spawns.
+              runtimeDependencies = with prev; [
+                libGL
+                vulkan-loader
+                libdrm
+                pciutils
+                (lib.getLib systemd)
+              ];
+
+              dontConfigure = true;
+              dontBuild = true;
+              # 配布元が strip 済みの巨大な ELF をさらに strip しない
+              # Don't re-strip the upstream, already-stripped Electron binaries
+              dontStrip = true;
+
+              # 起動スクリプト bin/terminal-browser は自分の置き場所を symlink を辿って求め、
+              # その親ディレクトリを TERMINAL_BROWSER_DIST_ROOT にして electron/pixel を起動する。
+              # 構成を崩さずに libexec の下へ丸ごと置き、bin にはそれを呼ぶラッパーだけを置く。
+              # tty と ps は herdr のアダプタが pane と tty の対応を引くのに使うので、PATH の
+              # 末尾に足しておく (利用者の PATH の優先順位は変えない)。
+              # The bin/terminal-browser launcher resolves its own location through symlinks
+              # and starts electron/pixel with the parent as TERMINAL_BROWSER_DIST_ROOT. Keep
+              # the layout intact under libexec and only put a wrapper in bin. tty and ps are
+              # used by the herdr adapter to map panes to ttys, so append them to PATH as a
+              # fallback without changing the user's PATH precedence.
+              installPhase = ''
+                runHook preInstall
+                mkdir -p $out/libexec/terminal-browser $out/bin
+                cp -a . $out/libexec/terminal-browser/
+                makeWrapper $out/libexec/terminal-browser/bin/terminal-browser $out/bin/terminal-browser \
+                  --suffix PATH : ${prev.lib.makeBinPath [ prev.coreutils prev.procps ]}
+                runHook postInstall
+              '';
+
+              meta = {
+                description = "Browser that renders web pages inside the terminal with kitty graphics";
+                homepage = "https://github.com/zenbu-labs/terminal-browser";
+                license = prev.lib.licenses.mit;
+                mainProgram = "terminal-browser";
+                platforms = [ "x86_64-linux" ];
+                sourceProvenance = [ prev.lib.sourceTypes.binaryNativeCode ];
+              };
+            });
+          })
           # Fix for CI: some package tests are flaky in GitHub Actions environment
           (final: prev: {
             # rustup tests fail in sandboxed CI due to socks_proxy_request needing network

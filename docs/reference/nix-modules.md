@@ -51,7 +51,7 @@
 `herdr.nix` は、herdr (agent multiplexer、tmuxの後継) に関する次の 4 つを管理します。
 - herdr パッケージ (flake.nix の overlay 経由で新しい nixpkgs から供給)
 - `.config/herdr/config.toml` のシンボリックリンク (keybindは旧tmux設定互換)
-- device-auth 承認URLをherdr-browser paneに直行させる `$BROWSER` ラッパー (Issue #523)
+- device-auth の承認 URL を、herdr の中では terminal-browser の pane に開く `$BROWSER` ラッパー (Issue #523, #701)。terminal-browser 本体は `terminal-browser.nix` が native 機だけに入れる。
 - herdr-browser 用の環境変数 `HERDR_BROWSER_TRANSPORT`・`HERDR_BROWSER_CELL_WIDTH`・`HERDR_BROWSER_CELL_HEIGHT` を `home.sessionVariables` で宣言する (Issue #693, #699)。
 
 ### neovim.nix
@@ -93,6 +93,16 @@
 - Waybar, Wofi, Mako
 - WezTerm (メインターミナル), Alacritty (併存期間中のフォールバック)
 - MPD, ncmpcpp, fontconfig
+
+### terminal-browser.nix
+
+`terminal-browser.nix` は、device-auth の承認ページを herdr の pane で開くブラウザ terminal-browser に関する次の 4 つを管理します (Issue #701)。`home.nix` は native profile のときだけこのモジュールを読み込みます。WSL 機では ConPTY が kitty graphics を通さないので、terminal-browser は描画できないからです。
+- terminal-browser パッケージ (flake.nix の overlay が release の tarball を版と hash で固定して包む)
+- スキルの自動リンクを止める `~/.local/state/terminal-browser/skills-choice` (`xdg.stateFile`)
+- テレメトリを止める環境変数 `TERMINAL_BROWSER_NO_TELEMETRY` (`home.sessionVariables`)
+- 版を上げた後に残る古いプロファイルを消す activation (`cleanTerminalBrowserProfiles`)
+
+設定ごとの理由は [terminal-browser.md](./terminal-browser.md) を参照してください。
 
 ### wsl.nix
 

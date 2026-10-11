@@ -24,6 +24,7 @@
 | ------------------------------------------------------------------ | -------------------- | -------------------------------------------------------------------------- |
 | git / gh / fish / nvim / docker / gpg / rustup ほか CLI 開発ツール | Nix                  | `nix/modules/*.nix`                                                        |
 | herdr / copilot-cli                                                | Nix (overlay)        | `flake.nix`                                                                |
+| terminal-browser                                                   | Nix (overlay)        | `flake.nix`(導入は native 機だけ: `nix/modules/terminal-browser.nix`)    |
 | mise 本体                                                          | Nix                  | `nix/modules/dev-tools.nix`(`programs.mise`)                               |
 | Hyprland / Waybar / WezTerm / Alacritty / Obsidian                 | OS (pacman)          | 設定のみ Nix が symlink                                                    |
 | paru                                                               | OS (pacman)          | AUR ヘルパー                                                               |

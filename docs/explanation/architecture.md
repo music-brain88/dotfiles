@@ -187,6 +187,7 @@ nix/modules/
 ├── dev-tools.nix   # 開発ツール（docker, kubectl, awscli）
 ├── fonts.nix       # フォント
 ├── desktop.nix     # GUI 設定群（hypr, waybar, wezterm, alacritty 等）— native profile のみ
+├── terminal-browser.nix # terminal-browser（承認ページを herdr の pane で開く）— native profile のみ
 └── wsl.nix         # WSL 固有（Obsidian vault symlink, WezTerm/Alacritty 配布）— wsl profile のみ
 ```
 
@@ -234,7 +235,7 @@ Alacritty は両マシンとも併存期間中フォールバックとして設�
 
 `flake.nix` の `homeConfigurations` は 2 profile を持ち、`mise run nix:switch` がカーネル名から自動判別する:
 
-- **`archie`**（native）: 共通モジュール + `desktop.nix`（GUI 設定群）
+- **`archie`**（native）: 共通モジュール + `desktop.nix`（GUI 設定群）+ `terminal-browser.nix`（kitty graphics で描くブラウザ。WSL では描画できないので native のみ）
 - **`archie-wsl`**（wsl）: 共通モジュール + `wsl.nix`
   - `~/Documents/Obsidian` → Windows 側 vault への symlink を activation で生成（Claude Cowork / Obsidian Sync が vault の実体を Windows 側に要請するため）。これによりスキル群（session-log 等）はパス変更なしで両環境動作する
   - **vault 配置規約**: Obsidian Sync が同期するのは vault の中身と名前だけで、ローカルの置き場所は各端末で選ぶもの。この dotfiles では「Windows ホストでは `%USERPROFILE%\Documents\music.brain88` に配置する」を運用規約とし、`wsl.nix` はその規約をコード化している（見つからない場合は警告して skip、activation は落ちない）

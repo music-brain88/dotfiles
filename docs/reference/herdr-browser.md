@@ -8,6 +8,7 @@ herdr-browser は、herdr の pane 内に実ブラウザ (Chromium) を描画す
 - 作者は herdr 本体 ([herdrdev/herdr](https://github.com/herdrdev/herdr)) の作者本人であり、実質ファーストパーティである (`id = "official.browser"`)。
 - 導入の背景とセキュリティレビュー結果は、Issue [#520](https://github.com/music-brain88/dotfiles/issues/520) に書いてある。
 - 上流のリポジトリは 2026-08-22 に deprecated になった。詳細は「上流の deprecated と後継」節に書いてある。
+- device-auth の承認ページの開き先は、[Issue #701](https://github.com/music-brain88/dotfiles/issues/701) で terminal-browser に替わった。今の開き先は [terminal-browser.md](./terminal-browser.md) に書いてある。この文書の herdr-browser の設定は、後続の Issue で撤去するまで残してある。
 
 ---
 
@@ -103,6 +104,7 @@ viewer (`src/viewer.ts`) は描くたびに、セル寸法を次の順に探す�
 - このリポジトリが使っているプラグインは、deprecated になる前のコミット be6888b (2026-07-28) である。
 - terminal-browser は Electron の offscreen rendering で描画する。配布は `curl | bash` か Homebrew で行われ、nixpkgs には収録されておらず、herdr のプラグイン形式でもない。
 - terminal-browser への乗り換えは Issue #693 の範囲外であり、別の Issue で扱う。乗り換えると、`device_auth_browser.sh` とこの文書の書き直しが要る。
+- [Issue #701](https://github.com/music-brain88/dotfiles/issues/701) で、このリポジトリは terminal-browser を flake の overlay で Nix に入れ、`device_auth_browser.sh` が承認ページを terminal-browser の pane で開くようにした。詳細は [terminal-browser.md](./terminal-browser.md) に書いてある。
 
 ## プラグイン本体は Nix 管理外
 
@@ -119,15 +121,17 @@ viewer (`src/viewer.ts`) は描くたびに、セル寸法を次の順に探す�
 
 ## device-auth 承認フロー
 
+[Issue #701](https://github.com/music-brain88/dotfiles/issues/701) から、`device_auth_browser.sh` は herdr の中で承認ページを terminal-browser の pane に開く。今のラッパーの振り分けと確認の手順は、[terminal-browser.md](./terminal-browser.md) の「device_auth_browser.sh の振り分け」節と「反映の手順」節に書いてある。この節の以下の記述は、#701 の前に herdr-browser の pane へ開いていたときのラッパーの記録である。利用者がラッパーを #701 の前の版に戻せば、この挙動に戻る。
+
 `aws sso login --profile <x>` / `gh auth login -w` / `gcloud auth login` 等の device-auth 系 CLI は、承認用の URL を `$BROWSER` 環境変数 (aws cli v2 は Python `webbrowser` 経由、gh / gcloud も同様) 経由で開く。運用方針「terminal が主・ブラウザは副」に沿って、この承認 1 クリックのためだけに GUI ブラウザが開く摩擦を消すため、`$BROWSER` を herdr-browser の pane へ直行させるラッパースクリプトに差し替えている ([Issue #523](https://github.com/music-brain88/dotfiles/issues/523))。
 
 - ラッパー本体: [`.config/herdr/scripts/device_auth_browser.sh`](../../.config/herdr/scripts/device_auth_browser.sh)
 - `nix/modules/herdr.nix` が `~/.local/bin/device_auth_browser` へ symlink 配置し、`home.nix` の `sessionVariables.BROWSER` からそのパスを指す。
 - `$BROWSER` はスペース区切りで引数付き指定を解釈しないツールがあるため、単一実行ファイルのラッパーにしてある(`herdr plugin pane open ...` のような複数引数コマンドを直接 `$BROWSER` には書けない)。
 
-### 挙動
+### 挙動 (#701 の前)
 
-ラッパーは、次の順に判定して承認 URL の開き先を決める。
+#701 の前のラッパーは、次の順に判定して承認 URL の開き先を決めていた。
 
 1. **WSL 判定**: `WSL_DISTRO_NAME` が set か `/proc/version` に `microsoft` を含む場合は WSL とみなし、herdr 環境判定に入る前に Windows 側の既定ブラウザへフォールバックする (`wslview` → `rundll32.exe url.dll,FileProtocolHandler` → `explorer.exe` の順で探す)。WSL2 では ConPTY が kitty graphics を剥ぐため herdr-browser は描画不可であり ([運用上の注意](#運用上の注意))、herdr が動いていても pane へは直行させない ([Issue #574](https://github.com/music-brain88/dotfiles/issues/574))。
 2. **herdr 環境判定**: `HERDR_ENV=1` なら herdr 内とみなす。`HERDR_ENV` が立っていない場合は、SSH セッション (`SSH_CONNECTION` または `SSH_TTY` が set) でないことを条件に `herdr status server --json` でサーバソケットへの到達性を追加確認する。同一ホストへの SSH セッションはソケットには到達できてしまうため、`HERDR_ENV=1` でない限り必ず GUI ブラウザ (`xdg-open` 等) へフォールバックする。なお GUI フォールバック時は `BROWSER` を unset してから `xdg-open` を呼ぶ (desktop 判定不能な環境で xdg-open の generic モードが `$BROWSER` を参照し、このラッパー自身へ戻る無限ループを防ぐため)。
@@ -139,7 +143,7 @@ viewer (`src/viewer.ts`) は描くたびに、セル寸法を次の順に探す�
 
 2 回目以降の承認は、pane 専用の Chrome プロファイル (`~/.local/state/herdr/plugins/official.browser/chrome-profiles/`、0700) に SSO セッションが残るためワンクリックで完了する想定である。新規ログインでパスワード入力が必要になるケース(セッション切れの初回など)で、pane 内のブラウザに直接入力するかどうかは、別途検討事項として残っている。
 
-### 実機確認手順 (マージ後)
+### 実機確認手順 (#701 の前)
 
 このラッパーの実装自体は、コードレビューのみで完結している。実際の承認フローの動作確認にはユーザーの認証情報が必要なため、マージ・`mise run nix:switch` によるライブ反映後にユーザー自身が次の項目を確認する。
 
@@ -153,7 +157,7 @@ viewer (`src/viewer.ts`) は描くたびに、セル寸法を次の順に探す�
 
 - **CDP はローカル限定**: CDP エンドポイントはそのブラウザビューへの完全な制御権を持つ。ループバック (127.0.0.1) に限定し、ネットワークに公開しないこと (プラグイン README にも明記されている運用上の要件である)。
 - **WezTerm 専用**: Alacritty は画像プロトコル (Kitty graphics) 非対応であり、設計方針として今後も非搭載の予定である。フォールバック側のターミナルとして使う場合、browser pane はそもそも描画されない。herdr-browser は WezTerm 上でのみ使用する。
-- **WSL2 は検証済み・描画不可 (native Arch 専用)**: Windows 11 + WSL2 Arch + Windows 側 WezTerm で 2026-08-05〜07 に検証した結果、browser pane はツールバー (テキスト) のみ表示され、ページ本体 (画像) が描画されない。herdr / plugin / Chromium / 両側の kitty graphics 設定はすべて正常 (plugin daemon の `metrics` でもフレーム送信は正常) で、herdr をバイパスして外側 PTY に直接 kitty graphics エスケープを書いても描画されないことを確認済み。**根本原因は `wsl.exe` と Windows 側ターミナルの間の ConPTY が kitty graphics protocol の APC エスケープ (`ESC _G ... ESC \`) を通さないこと**であり、両側の設定をどう整えても越えられない (参考: [microsoft/terminal#12166](https://github.com/microsoft/terminal/issues/12166))。回避策も検証済みである。wezterm-mux-server + unix domain + `proxy_command` は、GUI 側 codec タイムアウトで断念した。WSLg 上の Linux 版 WezTerm では描画成功まで確認したが、常用導線として重く plugin の IME 未サポートも重なったため、実用は断念した。結論として **WSL 機では herdr-browser を使わない**。この決定に合わせ、device_auth_browser ラッパーは WSL を検知すると Windows 側の既定ブラウザへフォールバックする ([挙動](#挙動) の WSL 判定)。詳細な切り分けログは [Issue #569](https://github.com/music-brain88/dotfiles/issues/569) に書いてある。なお、WSL 機で kitty graphics 系の画像全般が出ない症状も、同じ ConPTY が原因である (browser plugin 固有ではない)。
+- **WSL2 は検証済み・描画不可 (native Arch 専用)**: Windows 11 + WSL2 Arch + Windows 側 WezTerm で 2026-08-05〜07 に検証した結果、browser pane はツールバー (テキスト) のみ表示され、ページ本体 (画像) が描画されない。herdr / plugin / Chromium / 両側の kitty graphics 設定はすべて正常 (plugin daemon の `metrics` でもフレーム送信は正常) で、herdr をバイパスして外側 PTY に直接 kitty graphics エスケープを書いても描画されないことを確認済み。**根本原因は `wsl.exe` と Windows 側ターミナルの間の ConPTY が kitty graphics protocol の APC エスケープ (`ESC _G ... ESC \`) を通さないこと**であり、両側の設定をどう整えても越えられない (参考: [microsoft/terminal#12166](https://github.com/microsoft/terminal/issues/12166))。回避策も検証済みである。wezterm-mux-server + unix domain + `proxy_command` は、GUI 側 codec タイムアウトで断念した。WSLg 上の Linux 版 WezTerm では描画成功まで確認したが、常用導線として重く plugin の IME 未サポートも重なったため、実用は断念した。結論として **WSL 機では herdr-browser を使わない**。この決定に合わせ、device_auth_browser ラッパーは WSL を検知すると Windows 側の既定ブラウザへフォールバックする ([挙動 (#701 の前)](#挙動-701-の前) の WSL 判定)。詳細な切り分けログは [Issue #569](https://github.com/music-brain88/dotfiles/issues/569) に書いてある。なお、WSL 機で kitty graphics 系の画像全般が出ない症状も、同じ ConPTY が原因である (browser plugin 固有ではない)。
 - **prompt injection のリスクは構造的に残る**: エージェントにブラウザを操作させる以上、Web 由来の prompt injection リスクはこのプラグイン固有の問題ではなく、claude-in-chrome 等の他のブラウザ自動化と同質のものとして残る。
 
 ## 関連
@@ -164,5 +168,7 @@ viewer (`src/viewer.ts`) は描くたびに、セル寸法を次の順に探す�
 - [Issue #574](https://github.com/music-brain88/dotfiles/issues/574) - WSL ガード追加 (承認 URL を Windows 側ブラウザへ)
 - [Issue #693](https://github.com/music-brain88/dotfiles/issues/693) - herdr 0.9.2 の pane graphics API 廃止への対応 (`HERDR_BROWSER_TRANSPORT=direct-kitty`)
 - [Issue #699](https://github.com/music-brain88/dotfiles/issues/699) - viewer が問い合わせの答えをキー入力と読み違えて描き直し続けるので、`HERDR_BROWSER_CELL_WIDTH` と `HERDR_BROWSER_CELL_HEIGHT` で止める。
+- [Issue #701](https://github.com/music-brain88/dotfiles/issues/701) - 承認ページの開き先を terminal-browser に替えた。
+- [reference/terminal-browser.md](./terminal-browser.md) - terminal-browser の導入と、今の `device_auth_browser.sh` の振り分け
 - [reference/nix-modules.md](./nix-modules.md) - Nixモジュール構成 (bun は dev-tools.nix)
 - [explanation/architecture.md](../explanation/architecture.md) - Nix + Symlink ハイブリッドの設計思想
