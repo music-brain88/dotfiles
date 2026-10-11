@@ -2,23 +2,23 @@
 # device_auth_browser.sh — $BROWSER wrapper for the device-auth approval flow
 #
 # aws sso login --profile / gh auth login -w / gcloud auth login 等が開く承認 URL
-# を、herdr 内では GUI ブラウザではなく herdr-browser (official.browser) プラグイン
-# の pane に直行させる。herdr 外・SSH・プラグイン未導入時は従来の GUI ブラウザへ
-# フォールバックする。$BROWSER はスペース区切りの引数付き指定を解釈しないツールが
-# あるため、単一実行ファイルのラッパーにしてある(Issue #523)。
+# を、herdr の中では GUI ブラウザではなく terminal-browser の pane (呼び出し元の
+# pane の右) に開く。WSL 機・SSH のセッション・herdr の外では、従来どおり GUI
+# ブラウザを開く。terminal-browser が見つからないときと open が失敗したときも
+# GUI ブラウザへフォールバックする。$BROWSER はスペース区切りの引数付き指定を
+# 解釈しないツールがあるため、単一実行ファイルのラッパーにしてある
+# (Issue #523, #701)。
 #
-# Routes device-auth approval URLs (aws sso login --profile, gh auth login -w,
-# gcloud auth login, etc.) into a herdr-browser (official.browser) plugin pane
-# instead of a GUI browser when running inside herdr. Falls back to the normal
-# GUI browser outside herdr, over SSH, or when the plugin isn't installed. Kept
-# as a single executable (not "cmd --flag") because some tools that honor
-# $BROWSER don't split on spaces (Issue #523).
+# Opens device-auth approval URLs (aws sso login --profile, gh auth login -w,
+# gcloud auth login, etc.) in a terminal-browser pane to the right of the calling
+# pane when running inside herdr, instead of a GUI browser. On WSL, over SSH, and
+# outside herdr it opens the GUI browser as before, and it also falls back to the
+# GUI browser when terminal-browser is missing or `open` fails. Kept as a single
+# executable (not "cmd --flag") because some tools that honor $BROWSER don't split
+# on spaces (Issue #523, #701).
 #
-# 参照 / see: docs/reference/herdr-browser.md
+# 参照 / see: docs/reference/terminal-browser.md
 set -euo pipefail
-
-PLUGIN_ID="official.browser"
-ENTRYPOINT="browser"
 
 url="${1:-}"
 if [ -z "$url" ]; then
@@ -60,39 +60,40 @@ fallback_windows() {
 }
 
 # WSL 判定: WSL2 では ConPTY が kitty graphics の APC エスケープを剥ぐため、
-# herdr-browser は設定に関わらず描画できない (Issue #569 で確定)。herdr 環境
+# terminal-browser は設定に関わらず描画できない (Issue #569 で確定)。herdr 環境
 # 判定より先に Windows 側ブラウザへ振り分ける (Issue #574)。
 # WSL detection: on WSL2 the ConPTY layer strips the kitty graphics APC
-# escapes, so herdr-browser can never render regardless of configuration
+# escapes, so terminal-browser can never render regardless of configuration
 # (confirmed in Issue #569). Route to the Windows default browser before any
 # herdr detection (Issue #574).
 if [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; then
   fallback_windows
 fi
 
-# SSH セッション判定: ソケット到達性だけで herdr 内と誤判定しないためのガード。
-# 同一ホストに SSH で入った別セッションでも herdr のソケットには到達できてしまう
-# ため、SSH 由来のセッションは HERDR_ENV=1 (herdr --remote 等で明示的に立って
-# いる場合) でない限り、無条件に GUI へフォールバックさせる。
-# SSH detection: guards against a false "inside herdr" from socket reachability
-# alone. A plain SSH session into the same host can still reach the local herdr
-# socket, so an SSH-originated session must always fall back to the GUI browser
+# SSH セッション判定: SSH 由来のセッションは、HERDR_ENV=1 (herdr --remote 等で
+# 明示的に立っている場合) でない限り、無条件に GUI へフォールバックさせる。
+# SSH detection: an SSH-originated session always falls back to the GUI browser
 # unless HERDR_ENV=1 is explicitly set (e.g. via herdr --remote).
 is_ssh=0
 if [ -n "${SSH_CONNECTION:-}" ] || [ -n "${SSH_TTY:-}" ]; then
   is_ssh=1
 fi
 
-# herdr 環境判定: HERDR_ENV=1 か、(SSH 経由でない場合に限り) herdr サーバの
-# ソケットに到達可能か
-# Detect herdr: either HERDR_ENV=1, or — only outside SSH — the herdr server
-# socket answers.
+# herdr 環境判定: herdr が pane に渡す HERDR_PANE_ID が空でないこと。
+# terminal-browser は HERDR_PANE_ID があるときだけ herdr のアダプタを使い、
+# 無いと WezTerm などのアダプタで端末そのものを split する。判定をこの条件に
+# そろえ、herdr の外の WezTerm 単体ではサーバーの稼働に関係なく GUI を開く
+# (以前の herdr サーバーのソケットへの問い合わせは #701 で消した)。
+# HERDR_PANE_ID が古い値で残っていた場合は、open が失敗して GUI に落ちる。
+# Detect herdr: HERDR_PANE_ID, which herdr sets in every pane, must be non-empty.
+# terminal-browser only uses its herdr adapter when HERDR_PANE_ID is set, and
+# otherwise splits the terminal itself (WezTerm, etc.). Matching that condition
+# keeps a plain WezTerm tab outside herdr on the GUI browser whether or not the
+# herdr server is running (the old herdr socket probe was dropped in #701). A
+# stale HERDR_PANE_ID makes `open` fail, which falls back to the GUI browser.
 in_herdr=0
-if [ "${HERDR_ENV:-}" = "1" ]; then
-  in_herdr=1
-elif [ "$is_ssh" -eq 0 ] && command -v herdr >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
-  server_status="$(herdr status server --json 2>/dev/null || true)"
-  if [ "$(printf '%s' "$server_status" | jq -r '.status // empty' 2>/dev/null || true)" = "running" ]; then
+if [ -n "${HERDR_PANE_ID:-}" ]; then
+  if [ "$is_ssh" -eq 0 ] || [ "${HERDR_ENV:-}" = "1" ]; then
     in_herdr=1
   fi
 fi
@@ -101,41 +102,16 @@ if [ "$in_herdr" -ne 1 ]; then
   fallback_gui
 fi
 
-# herdr-browser プラグインの前提コマンド (herdr/jq/bun) が揃っているか確認
-# Confirm the herdr-browser plugin's prerequisite commands are available.
-if ! command -v herdr >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1 || ! command -v bun >/dev/null 2>&1; then
+# terminal-browser は native 機だけに入る (nix/modules/terminal-browser.nix)
+# terminal-browser is installed on the native machine only (nix/modules/terminal-browser.nix)
+if ! command -v terminal-browser >/dev/null 2>&1; then
   fallback_gui
 fi
 
-# プラグイン導入済み判定 + plugin_root 解決 (ハードコード禁止、#523 実装案どおり)
-# Confirm the plugin is installed and resolve plugin_root — never hardcode it.
-plugin_list_json="$(herdr plugin list --plugin "$PLUGIN_ID" --json 2>/dev/null || true)"
-plugin_root="$(printf '%s' "$plugin_list_json" |
-  jq -r --arg id "$PLUGIN_ID" '.result.plugins[]? | select(.plugin_id == $id) | .plugin_root // empty' 2>/dev/null || true)"
-
-if [ -z "$plugin_root" ] || [ ! -f "$plugin_root/src/cli.ts" ]; then
-  fallback_gui
-fi
-
-cli="$plugin_root/src/cli.ts"
-
-# 既存 view (可視 pane に紐づくもの) の有無で分岐する
-# Branch on whether a view (backed by a visible pane) already exists.
-views_json="$(bun run "$cli" views 2>/dev/null || true)"
-has_view="$(printf '%s' "$views_json" | jq -r '(.views // []) | length > 0' 2>/dev/null || echo false)"
-
-if [ "$has_view" = "true" ]; then
-  # 既存 view を ensureView() が自動選択して navigate する (open に --view は無い)
-  # ensureView() auto-selects the existing view and navigates it (open has no --view flag)
-  bun run "$cli" open "$url" >/dev/null 2>&1 || fallback_gui
-else
-  # view が無ければ pane を新規に開きつつ初期 URL を渡す (README 記載の --env)
-  # No view yet: open a fresh pane with the initial URL in one step (documented --env)
-  herdr plugin pane open \
-    --plugin "$PLUGIN_ID" \
-    --entrypoint "$ENTRYPOINT" \
-    --placement overlay \
-    --focus \
-    --env "HERDR_BROWSER_INITIAL_URL=$url" \
-    >/dev/null 2>&1 || fallback_gui
-fi
+# open は開いた後のブラウザの状態を JSON (約 40 行) で標準出力に書くので、
+# 呼び出し元の pane に流れないよう捨てる。標準エラーは失敗の理由を見るために残す。
+# 隣に terminal-browser の pane があれば、既定でそこにタブとして開く。
+# `open` prints the browser state as ~40 lines of JSON on stdout; discard it so it
+# doesn't spill into the calling pane. Keep stderr so failures stay visible. By
+# default it opens a tab in an adjacent terminal-browser pane when there is one.
+terminal-browser open "$url" --split right >/dev/null || fallback_gui

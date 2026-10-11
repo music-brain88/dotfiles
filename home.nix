@@ -27,7 +27,12 @@
     ./nix/modules/k8s-tools.nix
     ./nix/modules/fonts.nix
   ]
-  ++ lib.optionals (profile == "native") [ ./nix/modules/desktop.nix ]
+  ++ lib.optionals (profile == "native") [
+    ./nix/modules/desktop.nix
+    # WSL 機では kitty graphics を描画できないので native 機だけ (Issue #701)
+    # Native only: WSL can't render kitty graphics (Issue #701)
+    ./nix/modules/terminal-browser.nix
+  ]
   ++ lib.optionals (profile == "wsl") [ ./nix/modules/wsl.nix ];
 
   # Environment variables
@@ -35,10 +40,10 @@
     EDITOR = "nvim";
     VISUAL = "nvim";
     # device-auth 系 CLI (aws sso login / gh auth login -w / gcloud auth login 等) の
-    # 承認 URL を herdr-browser pane に直行させるラッパー。herdr 外では内部で GUI
-    # ブラウザ (xdg-open 等) にフォールバックする (Issue #523)。
-    # Routes device-auth approval URLs into a herdr-browser pane; falls back to the
-    # GUI browser internally outside herdr (Issue #523).
+    # 承認 URL を、herdr の中では terminal-browser の pane に開くラッパー。herdr 外では
+    # 内部で GUI ブラウザ (xdg-open 等) にフォールバックする (Issue #523, #701)。
+    # Opens device-auth approval URLs in a terminal-browser pane inside herdr; falls
+    # back to the GUI browser internally outside herdr (Issue #523, #701).
     BROWSER = "${config.home.homeDirectory}/.local/bin/device_auth_browser";
     TERMINAL = "wezterm";
     # SSL certificates (use system certs instead of Nix store)

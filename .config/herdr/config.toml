@@ -58,6 +58,17 @@ panel_bg = "#1e2127" # WezTerm background と揃えた値 (据え置き、詳細
 # so the fallback terminal won't render these panes. See docs/reference/herdr-browser.md.
 [terminal]
 default_shell = "fish"
+# 既定値と同じ true をあえて書く。terminal-browser は herdr の中で開くたびにこのファイルを読み、
+# 行全体が kitty_graphics = true の行が無いと [experimental] 節に kitty_graphics = true を追記して
+# herdr server reload-config を実行しようとする (このファイルは書き込めないので黙って失敗する)。
+# この行があれば検査に一致して追記を試みない。行末に注釈を付けると一致しなくなるので付けないこと
+# (Issue #701、docs/reference/terminal-browser.md)。
+# Spelled out even though true is the default. Each time terminal-browser opens inside herdr it
+# reads this file and, unless some whole line is exactly kitty_graphics = true, appends
+# kitty_graphics = true under [experimental] and runs herdr server reload-config (which silently
+# fails here because this file is read-only). This line satisfies that check. Do not add a
+# trailing comment to it, or the check stops matching (Issue #701, docs/reference/terminal-browser.md).
+kitty_graphics = true
 
 [ui]
 # 移行前にローカルで設定済みだった値を引き継ぎ / carried over from the pre-migration local config
