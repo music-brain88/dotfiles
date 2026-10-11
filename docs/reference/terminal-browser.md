@@ -74,9 +74,16 @@ terminal-browser は、利用状況とクラッシュの報告を既定で PostH
 
 ### 古いプロファイルの掃除
 
-terminal-browser は、プロファイルの置き場の名前に、導入先の実パスの sha256 の先頭 8 桁を付ける (`shared/src/paths.ts`)。置き場は `~/.config/terminal-browser-<8 桁>` (Cookie などの Electron のデータ)、`~/.local/share/terminal-browser-<8 桁>` (データベースと `install`)、`~/.local/state/terminal-browser-<8 桁>` (ログ) の 3 つである。Nix で入れると版を上げるたびに名前が変わり、古いプロファイルが Cookie ごと残る。
+terminal-browser は、プロファイルの置き場の名前に、導入先の実パスの sha256 の先頭 8 桁を付ける (`shared/src/paths.ts`)。置き場は次の 4 つにできる。
 
-home-manager の activation (`cleanTerminalBrowserProfiles`、`mise run nix:switch` のたびに走る) が、古いプロファイルを消す。activation は `~/.local/share/terminal-browser-<8 桁>/install` に書かれた導入先を読み、次の条件をすべて満たすときだけ、同じ 8 桁を持つ 3 つのディレクトリを消す。
+- `~/.config/terminal-browser-<8 桁>` には、Cookie などの Electron のデータが入る。
+- `~/.local/share/terminal-browser-<8 桁>` には、データベースと `install` が入る。
+- `~/.local/state/terminal-browser-<8 桁>` には、ログが入る。
+- `~/.cache/terminal-browser-<8 桁>` には、favicon が入る (`FAVICONS_DIR`)。2026-10-11 の試験では作られなかったが、ソースはここを置き場にしている。
+
+Nix で入れると版を上げるたびに名前が変わり、古いプロファイルが Cookie ごと残る。
+
+home-manager の activation (`cleanTerminalBrowserProfiles`、`mise run nix:switch` のたびに走る) が、古いプロファイルを消す。activation は `~/.local/share/terminal-browser-<8 桁>/install` に書かれた導入先を読み、次の条件をすべて満たすときだけ、同じ 8 桁を持つ 4 つのディレクトリを消す。
 
 - 名前が `terminal-browser-` と 16 進 8 桁だけである。`terminal-browser-dev-<8 桁>`、`terminal-browser-interop`、`terminal-browser` (設定の置き場) は対象にならない。
 - `install` があり、そこに書かれた導入先が `/nix/store/` で始まる。`install` が無いプロファイルは消さない。

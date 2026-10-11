@@ -37,8 +37,10 @@ in
   home.sessionVariables.TERMINAL_BROWSER_NO_TELEMETRY = "1";
 
   # 古いプロファイルの掃除。プロファイルの置き場の名前には、導入先の実パスの sha256 の
-  # 先頭 8 桁が付く (shared/src/paths.ts)。版を上げると名前が変わり、古いプロファイルが
-  # Cookie ごと残るので、ここで消す (版を上げた後は 1 回ログインし直すことになる)。
+  # 先頭 8 桁が付く (shared/src/paths.ts)。置き場は config (Electron のデータと Cookie)、
+  # data (データベースと install)、state (ログ)、cache (favicon) の 4 つにできる。
+  # 版を上げると名前が変わり、古いプロファイルが Cookie ごと残るので、ここで 4 つとも
+  # 消す (版を上げた後は 1 回ログインし直すことになる)。
   # 消すのは次の条件をすべて満たすものだけ:
   #   - 名前が terminal-browser- と 16 進 8 桁だけ (-dev や -interop などは対象外)
   #   - data 側に install があり、そこに書かれた導入先が /nix/store/ で始まる
@@ -46,9 +48,11 @@ in
   #   - その導入先が今のパッケージの導入先と違う
   # 削除は home-manager の run を通すので、dry-run では何も消さない。
   # Clean up stale profiles. Profile directories carry the first 8 hex digits of the
-  # sha256 of the real install root (shared/src/paths.ts). Every version bump changes the
-  # name and leaves the old profile behind, cookies included, so remove it here (the user
-  # logs in again once after a bump). Only directories meeting all of these are removed:
+  # sha256 of the real install root (shared/src/paths.ts). A profile can live in four
+  # places: config (Electron data and cookies), data (database and install), state (logs)
+  # and cache (favicons). Every version bump changes the name and leaves the old profile
+  # behind, cookies included, so remove all four here (the user logs in again once after a
+  # bump). Only directories meeting all of these are removed:
   #   - named exactly terminal-browser-<8 hex digits> (-dev, -interop, ... are left alone)
   #   - the data dir has an install file whose install root starts with /nix/store/
   #     (profiles of installs outside the store, e.g. a trial or manual install, are kept)
@@ -71,6 +75,7 @@ in
       for tb_dir in \
         ${lib.escapeShellArg config.xdg.configHome}/"$tb_name" \
         ${lib.escapeShellArg config.xdg.stateHome}/"$tb_name" \
+        ${lib.escapeShellArg config.xdg.cacheHome}/"$tb_name" \
         "$tb_data"; do
         if [[ -e "$tb_dir" || -L "$tb_dir" ]]; then
           noteEcho "Removing stale terminal-browser profile $tb_dir (install root: $tb_install)"
