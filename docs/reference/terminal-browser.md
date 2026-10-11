@@ -54,7 +54,7 @@ terminal-browser は、初回の起動と、版か導入先のパスが変わっ
 
 `$XDG_STATE_HOME/terminal-browser/skills-choice` (既定は `~/.local/state/terminal-browser/skills-choice`) の中身が `no` なら、terminal-browser はリンクを作らない (`skillsDeclined()`)。home-manager がこのファイルを置く。エージェントに terminal-browser を操作させる用途は今は無いので、スキルは配らない。
 
-このファイルは Nix の store への読み取り専用の symlink になる。`terminal-browser setup` はこのファイルに答えを書き込もうとして失敗するので、実行しない。
+このファイルは Nix の store への読み取り専用の symlink になる。`terminal-browser setup` はこのファイルに答えを書き込もうとして失敗するので、実行しない。過去に `terminal-browser setup` がこのファイルを普通のファイルとして書いていても、home-manager は activation を止めずに symlink で置き換える (`force = true`)。
 
 ### herdr の設定への追記
 
@@ -88,8 +88,11 @@ home-manager の activation (`cleanTerminalBrowserProfiles`、`mise run nix:swit
 - 名前が `terminal-browser-` と 16 進 8 桁だけである。`terminal-browser-dev-<8 桁>`、`terminal-browser-interop`、`terminal-browser` (設定の置き場) は対象にならない。
 - `install` があり、そこに書かれた導入先が `/nix/store/` で始まる。`install` が無いプロファイルは消さない。
 - その導入先が、今のパッケージの導入先 (`<store のパス>/libexec/terminal-browser`) と違う。
+- プロファイルの lock (`~/.config/terminal-browser-<8 桁>/terminal-browser.lock`) に書かれた PID が生きていない。terminal-browser は起動時にこの lock に自分の PID を書き、終了時に消す。PID が生きていれば、古い版がまだそのプロファイルを使っているので、activation は警告を出してそのプロファイルを残す。利用者が `terminal-browser shutdown` で古い版を止めてから switch し直すと、次の activation が消す。
 
 `/nix/store/` の外を指すプロファイル (手で入れた版や、#701 の前に隔離して入れた試験の版) は消さない。そうしたプロファイルは、利用者が確認を取ってから手で消す。
+
+terminal-browser は、`~/.config` 側の置き場の lock が生きた PID に握られていると、`terminal-browser-<8 桁>-2` から `-32` までの別名の置き場を使う (`browser/src/profile.ts` の `claimProfile()`)。こうした別名の置き場は名前の条件に合わないので、activation は消さない。
 
 削除は home-manager の `run` を通すので、dry-run では消す対象を表示するだけで何も消さない。消すときは、`install` を持つ `~/.local/share` 側を最後に消す。途中で止まっても、次の activation が残りを消す。
 

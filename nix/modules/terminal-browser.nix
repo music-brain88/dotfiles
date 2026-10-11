@@ -25,7 +25,14 @@ in
   # ~/.claude/skills and friends. Under Nix the store path changes on every bump, so the
   # links would be recreated each time. A "no" here makes it skip linking
   # (skillsDeclined() in cli/src/setup.ts).
-  xdg.stateFile."terminal-browser/skills-choice".text = "no\n";
+  # terminal-browser setup が普通のファイルとして書いた skills-choice が既にあっても、
+  # activation を「would be clobbered」で止めずに symlink で置き換えるため force にする。
+  # force: if `terminal-browser setup` already wrote skills-choice as a regular file,
+  # replace it with the link instead of aborting activation with "would be clobbered".
+  xdg.stateFile."terminal-browser/skills-choice" = {
+    text = "no\n";
+    force = true;
+  };
 
   # 利用状況とクラッシュの報告 (PostHog) を両方止める (browser の telemetryOptedOutByEnv())。
   # settings.json でも止められるが、アプリが実行中に書き換えるので Nix の symlink にはしない。
@@ -46,6 +53,7 @@ in
   #   - data 側に install があり、そこに書かれた導入先が /nix/store/ で始まる
   #     (store の外の導入先 = 試験の版や手で入れた版のプロファイルは消さない)
   #   - その導入先が今のパッケージの導入先と違う
+  #   - プロファイルの lock (config/<名前>/terminal-browser.lock) の PID が生きていない
   # 削除は home-manager の run を通すので、dry-run では何も消さない。
   # Clean up stale profiles. Profile directories carry the first 8 hex digits of the
   # sha256 of the real install root (shared/src/paths.ts). A profile can live in four
@@ -57,6 +65,7 @@ in
   #   - the data dir has an install file whose install root starts with /nix/store/
   #     (profiles of installs outside the store, e.g. a trial or manual install, are kept)
   #   - that install root differs from the current package's
+  #   - no live process holds the profile lock (config/<name>/terminal-browser.lock)
   # Deletion goes through home-manager's run, so a dry run removes nothing.
   home.activation.cleanTerminalBrowserProfiles = config.lib.dag.entryAfter [ "writeBoundary" ] ''
     tb_current=${lib.escapeShellArg distRoot}
@@ -70,6 +79,18 @@ in
       tb_install="$(< "$tb_data/install")"
       [[ "$tb_install" == /nix/store/* ]] || continue
       [[ "$tb_install" != "$tb_current" ]] || continue
+      # 古い版がまだ動いている (lock の PID が生きている) プロファイルは消さず、次の activation に回す。
+      # 生死の判定は terminal-browser 自身 (browser/src/profile.ts の alive()) と同じ kill -0。
+      # Skip a profile an old version is still running in (its lock PID is alive) and leave it
+      # for a later activation. Liveness uses kill -0, as terminal-browser's own alive() does.
+      tb_lock=${lib.escapeShellArg config.xdg.configHome}/"$tb_name"/terminal-browser.lock
+      if [[ -f "$tb_lock" ]]; then
+        tb_pid="$(< "$tb_lock")"
+        if [[ "$tb_pid" =~ ^[0-9]+$ ]] && kill -0 "$tb_pid" 2>/dev/null; then
+          warnEcho "Keeping terminal-browser profile $tb_name: still in use by PID $tb_pid (run terminal-browser shutdown, then switch again)"
+          continue
+        fi
+      fi
       # data 側 (install を持つ側) を最後に消し、途中で止まっても次の activation で続きを消せるようにする
       # Remove the data dir (which holds install) last, so an interrupted run is finished next time
       for tb_dir in \
@@ -83,6 +104,6 @@ in
         fi
       done
     done
-    unset tb_current tb_data tb_name tb_install tb_dir
+    unset tb_current tb_data tb_name tb_install tb_lock tb_pid tb_dir
   '';
 }
