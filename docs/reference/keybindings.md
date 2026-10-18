@@ -28,8 +28,14 @@ Fish shellのキーバインドは `.config/fish/functions/fish_user_key_binding
 | Keybind | Description | 説明 |
 |---------|-------------|------|
 | `Ctrl+t` | File search with preview | ファイル検索（プレビュー付き） |
-| `Ctrl+r` | Command history search | コマンド履歴検索 |
+| `Alt+r` | Command history search | コマンド履歴検索 |
 | `Alt+e` | Directory search | ディレクトリ検索・移動 |
+
+### History Search (atuin)
+
+| Keybind | Description | 説明 |
+|---------|-------------|------|
+| `Ctrl+r` | Command history search with [atuin](https://atuin.sh) (filter by exit code and cwd) | atuin の履歴検索（exit code・cwd で絞れる） |
 
 ### Git Integration
 

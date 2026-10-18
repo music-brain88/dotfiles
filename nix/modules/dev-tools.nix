@@ -168,20 +168,45 @@ in
   };
 
   # Zoxide - smarter cd command (alternative to z)
+  # NOTE: enableFishIntegration は programs.fish を使わないハイブリッド方式では no-op なので false にする。
+  # fish の z は nix/modules/shell.nix の fishPlugins.z (jethrokuan/z) が担っていて、
+  # zoxide はフック未定義・DB 空で未使用 (パッケージだけ残す)。
+  # enableFishIntegration is a no-op in this hybrid setup without programs.fish, so it is false.
+  # fish's z comes from fishPlugins.z (jethrokuan/z) in nix/modules/shell.nix; zoxide has
+  # no hook and an empty DB, so it is unused (only the package is kept).
   programs.zoxide = {
     enable = true;
-    enableFishIntegration = true;
+    enableFishIntegration = false;
   };
 
   # Atuin - magical shell history
+  # NOTE: enableFishIntegration は programs.fish が有効なときだけ init を注入する。
+  # fish はネイティブの config.fish を symlink で配っているので、true にしても何もしない。
+  # シェルフックは .config/fish/config.fish の `atuin init fish ... | source` で入れる。
+  # programs.atuin 自体は settings (config.toml の生成) のために残す。
+  # enableFishIntegration only injects init when programs.fish is enabled; fish is
+  # configured via the symlinked native config.fish, so the hook lives there instead.
+  # programs.atuin stays for generating config.toml from settings.
   programs.atuin = {
     enable = true;
-    enableFishIntegration = true;
+    enableFishIntegration = false;
     settings = {
       auto_sync = true;
       sync_frequency = "5m";
       sync_address = "https://api.atuin.sh";
       search_mode = "fuzzy";
+      # 秘密を含むコマンドを記録しない (履歴を LLM に渡す前段の防衛線、#710)
+      # Keep secrets out of the history before it is ever handed to an LLM (#710)
+      # NOTE: 正規表現にバックスラッシュを使わない (Nix 文字列 → TOML の二重エスケープを避ける)
+      # No backslashes in the regexes, to avoid double escaping (Nix string -> TOML)
+      secrets_filter = true;
+      history_filter = [
+        "^(export|set -[a-zA-Z]*x[a-zA-Z]*) .*(TOKEN|SECRET|PASSWORD|API_KEY)[A-Za-z0-9_]*[= ]"
+        "^gh auth login --with-token"
+        "^aws configure set aws_secret_access_key"
+        "^atuin login"
+        "--passphrase"
+      ];
     };
   };
 }
