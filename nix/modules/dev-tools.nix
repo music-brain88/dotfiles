@@ -60,7 +60,6 @@ in
     # Policy: Nix provides baseline runtimes only (unpinned = cached by Hydra);
     # per-project versions are pinned via mise (.mise.toml in each repo).
     nodejs # Node.js
-    bun # Bun runtime (herdr-browser プラグインの依存 / dependency of the herdr-browser plugin)
     python3 # Python
     # standalone-check: 配布文書の自立可読性チェッカー (tools/standalone-check、Rust、flake overlay で定義)。
     # standalone-report-writing skill の点検手順から呼ぶ。--with-yomiyasu は python3 で yomiyasu の lint を呼ぶ

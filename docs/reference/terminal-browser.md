@@ -4,7 +4,7 @@
 
 このリポジトリは、`aws sso login` などの device-auth の承認ページを herdr の pane で開くために、terminal-browser を使う。この文書は、terminal-browser をどう入れ、既定の挙動のどれをなぜ止めているかをまとめる ([Issue #701](https://github.com/music-brain88/dotfiles/issues/701))。
 
-terminal-browser ([zenbu-labs/terminal-browser](https://github.com/zenbu-labs/terminal-browser)、MIT ライセンス) は、Electron の画面外の描画でページを描き、変わった部分だけを kitty graphics で端末へ送るブラウザである。以前は herdr-browser プラグインが同じ役を担っていた。herdr-browser は herdr v0.9.2 の pane graphics API の廃止の後に問題が続き、上流も deprecated にして terminal-browser を後継に挙げたので、#701 で開く先を terminal-browser に替えた。herdr-browser の経緯は [herdr-browser.md](./herdr-browser.md) に書いてある。
+terminal-browser ([zenbu-labs/terminal-browser](https://github.com/zenbu-labs/terminal-browser)、MIT ライセンス) は、Electron の画面外の描画でページを描き、変わった部分だけを kitty graphics で端末へ送るブラウザである。以前は herdr-browser プラグインが同じ役を担っていた。herdr-browser は herdr v0.9.2 の pane graphics API の廃止の後に問題が続き、上流も deprecated にして terminal-browser を後継に挙げたので、#701 で開く先を terminal-browser に替えた。herdr-browser のための設定と文書は、[Issue #702](https://github.com/music-brain88/dotfiles/issues/702) で撤去した。経緯は「herdr-browser からの移行」節に書いてある。
 
 ## 構成の一覧
 
@@ -18,6 +18,7 @@ terminal-browser ([zenbu-labs/terminal-browser](https://github.com/zenbu-labs/te
 | テレメトリの停止 | 同モジュールの `home.sessionVariables.TERMINAL_BROWSER_NO_TELEMETRY` | 利用状況とクラッシュの報告を止める |
 | 古いプロファイルの掃除 | 同モジュールの `home.activation.cleanTerminalBrowserProfiles` | 版を上げた後に残る古いプロファイルを消す |
 | herdr の設定 | `.config/herdr/config.toml` の `[terminal]` 節の `kitty_graphics = true` | terminal-browser が herdr の設定に書き込もうとするのを止める |
+| WezTerm の設定 | `.config/wezterm/wezterm.lua` の `enable_kitty_graphics = true` | WezTerm で kitty graphics を有効にする (「端末の要件」節) |
 | `$BROWSER` ラッパー | `.config/herdr/scripts/device_auth_browser.sh` | herdr の中では承認ページを terminal-browser の pane で開く |
 
 ## 導入の仕方
@@ -42,7 +43,23 @@ terminal-browser ([zenbu-labs/terminal-browser](https://github.com/zenbu-labs/te
 
 ## 入れる機械
 
-terminal-browser は native 機だけに入る。WSL 機では、ConPTY が kitty graphics のエスケープを通さないので、terminal-browser も描画できない。原因は herdr-browser のときと同じである ([Issue #569](https://github.com/music-brain88/dotfiles/issues/569))。`home.nix` は `profile == "native"` のときだけ `nix/modules/terminal-browser.nix` を読み込むので、WSL 機にはパッケージも環境変数も activation も入らない。
+terminal-browser は native 機だけに入る。`home.nix` は `profile == "native"` のときだけ `nix/modules/terminal-browser.nix` を読み込むので、WSL 機にはパッケージも環境変数も activation も入らない。WSL 機に入れない理由は、次の節に書いてある。
+
+### WSL 機で描画できない理由
+
+WSL 機では、`wsl.exe` と Windows 側の端末の間にある ConPTY が、kitty graphics の APC エスケープ (`ESC _G ... ESC \`) を通さない ([microsoft/terminal#12166](https://github.com/microsoft/terminal/issues/12166))。そのため、WSL 機の端末には kitty graphics の画像が届かない。この原因はブラウザの種類によらないので、herdr-browser と同じく、terminal-browser も WSL 機では描画できない。WSL 機で kitty graphics の画像全般が出ない症状も、同じ原因である。
+
+- 2026-08-05〜07 の検証 ([Issue #569](https://github.com/music-brain88/dotfiles/issues/569)) では、当時の herdr-browser を使った。このとき、herdr とプラグインと Chromium は正しく動いていて、両側の端末の kitty graphics の設定も正しかった。プラグインはフレームを送っていたが、ページの画像は描画されなかった。herdr を通さずに外側の PTY へ kitty graphics のエスケープを直接書いても、描画されなかった。
+- #569 では、回避策を 2 つ試した。wezterm-mux-server と unix domain と `proxy_command` を組む方式は、GUI 側の codec のタイムアウトで断念した。WSLg の上の Linux 版 WezTerm では描画できたが、常用の導線としては重いので採らなかった。
+- WSL 機では、ラッパーが承認ページを Windows 側の既定のブラウザで開く (「device_auth_browser.sh の振り分け」節)。
+
+## 端末の要件
+
+terminal-browser は、ページの画像を kitty graphics でしか端末へ送らない。release の bundle (`cli/dist/main.js` と `browser/dist/main.js`) には、sixel などの別の描き方が無い。そのため、端末と herdr の両方が kitty graphics を通す必要がある。
+
+- WezTerm は、kitty graphics を既定で無効にしている。このリポジトリは、`.config/wezterm/wezterm.lua` の `enable_kitty_graphics = true` で有効にしている。
+- herdr は、v0.9.0 から、対応する端末で kitty graphics を既定で有効にしている (`terminal.kitty_graphics`)。`.config/herdr/config.toml` にこのキーをあえて書く理由は、「herdr の設定への追記」節に書いてある。
+- Alacritty は kitty graphics に対応しておらず、上流は設計の方針として今後も入れない予定である。terminal-browser は WezTerm の上で使う。ラッパーは端末の種類を見ないので、Alacritty の中の herdr で認証すると、ページの描かれない pane が開くはずである (未検証)。
 
 ## 既定の挙動を止める設定
 
@@ -100,6 +117,8 @@ terminal-browser は、`~/.config` 側の置き場の lock が生きた PID に�
 
 `$BROWSER` ラッパー `.config/herdr/scripts/device_auth_browser.sh` は、承認ページの開き先を次の順に決める。`nix/modules/herdr.nix` がこのスクリプトを `~/.local/bin/device_auth_browser` に置き、`home.nix` の `BROWSER` がそのパスを指す。
 
+device-auth 系の CLI は、承認ページの URL を `$BROWSER` で開く。aws cli v2 は Python の `webbrowser` を通し、gh と gcloud も同じく `$BROWSER` を見る。`$BROWSER` に空白区切りで引数を書いても、分けて解釈しないツールがある。そのため、このリポジトリはラッパーを、`$BROWSER` に 1 個のパスだけで書ける実行ファイルにしてある ([Issue #523](https://github.com/music-brain88/dotfiles/issues/523))。
+
 1. **WSL 機**: Windows 側の既定のブラウザで開く ([Issue #574](https://github.com/music-brain88/dotfiles/issues/574))。
 2. **SSH のセッション**: `SSH_CONNECTION` か `SSH_TTY` があり、`HERDR_ENV=1` が無ければ、GUI ブラウザで開く。
 3. **herdr の外**: `HERDR_PANE_ID` が空なら、GUI ブラウザで開く。
@@ -150,12 +169,21 @@ GPU のほかに、terminal-browser には次の 3 つの制限がある。
 2. 新しく開いた WezTerm のウィンドウ (ログイン fish) から herdr サーバーを起動し直す。`TERMINAL_BROWSER_NO_TELEMETRY` を herdr サーバーの環境に入れるためである。switch を実行した古いシェルから起動すると、サーバーは switch 前の環境を継承する。
 3. herdr の pane で認証のコマンドを実行し、承認ページが右の pane に開くことを確かめる。
 
-herdr-browser に戻すときは、利用者が `device_auth_browser.sh` を #701 の前の版に戻す。herdr-browser の設定と文書は、後続の Issue で撤去するまで残してある。
+## herdr-browser からの移行
+
+#701 の前は、herdr-browser プラグイン ([ogulcancelik/herdr-browser](https://github.com/ogulcancelik/herdr-browser)、`official.browser`) が承認ページを herdr の pane に開いていた ([Issue #520](https://github.com/music-brain88/dotfiles/issues/520)、[Issue #523](https://github.com/music-brain88/dotfiles/issues/523))。このリポジトリは、herdr-browser を次の順に延命し、撤去した。
+
+1. [Issue #693](https://github.com/music-brain88/dotfiles/issues/693): herdr v0.9.2 が pane graphics API を廃止したので、環境変数 `HERDR_BROWSER_TRANSPORT=direct-kitty` で描画の経路を固定した。
+2. [Issue #699](https://github.com/music-brain88/dotfiles/issues/699): viewer がセル寸法の問い合わせの答えをキー入力と読み違えて描き直し続けたので、`HERDR_BROWSER_CELL_WIDTH` と `HERDR_BROWSER_CELL_HEIGHT` でセル寸法を渡して止めた。それでも、ページの裏の変化が描かれない問題は残った。上流は 2026-08-22 に herdr-browser を deprecated にし、後継に terminal-browser を挙げた。
+3. [Issue #701](https://github.com/music-brain88/dotfiles/issues/701): 承認ページの開き先を terminal-browser に替えた。切り戻しに備えて、herdr-browser の設定と文書は残した。
+4. [Issue #702](https://github.com/music-brain88/dotfiles/issues/702): 利用者は数日 terminal-browser で認証し、問題が無いと確かめた。その後、このリポジトリは herdr-browser のための環境変数 3 つと `bun` と `docs/reference/herdr-browser.md` を撤去した。プラグイン本体は Nix の管理の外にあるので、利用者が各機械で `herdr plugin uninstall official.browser` を実行して外す。
+
+herdr-browser に戻すときは、利用者が #701 と #702 の変更を revert し、プラグインを入れ直す。プラグインの入れ方と延命の設定の詳しい理由は、#702 で消す前の `docs/reference/herdr-browser.md` に書いてある。消したコミットは `git log --diff-filter=D -- docs/reference/herdr-browser.md` で探せ、`git show <そのコミット>^:docs/reference/herdr-browser.md` で消す前の版を読める。
 
 ## 関連
 
 - [Issue #701](https://github.com/music-brain88/dotfiles/issues/701): terminal-browser の導入と、この文書の設計の決定
-- [herdr-browser.md](./herdr-browser.md): 以前の承認ページの開き先と、その撤去までの経緯
+- [Issue #702](https://github.com/music-brain88/dotfiles/issues/702): herdr-browser の設定・依存・文書の撤去
 - [Issue #523](https://github.com/music-brain88/dotfiles/issues/523): `$BROWSER` ラッパーの起源
 - [Issue #569](https://github.com/music-brain88/dotfiles/issues/569): WSL 機で kitty graphics を描画できない原因
 - [nix-modules.md](./nix-modules.md): `nix/modules/terminal-browser.nix` の位置づけ
