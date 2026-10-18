@@ -201,7 +201,7 @@ in
       # No backslashes in the regexes, to avoid double escaping (Nix string -> TOML)
       secrets_filter = true;
       history_filter = [
-        "^export [A-Z_]*(TOKEN|SECRET|PASSWORD|API_KEY)[A-Z_]*="
+        "^(export|set -[a-zA-Z]*x[a-zA-Z]*) .*(TOKEN|SECRET|PASSWORD|API_KEY)[A-Za-z0-9_]*[= ]"
         "^gh auth login --with-token"
         "^aws configure set aws_secret_access_key"
         "^atuin login"

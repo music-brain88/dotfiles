@@ -140,7 +140,7 @@ end
 
   if bind -M insert > /dev/null 2>&1
     bind -M insert ctrl-t skim-file-widget
-    bind -M insert ctrl-r skim-history-widget
+    bind -M insert alt-r skim-history-widget
     bind -M insert alt-e skim-cd-widget
   end
 
