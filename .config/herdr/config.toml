@@ -48,14 +48,14 @@ panel_bg = "#1e2127" # WezTerm background と揃えた値 (据え置き、詳細
 # Kitty graphics protocol は herdr 0.9.0 以降、対応ターミナルで既定で有効になっている
 # (terminal.kitty_graphics の既定値は true)。以前ここで宣言していた
 # experimental.kitty_graphics は非推奨の互換キーになったため削除した (Issue #693)。
-# herdr-browser 等の画像描画プラグインには、WezTerm 側の enable_kitty_graphics = true
+# terminal-browser など画像を描く pane には、WezTerm 側の enable_kitty_graphics = true
 # (wezterm.lua で設定済み) も必要である。Alacritty は非対応のため、フォールバックでは描画されない。
 # Kitty graphics has been enabled by default in compatible terminals since herdr 0.9.0
 # (terminal.kitty_graphics defaults to true). The experimental.kitty_graphics key we
 # used to set here is now a deprecated compatibility key, so it was removed (Issue #693).
-# Image-rendering plugins such as herdr-browser also need WezTerm's
+# Panes that draw images, such as terminal-browser, also need WezTerm's
 # enable_kitty_graphics = true (set in wezterm.lua). Alacritty doesn't support it,
-# so the fallback terminal won't render these panes. See docs/reference/herdr-browser.md.
+# so the fallback terminal won't render these panes. See docs/reference/terminal-browser.md.
 [terminal]
 default_shell = "fish"
 # 既定値と同じ true をあえて書く。terminal-browser は herdr の中で開くたびにこのファイルを読み、
