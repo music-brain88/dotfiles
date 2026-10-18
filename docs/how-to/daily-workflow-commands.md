@@ -54,7 +54,8 @@
 |-------------------|-------------|------|
 | `z` | Directory autojump | ディレクトリ移動を効率化 |
 | `Ctrl+t` | File search with skim | ファイル検索 |
-| `Ctrl+r` | History search with skim | 履歴検索 |
+| `Ctrl+r` | History search with atuin | 履歴検索（atuin） |
+| `Alt+r` | History search with skim | 履歴検索（skim） |
 | `Alt+e` | Directory search with skim | ディレクトリ検索 |
 
 ### Development Environment

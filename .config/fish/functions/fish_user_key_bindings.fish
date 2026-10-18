@@ -13,8 +13,8 @@ function fish_user_key_bindings
 
   # Ctrl + t でファイルを検索する
   bind ctrl-t skim-file-widget
-  # Ctrl + r で履歴を検索する
-  bind ctrl-r skim-history-widget
+  # Alt + r で履歴を検索する (Ctrl + r は config.fish の atuin に渡す)
+  bind alt-r skim-history-widget
   # Alt + e でディレクトリを検索する (e = explorer)
   bind alt-e skim-cd-widget
 

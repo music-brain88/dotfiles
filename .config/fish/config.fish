@@ -140,6 +140,12 @@ end
 
 # set startship
 starship init fish | source
+
+# set atuin (シェルフックはここで入れる。programs.fish を使わないので home-manager の enableFishIntegration は注入しない)
+# The shell hook lives here: without programs.fish, home-manager's enableFishIntegration injects nothing
+# ctrl-r だけ atuin に渡す。上矢印は fish 既定のまま、? (Atuin AI) は bind しない
+# Only ctrl-r goes to atuin; keep fish's default up-arrow and skip the ? (Atuin AI) binding
+atuin init fish --disable-up-arrow --disable-ai | source
 # set -gx VOLTA_HOME "$HOME/.volta"
 # set -gx PATH "$VOLTA_HOME/bin" $PATH
 

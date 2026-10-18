@@ -287,6 +287,8 @@ programs.neovim = {
 
 **採用例**: Neovim（パッケージはprograms.*、設定はsymlink）
 
+**注意（enable\*Integration の空振り）**: シェルの初期化に触るもの（`atuin init fish`・`starship init fish` のようなフック）は、ネイティブ側の `.config/fish/config.fish` に書く。home-manager の `programs.<tool>.enableFishIntegration` などの `enable*Integration` は、相手側のモジュール（`programs.fish` など）が有効なときだけ init を注入する。このリポジトリは fish を Strategy 1 の symlink で配っていて `programs.fish` を使わないので、`true` にしてもエラーも警告も出ずに何もしない。atuin は 2026-07-29 の導入からこの空振りで履歴を 1 件も記録していなかった（Issue #708）。`programs.<tool>` を `settings` の生成のために使う場合も、`enableFishIntegration` は `false` にして理由を注釈で残す
+
 ### Strategy 3: Package Only (No Config)
 
 **使用場面**: 設定不要なCLIツール
