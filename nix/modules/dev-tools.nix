@@ -204,6 +204,7 @@ in
         "^gh auth login --with-token"
         "^aws configure set aws_secret_access_key"
         "^atuin login"
+        "^atuin register"
         "--passphrase"
       ];
     };

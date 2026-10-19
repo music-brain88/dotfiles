@@ -36,6 +36,7 @@
 - [how-to/troubleshoot-fonts.md](./how-to/troubleshoot-fonts.md) - フォント関連のトラブルシューティング
 - [how-to/manage-gpg-keys.md](./how-to/manage-gpg-keys.md) - GPG鍵の複数端末運用
 - [how-to/install-unmanaged-tools.md](./how-to/install-unmanaged-tools.md) - Nix管理外ツールの導入(Claude Code・OS層・化石の掃除)
+- [how-to/sync-atuin-history-across-machines.md](./how-to/sync-atuin-history-across-machines.md) - atuin の履歴を複数端末で同期する(register・同じ鍵での login)
 
 ---
 
