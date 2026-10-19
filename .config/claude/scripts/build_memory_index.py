@@ -14,8 +14,15 @@ root(MEMORY.md)は自動で読まれるが先頭 200 行 / 25KB までしか読�
 MEMORY.md はマーカーの間だけを生成し、外側は手書き領域(読み方・受信箱)として残す。
 ただし、今回の生成に載った記憶を指す受信箱の行は手書き領域から取り除く。
 
+A full run (without --project) also builds the shared indexes of the vault:
+sessions/INDEX.md and sessions/YYYY-MM.md from the session notes under
+<vault>/Zettelkasten/ResearchNotes, and episodes/INDEX.md from episodes/*.md.
+--project を付けない全体実行では vault 共通の索引も作る。<vault>/Zettelkasten/ResearchNotes の
+セッションノートから sessions/INDEX.md と月別の sessions/YYYY-MM.md を、episodes/*.md から
+episodes/INDEX.md を作る。
+
 Usage / 使い方:
-  python3 -I build_memory_index.py [--root PATH] [--project NAME] [--check]
+  python3 -I build_memory_index.py [--root PATH] [--vault PATH] [--project NAME] [--check]
 
 Exit status / 終了コード: 0 ok, 1 --check found a root over the limit, 2 bad input.
 Standard library only, no PyYAML / 標準ライブラリだけで動く(PyYAML は使わない)。
@@ -28,6 +35,7 @@ import re
 import stat
 import sys
 import tempfile
+from collections import Counter
 from dataclasses import dataclass
 
 DEFAULT_ROOT = "~/Documents/Obsidian/AgentMemory"
@@ -44,6 +52,35 @@ ROOT_NOTE = "<!-- この区間は build_memory_index.py が生成する。手書
 BRANCH_NOTE = "<!-- build_memory_index.py が各記憶の frontmatter から生成する。手で直さない -->"
 BRANCH_FRONTMATTER = "---\ntype: index\n---\n"
 
+# Shared indexes, built on a full run only / 全体実行のときだけ作る vault 共通の索引
+SESSION_PREFIX = "ClaudeCodeSession-"
+SESSION_NOTES = ("Zettelkasten", "ResearchNotes")
+SHARED_INDEX = "INDEX.md"
+MONTH_FILE = re.compile(r"^\d{4}-\d{2}\.md$")
+# Eight digits of a date in a file name / ファイル名の 8 桁の日付
+FILE_DATE = re.compile(r"(\d{4})(\d{2})(\d{2})(?!\d)")
+ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+TITLE_LIMIT = 120
+PENDING = "⏳"
+# Wikilinks cannot be resolved outside Obsidian, so the notes say where the files are.
+# Writing "[[...]]" here would leave an unresolved link in the vault, hence "wikilink".
+# Obsidian の外では wikilink を解決できないので、ノートの実体の置き場を注記に書く。
+# 注記に [[...]] と書くと vault に未解決のリンクが増えるので「wikilink」と書く。
+MONTH_NOTE = (
+    "> build_memory_index.py がセッションノートの frontmatter と最初の H1 から生成する。手で直さない。"
+    "wikilink の実体は `{notes}/<ノート名>.md`。"
+    "⏳ は `triage: candidate` のまま `distilled_to` が空の(未蒸留の)ノート。"
+)
+SESSIONS_INDEX_NOTE = (
+    "> build_memory_index.py がセッションノートから生成する。手で直さない。"
+    "月のファイルに 1 ノート 1 行で載り、ノートの実体は `{notes}/<ノート名>.md`。"
+    "tags は月内で多い順の上位 3 つ、⏳ は `triage: candidate` のまま `distilled_to` が空の(未蒸留の)ノートの本数。"
+)
+EPISODES_NOTE = (
+    "> build_memory_index.py が各私記の frontmatter から生成する。手で直さない。"
+    "行末の wikilink は私記の元になったセッションノートで、実体は `{notes}/<ノート名>.md`。"
+)
+
 # Claude Code stops reading MEMORY.md here / Claude Code が MEMORY.md を読むのはここまで
 LIMIT_LINES, LIMIT_BYTES = 200, 25000
 # Aim, shown in the --check table only / 目標。--check の表に出すだけで終了コードには効かせない
@@ -51,6 +88,7 @@ TARGET_LINES, TARGET_BYTES = 100, 15000
 
 TOP_KEY = re.compile(r"^([A-Za-z_][\w-]*):(?:\s(.*))?$")
 NESTED_KEY = re.compile(r"^  ([A-Za-z_][\w-]*):(?:\s(.*))?$")
+LIST_ITEM = re.compile(r"^  - (.*)$")
 # A link target, optionally followed by a title: [t](url "title") / リンク先(タイトル付きの形も拾う)
 FIRST_LINK = re.compile(r"\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\"|\s+'[^']*')?\s*\)")
 # Fence of a code block, any indentation (errs on keeping lines) / コードブロックのフェンス(字下げは問わない)
@@ -72,7 +110,27 @@ class Memory:
 
 
 @dataclass
+class Session:
+    file: str
+    date: str
+    title: str
+    tags: list
+    pending: bool
+
+
+@dataclass
+class Episode:
+    file: str
+    date: str
+    name: str
+    description: str
+    origin: str
+
+
+@dataclass
 class Plan:
+    # A project directory, or a shared area (sessions, episodes)
+    # プロジェクトのディレクトリか、vault 共通の領域(sessions・episodes)
     project: str
     # Relative path -> new content, or None to remove a stale branch.
     # Branches come before MEMORY.md so the root never links to a missing file.
@@ -99,14 +157,17 @@ def parse_frontmatter(text):
 
     A minimal reader, not YAML: one "key: value" per line, only the lines indented
     by two spaces right under "metadata:" are nested, surrounding quotes are dropped.
+    "  - item" lines right after a key without a value make that key a list.
     YAML の実装ではない。1 行 1 つの key: value を読み、入れ子は metadata: 直下の
-    2 スペース字下げだけを読み、値の前後の引用符を外す。
+    2 スペース字下げだけを読み、値の前後の引用符を外す。値の無い key の直後に続く
+    "  - item" の行は、その key の値を list として読む(block list)。
     """
     lines = text.splitlines()
     if not lines or lines[0].rstrip() != "---":
         return None
     top, metadata = {}, {}
     in_metadata = False
+    list_key = None
     for line in lines[1:]:
         if line.rstrip() == "---":
             return top, metadata
@@ -115,6 +176,11 @@ def parse_frontmatter(text):
             key, value = match.group(1), unquote(match.group(2))
             top[key] = value
             in_metadata = key == "metadata" and not value
+            list_key = None if value else key
+            continue
+        match = LIST_ITEM.match(line)
+        if match and list_key:
+            top[list_key] = (top[list_key] or []) + [unquote(match.group(1))]
             continue
         match = NESTED_KEY.match(line)
         if match and in_metadata:
@@ -424,6 +490,223 @@ def was_generated(project_dir, root_text):
     )
 
 
+def display_path(path):
+    """Path with the home directory written as ~, the same on every machine.
+    ホームを ~ で書いたパス。Obsidian Sync で共有する索引がマシンごとに変わらないようにする。
+    """
+    home = os.path.normpath(os.path.expanduser("~"))
+    if path == home or path.startswith(home + os.sep):
+        return "~" + path[len(home) :]
+    return path
+
+
+def file_date(filename, prefix=""):
+    """YYYY-MM-DD from the eight digits right after the prefix / 接頭辞の直後の 8 桁から日付を作る"""
+    match = FILE_DATE.match(filename, len(prefix)) if filename.startswith(prefix) else None
+    return "-".join(match.groups()) if match else None
+
+
+def iso_date(value):
+    """YYYY-MM-DD at the head of a frontmatter value / frontmatter の値の先頭の日付"""
+    match = ISO_DATE.match(value) if isinstance(value, str) else None
+    return match.group(0) if match else None
+
+
+def is_empty(value):
+    """distilled_to counts as empty when missing, blank or [] / キー無し・空文字・[] を空とみなす"""
+    return value in (None, "", "[]", [])
+
+
+def read_note(path, area, entry):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except UnicodeDecodeError:
+        warn(area, entry, "UTF-8 として読めないので索引の対象外にする")
+        return None
+
+
+def first_heading(text):
+    """Text of the first H1 after the frontmatter / frontmatter の後の最初の H1 の文"""
+    lines = text.splitlines()
+    start = 0
+    if lines and lines[0].rstrip() == "---":
+        start = next((i + 1 for i, line in enumerate(lines[1:], 1) if line.rstrip() == "---"), 0)
+    for line in lines[start:]:
+        if line.startswith("# ") and line[2:].strip():
+            return line[2:].strip()
+    return None
+
+
+def load_sessions(notes_dir):
+    sessions = []
+    for entry in sorted(os.listdir(notes_dir)):
+        path = os.path.join(notes_dir, entry)
+        if not entry.startswith(SESSION_PREFIX) or not entry.endswith(".md") or not os.path.isfile(path):
+            continue
+        text = read_note(path, "ResearchNotes", entry)
+        if text is None:
+            continue
+        parsed = parse_frontmatter(text)
+        if parsed is None:
+            warn("ResearchNotes", entry, "frontmatter が無いので日付はファイル名から取る")
+        top = parsed[0] if parsed else {}
+        date = iso_date(top.get("date")) or file_date(entry, SESSION_PREFIX)
+        if not date:
+            warn("ResearchNotes", entry, "日付が決まらない(date もファイル名の 8 桁も無い)ので索引の対象外にする")
+            continue
+        title = first_heading(text) or entry[: -len(".md")]
+        if len(title) > TITLE_LIMIT:
+            title = title[:TITLE_LIMIT] + "…"
+        tags = top.get("tags")
+        sessions.append(
+            Session(
+                file=entry,
+                date=date,
+                title=title,
+                tags=[tag for tag in (tags if isinstance(tags, list) else [tags]) if tag],
+                pending=top.get("triage") == "candidate" and is_empty(top.get("distilled_to")),
+            )
+        )
+    return sessions
+
+
+def load_episodes(episodes_dir):
+    episodes = []
+    for entry in sorted(os.listdir(episodes_dir)):
+        path = os.path.join(episodes_dir, entry)
+        if (
+            entry == SHARED_INDEX
+            or entry.startswith(("_", "."))
+            or not entry.endswith(".md")
+            or not os.path.isfile(path)
+        ):
+            continue
+        text = read_note(path, "episodes", entry)
+        if text is None:
+            continue
+        parsed = parse_frontmatter(text)
+        if parsed is None:
+            warn("episodes", entry, "frontmatter が無いので索引の対象外にする")
+            continue
+        top = parsed[0]
+        date = file_date(entry) or iso_date(top.get("modified"))
+        if not date:
+            warn("episodes", entry, "日付が決まらない(ファイル名の 8 桁も modified も無い)ので索引の対象外にする")
+            continue
+        if not top.get("name"):
+            warn("episodes", entry, "name が無いのでファイル名を使う")
+        if not top.get("description"):
+            warn("episodes", entry, "description が無い")
+        episodes.append(
+            Episode(
+                file=entry,
+                date=date,
+                name=top.get("name") or entry[: -len(".md")],
+                description=top.get("description", ""),
+                origin=top.get("origin_session", ""),
+            )
+        )
+    return episodes
+
+
+def session_line(session):
+    parts = [f"- {session.date} [[{session.file[: -len('.md')]}]] — {session.title}"]
+    if session.tags:
+        parts.append(", ".join(session.tags))
+    if session.pending:
+        parts.append(PENDING)
+    return " · ".join(parts)
+
+
+def month_line(month, sessions):
+    counts = Counter(tag for session in sessions for tag in dict.fromkeys(session.tags))
+    top_tags = sorted(counts, key=lambda tag: (-counts[tag], tag))[:3]
+    parts = [f"- [{month}]({month}.md) — {len(sessions)} 本"]
+    if top_tags:
+        parts.append(", ".join(top_tags))
+    parts.append(f"{PENDING} {sum(session.pending for session in sessions)}")
+    return " · ".join(parts)
+
+
+def episode_line(episode):
+    line = f"- {episode.date} [{episode.name}]({episode.file})"
+    tail = " · ".join(part for part in (episode.description, episode.origin) if part)
+    return f"{line} — {tail}" if tail else line
+
+
+def render_shared_index(title, note, lines):
+    return "\n".join([BRANCH_FRONTMATTER, f"# {title}", "", note, ""] + lines) + "\n"
+
+
+def refuse_handwritten(area, directory, files):
+    """Stop when a file to be written exists and was not generated by this script.
+    書き先にこのスクリプトの生成物ではないファイルがあれば止める。
+    """
+    for relative, content in files.items():
+        path = os.path.join(directory, relative)
+        if content is not None and os.path.exists(path) and not is_generated_branch(path):
+            raise InputError(
+                f"{area}/{relative}: 生成物ではない(先頭が type: index の frontmatter でない)ファイルがあるので上書きしない"
+            )
+
+
+def plan_sessions(root, vault):
+    """Compute sessions/INDEX.md and the month files without writing / sessions の索引を計算する(まだ書かない)"""
+    notes_dir = os.path.join(vault, *SESSION_NOTES)
+    if not os.path.isdir(notes_dir):
+        print(f"sessions: セッションノートの置き場が無いので飛ばす: {notes_dir}")
+        return None
+    months = {}
+    for session in sorted(load_sessions(notes_dir), key=lambda s: (s.date, s.file)):
+        months.setdefault(session.date[:7], []).append(session)
+    sessions_dir = os.path.join(root, "sessions")
+    if not months and not is_generated_branch(os.path.join(sessions_dir, SHARED_INDEX)):
+        return None
+
+    notes = display_path(notes_dir)
+    # Month files, then INDEX.md, then removals, so INDEX.md never links to a missing file
+    # 月別ファイル → INDEX.md → 消す月の順に並べ、INDEX.md が無いファイルを指さないようにする
+    files = {
+        f"{month}.md": render_shared_index(
+            f"Sessions {month}", MONTH_NOTE.format(notes=notes), [session_line(s) for s in months[month]]
+        )
+        for month in sorted(months)
+    }
+    files[SHARED_INDEX] = (
+        render_shared_index(
+            "Sessions index",
+            SESSIONS_INDEX_NOTE.format(notes=notes),
+            [month_line(month, months[month]) for month in sorted(months, reverse=True)],
+        )
+        if months
+        else None
+    )
+    if os.path.isdir(sessions_dir):
+        for entry in sorted(os.listdir(sessions_dir)):
+            if MONTH_FILE.match(entry) and entry not in files:
+                files[entry] = None
+    refuse_handwritten("sessions", sessions_dir, files)
+
+    count = sum(len(sessions) for sessions in months.values())
+    pending = sum(s.pending for sessions in months.values() for s in sessions)
+    summary = f"sessions: {len(months)} か月・{count} 本・{PENDING} {pending} 本"
+    return Plan(project="sessions", files=files, removed=[], summary=summary)
+
+
+def plan_episodes(root, vault):
+    """Compute episodes/INDEX.md without writing / episodes/INDEX.md を計算する(まだ書かない)"""
+    episodes_dir = os.path.join(root, "episodes")
+    episodes = load_episodes(episodes_dir) if os.path.isdir(episodes_dir) else []
+    if not episodes and not is_generated_branch(os.path.join(episodes_dir, SHARED_INDEX)):
+        return None
+    lines = [episode_line(e) for e in sorted(episodes, key=lambda e: (e.date, e.file))]
+    note = EPISODES_NOTE.format(notes=display_path(os.path.join(vault, *SESSION_NOTES)))
+    files = {SHARED_INDEX: render_shared_index("Episodes index", note, lines) if lines else None}
+    refuse_handwritten("episodes", episodes_dir, files)
+    return Plan(project="episodes", files=files, removed=[], summary=f"episodes: {len(lines)} 本")
+
+
 def current_umask():
     mask = os.umask(0)
     os.umask(mask)
@@ -495,13 +778,17 @@ def list_projects(root, only):
     return [only]
 
 
-def build(root, projects):
+def build(root, projects, vault=None):
     # Plan every project first, so a broken root stops the run before any write
     # 先に全プロジェクトを計算し、壊れた root が 1 つでもあれば 1 ファイルも書かずに止める
+    steps = [(plan_project, project) for project in projects]
+    if vault is not None:
+        # The shared indexes join the same plan-then-write run / 共有領域の索引も同じ計算 → 書き込みに乗せる
+        steps += [(plan_sessions, vault), (plan_episodes, vault)]
     plans, errors = [], []
-    for project in projects:
+    for planner, target in steps:
         try:
-            plan = plan_project(root, project)
+            plan = planner(root, target)
         except InputError as error:
             errors.append(str(error))
             continue
@@ -523,15 +810,31 @@ def build(root, projects):
     return 0
 
 
-def check(root, projects):
+def shared_rows(root):
+    """Sizes of the shared indexes on disk / 共有領域の索引のサイズ(ディスク上の今の状態)"""
+    sessions_dir = os.path.join(root, "sessions")
+    entries = sorted(os.listdir(sessions_dir)) if os.path.isdir(sessions_dir) else []
+    labels = [f"sessions/{e}" for e in entries if e == SHARED_INDEX or MONTH_FILE.match(e)]
+    rows = []
+    for label in labels + [f"episodes/{SHARED_INDEX}"]:
+        data = read_bytes(os.path.join(root, label))
+        if data is not None:
+            rows.append((label, len(data.splitlines()), len(data)))
+    return rows
+
+
+def check(root, projects, shared=False):
     rows = []
     for project in projects:
         data = read_bytes(os.path.join(root, project, "MEMORY.md"))
         if data is not None:
             rows.append((project, len(data.splitlines()), len(data)))
+    # Read on demand, so no limit applies; listed for their size only
+    # 必要なときに Read で開くものなので上限は無い。大きさを見るためだけに表に出す
+    extra = shared_rows(root) if shared else []
     limit = f"limit({LIMIT_LINES}/{LIMIT_BYTES})"
     target = f"target({TARGET_LINES}/{TARGET_BYTES})"
-    width = max([len("project")] + [len(row[0]) for row in rows])
+    width = max([len("project")] + [len(row[0]) for row in rows + extra])
     print(f"{'project':<{width}}  {'lines':>5}  {'bytes':>6}  {limit}  {target}")
     over = 0
     for project, lines, size in rows:
@@ -542,6 +845,8 @@ def check(root, projects):
             f"{project:<{width}}  {lines:>5}  {size:>6}  "
             f"{'ok' if within_limit else 'OVER':<{len(limit)}}  {'ok' if within_target else 'over'}"
         )
+    for label, lines, size in extra:
+        print(f"{label:<{width}}  {lines:>5}  {size:>6}  {'-':<{len(limit)}}  -")
     if over:
         print(f"上限を超えた root: {over} 本", file=sys.stderr)
         return 1
@@ -553,17 +858,36 @@ def main(argv=None):
         description="Build the AgentMemory indexes from memory frontmatter / 記憶の frontmatter から索引を作る"
     )
     parser.add_argument("--root", default=DEFAULT_ROOT, help=f"AgentMemory root (default: {DEFAULT_ROOT})")
-    parser.add_argument("--project", help="limit to one project directory / 1 プロジェクトに絞る")
+    parser.add_argument(
+        "--vault",
+        help="vault holding Zettelkasten/ResearchNotes (default: the parent of --root) / "
+        "セッションノートを探す vault のルート(既定は --root の親)",
+    )
+    parser.add_argument(
+        "--project",
+        help="limit to one project directory; sessions and episodes are skipped / "
+        "1 プロジェクトに絞る(sessions と episodes の索引は作らない)",
+    )
     parser.add_argument(
         "--check",
         action="store_true",
-        help="write nothing; report root sizes and exit 1 over the limit / 書かずに root のサイズだけ検査する",
+        help="write nothing; report root and shared index sizes, exit 1 when a root is over the limit / "
+        "書かずに root と共有領域の索引のサイズだけ検査する",
     )
     args = parser.parse_args(argv)
     root = os.path.expanduser(args.root)
+    if args.vault:
+        vault = os.path.abspath(os.path.expanduser(args.vault))
+    else:
+        vault = os.path.dirname(os.path.abspath(root))
+    # sessions and episodes belong to the whole vault, so only a full run touches them
+    # sessions と episodes は vault 全体のものなので、全体実行のときだけ扱う
+    shared = args.project is None
     try:
         projects = list_projects(root, args.project)
-        return check(root, projects) if args.check else build(root, projects)
+        if args.check:
+            return check(root, projects, shared)
+        return build(root, projects, vault if shared else None)
     except InputError as error:
         print(f"error: {error}", file=sys.stderr)
         return 2

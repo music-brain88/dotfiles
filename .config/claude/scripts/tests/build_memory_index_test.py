@@ -3,8 +3,11 @@
 Every case builds a fake AgentMemory root under a temporary directory and runs
 the script on it with --root. HOME also points at the temporary directory, so
 the real vault ($HOME/Documents/Obsidian/AgentMemory) is never read or written.
+Session notes go under <tmp>/Zettelkasten/ResearchNotes, found through the default
+--vault (the parent of --root).
 各ケースは一時ディレクトリの下に偽の AgentMemory を作り、--root でスクリプトを走らせる。
 HOME も一時ディレクトリに向けるので、実物の vault には読みも書きもしない。
+セッションノートは <tmp>/Zettelkasten/ResearchNotes に置き、--vault の既定(--root の親)で見つけさせる。
 
 Usage / 使い方:
   python3 -I -B -m unittest discover -s .config/claude/scripts/tests -p '*_test.py'
@@ -72,6 +75,23 @@ def memory(name, description, kind=None, **fields):
     return "\n".join(lines + ["---", ""])
 
 
+def session(h1, date=None, tags=(), **fields):
+    """A session note shaped like the real ones; a field set to "" becomes a key without a value.
+    実物と同じ形のセッションノート。値が "" の項目は値の無いキーとして書く。
+    """
+    lines = ["---"] + ([f"date: {date}"] if date else [])
+    if tags:
+        lines += ["tags:"] + [f"  - {tag}" for tag in tags]
+    lines += ["type: research-note"]
+    lines += [f"{key}: {value}" if value else f"{key}:" for key, value in fields.items()]
+    lines += ["---", ""] + ([f"# {h1}", ""] if h1 else [])
+    return "\n".join(lines + ["body", ""])
+
+
+def entries(text):
+    return [line for line in text.splitlines() if line.startswith("- ")]
+
+
 class BuildMemoryIndexTest(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
@@ -93,6 +113,26 @@ class BuildMemoryIndexTest(unittest.TestCase):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "wb") as f:
             f.write(data)
+
+    def write_session(self, name, text, vault=None):
+        # The vault defaults to the parent of --root / vault の既定は --root の親
+        notes = os.path.join(vault or self.home, "Zettelkasten", "ResearchNotes")
+        os.makedirs(notes, exist_ok=True)
+        with open(os.path.join(notes, f"ClaudeCodeSession-{name}.md"), "w", encoding="utf-8") as f:
+            f.write(text)
+
+    def make_shared(self):
+        self.write_session("20260720-B", session("July B", "2026-07-20", ["nix", "herdr"], triage="candidate"))
+        self.write_session("20260705-A", session("July A", "2026-07-05", ["herdr", "fish"]))
+        self.write_session("20260705-C", session("July C", "2026-07-05", ["herdr", "nix", "atuin"]))
+        # Dated by the file name / 日付はファイル名から
+        self.write_session("20260810-D", session("August D", tags=["herdr"], triage="reference"))
+        # frontmatter date wins over the file name / frontmatter の date がファイル名に勝つ
+        self.write_session("20260731-E", session("August E", "2026-08-01"))
+        self.write("episodes/20260801-later.md", memory(
+            "episode-later", "Later one", origin_session='"[[ClaudeCodeSession-20260801-X]]"'
+        ))
+        self.write("episodes/20260720-first.md", memory("episode-first", "First one"))
 
     def read(self, relative):
         with open(os.path.join(self.root, relative), encoding="utf-8") as f:
@@ -425,6 +465,171 @@ metadata:
         self.assertTrue(self.exists("beta/MEMORY.md"))
         self.assertEqual(self.read("alpha/MEMORY.md"), ROOT_WITHOUT_MARKERS)
         self.assertNotEqual(self.run_script("--project", "core").returncode, 0)
+
+    # A block list does not swallow the keys after it / block list の後ろのキーも読める
+    def test_block_list_keeps_the_following_keys(self):
+        self.write("alpha/feedback_listed.md", "\n".join([
+            "---", "name: listed", "tags:", "  - a", "  - b", "description: After the list",
+            "metadata:", "  type: feedback", "---", "",
+        ]))
+        self.build()
+        self.assertIn("- [listed](feedback_listed.md) — After the list", self.region())
+
+    # (8) ⏳ only for candidates whose distilled_to is empty / ⏳ は candidate かつ distilled_to が空のときだけ
+    def test_hourglass_marks_undistilled_candidates_only(self):
+        cases = {
+            "20260701-Empty": ({"triage": "candidate", "distilled_to": ""}, True),
+            "20260702-Brackets": ({"triage": "candidate", "distilled_to": "[]"}, True),
+            "20260703-NoKey": ({"triage": "candidate"}, True),
+            "20260704-Distilled": ({"triage": "candidate", "distilled_to": '"[[Permanent note]]"'}, False),
+            "20260705-Reference": ({"triage": "reference", "distilled_to": ""}, False),
+            "20260706-Untriaged": ({"distilled_to": ""}, False),
+        }
+        for name, (fields, _) in cases.items():
+            self.write_session(name, session(name, **fields))
+        self.build()
+        lines = entries(self.read("sessions/2026-07.md"))
+        for name, (_, pending) in cases.items():
+            with self.subTest(name):
+                line = next(line for line in lines if f"[[ClaudeCodeSession-{name}]]" in line)
+                self.assertEqual(line.endswith(" · ⏳"), pending, line)
+        self.assertEqual(entries(self.read("sessions/INDEX.md")), ["- [2026-07](2026-07.md) — 6 本 · ⏳ 3"])
+
+    # (9) No H1 falls back to the stem, long H1s are cut at 120 / H1 が無ければ stem、120 字で切る
+    def test_title_falls_back_to_the_stem_and_is_cut_at_120(self):
+        self.write_session("20260801-NoHeading", session(None, "2026-08-01"))
+        self.write_session("20260802-Long", session("あ" * 121, "2026-08-02", ["nix"]))
+        self.write_session("20260803-Exact", session("い" * 120, "2026-08-03"))
+        self.build()
+        # Without tags and ⏳ the separators go too / tags と ⏳ が無ければ区切りごと省く
+        self.assertEqual(entries(self.read("sessions/2026-08.md")), [
+            "- 2026-08-01 [[ClaudeCodeSession-20260801-NoHeading]] — ClaudeCodeSession-20260801-NoHeading",
+            f"- 2026-08-02 [[ClaudeCodeSession-20260802-Long]] — {'あ' * 120}… · nix",
+            f"- 2026-08-03 [[ClaudeCodeSession-20260803-Exact]] — {'い' * 120}",
+        ])
+
+    # (10) One file per month, the index newest first / 月ごとに 1 ファイル、INDEX は新しい月から
+    def test_months_make_files_and_index_lines(self):
+        self.make_shared()
+        self.build()
+        july = self.read("sessions/2026-07.md")
+        self.assertTrue(july.startswith("---\ntype: index\n---\n\n# Sessions 2026-07\n\n> "))
+        self.assertIn("`~/Zettelkasten/ResearchNotes/<ノート名>.md`", july)
+        self.assertEqual(entries(july), [
+            "- 2026-07-05 [[ClaudeCodeSession-20260705-A]] — July A · herdr, fish",
+            "- 2026-07-05 [[ClaudeCodeSession-20260705-C]] — July C · herdr, nix, atuin",
+            "- 2026-07-20 [[ClaudeCodeSession-20260720-B]] — July B · nix, herdr · ⏳",
+        ])
+        self.assertEqual(entries(self.read("sessions/2026-08.md")), [
+            "- 2026-08-01 [[ClaudeCodeSession-20260731-E]] — August E",
+            "- 2026-08-10 [[ClaudeCodeSession-20260810-D]] — August D · herdr",
+        ])
+        index = self.read("sessions/INDEX.md")
+        self.assertTrue(index.startswith("---\ntype: index\n---\n\n# Sessions index\n\n> "))
+        # Top tags by count, ties in string order / 上位 tags は出現回数順、同数は文字列順
+        self.assertEqual(entries(index), [
+            "- [2026-08](2026-08.md) — 2 本 · herdr · ⏳ 0",
+            "- [2026-07](2026-07.md) — 3 本 · herdr, nix, atuin · ⏳ 1",
+        ])
+        # A month whose notes are gone is removed / ノートが無くなった月のファイルは消す
+        for name in ("20260810-D", "20260731-E"):
+            os.remove(os.path.join(self.home, "Zettelkasten", "ResearchNotes", f"ClaudeCodeSession-{name}.md"))
+        result = self.build()
+        self.assertIn("deleted: sessions/2026-08.md", result.stdout)
+        self.assertFalse(self.exists("sessions/2026-08.md"))
+        self.assertEqual(len(entries(self.read("sessions/INDEX.md"))), 1)
+
+    # (11) Episodes by date, origin_session kept as a wikilink / 私記は日付順、origin_session は wikilink のまま
+    def test_episodes_index_lists_episodes_by_date(self):
+        self.make_shared()
+        self.write("episodes/notes-undated.md", memory("episode-undated", "Dated by modified", modified="2026-07-25"))
+        self.write("episodes/_draft.md", memory("draft", "Ignored by convention"))
+        self.build()
+        index = self.read("episodes/INDEX.md")
+        self.assertTrue(index.startswith("---\ntype: index\n---\n\n# Episodes index\n\n> "))
+        self.assertEqual(entries(index), [
+            "- 2026-07-20 [episode-first](20260720-first.md) — First one",
+            "- 2026-07-25 [episode-undated](notes-undated.md) — Dated by modified",
+            "- 2026-08-01 [episode-later](20260801-later.md) — Later one · [[ClaudeCodeSession-20260801-X]]",
+        ])
+
+    # (12) No episodes, no index; a generated one is removed / 私記が無ければ作らず、生成済みなら消す
+    def test_episodes_index_needs_episodes(self):
+        self.make_alpha()
+        self.build()
+        self.assertFalse(self.exists("episodes/INDEX.md"))
+        self.write("episodes/20260720-first.md", memory("episode-first", "First one"))
+        self.build()
+        self.assertTrue(self.exists("episodes/INDEX.md"))
+        os.remove(os.path.join(self.root, "episodes/20260720-first.md"))
+        result = self.build()
+        self.assertIn("deleted: episodes/INDEX.md", result.stdout)
+        self.assertFalse(self.exists("episodes/INDEX.md"))
+
+    # (13) A handwritten index stops the whole run / 手書きの索引があれば全体を止める
+    def test_handwritten_sessions_index_exits_2_without_writing(self):
+        self.make_alpha()
+        self.make_shared()
+        self.write("sessions/INDEX.md", "# My own list of sessions\n")
+        before = self.snapshot()
+        result = self.run_script()
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("sessions/INDEX.md: 生成物ではない", result.stderr)
+        self.assertEqual(self.snapshot(), before)
+        self.assertFalse(self.exists("alpha/index"))
+
+    # (14) --project leaves the shared indexes alone / --project 指定では共有領域に触らない
+    def test_project_option_skips_sessions_and_episodes(self):
+        self.make_alpha()
+        self.make_shared()
+        result = self.build("--project", "alpha")
+        self.assertFalse(self.exists("sessions"))
+        self.assertFalse(self.exists("episodes/INDEX.md"))
+        self.assertNotIn("sessions", result.stdout)
+        self.build()
+        self.assertNotIn("sessions/", self.run_script("--check", "--project", "alpha").stdout)
+
+    # (15) --check lists the shared indexes without a limit / --check は共有領域の索引を上限なしで並べる
+    def test_check_lists_shared_indexes(self):
+        self.make_alpha()
+        self.make_shared()
+        self.build()
+        self.write("sessions/2026-07.md", "---\ntype: index\n---\n" + "- line\n" * 300)
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = {line.split()[0]: line.split()[1:] for line in result.stdout.splitlines()[1:]}
+        for label in ("sessions/INDEX.md", "sessions/2026-07.md", "sessions/2026-08.md", "episodes/INDEX.md"):
+            with self.subTest(label):
+                data = self.read_bytes(label)
+                self.assertEqual(rows[label], [str(len(data.splitlines())), str(len(data)), "-", "-"])
+        self.assertEqual(rows["alpha"][2:], ["ok", "ok"])
+
+    # (16) A full run with the shared indexes writes nothing the second time / 2 回目の全体実行は何も書かない
+    def test_full_run_with_shared_indexes_is_idempotent(self):
+        self.make_alpha()
+        self.make_shared()
+        result = self.build()
+        # Month files are written before the index that links to them / 月別ファイルを INDEX より先に書く
+        self.assertLess(result.stdout.index("wrote: sessions/2026-07.md"), result.stdout.index("wrote: sessions/INDEX.md"))
+        self.assertIn("wrote: episodes/INDEX.md", result.stdout)
+        self.assertIn("sessions: 2 か月・5 本・⏳ 1 本", result.stdout)
+        before = self.snapshot()
+        result = self.build()
+        self.assertEqual(self.snapshot(), before)
+        self.assertIn("書き換えたファイル: 0 本", result.stdout)
+
+    # (17) Without Zettelkasten the sessions are skipped; --vault points elsewhere
+    # Zettelkasten が無ければ sessions は飛ばす。--vault で別の vault を指せる
+    def test_vault_option_and_missing_notes(self):
+        result = self.build()
+        self.assertIn("sessions: セッションノートの置き場が無いので飛ばす", result.stdout)
+        self.assertFalse(self.exists("sessions"))
+        elsewhere = os.path.join(self.home, "elsewhere")
+        self.write_session("20260901-Far", session("Far away", "2026-09-01"), vault=elsewhere)
+        self.build("--vault", elsewhere)
+        month = self.read("sessions/2026-09.md")
+        self.assertIn("[[ClaudeCodeSession-20260901-Far]] — Far away", month)
+        self.assertIn("`~/elsewhere/Zettelkasten/ResearchNotes/<ノート名>.md`", month)
 
 
 if __name__ == "__main__":

@@ -104,13 +104,14 @@ description = "Run the tests of the wtclean harvest search script (fixtures only
 run = "bash .config/claude/skills/wtclean/tests/harvest_search_test.sh"
 
 [tasks."memory:index"]
-description = "Build the AgentMemory indexes (index/*.md and the marked region of each root MEMORY.md) from memory frontmatter"
-# 各記憶の frontmatter から枝の索引(index/*.md)と root MEMORY.md のマーカー区間を作る。既定は実物の vault に書く。
-# Writes into the real vault by default; pass --root <copy> to try it on a copy, --project <name> to limit it.
+description = "Build the AgentMemory indexes: index/*.md and the marked region of each root MEMORY.md from memory frontmatter, plus sessions/INDEX.md, sessions/YYYY-MM.md from the session notes and episodes/INDEX.md on a full run"
+# 各記憶の frontmatter から枝の索引(index/*.md)と root MEMORY.md のマーカー区間を作る。--project を付けない全体実行では、
+# セッションノートから sessions/INDEX.md と月別の sessions/YYYY-MM.md を、私記から episodes/INDEX.md も作る。既定は実物の vault に書く。
+# Writes into the real vault by default; pass --root <copy> to try it on a copy (--vault defaults to its parent), --project <name> to limit it.
 run = "python3 -I .config/claude/scripts/build_memory_index.py"
 
 [tasks."memory:index-check"]
-description = "Report the size of each AgentMemory root MEMORY.md and exit 1 over 200 lines / 25,000 bytes (writes nothing)"
+description = "Report the size of each AgentMemory root MEMORY.md (and of the sessions / episodes indexes) and exit 1 when a root is over 200 lines / 25,000 bytes (writes nothing)"
 # 各プロジェクトの root の行数とバイト数を表にする。上限(200 行 / 25,000 バイト)を超えたら終了コード 1。何も書かない。
 # Prints lines and bytes of every root against the limit and the 100-line / 15,000-byte target. Read-only.
 run = "python3 -I .config/claude/scripts/build_memory_index.py --check"
