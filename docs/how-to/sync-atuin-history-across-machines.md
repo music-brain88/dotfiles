@@ -67,7 +67,7 @@ atuin の同期は end-to-end 暗号化です。履歴はローカルで暗号�
 ls -l ~/.local/share/atuin/key   # No such file or directory が出れば正常
 ```
 
-鍵が既にあった場合は、login の前に次の「2 台目に鍵が既にあった場合」を実行してください。
+鍵が既にあった場合は、login の前に「2 台目に鍵が既にあった場合」の手順に従ってください。鍵が 1 台目と同じなら、退避は要りません。
 
 ### 2. login する
 
@@ -81,9 +81,10 @@ atuin login -u <username>
 
 ### 3. switch して同期する
 
-利用者は、dotfiles を更新して switch し、同期の結果を確かめます。
+利用者は、dotfiles のチェックアウト(この例では `~/dotfiles`)に移ってから、dotfiles を更新して switch し、同期の結果を確かめます。
 
 ```bash
+cd ~/dotfiles
 git pull
 mise run nix:switch
 exec fish
@@ -104,17 +105,27 @@ atuin history list --format "{host} {command}" | grep <2 台目の hostname>
 
 ## 2 台目に鍵が既にあった場合 / When the Second Machine Already Has a Key
 
-「鍵が無いことを確かめる」で鍵が見つかった場合、その鍵は 2 台目で単独に生成された別の鍵です。その鍵で暗号化された記録は、同期先では復号できません。
-
-利用者は `key` と `records.db*` を日付つきで退避してから、login します。
+「鍵が無いことを確かめる」で鍵が見つかった場合、利用者はまず、その鍵が 1 台目の鍵と同じかどうかを確かめます。2 台目で `atuin key` を打ち、表示された単語列がパスワードマネージャに保存した 1 台目の単語列と同じなら、鍵は既に揃っています。この節の退避は行わず、「2. login する」に進みます。同期先を自前サーバーへ移すとき(#719)の 2 台目は、この場合に当たります。
 
 ```bash
-cd ~/.local/share/atuin
-mv key "key.$(date +%Y%m%d).bak"
-for f in records.db*; do mv "$f" "$f.$(date +%Y%m%d).bak"; done
+atuin key   # 1 台目の単語列と見比べる
 ```
 
-退避した分の履歴を捨ててよいかどうかは、その時点の件数を見て利用者が決めます。残したい履歴があれば、退避したファイルを消さずに残してください。
+単語列が違うときは、その鍵は 2 台目で単独に生成された別の鍵です。その鍵で暗号化された記録は、同期先では復号できません。利用者は、鍵と記録を日付時刻つきのディレクトリへ退避してから login します。
+
+退避と login は、fish の記録フックが動かないシェルの中で続けて行います。switch 済みの端末では、鍵を退避した後に fish でコマンドを 1 つ打つだけで、フックが同期を試みて別の鍵をもう一度作ってしまうからです。次のコマンドは、フックの無い bash に入ってから、その bash の中で打ちます(`for` の書き方も bash のものです)。
+
+```bash
+bash --noprofile --norc
+bak="$HOME/.local/share/atuin/backup-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$bak"
+mv "$HOME/.local/share/atuin/key" "$HOME"/.local/share/atuin/records.db* "$bak"/
+atuin login -u <username>   # prompt にパスワードと 1 台目の鍵を入力する
+atuin status
+exit                        # fish に戻る
+```
+
+退避先は試行ごとに別のディレクトリになるので、同じ日にやり直しても前の退避を上書きしません。退避した分の履歴を捨ててよいかどうかは、その時点の件数を見て利用者が決めます。残したい履歴があれば、退避したディレクトリを消さずに残してください。
 
 ---
 
