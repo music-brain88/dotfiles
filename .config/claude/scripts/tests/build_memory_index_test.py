@@ -508,6 +508,27 @@ metadata:
             f"- 2026-08-03 [[ClaudeCodeSession-20260803-Exact]] — {'い' * 120}",
         ])
 
+    # A "# comment" in a code block is not the H1 / コードブロックの中の「# コメント」は H1 ではない
+    def test_heading_inside_a_code_block_is_skipped(self):
+        self.write_session("20260804-Fenced", "\n".join([
+            "---", "date: 2026-08-04", "---", "", "```bash", "# Install deps", "npm ci", "```", "",
+            "# Real heading", "", "body", "",
+        ]))
+        self.build()
+        self.assertEqual(entries(self.read("sessions/2026-08.md")), [
+            "- 2026-08-04 [[ClaudeCodeSession-20260804-Fenced]] — Real heading",
+        ])
+
+    # Only "#" lines in code blocks: the stem is used / コードブロックの中にしか「#」行が無ければ stem を使う
+    def test_heading_only_inside_a_code_block_falls_back_to_the_stem(self):
+        self.write_session("20260805-OnlyFenced", "\n".join([
+            "---", "date: 2026-08-05", "---", "", "~~~sh", "# Only a comment", "~~~", "", "body", "",
+        ]))
+        self.build()
+        self.assertEqual(entries(self.read("sessions/2026-08.md")), [
+            "- 2026-08-05 [[ClaudeCodeSession-20260805-OnlyFenced]] — ClaudeCodeSession-20260805-OnlyFenced",
+        ])
+
     # (10) One file per month, the index newest first / 月ごとに 1 ファイル、INDEX は新しい月から
     def test_months_make_files_and_index_lines(self):
         self.make_shared()

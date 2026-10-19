@@ -5,6 +5,7 @@ description: |
   ユーザーが「セッションをまとめて」「記録して」「/session-log」と言ったときに使う。
   また、設計判断・アーキテクチャ決定・重要な学びが生まれたセッションの区切り(タスク完了時・終了間際)には、こちらから記録を提案してよい。
   生ログの全転写ではなく、対話で生まれた判断・設計・学びの厳選記録。
+allowed-tools: Bash(python3 -I ~/.claude/scripts/build_memory_index.py*)
 ---
 
 # セッションログを ResearchNotes へ昇格

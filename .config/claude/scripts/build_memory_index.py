@@ -337,16 +337,20 @@ def fence_of(line):
     return match.group(1), match.group(2)
 
 
-def drop_inbox_lines(lines, indexed_files, removed):
-    # Lines inside code blocks are never removed. A block closes only on a fence of
-    # the same character that is at least as long as the opening one (CommonMark).
-    # コードブロックの中の行は消さない。ブロックを閉じるのは、開きと同じ文字で
-    # 長さが開き以上のフェンスだけ(CommonMark の規則)。
-    kept, opening = [], None
+def with_code_blocks(lines):
+    """Pair each line with whether it is part of a code block, fences included.
+    各行に、コードブロックの一部(フェンスの行を含む)かどうかを添える。
+
+    A block closes only on a fence of the same character that is at least as
+    long as the opening one (CommonMark).
+    ブロックを閉じるのは、開きと同じ文字で長さが開き以上のフェンスだけ(CommonMark の規則)。
+    """
+    opening = None
     for line in lines:
         fence = fence_of(line)
         if opening is None and fence:
             opening = fence[0]
+            yield line, True
         elif (
             opening
             and fence
@@ -355,7 +359,16 @@ def drop_inbox_lines(lines, indexed_files, removed):
             and not fence[1].strip()
         ):
             opening = None
-        elif opening is None and inbox_target(line) in indexed_files:
+            yield line, True
+        else:
+            yield line, opening is not None
+
+
+def drop_inbox_lines(lines, indexed_files, removed):
+    # Lines inside code blocks are never removed / コードブロックの中の行は消さない
+    kept = []
+    for line, in_code in with_code_blocks(lines):
+        if not in_code and inbox_target(line) in indexed_files:
             removed.append(line.rstrip("\r\n"))
             continue
         kept.append(line)
@@ -527,13 +540,17 @@ def read_note(path, area, entry):
 
 
 def first_heading(text):
-    """Text of the first H1 after the frontmatter / frontmatter の後の最初の H1 の文"""
+    """Text of the first H1 after the frontmatter and outside code blocks, where a
+    "# comment" line of a shell snippet is not a heading.
+    frontmatter の後で、コードブロックの外にある最初の H1 の文。
+    シェルの断片の「# コメント」の行は見出しではないので拾わない。
+    """
     lines = text.splitlines()
     start = 0
     if lines and lines[0].rstrip() == "---":
         start = next((i + 1 for i, line in enumerate(lines[1:], 1) if line.rstrip() == "---"), 0)
-    for line in lines[start:]:
-        if line.startswith("# ") and line[2:].strip():
+    for line, in_code in with_code_blocks(lines[start:]):
+        if not in_code and line.startswith("# ") and line[2:].strip():
             return line[2:].strip()
     return None
 

@@ -1,7 +1,9 @@
 ---
 name: wtclose
 description: "/wt の司令塔がセッションを締めるときに呼ぶ。締めの 4 項目(open の PR・残っている worktree・裏の待ち受け・次の入口)と作業物の仕分けを確かめ、状態ファイルを上書きする。呼ぶと Stop hook の検問が登録され、締めの条件がそろうまでターンを終えられない。ユーザーが「締めよう」「今日はここまで」「/wtclose」と言った時に使う。作業の途中の書き出しには使わない。"
-allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/close_gate.sh *)
+allowed-tools:
+  - Bash(bash ${CLAUDE_SKILL_DIR}/close_gate.sh *)
+  - Bash(python3 -I ~/.claude/scripts/build_memory_index.py*)
 hooks:
   Stop:
     - hooks:
