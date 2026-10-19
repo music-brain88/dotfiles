@@ -678,7 +678,12 @@ def plan_sessions(root, vault):
     for session in sorted(load_sessions(notes_dir), key=lambda s: (s.date, s.file)):
         months.setdefault(session.date[:7], []).append(session)
     sessions_dir = os.path.join(root, "sessions")
-    if not months and not is_generated_branch(os.path.join(sessions_dir, SHARED_INDEX)):
+    # Without notes, planning goes on while sessions/ exists: month files are written before
+    # INDEX.md, so an interrupted run can leave generated months without a generated INDEX.md.
+    # apply_plan removes only generated files. ノートが無くても sessions/ があれば計画を続ける。
+    # 月別ファイルは INDEX.md より先に書くので、途中で止まった実行は INDEX.md の無い月別ファイルを
+    # 残しうる。消すのは apply_plan が生成物に限る。
+    if not months and not os.path.isdir(sessions_dir):
         return None
 
     notes = display_path(notes_dir)

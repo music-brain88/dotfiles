@@ -560,6 +560,18 @@ metadata:
         self.assertFalse(self.exists("sessions/2026-08.md"))
         self.assertEqual(len(entries(self.read("sessions/INDEX.md"))), 1)
 
+    # A month file left without INDEX.md (an interrupted run) is removed once the notes are gone
+    # INDEX.md の無いまま残った月別ファイル(途中で止まった実行の跡)も、ノートが無くなれば消す
+    def test_stale_month_without_index_is_removed(self):
+        os.makedirs(os.path.join(self.home, "Zettelkasten", "ResearchNotes"))
+        self.write("sessions/2026-07.md", "---\ntype: index\n---\n\n# Sessions 2026-07\n")
+        self.write("sessions/2026-06.md", "# A handwritten month\n")
+        result = self.build()
+        self.assertIn("deleted: sessions/2026-07.md", result.stdout)
+        self.assertFalse(self.exists("sessions/2026-07.md"))
+        self.assertTrue(self.exists("sessions/2026-06.md"))
+        self.assertFalse(self.exists("sessions/INDEX.md"))
+
     # (11) Episodes by date, origin_session kept as a wikilink / 私記は日付順、origin_session は wikilink のまま
     def test_episodes_index_lists_episodes_by_date(self):
         self.make_shared()
