@@ -1,7 +1,9 @@
 ---
 name: wtclose
 description: "/wt の司令塔がセッションを締めるときに呼ぶ。締めの 4 項目(open の PR・残っている worktree・裏の待ち受け・次の入口)と作業物の仕分けを確かめ、状態ファイルを上書きする。呼ぶと Stop hook の検問が登録され、締めの条件がそろうまでターンを終えられない。ユーザーが「締めよう」「今日はここまで」「/wtclose」と言った時に使う。作業の途中の書き出しには使わない。"
-allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/close_gate.sh *)
+allowed-tools:
+  - Bash(bash ${CLAUDE_SKILL_DIR}/close_gate.sh *)
+  - Bash(python3 -I ~/.claude/scripts/build_memory_index.py*)
 hooks:
   Stop:
     - hooks:
@@ -83,6 +85,14 @@ bash ${CLAUDE_SKILL_DIR}/close_gate.sh --where
 - **MUST**: 残っている PR と worktree は、1 件ずつ理由の種類を付けて書く。種類は「マージ待ち」「レビュー待ち」「worker 稼働中」「別のセッションの管轄」の 4 つから選ぶ
 - **MUST**: 記憶の索引 `MEMORY.md` には、状態ファイルへの 1 行だけを置く(例: `- [状態: commander-<repo名>](state_commander-<repo名>.md) — 2026-10-04 18:30 時点の状態と次の入口`)
 - **SHOULD**: 200 行を超えないようにする。超えた部分は、セッションノートかメモリに移してリンクする
+
+状態ファイルを上書きしたら、司令塔は AgentMemory の索引を作り直す。このコマンドは、状態ファイルを含む記憶の索引と、手順 2 で書いたセッションノートの月別索引(`AgentMemory/sessions/`)を作り直す。
+
+```bash
+python3 -I ~/.claude/scripts/build_memory_index.py
+```
+
+dotfiles リポジトリの中では `mise run memory:index` と同じ処理になる。mise のタスクは dotfiles の外では解決できないので、司令塔は配備済みのスクリプトをこのパスで呼ぶ。索引の更新が失敗しても、司令塔は締めを止めない。索引は派生物で、次の実行で追いつく。司令塔は失敗の理由を 1 行でユーザーに報告し、手順 4 に進む。
 
 ### 4. 検問を通す
 
