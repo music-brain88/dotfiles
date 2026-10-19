@@ -11,6 +11,7 @@ Usage / 使い方:
 """
 
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -87,8 +88,18 @@ class BuildMemoryIndexTest(unittest.TestCase):
         with open(path, "w", encoding="utf-8") as f:
             f.write(text)
 
+    def write_bytes(self, relative, data):
+        path = os.path.join(self.root, relative)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(data)
+
     def read(self, relative):
         with open(os.path.join(self.root, relative), encoding="utf-8") as f:
+            return f.read()
+
+    def read_bytes(self, relative):
+        with open(os.path.join(self.root, relative), "rb") as f:
             return f.read()
 
     def exists(self, relative):
@@ -255,6 +266,87 @@ class BuildMemoryIndexTest(unittest.TestCase):
                 # The healthy project is not written either / 正常なプロジェクトも書かない
                 self.assertEqual(self.snapshot(), before)
                 self.assertFalse(self.exists("alpha/index"))
+
+    # A titled first link pointing elsewhere keeps the line / タイトル付きの最初のリンクが他所を指す行は残す
+    def test_titled_first_link_decides_the_target(self):
+        self.make_alpha()
+        kept = [
+            '- [Guide](https://example.com "guide") — see [Plan](project_alpha_plan.md)',
+            "- [Guide](https://example.com 'guide') — see [Plan](project_alpha_plan.md)",
+        ]
+        dropped = '- [Alpha plan](project_alpha_plan.md "plan") — a titled inbox line'
+        self.write("alpha/MEMORY.md", ROOT_WITHOUT_MARKERS + "\n".join(kept + [dropped]) + "\n")
+        result = self.build()
+        handwritten = self.read("alpha/MEMORY.md").partition(BEGIN)[0]
+        for line in kept:
+            self.assertIn(line, handwritten)
+        self.assertNotIn(dropped, handwritten)
+        self.assertIn(f"removed: alpha/MEMORY.md: {dropped}", result.stdout)
+
+    # Fences close only on the same character, at least as long / 同じ文字で長さが開き以上のフェンスだけで閉じる
+    def test_code_fences_close_only_on_matching_fences(self):
+        self.make_alpha()
+        inside_backticks = "- [Alpha rule](feedback_alpha_rule.md) — inside a four-backtick block"
+        inside_tildes = "- [Alpha rule](feedback_alpha_rule.md) — after tildes in a backtick block"
+        after = "- [Alpha rule](feedback_alpha_rule.md) — an inbox line after the blocks"
+        root = "\n".join([
+            "# Memory Index",
+            "````markdown",
+            "```",
+            inside_backticks,
+            "```",
+            "````",
+            "```",
+            "~~~",
+            inside_tildes,
+            "```",
+            after,
+            "",
+        ])
+        self.write("alpha/MEMORY.md", root)
+        result = self.build()
+        handwritten = self.read("alpha/MEMORY.md").partition(BEGIN)[0]
+        self.assertIn(inside_backticks, handwritten)
+        self.assertIn(inside_tildes, handwritten)
+        self.assertNotIn(after, handwritten)
+        self.assertEqual(result.stdout.count("removed: "), 1)
+
+    # A CRLF root gets CRLF separators and region / CRLF の root には CRLF で区切りと区間を足す
+    def test_crlf_root_keeps_crlf_on_first_run(self):
+        self.make_alpha()
+        self.write_bytes("alpha/MEMORY.md", ROOT_WITHOUT_MARKERS.replace("\n", "\r\n").encode("utf-8"))
+        self.build()
+        data = self.read_bytes("alpha/MEMORY.md")
+        self.assertIn(b"- inbox note without a link\r\n\r\n" + BEGIN.encode(), data)
+        self.assertTrue(data.endswith(END.encode() + b"\r\n"))
+        self.assertIsNone(re.search(rb"(?<!\r)\n", data), "LF without CR found")
+        before = self.snapshot()
+        self.build()
+        self.assertEqual(self.snapshot(), before)
+
+    # A generated project whose memories are all gone is cleared / 記憶が全部消えた生成済みのプロジェクトを片付ける
+    def test_generated_project_without_memories_is_cleared(self):
+        self.make_alpha()
+        self.build()
+        for name in ("feedback_alpha_rule", "user_alpha_style", "state_alpha", "project_alpha_plan", "reference_tool_trap"):
+            os.remove(os.path.join(self.root, f"alpha/{name}.md"))
+        # Never generated and without memories: left alone / 一度も生成していない空のプロジェクトは触らない
+        self.write("gamma/MEMORY.md", "- a note\n")
+        result = self.build()
+        self.assertIn("deleted: alpha/index/project.md", result.stdout)
+        self.assertFalse(self.exists("alpha/index/project.md"))
+        self.assertFalse(self.exists("alpha/index/reference.md"))
+        region = self.region()
+        self.assertNotIn("## 常時表示", region)
+        self.assertNotIn("## 枝", region)
+        self.assertNotIn("](", region)
+        self.assertEqual(self.read("gamma/MEMORY.md"), "- a note\n")
+        self.assertNotIn("gamma", result.stdout)
+        # Its markers are still checked / マーカーの検証も走る
+        self.write("alpha/MEMORY.md", f"{BEGIN}\n")
+        result = self.run_script()
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("alpha/MEMORY.md: マーカーが壊れている", result.stderr)
 
     def test_missing_root_exits_2(self):
         result = subprocess.run(

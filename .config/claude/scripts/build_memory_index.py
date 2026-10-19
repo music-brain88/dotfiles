@@ -51,7 +51,10 @@ TARGET_LINES, TARGET_BYTES = 100, 15000
 
 TOP_KEY = re.compile(r"^([A-Za-z_][\w-]*):(?:\s(.*))?$")
 NESTED_KEY = re.compile(r"^  ([A-Za-z_][\w-]*):(?:\s(.*))?$")
-FIRST_LINK = re.compile(r"\]\(([^)\s]+)\)")
+# A link target, optionally followed by a title: [t](url "title") / リンク先(タイトル付きの形も拾う)
+FIRST_LINK = re.compile(r"\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\"|\s+'[^']*')?\s*\)")
+# Fence of a code block, any indentation (errs on keeping lines) / コードブロックのフェンス(字下げは問わない)
+FENCE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
 
 
 class InputError(Exception):
@@ -205,7 +208,9 @@ def by_name(memory):
 
 def project_order(memories):
     """active first, then other statuses, then none; newer first; then by name.
+    Statuses other than active are grouped by value, in alphabetical order of the value.
     status(active → その他の値 → 無し)、modified の降順(無しは末尾)、name の順に並べる。
+    active 以外の status は値ごとにまとめる(値のアルファベット順)。
     """
     ordered = sorted(memories, key=by_name)
     # Stable sorts, applied from the weakest key / 安定ソートを弱いキーから順にかける
@@ -254,12 +259,37 @@ def inbox_target(line):
     return None if "/" in target else target
 
 
+def fence_of(line):
+    """Fence characters of a code fence line, or None / コードフェンスの行ならフェンスの文字列を返す"""
+    match = FENCE.match(line.rstrip("\r\n"))
+    if not match:
+        return None
+    # A backtick fence cannot carry backticks in its info string (that is inline code)
+    # バッククォートのフェンスの info 文字列にバッククォートは入らない(入っていればインラインコード)
+    if match.group(1)[0] == "`" and "`" in match.group(2):
+        return None
+    return match.group(1), match.group(2)
+
+
 def drop_inbox_lines(lines, indexed_files, removed):
-    kept, in_fence = [], False
+    # Lines inside code blocks are never removed. A block closes only on a fence of
+    # the same character that is at least as long as the opening one (CommonMark).
+    # コードブロックの中の行は消さない。ブロックを閉じるのは、開きと同じ文字で
+    # 長さが開き以上のフェンスだけ(CommonMark の規則)。
+    kept, opening = [], None
     for line in lines:
-        if line.lstrip().startswith(("```", "~~~")):
-            in_fence = not in_fence
-        elif not in_fence and inbox_target(line) in indexed_files:
+        fence = fence_of(line)
+        if opening is None and fence:
+            opening = fence[0]
+        elif (
+            opening
+            and fence
+            and fence[0][0] == opening[0]
+            and len(fence[0]) >= len(opening)
+            and not fence[1].strip()
+        ):
+            opening = None
+        elif opening is None and inbox_target(line) in indexed_files:
             removed.append(line.rstrip("\r\n"))
             continue
         kept.append(line)
@@ -272,9 +302,12 @@ def merge_root(text, block, indexed_files):
 
     Without markers the whole file is handwritten and the block is appended
     after one blank line. With markers only the region between them is replaced.
+    The block and the separator use CRLF when the root already does.
     マーカーが無ければファイル全体を手書き領域とみなし、空行 1 つを挟んで末尾に足す。
-    マーカーがあれば区間の中だけを置き換える。
+    マーカーがあれば区間の中だけを置き換える。root が CRLF なら区切りと生成領域も CRLF にする。
     """
+    newline = "\r\n" if "\r\n" in text else "\n"
+    block = block.replace("\n", newline)
     lines = text.splitlines(keepends=True)
     begins = [i for i, line in enumerate(lines) if line.strip() == BEGIN_MARKER]
     ends = [i for i, line in enumerate(lines) if line.strip() == END_MARKER]
@@ -291,7 +324,7 @@ def merge_root(text, block, indexed_files):
     before = drop_inbox_lines(before, indexed_files, removed)
     if after is None:
         handwritten = "".join(before).rstrip("\r\n")
-        return (handwritten + "\n\n" if handwritten else "") + block, removed
+        return (handwritten + newline * 2 if handwritten else "") + block, removed
     after = drop_inbox_lines(after, indexed_files, removed)
     return "".join(before) + block + "".join(after), removed
 
@@ -300,7 +333,15 @@ def plan_project(root, project):
     """Compute every file of one project without writing / 1 プロジェクト分の出力を計算する(まだ書かない)"""
     project_dir = os.path.join(root, project)
     memories = load_memories(project_dir, project)
-    if not memories:
+    try:
+        existing = read_text(os.path.join(project_dir, "MEMORY.md"))
+    except InputError as error:
+        raise InputError(f"{project}/MEMORY.md: {error}") from None
+    # A project without memories is left alone unless it was generated before; then
+    # planning goes on so stale branches and counts are cleared and markers are checked.
+    # 記憶の無いプロジェクトは、一度も生成していなければ触らない。生成済みなら計画を続け、
+    # 古い枝と件数を消し、マーカーの検証も走らせる。
+    if not memories and not was_generated(project_dir, existing):
         return None
 
     always = [
@@ -334,9 +375,7 @@ def plan_project(root, project):
     else:
         files["index/reference.md"] = None
 
-    root_path = os.path.join(project_dir, "MEMORY.md")
     try:
-        existing = read_text(root_path)
         files["MEMORY.md"], removed = merge_root(
             existing, render_root_block(always, branch_lines), {m.file for m in memories}
         )
@@ -367,6 +406,22 @@ def read_bytes(path):
             return f.read()
     except FileNotFoundError:
         return None
+
+
+def is_generated_branch(path):
+    """Whether a branch file was written by this script / このスクリプトが生成した枝か"""
+    data = read_bytes(path)
+    return data is not None and data.startswith(BRANCH_FRONTMATTER.encode())
+
+
+def was_generated(project_dir, root_text):
+    """Whether the project has a marker or a generated branch / マーカーか生成済みの枝があるか"""
+    if any(line.strip() in (BEGIN_MARKER, END_MARKER) for line in root_text.splitlines()):
+        return True
+    return any(
+        is_generated_branch(os.path.join(project_dir, branch))
+        for branch in ("index/project.md", "index/reference.md")
+    )
 
 
 def current_umask():
@@ -408,8 +463,7 @@ def apply_plan(root, plan):
         if content is None:
             # Remove a branch that became empty, but only one this script generated
             # 空になった枝を消す。ただしこのスクリプトが生成したファイルに限る
-            existing = read_bytes(path)
-            if existing is not None and existing.startswith(BRANCH_FRONTMATTER.encode()):
+            if is_generated_branch(path):
                 os.remove(path)
                 print(f"deleted: {label}")
                 written += 1
