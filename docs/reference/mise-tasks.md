@@ -58,6 +58,20 @@ shellcheck の定義の正は `flake.nix` の `apps.${system}.shellcheck` であ
 
 ---
 
+## Memory Tasks
+
+| Task | Description | Equivalent Command |
+|------|-------------|---------------------|
+| `mise run memory:index` | AgentMemory の各プロジェクトについて、記憶ファイルの frontmatter から枝の索引(`index/project.md`・`index/reference.md`)と root `MEMORY.md` のマーカー区間を生成する。既定では実物の vault(`~/Documents/Obsidian/AgentMemory`)に書く | `python3 -I .config/claude/scripts/build_memory_index.py` |
+| `mise run memory:index-check` | 各プロジェクトの root `MEMORY.md` の行数とバイト数を、上限(200 行 / 25,000 バイト)と目標(100 行 / 15,000 バイト)に並べて表にする。上限を超えた root があれば終了コード 1 を返す。何も書かない | `python3 -I .config/claude/scripts/build_memory_index.py --check` |
+| `mise run memory:index-test` | 索引ビルダーのテストを、一時ディレクトリの fixture だけで実行する(実物の vault には触らない) | `python3 -I -B -m unittest discover -s .config/claude/scripts/tests -p '*_test.py'` |
+
+`memory:index` と `memory:index-check` には、スクリプトの引数をそのまま続けて渡せる。`--root <path>` は AgentMemory のルートを変え、`--project <name>` は対象を 1 プロジェクトに絞る。vault のコピーで試すときは `mise run memory:index --root <コピーのパス>` のように実行する。
+
+スクリプトが root `MEMORY.md` で書き換えるのは、`<!-- memory-index:begin -->` と `<!-- memory-index:end -->` の間だけである。マーカーの外は手書き領域として残る。ただし、手書き領域の箇条書きの行が同じプロジェクトの記憶ファイルを指していて、その記憶が今回の生成に載った場合は、スクリプトがその行を取り除き、stdout に `removed:` の行として出力する。マーカーの無い root に初めて実行すると、スクリプトはファイル全体を手書き領域とみなし、末尾にマーカー区間を足す。マーカーが片方しか無いなど壊れた root が 1 つでもあると、スクリプトはどのファイルも書かずに終了コード 2 で止まる([#720](https://github.com/music-brain88/dotfiles/issues/720))。
+
+---
+
 ## Docker Tasks
 
 | Task | Description | Equivalent Command |

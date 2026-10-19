@@ -103,6 +103,24 @@ description = "Run the tests of the wtclean harvest search script (fixtures only
 # Exercises harvest_search.sh with temporary notes and a fake gh; the real vault is never read.
 run = "bash .config/claude/skills/wtclean/tests/harvest_search_test.sh"
 
+[tasks."memory:index"]
+description = "Build the AgentMemory indexes (index/*.md and the marked region of each root MEMORY.md) from memory frontmatter"
+# 各記憶の frontmatter から枝の索引(index/*.md)と root MEMORY.md のマーカー区間を作る。既定は実物の vault に書く。
+# Writes into the real vault by default; pass --root <copy> to try it on a copy, --project <name> to limit it.
+run = "python3 -I .config/claude/scripts/build_memory_index.py"
+
+[tasks."memory:index-check"]
+description = "Report the size of each AgentMemory root MEMORY.md and exit 1 over 200 lines / 25,000 bytes (writes nothing)"
+# 各プロジェクトの root の行数とバイト数を表にする。上限(200 行 / 25,000 バイト)を超えたら終了コード 1。何も書かない。
+# Prints lines and bytes of every root against the limit and the 100-line / 15,000-byte target. Read-only.
+run = "python3 -I .config/claude/scripts/build_memory_index.py --check"
+
+[tasks."memory:index-test"]
+description = "Run the tests of the AgentMemory index builder (fixtures only, never touches the real vault)"
+# 一時ディレクトリの fixture だけで索引ビルダーを試す。実物の vault には触らない。-B で __pycache__ を作らない。
+# Exercises build_memory_index.py on temporary fixtures; the real vault is never touched. -B keeps the tree clean.
+run = "python3 -I -B -m unittest discover -s .config/claude/scripts/tests -p '*_test.py' -v"
+
 [tasks."docker:build"]
 description = "Build docker image"
 run = "docker build -t arch ."

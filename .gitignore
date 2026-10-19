@@ -15,3 +15,6 @@ result-*
 
 # Rust build output of in-repo tools (tools/standalone-check など)
 /tools/*/target/
+
+# Python bytecode (py_compile や unittest の副産物 / byproduct of py_compile and unittest)
+__pycache__/
