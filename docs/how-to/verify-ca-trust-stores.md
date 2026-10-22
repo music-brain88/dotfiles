@@ -71,10 +71,65 @@ electron43 --disable-gpu /tmp/electron_check.js "$CHECKER"   # ERR_CERT_REVOKED 
 pacman -Qi electron43 | grep 'Required By'                    # どのアプリがこの electron に乗っているか
 ```
 
-Electron を同梱するアプリ(Discord・Slack・Claude Desktop など)は、バイナリから `Electron/x.y.z` を読み、Electron の advisory が示す修正版(2026-10 の事故では 44.9.1 / 43.8.1 / 42.11.16)と比べて判定するのが確実です。同じメジャーの electron パッケージを起こすテストは目安にとどまります。修正はパッチ版で入るので、43.7.x と 43.8.x のように同じメジャーでも結果が変わるからです。版が読めないか修正版と比べられないアプリは「未検証」と記録し、安全側に数えないでください。
+Electron を同梱するアプリ(Discord・Slack・Claude Desktop・ClickUp など)は、同梱の Electron をベンダーが決めているので、Arch や AUR の側では差し替えられません。確かめ方は、版を読む・実機で叩く・バイナリを読む、の 3 段です。
+
+まず、バイナリから `Electron/x.y.z` を読み、Electron の advisory が示す修正版(2026-10 の事故では GHSA-jr5w-w6x2-84p9 の 44.9.1 / 43.8.1 / 42.11.16)と比べます。修正はパッチ版で入るので、43.7.x と 43.8.x のように同じメジャーでも結果が変わります。同じメジャーの electron パッケージを起こす代理テストは目安にとどめてください。Discord のように自己更新するアプリは、パッケージではなく `~/.config/discord/app-*/Discord` のような実体を読んでください。
 
 ```bash
-grep -aoE 'Electron/[0-9]+\.[0-9]+\.[0-9]+' /opt/discord/Discord /usr/lib/slack/slack /usr/lib/claude-desktop/claude-desktop 2>/dev/null
+grep -aoE 'Electron/[0-9]+\.[0-9]+\.[0-9]+' /usr/lib/slack/slack /usr/lib/claude-desktop/claude-desktop /opt/clickup/ClickUp ~/.config/discord/app-*/Discord 2>/dev/null
+```
+
+次に、確定させたいアプリは同梱の実行ファイルそのもので checker を叩きます。アプリのディレクトリを影コピー(実行ファイルだけ複製し、ほかはシンボリックリンク)して、`resources/app.asar` を自前の checker アプリに差し替えて起こすと、同梱の Electron がそのまま動きます。`OnlyLoadAppFromAsar` fuse が有効なアプリでも、asar で渡せば読まれます。userData は影コピーの中に向けて、本物の設定に触らないようにしてください。
+
+```bash
+# 1) checker アプリを asar に詰める(Chromium 側の net.fetch と Node 側の https を両方試す)
+S=/tmp/cachk/shadow; mkdir -p "$S/resources" "$S/userdata"
+cat > /tmp/cachk/main.js <<'JS'
+const { app, net } = require('electron');
+const https = require('https');
+if (process.env.CACHK_USERDATA) app.setPath('userData', process.env.CACHK_USERDATA);
+const nodeGet = (u) => new Promise((res) => https.get(u, (r) => { res(`HTTP ${r.statusCode} TRUSTED`); r.resume(); }).on('error', (e) => res(e.code || e.message)));
+app.whenReady().then(async () => {
+  console.log('[versions] electron', process.versions.electron);
+  for (const u of process.argv.slice(1).filter((a) => a.startsWith('https://'))) {
+    try { const r = await net.fetch(u); console.log('[chromium]', u, '-> HTTP', r.status, 'TRUSTED'); }
+    catch (e) { console.log('[chromium]', u, '->', e.message); }
+    console.log('[node https]', u, '->', await nodeGet(u));
+  }
+  app.quit();
+});
+JS
+echo '{"name":"cachk","version":"1.0.0","main":"main.js"}' > /tmp/cachk/package.json
+python3 - "$S/resources/app.asar" /tmp/cachk/main.js /tmp/cachk/package.json <<'PY'
+import json, struct, sys, pathlib
+out, entries, blobs, off = pathlib.Path(sys.argv[1]), {}, [], 0
+for f in sys.argv[2:]:
+    b = pathlib.Path(f).read_bytes(); entries[pathlib.Path(f).name] = {"size": len(b), "offset": str(off)}; off += len(b); blobs.append(b)
+hdr = json.dumps({"files": entries}).encode(); pad = (4 - len(hdr) % 4) % 4
+payload = struct.pack("<I", len(hdr)) + hdr + b"\0" * pad
+header = struct.pack("<I", len(payload)) + payload
+out.write_bytes(struct.pack("<II", 4, len(header)) + header + b"".join(blobs))
+PY
+
+# 2) 影コピーを作って起こす(例は Claude Desktop。ClickUp は APP=/opt/clickup BIN=ClickUp、Discord は APP=~/.config/discord/app-<版> BIN=Discord に読み替える)
+APP=/usr/lib/claude-desktop; BIN=claude-desktop
+for f in "$APP"/*; do n=$(basename "$f"); case "$n" in resources) ;; "$BIN") cp -f "$f" "$S/$n";; *) ln -sfn "$f" "$S/$n";; esac; done
+for f in "$APP"/resources/*; do n=$(basename "$f"); case "$n" in app|app.asar|app.asar.unpacked) ;; *) ln -sfn "$f" "$S/resources/$n";; esac; done
+CACHK_USERDATA=$S/userdata "$S/$BIN" --no-sandbox --disable-gpu --user-data-dir="$S/userdata" "$CHECKER" https://www.google.com/ 2>&1 | grep '^\['
+```
+
+checker が `HTTP 200 TRUSTED` で返れば、そのアプリは同梱の Electron ごと修正前です。`ERR_CERT_AUTHORITY_INVALID` や `ERR_CERT_REVOKED` で止まれば拒否しています。通常サイトが 200 で返ることも一緒に見て、checker の失敗がネットワークのせいでないことを確かめてください。
+
+最後に、修正の有無はバイナリを読むだけでも分かります。Electron の修正は root を削るのではなく、中間 CA の SPKI の SHA-256 をブロックリストに焼き込む形なので、root「emSign ECC Root CA - G3」の DER は修正版の electron にも残っています。root の有無で判定しないでください。checker の chain から中間 CA の SPKI ハッシュ(生の 32 バイト)を計算し、それがバイナリにあれば修正版、無ければ修正前と読めます。
+
+```bash
+H=${CHECKER#https://}; H=${H%%/*}
+openssl s_client -connect "$H:443" -servername "$H" -showcerts </dev/null 2>/dev/null \
+  | awk '/BEGIN CERT/{n++} n==2' | openssl x509 -noout -pubkey \
+  | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary > /tmp/cachk/spki.bin
+python3 -c 'import sys, pathlib; k = pathlib.Path(sys.argv[1]).read_bytes()
+for b in sys.argv[2:]: print(b, "patched (blocklist entry present)" if k in pathlib.Path(b).read_bytes() else "not patched")' \
+  /tmp/cachk/spki.bin /usr/lib/electron43/electron /usr/lib/claude-desktop/claude-desktop /usr/lib/slack/slack /opt/clickup/ClickUp
 ```
 
 ## 5. Nix の cacert を参照するパッケージを洗い出す

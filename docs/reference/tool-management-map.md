@@ -51,7 +51,7 @@ TLS の証明書を信頼するかどうかの判断は、OS 層の `ca-certific
 | poetry ほか requests を使う Python ツール(mise) | venv の certifi | `REQUESTS_CA_BUNDLE` |
 | gcloud(Nix) | 同梱の certifi | `CLOUDSDK_CORE_CUSTOM_CA_CERTS_FILE` |
 | pip(mise の python) | 同梱の certifi と truststore | 環境変数では変わらないので、pip 本体を修正版に上げる |
-| Electron アプリ(Obsidian / Bitwarden / Discord / Slack) | 内蔵の Chrome Root Store | 変更できないので、パッケージの更新を待つ |
+| Electron アプリ(Obsidian / Bitwarden / Discord / Slack / Claude Desktop / ClickUp) | 内蔵の Chrome Root Store | 変更できない。同梱の Electron はベンダーが決めるので、アプリ(system electron に乗るものはその electron)の更新を待つ |
 | Vivaldi / Chromium(pacman) | Chrome Root Store と CRLSet | 変更は不要で、CRLSet の自動更新が失効を配る |
 
 Nix 側の `cacert`(`nss-cacert`)を参照するパッケージ(gcloud・copilot-cli・Python の certifi)は、nixpkgs の channel が追従するまで古い束を持ち続けます。上の変数で束を差し替えられるものは差し替え、残りは `mise run nix:update` で追従させる、という二段構えです。各クライアントが実際にどちらの束を読んでいるかを確かめる手順は [verify-ca-trust-stores.md](../how-to/verify-ca-trust-stores.md) にまとめてあります。
