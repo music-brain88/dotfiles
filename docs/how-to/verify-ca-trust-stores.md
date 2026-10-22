@@ -71,7 +71,7 @@ electron43 --disable-gpu /tmp/electron_check.js "$CHECKER"   # ERR_CERT_REVOKED 
 pacman -Qi electron43 | grep 'Required By'                    # どのアプリがこの electron に乗っているか
 ```
 
-Electron を同梱するアプリ(Discord・Slack・Claude Desktop など)は、バイナリから `Electron/x.y.z` を読み、Electron の advisory が示す修正版(2026-10 の事故では 44.9.1 / 43.8.1 / 42.11.16)と比べて判定します。同じメジャーの electron パッケージを起こすテストは目安にしかなりません。修正はパッチ版で入るので、43.7.x と 43.8.x のように同じメジャーでも結果が変わります。版が読めないか修正版と比べられないアプリは「未検証」と記録し、安全側に数えないでください。
+Electron を同梱するアプリ(Discord・Slack・Claude Desktop など)は、バイナリから `Electron/x.y.z` を読み、Electron の advisory が示す修正版(2026-10 の事故では 44.9.1 / 43.8.1 / 42.11.16)と比べて判定するのが確実です。同じメジャーの electron パッケージを起こすテストは目安にとどまります。修正はパッチ版で入るので、43.7.x と 43.8.x のように同じメジャーでも結果が変わるからです。版が読めないか修正版と比べられないアプリは「未検証」と記録し、安全側に数えないでください。
 
 ```bash
 grep -aoE 'Electron/[0-9]+\.[0-9]+\.[0-9]+' /opt/discord/Discord /usr/lib/slack/slack /usr/lib/claude-desktop/claude-desktop 2>/dev/null
