@@ -36,7 +36,7 @@
   ++ lib.optionals (profile == "wsl") [ ./nix/modules/wsl.nix ];
 
   # Environment variables
-  home.sessionVariables = {
+  home.sessionVariables = let caBundle = "/etc/ssl/certs/ca-certificates.crt"; in {
     EDITOR = "nvim";
     VISUAL = "nvim";
     # device-auth 系 CLI (aws sso login / gh auth login -w / gcloud auth login 等) の
@@ -46,9 +46,28 @@
     # back to the GUI browser internally outside herdr (Issue #523, #701).
     BROWSER = "${config.home.homeDirectory}/.local/bin/device_auth_browser";
     TERMINAL = "wezterm";
-    # SSL certificates (use system certs instead of Nix store)
+    # CA の信頼判断は、OS 層の ca-certificates-mozilla(pacman)が作るシステムの信頼ストア 1 本に寄せる。
+    # OpenSSL を使うツール(curl / git / python / go / mise / rustup / uv)は SSL_CERT_FILE を読む。
+    # 自前のルート束を同梱するランタイムは SSL_CERT_FILE を読まないので、ツール固有の変数で同じ束を指す。
+    # 各変数の効果は checker ホストで実測した(Issue #738、手順は docs/how-to/verify-ca-trust-stores.md)。
+    # CA trust decisions are delegated to the system trust store built by pacman's
+    # ca-certificates-mozilla. OpenSSL-based tools honor SSL_CERT_FILE; runtimes that bundle
+    # their own root store ignore it, so each gets a tool-specific variable pointing at the
+    # same bundle. Every variable was verified against the checker hosts (Issue #738, see
+    # docs/how-to/verify-ca-trust-stores.md).
     SSL_CERT_DIR = "/etc/ssl/certs";
-    SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
+    SSL_CERT_FILE = caBundle;
+    # node(mise): 同梱の束を捨てて OpenSSL の束に置き換える(--use-system-ca は追加モードなので効かない)
+    # node (mise): replace the bundled roots with OpenSSL's store (--use-system-ca only appends)
+    NODE_OPTIONS = "--use-openssl-ca";
+    # deno(cargo): rustls に OS の束を読ませる / deno (cargo): make rustls read the OS store
+    DENO_TLS_CA_STORE = "system";
+    # awscli(mise)と requests を使う Python ツール(poetry など)は同梱の certifi を読むので束のパスを渡す
+    # awscli (mise) and requests-based Python tools (poetry etc.) ship certifi; hand them the bundle path
+    AWS_CA_BUNDLE = caBundle;
+    REQUESTS_CA_BUNDLE = caBundle;
+    # gcloud(Nix): 同梱の certifi の代わりに読む束 / gcloud (Nix): bundle read instead of its vendored certifi
+    CLOUDSDK_CORE_CUSTOM_CA_CERTS_FILE = caBundle;
   };
 
   # XDG base directories

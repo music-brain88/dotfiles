@@ -1,6 +1,6 @@
 [tools]
 poetry = "latest"
-node = "22.15.1"
+node = "22.23.4"
 uv = "latest"
 
 [env]
