@@ -73,11 +73,28 @@ pacman -Qm | while read -r name ver; do
 done
 ```
 
+このループは bash で書いてあります。対話シェルが fish のときは、`bash` を起こしてから貼るか、次の fish 版を使います。fish には heredoc が無く、`while read` の変数も `read -l` と宣言するので、bash 版をそのまま貼ると最初の行で止まります(2026-10-23 に実測)。
+
+```fish
+set repo ~/.local/share/paru/repo
+mkdir -p $repo
+pacman -Qm | while read -l name ver
+    set -l f (find /var/cache/pacman/pkg ~/.cache/paru/clone -maxdepth 2 -name "$name-$ver-*.pkg.tar.*" -not -name "*.sig" 2>/dev/null | head -n1)
+    if test -n "$f"
+        cp $f $repo/
+    else
+        echo "missing: $name $ver"
+    end
+end
+```
+
 コピーしたアーカイブを、`repo-add` でローカルリポジトリの DB に登録します。`man repo-add` によると、`repo-add <DB のパス> <パッケージ>...` は DB のファイルが無ければ作りますが、親ディレクトリは先に存在している必要があります。上の `mkdir -p` はそのための保険です。DB のファイル名は、pacman.conf のリポジトリ名 `[aur]` に合わせて `aur.db.tar.gz` にします。
 
 ```bash
 repo-add ~/.local/share/paru/repo/aur.db.tar.gz ~/.local/share/paru/repo/*.pkg.tar.zst
 ```
+
+fish でこのコマンドが `No matches for wildcard` で止まったときは、`*.pkg.tar.zst` に合うファイルが 1 つも無い、つまり前のループがアーカイブを 1 本もコピーしていない状態です。fish はマッチしないワイルドカードを含むコマンドを実行しないので、`ls ~/.local/share/paru/repo` でコピーの結果を確かめてからやり直してください。
 
 登録したら、`paru -Ly` か `sudo pacman -Sy` で DB を読み直します。`pacman -Qm` の一覧が `missing:` のパッケージだけに減り、移したパッケージが `pacman -Sl aur` に載れば移行は完了です。
 
@@ -93,13 +110,19 @@ paru -S <パッケージ> --rebuild
 
 ```bash
 pacman -Sl aur                  # 手順 3 で移したパッケージが一覧に出る
-paru -S wezterm-git --rebuild   # #418 と #740 でビルドが壊れた再現パッケージ
+paru -Sa wezterm-git --rebuild  # #418 と #740 でビルドが壊れた再現パッケージ。-a で AUR として扱う
 paru -Syu                       # [aur] のパッケージが更新の対象に入る
 ```
 
 - `pacman -Sl aur` がエラーなしで終われば、`[aur]` の宣言と初期化は有効です。
-- `paru -S wezterm-git --rebuild` は、初回だけ chroot を作るために base-devel をダウンロードします。手順 3 で wezterm-git を `[aur]` に移していても、`--rebuild` を付けるとビルドからやり直すので、chroot ビルドが通るかを確かめられます。ビルドが通ってインストールまで進めば成功です。
-- `paru -Syu` の更新対象に `aur/` のパッケージが含まれていれば、更新のビルドも chroot を通ります。
+- `paru -Sa wezterm-git --rebuild` は、初回だけ chroot を作るために base-devel をダウンロードします。`-a`(`--aur`)が要る理由は次のとおりです。手順 3 で wezterm-git を `[aur]` に移していると、paru はそのターゲットを sync リポジトリのパッケージとして解決します。そのため `--rebuild` を付けても、`[aur]` から同じ版を入れ直すだけで終わります(2026-10-23 に実測)。`man paru` によると `-a` は全ターゲットを AUR とみなすので、ビルドからやり直して chroot を通ります。ビルドが通ってインストールまで進めば成功です。
+- `paru -Syu` の更新対象に `aur/` のパッケージが含まれていれば、更新のビルドも chroot を通ります。通常の更新で新しい版が出たパッケージは、`-a` を付けなくても chroot でビルドされます。
+
+ビルドが chroot を通ったかは、`[aur]` に入ったパッケージの `.BUILDINFO` で確かめられます。`builddir` が `/build` なら chroot で、`/home/<ユーザー名>/.cache/paru/clone/<pkgbase>` なら対話環境でビルドされたものです。
+
+```bash
+tar -xOf ~/.local/share/paru/repo/<パッケージのファイル名>.pkg.tar.zst .BUILDINFO | grep -E '^(builddir|builddate)'
+```
 
 ## 5. 運用する
 
@@ -124,7 +147,7 @@ chroot には base-devel と PKGBUILD が宣言した依存しか入らないの
 
 ### chroot の置き場とディスクの掃除
 
-`.config/paru/paru.conf` の `Chroot` にはパスを付けていないので、paru は既定の場所(paru のキャッシュ配下)に chroot を作ります。`man paru` と `man paru.conf` は既定のパスを明記していないので、実際の場所は `paru -Cp` で確かめてください。paru のキャッシュは `$XDG_CACHE_HOME/paru/` で、`XDG_CACHE_HOME` が未設定なら `~/.cache/paru` です(`man paru` の CACHE DIRECTORY)。
+`.config/paru/paru.conf` の `Chroot` にはパスを付けていないので、paru は既定の場所に chroot を作ります。`man paru` と `man paru.conf` は既定のパスを明記していませんが、2026-10-23 の native 機では `paru -Cp` が `/var/lib/aurbuild/x86_64` を返しました。この下の `root` が master chroot で、ユーザー名のディレクトリがビルドごとに使う作業用のコピーです。どちらも root が所有します。paru のキャッシュ(`~/.cache/paru`)の下には作られないので、実際の場所は `paru -Cp` で確かめてください。
 
 ディスクの使用量は次のコマンドで確かめます。chroot の中身は root が所有するので、`du` にも sudo が要ります。
 
