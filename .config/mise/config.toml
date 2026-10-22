@@ -2,7 +2,7 @@
 # Tools available in every directory. claude is managed by its native installer (~/.local/bin/claude), not an npm global under this node — node is kept here for other tools.
 # 全ディレクトリで有効なツール。claude は native installer(~/.local/bin/claude)管理であり、この node 配下の npm グローバルではない — node は他ツールのために残している
 [tools]
-node = "22.15.1"
+node = "22.23.4"
 
 [tasks."claude:memory-wire"]
 description = "Wire project auto-memory to the Obsidian AgentMemory vault"

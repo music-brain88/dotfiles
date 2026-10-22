@@ -37,6 +37,7 @@
 - [how-to/manage-gpg-keys.md](./how-to/manage-gpg-keys.md) - GPG鍵の複数端末運用
 - [how-to/install-unmanaged-tools.md](./how-to/install-unmanaged-tools.md) - Nix管理外ツールの導入(Claude Code・OS層・化石の掃除)
 - [how-to/sync-atuin-history-across-machines.md](./how-to/sync-atuin-history-across-machines.md) - atuin の履歴を複数端末で同期する(register・同じ鍵での login)
+- [how-to/verify-ca-trust-stores.md](./how-to/verify-ca-trust-stores.md) - CA の事故のときに各 TLS クライアントが問題のチェーンを拒否するか確かめる
 
 ---
 
@@ -96,6 +97,7 @@
 | CI/CDでハマった問題を知りたい | [explanation/cicd-evolution.md](./explanation/cicd-evolution.md) |
 | フォントがおかしいときは | [how-to/troubleshoot-fonts.md](./how-to/troubleshoot-fonts.md) |
 | このツールはどの層で管理されてる？ | [reference/tool-management-map.md](./reference/tool-management-map.md) |
+| CA の事故が起きた。どのツールが影響を受ける？ | [how-to/verify-ca-trust-stores.md](./how-to/verify-ca-trust-stores.md) |
 
 ---
 
