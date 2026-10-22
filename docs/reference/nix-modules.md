@@ -10,7 +10,7 @@
 
 ### base.nix
 
-`base.nix` は、最小構成の基本的なシステムパッケージを定義します。curl/wget/cmakeはdev-tools.nixへ、gitはgit.nixへ、pkg-configはrust-tools.nixへ移動済みです。
+`base.nix` は、最小構成の基本的なシステムパッケージを定義します。curl/wget/cmakeはdev-tools.nixへ、gitはgit.nixへ移動済みです。pkg-config は Nix では入れず、Arch の pkgconf を使います(#740)。
 - gnutar, gzip
 - protobuf
 - mako, libnotify
@@ -19,7 +19,7 @@
 
 ### rust-tools.nix
 
-`rust-tools.nix` は、Rust開発ツールとCLIツールを定義します。
+`rust-tools.nix` は、Rust開発ツールとCLIツールを定義します。 native crate のビルドに使う pkg-config と openssl は Nix では入れず、Arch の pkgconf と openssl に任せます。Nix の pkg-config は `/usr` を探索できないので、PATH で先に来ると AUR のビルドが Arch のライブラリを見つけられなくなるためです([#740](https://github.com/music-brain88/dotfiles/issues/740))。
 - rustup, cargo
 - fd, ripgrep, eza, bat
 - gitui, tealdeer, hyperfine
