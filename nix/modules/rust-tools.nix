@@ -8,9 +8,12 @@
     rustup
     cargo-update
 
-    # Build dependencies for native crates (openssl-sys, etc.)
-    openssl.dev
-    pkg-config
+    # pkg-config と openssl は Nix では入れない。Nix の pkg-config は探索パスが Nix store の中だけで
+    # /usr/lib/pkgconfig を見ないため、PATH で先に来ると AUR のビルドや native crate が Arch のライブラリを
+    # 見つけられなくなる(#740)。Arch の pkgconf と openssl(ヘッダ同梱)に任せる。
+    # pkg-config and openssl are intentionally NOT provided by Nix. Nix's pkg-config only searches the
+    # Nix store, so when it shadows /usr/bin/pkg-config, AUR builds and native crates cannot find Arch
+    # libraries (#740). Arch's pkgconf and openssl (headers included) are used instead.
 
     # Modern Unix tools written in Rust
     fd # fd-find - fast alternative to find
@@ -32,8 +35,8 @@
   home.sessionVariables = {
     CARGO_HOME = "${config.home.homeDirectory}/.cargo";
     RUSTUP_HOME = "${config.home.homeDirectory}/.rustup";
-    # pkg-config search path for native crates
-    PKG_CONFIG_PATH = "${config.home.homeDirectory}/.nix-profile/lib/pkgconfig";
+    # PKG_CONFIG_PATH は設定しない。Arch の pkgconf は既定で /usr/lib/pkgconfig を探索する(#740)
+    # No PKG_CONFIG_PATH: Arch's pkgconf searches /usr/lib/pkgconfig by default (#740)
   };
 
   # ~/.cargo/bin の PATH は .config/fish/config.fish で管理する (home.sessionPath は二重宣言だったので #595 で削除)
