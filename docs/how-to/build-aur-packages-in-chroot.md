@@ -52,21 +52,56 @@ paru -Ly
 
 `-L`(`--repoctl`)に `-y`(`--refresh`)を付けると、paru はローカルリポジトリを refresh します。paru 自身も、ローカルリポジトリが無いときのエラーでこのコマンドを初期化の手順として案内しています。この初期化が要るのは、`[aur]` を宣言しただけでは DB が無いからです。DB が無い間、`pacman -Sl aur` は `database file for 'aur' does not exist` と警告します。
 
-## 3. 動作を確かめる
+## 3. 既存の AUR パッケージを [aur] に移す
+
+切り替える前から入っている AUR パッケージを `[aur]` に移さないと、それらは `paru -Syu` の更新対象から外れます。`man paru.conf` の LocalRepo の説明にあるとおり、`LocalRepo` を有効にした paru が更新の対象にするのはローカルリポジトリにあるパッケージで、foreign パッケージ(どの sync リポジトリにも無いパッケージ)は対象から外れるからです。
+
+まず、移す対象の foreign パッケージを一覧します。
+
+```bash
+pacman -Qm
+```
+
+次に、各パッケージの今の版のアーカイブを `/var/cache/pacman/pkg` と `~/.cache/paru/clone/<pkgbase>/` から探し、`~/.local/share/paru/repo` にコピーします。clone の下のディレクトリ名は pkgbase なので、ループは split パッケージも拾えるように `clone/*/` で探す形です。アーカイブが見つからないパッケージについては、ループが `missing:` の行を表示する仕組みです。
+
+```bash
+repo=~/.local/share/paru/repo
+mkdir -p "$repo"
+pacman -Qm | while read -r name ver; do
+  f=$(ls /var/cache/pacman/pkg/"$name-$ver"-*.pkg.tar.* ~/.cache/paru/clone/*/"$name-$ver"-*.pkg.tar.* 2>/dev/null | grep -v '\.sig$' | head -n1)
+  if [ -n "$f" ]; then cp "$f" "$repo"/; else echo "missing: $name $ver"; fi
+done
+```
+
+コピーしたアーカイブを、`repo-add` でローカルリポジトリの DB に登録します。`man repo-add` によると、`repo-add <DB のパス> <パッケージ>...` は DB のファイルが無ければ作りますが、親ディレクトリは先に存在している必要があります。上の `mkdir -p` はそのための保険です。DB のファイル名は、pacman.conf のリポジトリ名 `[aur]` に合わせて `aur.db.tar.gz` にします。
+
+```bash
+repo-add ~/.local/share/paru/repo/aur.db.tar.gz ~/.local/share/paru/repo/*.pkg.tar.zst
+```
+
+登録したら、`paru -Ly` か `sudo pacman -Sy` で DB を読み直します。`pacman -Qm` の一覧が `missing:` のパッケージだけに減り、移したパッケージが `pacman -Sl aur` に載れば移行は完了です。
+
+アーカイブがキャッシュに無かったパッケージは、chroot でビルドし直して `[aur]` に入れます。`man paru` によると、`--rebuild` はキャッシュにビルド済みのものがあっても対象をビルドし直すオプションです。
+
+```bash
+paru -S <パッケージ> --rebuild
+```
+
+## 4. 動作を確かめる
 
 次の 3 つのコマンドで、ローカルリポジトリと chroot ビルドと更新が働くことを確かめます。
 
 ```bash
-pacman -Sl aur        # まだ何もビルドしていなければ空の一覧が出る
-paru -S wezterm-git   # #418 と #740 でビルドが壊れた再現パッケージ
-paru -Syu             # [aur] のパッケージが更新の対象に入る
+pacman -Sl aur                  # 手順 3 で移したパッケージが一覧に出る
+paru -S wezterm-git --rebuild   # #418 と #740 でビルドが壊れた再現パッケージ
+paru -Syu                       # [aur] のパッケージが更新の対象に入る
 ```
 
-- `pacman -Sl aur` がエラーなしで終われば、`[aur]` の宣言と初期化は有効です。一覧が空でも問題ありません。
-- `paru -S wezterm-git` は、初回だけ chroot を作るために base-devel をダウンロードします。ビルドが通ってインストールまで進めば成功です。続けて `pacman -Sl aur` を実行すると、wezterm-git が `[aur]` に入ったことを確かめられます。
+- `pacman -Sl aur` がエラーなしで終われば、`[aur]` の宣言と初期化は有効です。
+- `paru -S wezterm-git --rebuild` は、初回だけ chroot を作るために base-devel をダウンロードします。手順 3 で wezterm-git を `[aur]` に移していても、`--rebuild` を付けるとビルドからやり直すので、chroot ビルドが通るかを確かめられます。ビルドが通ってインストールまで進めば成功です。
 - `paru -Syu` の更新対象に `aur/` のパッケージが含まれていれば、更新のビルドも chroot を通ります。
 
-## 4. 運用する
+## 5. 運用する
 
 次の表は、chroot ビルドを運用するときに使うコマンドを並べたものです。説明は `man paru` の記述を訳しています。
 
