@@ -103,6 +103,12 @@
 
 設定ごとの理由は [terminal-browser.md](./terminal-browser.md) を参照してください。
 
+### paru.nix
+
+`paru.nix` は、AUR ヘルパー paru のユーザー設定 `.config/paru/paru.conf` を `~/.config/paru/paru.conf` に symlink します (`xdg.configFile`、Issue #743)。この設定は `Include = /etc/paru.conf` で system 側の設定を取り込み、`LocalRepo`・`Chroot`・`SudoLoop` を有効にして、AUR のビルドを devtools の chroot に移します。paru と devtools は OS 層 (pacman) が入れるので、このモジュールはパッケージを入れません。`home.nix` は native profile のときだけこのモジュールを読み込みます。chroot が使う systemd-nspawn が WSL 機で動く保証は無いからです。
+
+symlink を当てる前に system 側で `/etc/pacman.conf` の `[aur]` と devtools を準備する必要があります。手順と順序の理由は [build-aur-packages-in-chroot.md](../how-to/build-aur-packages-in-chroot.md) を参照してください。
+
 ### wsl.nix
 
 `wsl.nix` は、WSL固有の設定を定義します (wsl profileでのみ使います)。

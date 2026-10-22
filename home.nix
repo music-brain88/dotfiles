@@ -32,6 +32,9 @@
     # WSL 機では kitty graphics を描画できないので native 機だけ (Issue #701)
     # Native only: WSL can't render kitty graphics (Issue #701)
     ./nix/modules/terminal-browser.nix
+    # AUR のビルドを chroot にするのは native 機だけ (Issue #743)
+    # Native only: AUR builds move into a chroot here first (Issue #743)
+    ./nix/modules/paru.nix
   ]
   ++ lib.optionals (profile == "wsl") [ ./nix/modules/wsl.nix ];
 

@@ -20,19 +20,19 @@
 
 ## ツール別管轄 / Tool Assignments
 
-| Tool                                                               | Layer                | 定義場所・実体                                                             |
-| ------------------------------------------------------------------ | -------------------- | -------------------------------------------------------------------------- |
-| git / gh / fish / nvim / docker / gpg / rustup ほか CLI 開発ツール | Nix                  | `nix/modules/*.nix`                                                        |
-| herdr / copilot-cli                                                | Nix (overlay)        | `flake.nix`                                                                |
-| terminal-browser                                                   | Nix (overlay)        | `flake.nix`(導入は native 機だけ: `nix/modules/terminal-browser.nix`)    |
-| mise 本体                                                          | Nix                  | `nix/modules/dev-tools.nix`(`programs.mise`)                               |
-| Hyprland / Waybar / WezTerm / Alacritty / Obsidian                 | OS (pacman)          | 設定のみ Nix が symlink                                                    |
-| paru                                                               | OS (pacman)          | AUR ヘルパー                                                               |
-| tailscale                                                          | OS (pacman) **暫定** | PoC 中。dotfiles 統合の設計が固まるまで OS 層                              |
-| node(グローバル)                                                   | mise                 | `.config/mise/config.toml`(claude 以外の npm ツール用に維持 — 経緯は #486) |
-| node / poetry / uv(プロジェクト)                                   | mise                 | 各リポジトリの `.mise.toml`                                                |
-| claude (Claude Code)                                               | Native installer     | `~/.local/bin/claude` → `~/.local/share/claude/versions/`                  |
-| copilot-quorum                                                     | 手動                 | 自作ツール。ローカルリポジトリからビルドして `~/.local/bin` に配置         |
+| Tool                                                               | Layer                | 定義場所・実体                                                                                            |
+| ------------------------------------------------------------------ | -------------------- | --------------------------------------------------------------------------------------------------------- |
+| git / gh / fish / nvim / docker / gpg / rustup ほか CLI 開発ツール | Nix                  | `nix/modules/*.nix`                                                                                       |
+| herdr / copilot-cli                                                | Nix (overlay)        | `flake.nix`                                                                                               |
+| terminal-browser                                                   | Nix (overlay)        | `flake.nix`(導入は native 機だけ: `nix/modules/terminal-browser.nix`)                                     |
+| mise 本体                                                          | Nix                  | `nix/modules/dev-tools.nix`(`programs.mise`)                                                              |
+| Hyprland / Waybar / WezTerm / Alacritty / Obsidian                 | OS (pacman)          | 設定のみ Nix が symlink                                                                                   |
+| paru                                                               | OS (pacman)          | AUR ヘルパー。ビルドは devtools の chroot(`.config/paru/paru.conf` を Nix が native 機だけ symlink、#743) |
+| tailscale                                                          | OS (pacman) **暫定** | PoC 中。dotfiles 統合の設計が固まるまで OS 層                                                             |
+| node(グローバル)                                                   | mise                 | `.config/mise/config.toml`(claude 以外の npm ツール用に維持 — 経緯は #486)                                |
+| node / poetry / uv(プロジェクト)                                   | mise                 | 各リポジトリの `.mise.toml`                                                                               |
+| claude (Claude Code)                                               | Native installer     | `~/.local/bin/claude` → `~/.local/share/claude/versions/`                                                 |
+| copilot-quorum                                                     | 手動                 | 自作ツール。ローカルリポジトリからビルドして `~/.local/bin` に配置                                        |
 
 > **Note:** `mise ls` に「ツール別管轄」の表にない宣言なしのツールが出る場合、過去の手動インストールの残りです。宣言化するか削除してください([install-unmanaged-tools.md のトラブルシューティング](../how-to/install-unmanaged-tools.md#トラブルシューティング--troubleshooting) 参照)。
 

@@ -38,6 +38,7 @@
 - [how-to/install-unmanaged-tools.md](./how-to/install-unmanaged-tools.md) - Nix管理外ツールの導入(Claude Code・OS層・化石の掃除)
 - [how-to/sync-atuin-history-across-machines.md](./how-to/sync-atuin-history-across-machines.md) - atuin の履歴を複数端末で同期する(register・同じ鍵での login)
 - [how-to/verify-ca-trust-stores.md](./how-to/verify-ca-trust-stores.md) - CA の事故のときに各 TLS クライアントが問題のチェーンを拒否するか確かめる
+- [how-to/build-aur-packages-in-chroot.md](./how-to/build-aur-packages-in-chroot.md) - paru が AUR のパッケージを devtools の chroot でビルドするように設定する
 
 ---
 
@@ -98,6 +99,7 @@
 | フォントがおかしいときは | [how-to/troubleshoot-fonts.md](./how-to/troubleshoot-fonts.md) |
 | このツールはどの層で管理されてる？ | [reference/tool-management-map.md](./reference/tool-management-map.md) |
 | CA の事故が起きた。どのツールが影響を受ける？ | [how-to/verify-ca-trust-stores.md](./how-to/verify-ca-trust-stores.md) |
+| AUR のビルドが Nix や mise のツールを拾って失敗する | [how-to/build-aur-packages-in-chroot.md](./how-to/build-aur-packages-in-chroot.md) |
 
 ---
 
