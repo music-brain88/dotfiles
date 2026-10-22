@@ -110,6 +110,27 @@ home.file.".config/fish/config.fish".source = ../../.config/fish/config.fish;
 - 設定ファイルの中身
 - プラグインの宣言・設定（NeovimのdppのTOML等。dpp.vim本体とdenops.vimだけはNixがstoreから供給し、個々のプラグインはdppが取得する）
 
+### 対話環境の環境変数と PATH は OS 側のビルドに漏れる / Interactive Environment Leaks into OS-side Builds
+
+Nix と mise が対話環境に置くものは、同じシェルから起こした OS 側のビルドにもそのまま継承されます。継承されるのは、Nix が PATH に置く cmake・pkg-config・Nix の python と、Nix が設定する `PKG_CONFIG_PATH` のような環境変数と、mise が PATH の前のほうに置く shim です。この状態で hyprpm や makepkg を起こすと、ビルドは Arch の `/usr/bin` にあるツールより先に Nix や mise のツールを拾います。Nix の cmake と pkg-config は `/usr` を探索しないので、ビルドは Arch のライブラリを見つけられずに失敗します。
+
+次の表は、この型の失敗が起きた 3 回を、漏れたものと取った対処で並べたものです。#418 では、この節を書く作業が積み残しになっていました。
+
+| Issue | 漏れたもの | 壊れたビルド | 取った対処 |
+| --- | --- | --- | --- |
+| #418 | pkg-config と `PKG_CONFIG_PATH` | AUR の wezterm-git | Issue に暫定の回避策(`PKG_CONFIG=/usr/bin/pkg-config` などを付けて paru を呼ぶ)を書いた。根本の対処は #740 で入った |
+| #554 | cmake と pkg-config | hyprpm が管理するプラグインの再ビルド | `.mise.toml` の `hypr:pm-update` が `PATH="/usr/bin:$PATH"` で hyprpm を包んだ |
+| #740 | pkg-config と `PKG_CONFIG_PATH` | AUR のパッケージ 6 本 | `rust-tools.nix` から `pkg-config`・`openssl.dev`・`PKG_CONFIG_PATH` を外した(#741) |
+
+このリポジトリは、この漏れを 2 段で抑えます。
+
+1. Arch 側と重なるビルドツールを Nix に入れません(#740、#741)。pkg-config と openssl は Arch の pkgconf と openssl に任せます。Nix に新しいツールを足すときは、Arch のビルドが PATH から拾うツールと重ならないかを確かめます。
+2. AUR のビルドを devtools の chroot に隔離します(#743)。paru は makechrootpkg を通して systemd-nspawn の clean な container の中で makepkg を動かすので、対話環境の PATH と環境変数はビルドに届きません。この段は漏れの経路そのものを切るので、1 段目で取りこぼした漏れ(mise の shim や Nix の python など)も防ぎます。手順は [build-aur-packages-in-chroot.md](../how-to/build-aur-packages-in-chroot.md) にあります。
+
+hyprpm のように chroot を使えないビルドは、2 段目の対象外です。こうしたビルドには、#554 と同じように PATH を `/usr/bin` 優先に包む対処が残ります。
+
+Nix and mise put tools (cmake, pkg-config, mise shims, Nix's python) and variables such as `PKG_CONFIG_PATH` into the interactive shell, and OS-side builds started from that shell (hyprpm, makepkg) inherit them. This broke Arch builds three times (#418, #554, #740). The repo defends in two layers: keep build tools that overlap with Arch out of Nix (#740/#741), and build AUR packages in a devtools chroot so the interactive environment never reaches makepkg (#743).
+
 ### 言語ランタイムのバージョン方針 / Language Runtime Version Policy
 
 Python / Node などの言語ランタイムは、NixとmiseのW管理にならないよう役割を分担する：
@@ -235,7 +256,7 @@ Alacritty は両マシンとも併存期間中フォールバックとして設�
 
 `flake.nix` の `homeConfigurations` は 2 profile を持ち、`mise run nix:switch` がカーネル名から自動判別する:
 
-- **`archie`**（native）: 共通モジュール + `desktop.nix`（GUI 設定群）+ `terminal-browser.nix`（kitty graphics で描くブラウザ。WSL では描画できないので native のみ）
+- **`archie`**（native）: 共通モジュール + `desktop.nix`（GUI 設定群）+ `terminal-browser.nix`（kitty graphics で描くブラウザ。WSL では描画できないので native のみ）+ `paru.nix`（AUR を devtools の chroot でビルドする paru の設定。WSL では systemd-nspawn が動く保証が無いので native のみ）
 - **`archie-wsl`**（wsl）: 共通モジュール + `wsl.nix`
   - `~/Documents/Obsidian` → Windows 側 vault への symlink を activation で生成（Claude Cowork / Obsidian Sync が vault の実体を Windows 側に要請するため）。これによりスキル群（session-log 等）はパス変更なしで両環境動作する
   - **vault 配置規約**: Obsidian Sync が同期するのは vault の中身と名前だけで、ローカルの置き場所は各端末で選ぶもの。この dotfiles では「Windows ホストでは `%USERPROFILE%\Documents\music.brain88` に配置する」を運用規約とし、`wsl.nix` はその規約をコード化している（見つからない場合は警告して skip、activation は落ちない）
