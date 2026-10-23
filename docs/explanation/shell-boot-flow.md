@@ -189,6 +189,9 @@ test -d $HOME/.nix-profile/bin; and fish_add_path --path --prepend $HOME/.nix-pr
 set -x LANG en_US.UTF-8
 set -x LC_CTYPE en_US.UTF-8
 
+# 起動時の greeting を無言にする（universal 変数に頼らず repo で宣言。#694）
+set -g fish_greeting
+
 # エイリアス
 alias vim 'nvim'
 alias rm 'rm -i'
