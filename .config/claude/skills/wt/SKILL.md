@@ -377,10 +377,11 @@ herdr agent wait "$AGENT_NAME" > "<司令塔自身のスクラッチパッドデ
 
 **相談 idle の判別:**
 
-作業者は【相談】送信後も司令塔からの回答を待つ間 `idle` に遷移する(手順4テンプレート「## 相談」参照)。また、作業者の bash が `sleep` 主体の待ち(実機検証のポーリング等)に入ると、完了前でも一時的に `idle` が発火することがある(フラップ)。そのため `idle` 発火は「完了」「相談待ち」「作業続行中のフラップ」のいずれもありうる。
+作業者は【相談】送信後も司令塔からの回答を待つ間 `idle` に遷移する(手順4テンプレート「## 相談」参照)。また、作業者の bash が `sleep` 主体の待ち(実機検証のポーリング等)に入ると、完了前でも一時的に `idle` が発火することがある(フラップ)。そのため `idle` 発火は「完了」「相談待ち」「作業続行中のフラップ」「裏の処理(CI の watch)の待ち」のいずれもありうる。
 
-- **MUST**: `idle` 発火時は完了と断定せず、`herdr agent read "$AGENT_NAME" --source recent --lines 50` で直近ログを確認し、次の3通りで判定する: (1) 末尾付近に `【相談】` がある → 「相談待ちの idle」、(2) 完了報告がある → 「完了の idle」、(3) spinner が稼働中で最終報告がまだ無い → 「作業続行中のフラップ」。裏の処理(CI の watch)を仕掛けた `done` / `idle` もこの型で、spinner が止まっていて pane 下部に「1 shell still running」が出る。連結 wait で張り直す(上記 Constraints の SHOULD 参照)
-- **MUST**: 「作業続行中のフラップ」と判定したら、作業者が `working` に遷移したことを `herdr agent get` で確認してから `herdr agent wait` を仕掛け直す(これはポーリングではなくイベント待ちの再武装。詳細: Troubleshooting「sleep 主体フェーズで idle が完了前に一時発火する」参照)
+- **MUST**: `idle` 発火時は完了と断定せず、`herdr agent read "$AGENT_NAME" --source recent --lines 50` で直近ログを確認し、次の4通りで判定する: (1) 末尾付近に `【相談】` がある → 「相談待ちの idle」、(2) 完了報告がある → 「完了の idle」、(3) spinner が稼働中で最終報告がまだ無い → 「作業続行中のフラップ」、(4) spinner が止まっていて pane 下部に「1 shell still running」が出ていて最終報告が無い → 「裏の処理(CI の watch)の待ち」
+- **MUST**: (3)「作業続行中のフラップ」と判定したら、作業者が `working` に遷移したことを `herdr agent get` で確認してから `herdr agent wait` を仕掛け直す(これはポーリングではなくイベント待ちの再武装。詳細: Troubleshooting「sleep 主体フェーズで idle が完了前に一時発火する」参照)。この事前確認は (3) だけに効く
+- **MUST**: (4)「裏の処理(CI の watch)の待ち」と判定したら、`working` の事前確認はせずに、上記 Constraints の SHOULD の連結 wait(`--until working` と既定の wait を `&&` で連結)を直接張る。先に `working` を待ってから張ると、短い `working` を見逃して作業者が最終報告まで進み、既定の wait が即時解決する
 - **MUST**: 「相談待ちの idle」と判定したら、上記(1)「下り=指示」の手順(`herdr agent prompt <agent-name> "<回答>"`)で回答を返す。回答後は作業者が再び `working` に遷移したことを確認したうえで、`herdr agent wait` を仕掛け直す(詳細: Troubleshooting「相談待ち idle と完了 idle の判別」参照)
 
 #### (3) 上り=内容
