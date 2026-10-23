@@ -137,7 +137,7 @@ SOPS age タスクは、hexhive の Secrets(SOPS + age)で使う鍵を管理す�
 
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
-| `mise run hypr:pm-update` | Hyprland アップグレード後に hyprpm 管理プラグインを再ビルド(Nix ではなく Arch のツールチェーンを強制) | `PATH="/usr/bin:$PATH" hyprpm update` |
+| `mise run hypr:pm-update` | Hyprland アップグレード後に hyprpm 管理プラグインを再ビルド(Nix ではなく Arch のツールチェーンを強制)。`hyprpm` は `hyprland` とは別の pacman パッケージ(`extra/hyprpm`)なので、事前に `sudo pacman -S hyprpm` で導入しておく(無ければタスクが案内して止まる) | `PATH="/usr/bin:$PATH" hyprpm update` |
 
 Nix プロファイルの cmake は純粋性パッチにより `/usr` を探索できず、システムの OpenGL/GLES3 が見つからずビルドに失敗する([#554](https://github.com/music-brain88/dotfiles/issues/554))。同じ理由で Nix の pkg-config は AUR のビルドも壊すため、[#740](https://github.com/music-brain88/dotfiles/issues/740) で Nix から外した。`/usr/bin` を先頭に置いて Arch のツールチェーンを強制する。sudo プロンプトが出るため対話ターミナルで実行すること。
 
