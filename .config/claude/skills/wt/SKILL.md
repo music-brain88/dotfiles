@@ -274,6 +274,8 @@ herdr agent prompt claude-<branch-name 由来のユニーク名> "<作業記憶�
 - プロセスを止めるときは、自分が起動したプロセスだけを止める。PID は起動したときに `$!` で控える。`pkill -f <パターン>` や、`pgrep` で名前から見つけた PID の kill はしない(同じ機械のほかの worker のビルドやテストを巻き込むため)。長い実行は `timeout` で区切る
 - ライブセッションでの検証時、起動・生成が確認できない場合は検証を中止して報告する(推測で続行しない)
 - ライブセッションでの検証時、ユーザーの既存ウィンドウ・既存プロセスは操作しない(読み取りのみ可)
+- Neovim 設定(`.config/nvim/*.toml` 等)を変更するタスクでは、headless 起動の成否を検証シグナルにせず、静的検証と XDG_* 5点セットでの隔離検証を標準とする(`/wt` の SKILL.md の Troubleshooting「worktree での headless nvim 起動の成否は検証シグナルにならない」「worktree での headless nvim 隔離検証は XDG_* 5点セット必須」参照)
+- 作業指示・コミットメッセージ・PR に、`ultra` と `code` を連結したキーワードを書かない(dynamic workflow のオプトインとして誤発火するため。SKILL.md 自体にも連結形を書かない。`/wt` の SKILL.md の Troubleshooting「dynamic workflow のオプトインキーワードが作業指示経由で誤発火する」参照)
 - GPG 署名で詰まった場合、`gpgconf --kill gpg-agent` 等で gpg-agent を殺さない(キャッシュ破壊で他作業者を巻き込む)。署名の失敗は「## 相談」の手順で司令塔へエスカレーションする
 - CI 待ちは `gh pr checks <PR番号> --watch` を run_in_background で仕掛ける(`sleep N && gh pr checks` はハーネスに blocked されうる)。**push 直後は GitHub 側の check 登録に数秒〜十数秒のラグがあり、`--watch` が「no checks reported」で即座に失敗することがある**。その場合は失敗扱いにせず 15〜20 秒後に同じコマンドを再実行する(`gh pr checks` の exit code 8 は「pending あり」で失敗ではない)
 
