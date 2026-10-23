@@ -137,9 +137,17 @@ in
   ];
 
   # FZF configuration
+  # NOTE: enableFishIntegration は programs.fish が有効なときだけ init を注入するので、このハイブリッド方式では no-op。
+  # fish のキー割り当て (ctrl-t / ctrl-r / alt-c) は skim のウィジェット (fish_user_key_bindings.fish) が担う。
+  # defaultCommand / defaultOptions は home.sessionVariables 経由で FZF_DEFAULT_COMMAND / FZF_DEFAULT_OPTS に届いているので、
+  # programs.fzf 自体は残す。
+  # enableFishIntegration only injects init when programs.fish is enabled, so it is a no-op in this hybrid setup.
+  # fish key bindings (ctrl-t / ctrl-r / alt-c) come from the skim widget (fish_user_key_bindings.fish).
+  # defaultCommand / defaultOptions reach FZF_DEFAULT_COMMAND / FZF_DEFAULT_OPTS via home.sessionVariables,
+  # so programs.fzf itself stays.
   programs.fzf = {
     enable = true;
-    enableFishIntegration = true;
+    enableFishIntegration = false;
     defaultCommand = "fd --type f";
     defaultOptions = [
       "--height 40%"
@@ -150,6 +158,11 @@ in
   };
 
   # Direnv configuration
+  # NOTE: enableFishIntegration の既定は true だが、fish のフックは Nix の direnv パッケージが配る
+  # ~/.nix-profile/share/fish/vendor_conf.d/direnv.fish で動いている (home-manager の注入とは別経路)。値は変えない。
+  # enableFishIntegration defaults to true, but the fish hook actually runs from
+  # ~/.nix-profile/share/fish/vendor_conf.d/direnv.fish shipped by the Nix direnv package
+  # (a separate path from home-manager's injection). The value is left unchanged.
   programs.direnv = {
     enable = true;
     nix-direnv.enable = true;
@@ -161,9 +174,13 @@ in
   # 各プロジェクトの .mise.toml (ベースラインは上記 Language runtimes の Nix 側)
   # No globalConfig tools here: per-project .mise.toml is the source of truth
   # (baseline runtimes come from Nix above).
+  # NOTE: enableFishIntegration は programs.fish を使わないハイブリッド方式では no-op なので false にする。
+  # フックは .config/fish/config.fish の `mise activate fish | source` で動く。
+  # enableFishIntegration is a no-op in this hybrid setup without programs.fish, so it is false.
+  # The hook runs from `mise activate fish | source` in .config/fish/config.fish.
   programs.mise = {
     enable = true;
-    enableFishIntegration = true;
+    enableFishIntegration = false;
   };
 
   # Zoxide - smarter cd command (alternative to z)
