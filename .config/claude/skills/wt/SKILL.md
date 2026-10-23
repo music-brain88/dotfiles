@@ -278,6 +278,7 @@ herdr agent prompt claude-<branch-name 由来のユニーク名> "<作業記憶�
 - Neovim 設定(`.config/nvim/*.toml` 等)を変更するタスクでは、headless 起動の成否を検証シグナルにせず、静的検証と XDG_* 5点セットでの隔離検証を標準とする(`/wt` の SKILL.md の Troubleshooting「worktree での headless nvim 起動の成否は検証シグナルにならない」「worktree での headless nvim 隔離検証は XDG_* 5点セット必須」参照)
 - 作業指示・コミットメッセージ・PR に、`ultra` と `code` を連結したキーワードを書かない(dynamic workflow のオプトインとして誤発火するため。SKILL.md 自体にも連結形を書かない。`/wt` の SKILL.md の Troubleshooting「dynamic workflow のオプトインキーワードが作業指示経由で誤発火する」参照)
 - GPG 署名で詰まった場合、`gpgconf --kill gpg-agent` 等で gpg-agent を殺さない(キャッシュ破壊で他作業者を巻き込む)。署名の失敗は「## 相談」の手順で司令塔へエスカレーションする
+- 自分のブランチの変更だけを確かめる(コミットに余計なパスや値が混ざっていないかの確認など)ときは、`git fetch origin && git diff origin/main...HEAD`(3 点。分かれた地点からの変更だけを出す)を使う。2 点の `git diff origin/main..HEAD` は 2 つの先端の差を出すので、作業中に main が進んでいると、main 側で足された変更が、ブランチで消されたかのように逆向きに出る
 - CI 待ちは `gh pr checks <PR番号> --watch` を run_in_background で仕掛ける(`sleep N && gh pr checks` はハーネスに blocked されうる)。**push 直後は GitHub 側の check 登録に数秒〜十数秒のラグがあり、`--watch` が「no checks reported」で即座に失敗することがある**。その場合は失敗扱いにせず 15〜20 秒後に同じコマンドを再実行する(`gh pr checks` の exit code 8 は「pending あり」で失敗ではない)
 
 ## 相談
@@ -368,12 +369,17 @@ herdr agent wait "$AGENT_NAME" > "<司令塔自身のスクラッチパッドデ
 - **MUST**: 似た用途で `herdr wait agent-status <pane-id> --status <...|done|...>` というコマンドもあるが、こちらは pane-id が必須の UI 向けのコマンド。CLI 主導のこのプロトコルでは agent 名を直接使える `herdr agent wait <agent-name>` を使う
 - **MAY**: `--timeout`(ミリ秒)は省略可能で、省略すると無期限にブロックする。バックグラウンドで放置する分には問題ないが、安全弁として妥当な値を指定してもよい
 - **MUST**: タイムアウトした場合は同じ wait を仕掛け直す(これは定期ポーリングではなく、イベント待ちの再武装)
+- **SHOULD**: 作業者が CI 待ちなどで裏の処理を仕掛けてターンを終えた直後(`herdr agent get` が `done` か `idle` で、直近ログに最終報告が無い)に待ち受けを張り直すときは、`herdr agent wait <agent-name> --until working` と既定の `herdr agent wait <agent-name>` を `&&` で連結した 1 本のバックグラウンドコマンドにする。前半が作業者の再開で解決し、後半が最終報告の後の `idle` / `done` / `blocked` で解決する。既定の待ちだけを張り直すと、対象が既に `done` か `idle` なので即座に解決する(Troubleshooting「wait の即時解決」参照)。2026-10-04〜05 の運用(worker 4 体)と 2026-10-19 の PR #721 の運用(PR 作成後とレビュー対応後の CI 待ちの 2 回)で、司令塔はこの形で最終報告の時点に 1 回の通知を受けた。待っているあいだは、PR の差分のレビューに使ってよい:
+  ```bash
+  herdr agent wait "$AGENT_NAME" --until working > "<司令塔自身のスクラッチパッドディレクトリ>/wait-working-${AGENT_NAME}.json" \
+    && herdr agent wait "$AGENT_NAME" > "<司令塔自身のスクラッチパッドディレクトリ>/wait-${AGENT_NAME}.json"
+  ```
 
 **相談 idle の判別:**
 
 作業者は【相談】送信後も司令塔からの回答を待つ間 `idle` に遷移する(手順4テンプレート「## 相談」参照)。また、作業者の bash が `sleep` 主体の待ち(実機検証のポーリング等)に入ると、完了前でも一時的に `idle` が発火することがある(フラップ)。そのため `idle` 発火は「完了」「相談待ち」「作業続行中のフラップ」のいずれもありうる。
 
-- **MUST**: `idle` 発火時は完了と断定せず、`herdr agent read "$AGENT_NAME" --source recent --lines 50` で直近ログを確認し、次の3通りで判定する: (1) 末尾付近に `【相談】` がある → 「相談待ちの idle」、(2) 完了報告がある → 「完了の idle」、(3) spinner が稼働中で最終報告がまだ無い → 「作業続行中のフラップ」
+- **MUST**: `idle` 発火時は完了と断定せず、`herdr agent read "$AGENT_NAME" --source recent --lines 50` で直近ログを確認し、次の3通りで判定する: (1) 末尾付近に `【相談】` がある → 「相談待ちの idle」、(2) 完了報告がある → 「完了の idle」、(3) spinner が稼働中で最終報告がまだ無い → 「作業続行中のフラップ」。裏の処理(CI の watch)を仕掛けた `done` / `idle` もこの型で、spinner が止まっていて pane 下部に「1 shell still running」が出る。連結 wait で張り直す(上記 Constraints の SHOULD 参照)
 - **MUST**: 「作業続行中のフラップ」と判定したら、作業者が `working` に遷移したことを `herdr agent get` で確認してから `herdr agent wait` を仕掛け直す(これはポーリングではなくイベント待ちの再武装。詳細: Troubleshooting「sleep 主体フェーズで idle が完了前に一時発火する」参照)
 - **MUST**: 「相談待ちの idle」と判定したら、上記(1)「下り=指示」の手順(`herdr agent prompt <agent-name> "<回答>"`)で回答を返す。回答後は作業者が再び `working` に遷移したことを確認したうえで、`herdr agent wait` を仕掛け直す(詳細: Troubleshooting「相談待ち idle と完了 idle の判別」参照)
 
@@ -409,6 +415,7 @@ gh pr view <PR番号> --json mergeStateStatus --jq .mergeStateStatus
 | CLEAN | マージしてよい(実行はユーザー承認のもとで)。ただし push 直後の CLEAN は仮 CLEAN の可能性がある(下記 Constraints 参照) |
 | DIRTY | コンフリクトあり。作業者に rebase/merge を差し戻すか、ユーザーにエスカレーションする |
 | BLOCKED | 単体では判別不能な複合ステータス。下記の GraphQL で切り分ける(詳細: Troubleshooting「BLOCKED は複合ステータス」参照) |
+| UNKNOWN | base 更新の直後に GitHub が非同期で再計算している間の値。判定せず数秒おいて取り直す(マージ直後の残りの PR で出る) |
 
 `BLOCKED` 検知時は reviewThreads の未解決数を確認する:
 
@@ -429,6 +436,7 @@ gh api graphql -f query='
 - **MUST**: 未解決の review thread が1件以上あれば、CI結果を待たずに即エスカレーションする(作業者へ差し戻すか、ユーザーに報告する)
 - **MUST**: 未解決の review thread が0件なら、required checks の完了を待つ
 - **MUST**: 複数 PR を直列にマージする場合、1本マージするたびに残りの PR が base 更新で BEHIND に戻る玉突きを前提にループを設計する(全PRを一度に判定してから順にマージ、ではなく「1本マージ→残りのステータスを再取得→次を判定」を繰り返す)
+- **MUST**: 1本マージした直後に残りの PR の `mergeStateStatus` を取ると、GitHub が再計算を終えるまで `UNKNOWN` が返ることがある(2026-10-04〜05 に 2 回確認。数秒後に取り直すと `BEHIND` になった)。`UNKNOWN` の間は値を判定に使わず、数秒おいて取り直す。取り直しは、`UNKNOWN` でなくなるまで数回に限って繰り返す(観測した 2 回はどちらも数秒で解けた。上限は確かめていない)。`UNKNOWN` を `BEHIND` でも `CLEAN` でもない値として素通りさせると、追随が 1 手遅れる
 - **MUST**: マージ実行の直前に `mergeStateStatus` を再取得し、`CLEAN` であることを確かめてから `gh pr merge` を実行する。判定時点の `CLEAN` を使い回さない(CLEAN 確認とマージ実行の間に Copilot レビューが割り込む TOCTOU がある — #542、#388。詳細: Troubleshooting「push 直後の CLEAN は仮 CLEAN」)
 - **MUST**: push(`gh pr update-branch` を含む)から間もない `CLEAN` は、Copilot 自動レビュー未着弾の暫定値(仮 CLEAN)とみなす。Copilot の自動レビューは push から着弾まで1〜2分かかるため、最新 push から少なくとも2分待ってから reviewThreads の未解決数(上記 GraphQL)を最終チェックする。15秒待ちでは着弾が間に合わず防げなかった実例がある(#388)
 - **MAY**: 着弾の手がかりとして `gh pr view <PR番号> --json headRefOid,reviews --jq '{head: .headRefOid, reviewed: [.reviews[] | select(.author.login == "copilot-pull-request-reviewer") | .commit.oid]}'` で Copilot レビューが最新コミットに付いたかを見てよい。ただし Copilot は push ごとに必ず再レビューするとは限らないため、「最新コミットへのレビュー着弾」をマージの必須条件にはしない(来ないレビューを待ち続けることになる)
