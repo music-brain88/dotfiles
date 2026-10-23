@@ -67,7 +67,7 @@ herdr worktree create --cwd <repo-root> --branch <branch-name> --base main --foc
 worktree 作成直後に以下を行う:
 
 **Constraints:**
-- **MUST**: `mise trust <worktree-path>` を実行する(詳細: Troubleshooting「mise trust 忘れ」参照)
+- **MUST**: worktree 内の全部の `.mise.toml` を trust する: `find <worktree-path> -name .mise.toml -not -path '*/node_modules/*' -not -path '*/target/*' -exec mise trust {} \;`(ルートだけを trust しても、子ディレクトリ(`backend/`・`frontend/` など)の `.mise.toml` は未信頼のまま残る。`.mise.local.toml` や `mise.toml` も拾うなら `-name '*mise*.toml'` にする。詳細: Troubleshooting「mise trust 忘れ」参照)
 - **MUST**: allowlist を配置する: `mkdir -p <worktree-path>/.claude && cp ~/.claude/templates/wt-settings.local.json <worktree-path>/.claude/settings.local.json`
   - コピー元は `<repo-root>/.config/claude/templates/...` ではなく `~/.claude/templates/...` を使う。`<repo-root>` は `/wt` を呼び出した対象リポジトリ次第で変わり、dotfiles 以外のリポジトリではこのテンプレートを含まないため
   - `~/.claude` への反映は home-manager 経由(`home.nix` の `home.file ".claude".source = ./.config/claude`)で、`mise run nix:switch` 実行時に `/nix/store` スナップショットへの per-file symlink が生成される方式。テンプレートを追加・変更したら `mise run nix:switch` を実行しないと `~/.claude/templates/` に反映されない(詳細: Troubleshooting「allowlist テンプレートの cp 失敗」参照)
@@ -263,6 +263,7 @@ herdr agent prompt claude-<branch-name 由来のユニーク名> "<作業記憶�
 
 ## 完了条件
 - <具体的な完了条件を箇条書き>
+- bash(`*.sh` や、タスク定義の中のシェル)を変えた PR では、ShellCheck をローカルで実行し、info 級を含めて指摘ゼロを確認する。dotfiles では `mise run lint:shellcheck` を使う(ほかのリポジトリでは、司令塔が指示書を書くときにこの行を対象リポジトリに合った検証コマンドへ書き換える)
 - 変更をコミットし、gh pr create で main 向け PR を作成する（タイトル・本文は日本語）
 - 関連 Issue があれば PR 本文に Closes #<番号> を入れる
 
@@ -271,11 +272,13 @@ herdr agent prompt claude-<branch-name 由来のユニーク名> "<作業記憶�
 - コミットメッセージ・PR・ドキュメントは日本語
 - 判断に迷う大きな設計変更はせず、迷った点は最終報告に書く(ただし実装の方向を左右する判断は最終報告まで抱え込まず、下記「## 相談」の手順でその場でエスカレーションする。最終報告に書くのは、エスカレーションするほどではない小さな迷いの受け皿)
 - ドキュメントの大規模なフォーマット変換・構造変換を行う場合、変換前にコードブロック等の不変であるべき部分を機械的に diff できるチェック(例: awk でコードブロックを抽出して新旧比較)を仕込み、変換後に意図しない変更がないことを確認する
-- ライブセッション(稼働中のデスクトップ等)で検証する場合、自分が起動したプロセスの PID は起動時に `$!` で捕捉する
-- ライブセッションでの検証時、名前ベースの `pgrep` で見つけた PID を kill しない
+- プロセスを止めるときは、自分が起動したプロセスだけを止める。PID は起動したときに `$!` で控える。`pkill -f <パターン>` や、`pgrep` で名前から見つけた PID の kill はしない(同じ機械のほかの worker のビルドやテストを巻き込むため)。長い実行は `timeout` で区切る
 - ライブセッションでの検証時、起動・生成が確認できない場合は検証を中止して報告する(推測で続行しない)
 - ライブセッションでの検証時、ユーザーの既存ウィンドウ・既存プロセスは操作しない(読み取りのみ可)
+- Neovim 設定(`.config/nvim/*.toml` 等)を変更するタスクでは、headless 起動の成否を検証シグナルにせず、静的検証と XDG_* 5点セットでの隔離検証を標準とする(`/wt` の SKILL.md の Troubleshooting「worktree での headless nvim 起動の成否は検証シグナルにならない」「worktree での headless nvim 隔離検証は XDG_* 5点セット必須」参照)
+- 作業指示・コミットメッセージ・PR に、`ultra` と `code` を連結したキーワードを書かない(dynamic workflow のオプトインとして誤発火するため。SKILL.md 自体にも連結形を書かない。`/wt` の SKILL.md の Troubleshooting「dynamic workflow のオプトインキーワードが作業指示経由で誤発火する」参照)
 - GPG 署名で詰まった場合、`gpgconf --kill gpg-agent` 等で gpg-agent を殺さない(キャッシュ破壊で他作業者を巻き込む)。署名の失敗は「## 相談」の手順で司令塔へエスカレーションする
+- 自分のブランチの変更だけを確かめる(コミットに余計なパスや値が混ざっていないかの確認など)ときは、`git fetch origin && git diff origin/main...HEAD`(3 点。分かれた地点からの変更だけを出す)を使う。2 点の `git diff origin/main..HEAD` は 2 つの先端の差を出すので、作業中に main が進んでいると、main 側で足された変更が、ブランチで消されたかのように逆向きに出る
 - CI 待ちは `gh pr checks <PR番号> --watch` を run_in_background で仕掛ける(`sleep N && gh pr checks` はハーネスに blocked されうる)。**push 直後は GitHub 側の check 登録に数秒〜十数秒のラグがあり、`--watch` が「no checks reported」で即座に失敗することがある**。その場合は失敗扱いにせず 15〜20 秒後に同じコマンドを再実行する(`gh pr checks` の exit code 8 は「pending あり」で失敗ではない)
 
 ## 相談
@@ -334,7 +337,7 @@ herdr agent prompt <agent-name> "<追加指示のテキスト>"
 **Constraints:**
 - **MUST**: `<agent-name>` は手順4でエージェントに付けたユニーク名をそのまま使う。pane-id の引き直しは不要
 - **MUST**: 実行前に対象の agent 名を必ず確認する(宛先を誤ると、無関係なエージェントに指示が届いてしまう。`agent prompt` はテキストを引数としてそのまま送るだけで、確認や取り消しは挟まらない)
-- **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は `agent prompt` を使わない(chat 入力欄への送信になるため、ハイライトされている選択肢を誤確定させる罠がある。`send-text` + Enter でこの誤確定による実害が実際に出ており(詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)、`agent prompt` も同じくメニュー表示中の pane に送信する以上、予防的に避ける)。メニューの選択肢確定自体は従来どおり `herdr pane send-keys <pane-id> Enter` で行う(pane-id は `herdr agent get <agent-name>` で都度引く。詳細: Troubleshooting「pane-id は非永続」参照)
+- **MUST**: 送信前に `herdr agent read` で対象 pane の状態を確認する。AskUserQuestion 等のメニューが表示中は `agent prompt` を使わない(chat 入力欄への送信になるため、ハイライトされている選択肢を誤確定させる罠がある。`send-text` + Enter でこの誤確定による実害が実際に出ており(詳細: Troubleshooting「AskUserQuestion メニュー表示中の誤確定事故」参照)、`agent prompt` も同じくメニュー表示中の pane に送信する以上、予防的に避ける)。メニューの選択肢確定自体は従来どおり `herdr pane send-keys <pane-id> Enter` で行う(pane-id は `herdr agent get <agent-name>` で都度引く。詳細: Troubleshooting「pane-id は非永続」参照)。ダイアログを `send-keys` で操作した直後は、数秒置いて再 read する。閉じた直後は表示が遅れてダイアログが残って見えることがあるため、ダイアログが消えたことを確かめてから次のキーや `agent prompt` を送る(詳細: Troubleshooting「新規 worker に出る「Teach auto mode about your environment?」ダイアログで blocked になる」参照)
 - **MUST**: 送信前の `herdr agent read` では、メニュー表示の有無に加えて**入力欄の pending テキストの有無**も確認する。`agent prompt` は入力欄の pending テキストを新テキストで置換するため、ユーザー由来と思われるテキスト(【相談】【報告】プレフィックスが付いていない未送信テキスト)が残っている場合は置換で消さず、ユーザーに確認するか、送達(手動 Enter)を待ってから送る(詳細: Troubleshooting「agent prompt がユーザー由来の pending テキストを置換で消しうる」参照)。ただし Claude Code は直前の assistant 出力から次のプロンプト候補(placeholder)を生成して入力欄に薄字で表示し、`herdr agent read` や `herdr pane read` のテキスト出力では placeholder とユーザーが手で打った未送信テキスト(実入力)を区別できない。pending テキストを見つけたら、次の Constraint の基準で placeholder か実入力かを判別してから扱いを決める
 - **MUST**: pending テキストが placeholder か実入力かは次の基準で判別する。placeholder の特徴は、(a) worker のターン終了直後に出現し、内容が worker の最終出力の続きとして自然である(例: 最終報告で PR を作った直後の「CI 終わったら報告して」「PRのマージをお願い」)、(b) 【相談】【報告】プレフィックスが無い、(c) 時間を置いて `herdr pane read <pane-id> --source visible` を取り直すと内容が変わるか消える、の 3 点である。実入力の特徴は、ターンをまたいでも同じ文言が残ること、ユーザーが在席していることの 2 点である。placeholder と判別できたテキストは置換してよく、そのまま `agent prompt` を送る。ユーザーへの確認は判別に迷う場合に限る。ユーザーが不在で判別できない場合は placeholder とみなして送ってよいが、送る前に置換で消える文言を司令塔のログ(会話内の出力)にそのまま書き残し、実入力だった場合にユーザーが復元できるようにする
 - **SHOULD**: placeholder と実入力の判別は、まず `herdr pane read <pane-id> --source visible --format ansi | grep -a '❯' | tail -1 | cat -v` で ANSI 属性を見て機械的に行う(pane-id は `herdr agent get <agent-name>` で引く)。Claude Code は placeholder を dim(SGR 2)で描画し、herdr の ANSI 出力はそれを `\e[2m` のまま返すため、`❯` の後ろに続く SGR 0 のリセット(`^[[0m`)を読み飛ばし、その次が `^[[2m` で始まる薄字だけなら placeholder であり(実測では `❯ ^[[0m^[[2m<文言>` の形)、SGR の付かない文字が続けば実入力である(Claude Code 2.1.289 + herdr 0.9.1 で実測。詳細: Troubleshooting「agent prompt がユーザー由来の pending テキストを置換で消しうる」参照)。ターン終了後のプロンプト候補のほか、起動直後の例文(`Try "..."`)や、キューに入ったメッセージの案内(`Press up to edit queued messages`)も同じ dim の placeholder である。ANSI 属性で判別できた場合は、上記 (c) の時間を置いた取り直しを省いてよい。Claude Code や herdr の版上げで描画が変わり、ANSI 出力に `\e[2m` が見当たらなくなった場合は、上記 (a)〜(c) の基準に戻る
@@ -366,13 +369,19 @@ herdr agent wait "$AGENT_NAME" > "<司令塔自身のスクラッチパッドデ
 - **MUST**: 似た用途で `herdr wait agent-status <pane-id> --status <...|done|...>` というコマンドもあるが、こちらは pane-id が必須の UI 向けのコマンド。CLI 主導のこのプロトコルでは agent 名を直接使える `herdr agent wait <agent-name>` を使う
 - **MAY**: `--timeout`(ミリ秒)は省略可能で、省略すると無期限にブロックする。バックグラウンドで放置する分には問題ないが、安全弁として妥当な値を指定してもよい
 - **MUST**: タイムアウトした場合は同じ wait を仕掛け直す(これは定期ポーリングではなく、イベント待ちの再武装)
+- **SHOULD**: 作業者が CI 待ちなどで裏の処理を仕掛けてターンを終えた直後(`herdr agent get` が `done` か `idle` で、直近ログに最終報告が無い)に待ち受けを張り直すときは、`herdr agent wait <agent-name> --until working` と既定の `herdr agent wait <agent-name>` を `&&` で連結した 1 本のバックグラウンドコマンドにする。前半が作業者の再開で解決し、後半が最終報告の後の `idle` / `done` / `blocked` で解決する。既定の待ちだけを張り直すと、対象が既に `done` か `idle` なので即座に解決する(Troubleshooting「wait の即時解決」参照)。2026-10-04〜05 の運用(worker 4 体)と 2026-10-19 の PR #721 の運用(PR 作成後とレビュー対応後の CI 待ちの 2 回)で、司令塔はこの形で最終報告の時点に 1 回の通知を受けた。待っているあいだは、PR の差分のレビューに使ってよい:
+  ```bash
+  herdr agent wait "$AGENT_NAME" --until working > "<司令塔自身のスクラッチパッドディレクトリ>/wait-working-${AGENT_NAME}.json" \
+    && herdr agent wait "$AGENT_NAME" > "<司令塔自身のスクラッチパッドディレクトリ>/wait-${AGENT_NAME}.json"
+  ```
 
 **相談 idle の判別:**
 
-作業者は【相談】送信後も司令塔からの回答を待つ間 `idle` に遷移する(手順4テンプレート「## 相談」参照)。また、作業者の bash が `sleep` 主体の待ち(実機検証のポーリング等)に入ると、完了前でも一時的に `idle` が発火することがある(フラップ)。そのため `idle` 発火は「完了」「相談待ち」「作業続行中のフラップ」のいずれもありうる。
+作業者は【相談】送信後も司令塔からの回答を待つ間 `idle` に遷移する(手順4テンプレート「## 相談」参照)。また、作業者の bash が `sleep` 主体の待ち(実機検証のポーリング等)に入ると、完了前でも一時的に `idle` が発火することがある(フラップ)。そのため `idle` 発火は「完了」「相談待ち」「作業続行中のフラップ」「裏の処理(CI の watch)の待ち」のいずれもありうる。
 
-- **MUST**: `idle` 発火時は完了と断定せず、`herdr agent read "$AGENT_NAME" --source recent --lines 50` で直近ログを確認し、次の3通りで判定する: (1) 末尾付近に `【相談】` がある → 「相談待ちの idle」、(2) 完了報告がある → 「完了の idle」、(3) spinner が稼働中で最終報告がまだ無い → 「作業続行中のフラップ」
-- **MUST**: 「作業続行中のフラップ」と判定したら、作業者が `working` に遷移したことを `herdr agent get` で確認してから `herdr agent wait` を仕掛け直す(これはポーリングではなくイベント待ちの再武装。詳細: Troubleshooting「sleep 主体フェーズで idle が完了前に一時発火する」参照)
+- **MUST**: `idle` 発火時は完了と断定せず、`herdr agent read "$AGENT_NAME" --source recent --lines 50` で直近ログを確認し、次の4通りで判定する: (1) 末尾付近に `【相談】` がある → 「相談待ちの idle」、(2) 完了報告がある → 「完了の idle」、(3) spinner が稼働中で最終報告がまだ無い → 「作業続行中のフラップ」、(4) spinner が止まっていて pane 下部に「1 shell still running」が出ていて最終報告が無い → 「裏の処理(CI の watch)の待ち」
+- **MUST**: (3)「作業続行中のフラップ」と判定したら、作業者が `working` に遷移したことを `herdr agent get` で確認してから `herdr agent wait` を仕掛け直す(これはポーリングではなくイベント待ちの再武装。詳細: Troubleshooting「sleep 主体フェーズで idle が完了前に一時発火する」参照)。この事前確認は (3) だけに効く
+- **MUST**: (4)「裏の処理(CI の watch)の待ち」と判定したら、`working` の事前確認はせずに、上記 Constraints の SHOULD の連結 wait(`--until working` と既定の wait を `&&` で連結)を直接張る。先に `working` を待ってから張ると、短い `working` を見逃して作業者が最終報告まで進み、既定の wait が即時解決する
 - **MUST**: 「相談待ちの idle」と判定したら、上記(1)「下り=指示」の手順(`herdr agent prompt <agent-name> "<回答>"`)で回答を返す。回答後は作業者が再び `working` に遷移したことを確認したうえで、`herdr agent wait` を仕掛け直す(詳細: Troubleshooting「相談待ち idle と完了 idle の判別」参照)
 
 #### (3) 上り=内容
@@ -407,6 +416,7 @@ gh pr view <PR番号> --json mergeStateStatus --jq .mergeStateStatus
 | CLEAN | マージしてよい(実行はユーザー承認のもとで)。ただし push 直後の CLEAN は仮 CLEAN の可能性がある(下記 Constraints 参照) |
 | DIRTY | コンフリクトあり。作業者に rebase/merge を差し戻すか、ユーザーにエスカレーションする |
 | BLOCKED | 単体では判別不能な複合ステータス。下記の GraphQL で切り分ける(詳細: Troubleshooting「BLOCKED は複合ステータス」参照) |
+| UNKNOWN | base 更新の直後に GitHub が非同期で再計算している間の値。判定せず数秒おいて取り直す(マージ直後の残りの PR で出る) |
 
 `BLOCKED` 検知時は reviewThreads の未解決数を確認する:
 
@@ -427,12 +437,23 @@ gh api graphql -f query='
 - **MUST**: 未解決の review thread が1件以上あれば、CI結果を待たずに即エスカレーションする(作業者へ差し戻すか、ユーザーに報告する)
 - **MUST**: 未解決の review thread が0件なら、required checks の完了を待つ
 - **MUST**: 複数 PR を直列にマージする場合、1本マージするたびに残りの PR が base 更新で BEHIND に戻る玉突きを前提にループを設計する(全PRを一度に判定してから順にマージ、ではなく「1本マージ→残りのステータスを再取得→次を判定」を繰り返す)
+- **MUST**: 1本マージした直後に残りの PR の `mergeStateStatus` を取ると、GitHub が再計算を終えるまで `UNKNOWN` が返ることがある(2026-10-04〜05 に 2 回確認。数秒後に取り直すと `BEHIND` になった)。`UNKNOWN` の間は値を判定に使わず、数秒おいて取り直す。取り直しは、`UNKNOWN` でなくなるまで数回に限って繰り返す(観測した 2 回はどちらも数秒で解けた。上限は確かめていない)。`UNKNOWN` を `BEHIND` でも `CLEAN` でもない値として素通りさせると、追随が 1 手遅れる
 - **MUST**: マージ実行の直前に `mergeStateStatus` を再取得し、`CLEAN` であることを確かめてから `gh pr merge` を実行する。判定時点の `CLEAN` を使い回さない(CLEAN 確認とマージ実行の間に Copilot レビューが割り込む TOCTOU がある — #542、#388。詳細: Troubleshooting「push 直後の CLEAN は仮 CLEAN」)
 - **MUST**: push(`gh pr update-branch` を含む)から間もない `CLEAN` は、Copilot 自動レビュー未着弾の暫定値(仮 CLEAN)とみなす。Copilot の自動レビューは push から着弾まで1〜2分かかるため、最新 push から少なくとも2分待ってから reviewThreads の未解決数(上記 GraphQL)を最終チェックする。15秒待ちでは着弾が間に合わず防げなかった実例がある(#388)
 - **MAY**: 着弾の手がかりとして `gh pr view <PR番号> --json headRefOid,reviews --jq '{head: .headRefOid, reviewed: [.reviews[] | select(.author.login == "copilot-pull-request-reviewer") | .commit.oid]}'` で Copilot レビューが最新コミットに付いたかを見てよい。ただし Copilot は push ごとに必ず再レビューするとは限らないため、「最新コミットへのレビュー着弾」をマージの必須条件にはしない(来ないレビューを待ち続けることになる)
 - **MUST**: マージが「base branch policy prohibits the merge」で拒否されたら、`CLEAN` 表示を信用せず reviewThreads を再取得する(この拒否は conversation 割り込みのシグナル)。未解決 thread があれば上記の即エスカレーションに合流する
 - **MUST NOT**: `mergeStateStatus` が `CLEAN` になる前にマージを実行しない
 - **MUST NOT**: マージ時に `--delete-branch` を付けない。worktree が生存中はローカルブランチ削除が必ず失敗して紛らわしいため、ブランチ削除(リモート含む)は `/wtclean` の領分とする
+
+#### 差し戻しの渡し方
+
+Copilot などのレビュー指摘を作業者に差し戻すとき、司令塔は判定表を作業記憶(手順4「作業物の置き場」参照)にファイルとして置き、1 行の `agent prompt` で渡す(#725)。差し戻しの文面をその場で組み立てると、thread id や「直さない理由」が会話にしか残らないため。2026-10-19 の PR #721 の運用では、司令塔が Copilot の未解決 thread 5 件の判定表を置いて 1 行で渡し、作業者は修正・テスト追加・5 thread への返信と resolve・PR 本文の更新・CI 待ち・【報告】の push まで自走した(司令塔の介入は 0 回)。
+
+**Constraints:**
+- **MUST**: 未解決の review thread を作業者へ差し戻すときは、司令塔が各 thread を読んで判定(直す・一部直す・直さない)を決め、判定表を作業記憶に `<YYYYMMDD>-verdict-<branch-slug>.md`(frontmatter の `kind: verdict`。ファイル名と frontmatter の規約は手順4「作業物の置き場」に従う)として書く。表の列は、場所・thread id・判定・やること(足すテストを含む)にする。thread id は `reviewThreads(first:100){nodes{id isResolved line}}` の GraphQL で引ける。判定表に載せると作業者が引き直さずに済む
+- **MUST**: 判定表の「手順」に、返信と resolve のコマンド(`gh api graphql` の `addPullRequestReviewThreadReply` と `resolveReviewThread`)、新しいコミットを積む(amend しない)こと、PR 本文の更新、CI 待ちと【報告】の push を書く
+- **MUST**: 差し戻しは手順5(1) の手順で送る(context 50% の確認を含む)。起動プロンプトは「<判定表の絶対パス> をあなた自身が読み(サブエージェントに委任しない)、PR #<番号> のレビュー対応として忠実に実行してください。」の 1 行にする
+- **SHOULD**: 「直さない」判定は、thread に理由を返信して resolve させる。仕様の読み違いによる指摘は、コードではなく docstring や docs の明文化で応える
 
 ### 7. 自己更新(Self-update)
 
@@ -533,11 +554,16 @@ herdr pane read "$HERDR_PANE_ID" --source visible
 ### mise trust 忘れ
 mise trust は絶対パス単位で管理されるため、新規 worktree は毎回 untrusted で始まる。忘れると `mise run` が「no tasks defined」で失敗する — #335。
 
+ルートの `.mise.toml` を trust しても、子ディレクトリ(`backend/`・`frontend/` など)の `.mise.toml` は別の設定ファイルなので未信頼のまま残る。2026-10-21、業務リポジトリ A のモノレポで、worker が `cd backend/` と `cd frontend/` の後にこれを 1 回ずつ踏んだ。mise の信頼の確認が出て `cd` の後のコマンドが止まり、`python3` も mise の shim で動かなかった(#737)。auto mode の worker はこの確認に自分で答えられないため、司令塔は worktree の準備で worktree 内の全部の `.mise.toml` を trust する(手順3「worktree の準備」参照)。
+
 ### allowlist テンプレートの cp 失敗
 `~/.claude` への反映は home-manager 経由で、`mise run nix:switch` を実行しないと `~/.claude/templates/` に反映されない。`cp` が `No such file or directory` で失敗したら、まず nix:switch 漏れを疑う。
 
 ### auto mode 起動の拒否
 auto mode での起動自体がハーネス(auto mode 分類器)に「ユーザーの明示許可がない」として拒否されることがある。その場合は AskUserQuestion 等でユーザーに auto mode 起動の許可を明示的に確認してから再実行する。
+
+### 新規 worker に出る「Teach auto mode about your environment?」ダイアログで blocked になる
+Claude Code のオンボーディングダイアログで、権限要求ではない。司令塔が `herdr pane send-keys <pane-id> esc` で閉じてよい(キー名は小文字 `esc` が正典、`escape` も可。大文字 `Escape` は効かない)。閉じた直後の `herdr agent read` は表示が遅れてダイアログが残って見えることがあるので、数秒置いて再 read し、メニューが消えたことを確認してから次のキーや `agent prompt` を送る。確認せずに `2`+`Enter` を続けて送ると、閉じた後の chat 入力に「2」として submit される(2026-10-01 実例、#528 と同型。#636)。「3. Don't show again」を選べば以後出なくなるが、worker ごとに新規セッションなので毎回出うる。
 
 ### 長文プロンプトの inline 渡しが拒否される
 `herdr agent start` の `--` 以降(`AGENT_ARG`)に複数行 heredoc の作業指示プロンプトをそのまま渡すと、`invalid_agent_argument: agent arguments cannot be encoded safely for the target shell` で拒否される(2026-07-30、#520 で実機確認)。回避策: 作業指示をファイルとして書き(置き場は手順4「作業物の置き場」の作業記憶。当時はスクラッチパッドだった)、起動プロンプトは「<パス> をあなた自身が読み(サブエージェントに委任しない)、その内容全体をあなたへの作業指示として忠実に実行してください。」の1行にする。#520 の当時は、この 1 行を `agent start` の引数で渡していた。herdr 0.9.1 では起動プロンプト付きの `agent start` がタイムアウトして worker に名前が付かないため、司令塔はこの 1 行を `agent start` には付けず、起動後に名前宛ての `herdr agent prompt` で渡す(手順4「pane の用意とエージェント起動」の 2 段目と、下記「起動プロンプト付きの agent start が 0.9.1 でタイムアウトし worker に名前が付かない」参照)。allowlist テンプレート(手順3「worktree の準備」参照)は「司令塔がタスク指示を置く作業記憶の読み書き」を既に許可しており、この方式と整合している。
@@ -567,8 +593,10 @@ worker から司令塔への push(【相談】【報告】)は、司令塔の名
 ### ライブセッション検証時の誤 kill 事故
 2026-07-05、作業者エージェントが検証用に起動したはずの Alacritty が実際にはマップされておらず、直後に `pgrep -af alacritty` で拾った PID をテスト用ウィンドウと誤認して kill し、ユーザーが元から開いていた既存の Alacritty(workspace 2)を誤終了させた(#354、PR #353)。自分が起動したプロセスは起動時の `$!` で PID を捕捉して追跡し、事後に名前ベースの `pgrep` で「自分のものらしきプロセス」を探して kill するのは禁止。
 
+2026-10-13 の業務リポジトリ A の /wt 運用で、worker は自分で裏に流した `cargo test --workspace --locked -j 4` のベースラインの計測を止めるために `pkill -f "cargo test --workspace --locked -j 4"` を実行し、自分の Bash のシェルまで止めた(#705)。同じ時間帯には、同じリポジトリの別の worktree で別の司令塔の worker も起動しうる状態で、kill した瞬間に何に当たったかは確かめられなかった。当時のテンプレートはこの禁止を「ライブセッションでの検証時」に限って書いていたため、worker はふだんのテストの作業を対象外だと読んだ。この経緯から、手順4のテンプレートの「## 制約」は、名前で探したプロセスの kill の禁止を作業の全体に広げている(止めてよいのは自分が起動したプロセスだけで、PID は起動したときに `$!` で控える。長い実行は `timeout` で区切る)。
+
 ### worktree での headless nvim 起動の成否は検証シグナルにならない
-worktree で Neovim 設定(`.config/nvim/*.toml` 等)を変更するタスクで `XDG_CONFIG_HOME=<worktree>/.config nvim --headless "+qa!"` を検証に使うと、変更内容とは無関係なプラグイン層起因のエラーが出て、起動の成否が変更の正しさのシグナルとして機能しないことがある。原因は構造的なもので、実機の `~/.config/nvim` は home-manager が最後の `nix:switch` 時点の設定を配布したもの(Nix store への symlink)であり、プラグインキャッシュと state(dpp.vim の `~/.cache/dpp` 配下の `repos/`・`state.vim`・`startup.vim`)もその実機設定を前提に生成・インストールされている。worktree の `.config/nvim` はそれと食い違うため、headless 起動は「worktree の設定 × 実機のキャッシュ / state」という混ざった状態を検証してしまう。さらに `init.lua` の `dpp_base` は `XDG_CACHE_HOME` ではなく `$HOME/.cache/dpp` で決まるため、`XDG_CONFIG_HOME` だけを worktree に向けて起動すると worktree の設定で実機の state を読み、再生成まで走らせうる(state 鮮度管理の経路は `docs/reference/neovim-config.md` の「Plugin Management (dpp)」章参照)。
+worktree で Neovim 設定(`.config/nvim/*.toml` 等)を変更するタスクで `XDG_CONFIG_HOME=<worktree>/.config nvim --headless "+qa!"` を検証に使うと、変更内容とは無関係なプラグイン層起因のエラーが出て、起動の成否が変更の正しさのシグナルとして機能しないことがある。原因は構造的なもので、実機の `~/.config/nvim` は home-manager が最後の `nix:switch` 時点の設定を配布したもの(Nix store への symlink)であり、プラグインキャッシュと state(dpp.vim の `~/.cache/dpp` 配下の `repos/`・`state.vim`・`startup.vim`)もその実機設定を前提に生成・インストールされている。worktree の `.config/nvim` はそれと食い違うため、headless 起動は「worktree の設定 × 実機のキャッシュ / state」という混ざった状態を検証してしまう。さらに `init.lua` の `dpp_base` は `XDG_CACHE_HOME`(未設定なら `$HOME/.cache`)+ `/dpp` で決まり、`XDG_CONFIG_HOME` とは別の変数に従う。そのため `XDG_CONFIG_HOME` だけを worktree に向けて起動すると、worktree の設定で実機の state を読み、再生成まで走らせうる(state 鮮度管理の経路は `docs/reference/neovim-config.md` の「Plugin Management (dpp)」章参照)。
 
 実例(dein 時代): 2026-07-18、#444(telescope.nvim 廃止)の検証で、変更後の headless 起動は dein 内部で `E897: List or Blob required`(`dein#source` 経由)、切り分けのため `git stash` で変更前に戻して再実行すると別種のエラー(`ddc.vim` の `hook_source` 失敗、`lspconfig` 非推奨警告)が出た。どちらも telescope/ddu とは無関係で、変更前後どちらでも「その時点のエラー」が出る状態だった(#453)。当時の原因は dein のプラグインキャッシュ・自動インストール状態の食い違いだが、dpp.vim へ移行した現在も「worktree の設定と実機のキャッシュ / state が食い違う」構造は変わらない。
 
@@ -581,7 +609,7 @@ worktree で Neovim 設定(`.config/nvim/*.toml` 等)を変更するタスクで
 ### worktree での headless nvim 隔離検証は XDG_* 5点セット必須
 2026-07-26、#495 の隔離検証(PR #500)で `HOME` 環境変数だけをスクラッチディレクトリへ上書きして headless nvim を起動したところ、修正後にもかかわらず `[ddc] Not found source: cmdline-history` が出続け「まだ直っていない」ように見えた(偽陰性)。原因は、このリポジトリの Nix (home-manager) セットアップが `XDG_CONFIG_HOME` / `XDG_CACHE_HOME` / `XDG_STATE_HOME` / `XDG_DATA_HOME` をログインシェルのグローバル環境変数として実ホームのパスに固定しており、`HOME` より優先されること。`vim.fn.stdpath('config')` 等はこれらの `XDG_*` を先に見るため、`HOME` だけの上書きでは隔離が漏れ、headless nvim は隔離先ではなく実ファイル(未修正の設定)を読んでしまう。`HOME` に加えて4つの `XDG_*` もすべてスクラッチディレクトリへ上書きして再検証したところ、正しく隔離された状態で修正の効果(`Not found source` が0件、`sourced: true`)を確認できた(#501)。
 
-教訓: worktree での headless nvim 隔離検証(dpp state 再生成の事前確認など)では、`HOME` に加えて `XDG_CONFIG_HOME` / `XDG_CACHE_HOME` / `XDG_STATE_HOME` / `XDG_DATA_HOME` の4変数もスクラッチディレクトリへ明示的に上書きする(計5点)。`HOME` だけ、あるいは `XDG_CONFIG_HOME` だけの片側上書きは、前項の通り dpp の state が `$HOME/.cache/dpp`、設定が `stdpath('config')` と別々の変数で決まるため、どちらかが実機側に漏れる。
+教訓: worktree での headless nvim 隔離検証(dpp state 再生成の事前確認など)では、`HOME` に加えて `XDG_CONFIG_HOME` / `XDG_CACHE_HOME` / `XDG_STATE_HOME` / `XDG_DATA_HOME` の4変数もスクラッチディレクトリへ明示的に上書きする(計5点)。`HOME` だけ、あるいは `XDG_CONFIG_HOME` だけの片側上書きは、前項の通り dpp の state が `XDG_CACHE_HOME`(未設定なら `$HOME/.cache`)の下の `dpp`、設定が `stdpath('config')` と別々の変数で決まるため、どちらかが実機側に漏れる。
 
 ### send-text は単体では実行されない
 `pane send-text` は pane の入力欄にテキストを挿入するだけで、送信(実行)はされない。実機確認済み: `send-text` の直後に `pane read` してもコマンドは未実行のまま入力欄に残っており、続けて `pane send-keys <pane-id> Enter` を送って初めて実行される。
@@ -615,6 +643,16 @@ herdr pane read <pane-id> --source visible --format ansi | grep -a '❯' | tail 
 ```
 
 この判定は入力欄の 1 行目(`❯` を含む行)だけを見る。また、実測は Claude Code と herdr の上記の版に限られる。版上げ後に placeholder が `\e[2m` 以外(例: RGB のグレー指定)で描画されるようになると、この判定は placeholder を実入力と誤判定する(安全側の誤り)ため、その場合は手順5(1)の (a)〜(c) の基準に戻る。
+
+### 利用上限とアカウントの切り替えで worker が止まる
+2026-10-13、業務リポジトリ A の /wt 運用で、worker 2 体と司令塔の code-review のフォークが利用上限(`You've hit your session limit · resets 8pm`)に当たった(#706)。worker の pane には「Usage limit reached · Continuing automatically at 8pm · esc to cancel」が出て、`herdr agent get` は `idle` を返した。司令塔は `idle` の発火だけでは完了か上限かを見分けられず、pane を読んで初めて上限と分かった。続けてユーザーは、司令塔と worker の pane で別の組織のアカウントへ `/login` した。その組織の server-managed settings(`"disableAutoMode": "disable"` と `"allowManagedMcpServersOnly": true` と空の `allowedMcpServers`)により、worker は manual mode(pane に「auto mode disabled by settings」)になった。司令塔の claude.ai コネクタ(ClickUp など)も「blocked by enterprise managed policy」で使えなくなった。その後の再起動で再開した worker の effort は、起動のときの指定(high と xhigh)ではなく medium だった。司令塔は `/effort high` などを pane に送ったが、`~/.claude/settings.json` を読めない(EACCES)エラーで変えられなかった。
+
+司令塔は、次の 3 点で扱う:
+1. worker が `idle` で報告が無いときは、pane の末尾に「Usage limit reached」の表示があるかを読む。表示があれば、worker は上限で止まっている。司令塔はリセットの時刻まで待つか、ユーザーにアカウントの切り替えを頼む
+2. アカウントを切り替えた後は、司令塔は各 worker の pane の末尾で「auto mode on」と effort の表示を確かめる。manual mode なら、司令塔は差し戻しを送る前にユーザーに相談する(manual mode の worker は承認待ちで止まり、承認を司令塔が代行できないため)。effort が起動の指定と違えば、司令塔はユーザーに伝える(`~/.claude/settings.json` に書けない環境では `/effort` で変えられない)
+3. 司令塔の MCP が「blocked by enterprise managed policy」になったら、司令塔は `~/.claude/remote-settings.json` の `allowManagedMcpServersOnly` と `allowedMcpServers` を読む。組織の server-managed settings が原因なら、手元では直せない(組織の Owner が管理画面の `allowedMcpServers` に `serverUrl` を足す)。足した後も、動いているセッションは起動のときの設定を持ち続けるので、司令塔は新しいプロセス(`claude mcp list`)で接続を確かめる(2026-10-13 の観測では、動いているセッションの `/mcp` は blocked のままで、新しいプロセスの `claude mcp list` は Connected だった)
+
+再起動などで herdr の agent 名が外れたときの立て直し(自己命名のやり直し・`herdr agent list` での確かめ・pane ID 宛て)は、この節では扱わない(#698 で扱う)。
 
 ### GPG 署名コミットは worker pane から pinentry を出せない
 worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
