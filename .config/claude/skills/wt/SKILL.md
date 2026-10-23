@@ -263,6 +263,7 @@ herdr agent prompt claude-<branch-name 由来のユニーク名> "<作業記憶�
 
 ## 完了条件
 - <具体的な完了条件を箇条書き>
+- `mise run lint:shellcheck` をローカルで実行し、info 級を含めて指摘ゼロを確認する(bash を変えた PR のみ)
 - 変更をコミットし、gh pr create で main 向け PR を作成する（タイトル・本文は日本語）
 - 関連 Issue があれば PR 本文に Closes #<番号> を入れる
 
