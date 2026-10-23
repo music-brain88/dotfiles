@@ -55,7 +55,7 @@ shellcheck の定義の正は `flake.nix` の `apps.${system}.shellcheck` であ
 
 | Task | Description |
 |------|-------------|
-| `mise run claude:memory-wire [project]` | プロジェクトの auto-memory を Obsidian AgentMemory vault へ配線 (`.claude/settings.local.json` に `autoMemoryDirectory` を書き込む、端末ローカル・untracked) |
+| `mise run claude:memory-wire [project]` | プロジェクトの auto-memory を Obsidian AgentMemory vault へ配線 (`.claude/settings.local.json` に `autoMemoryDirectory` を書き込む、端末ローカル・untracked)。git repo の外では cwd を root として扱う。`$HOME` と `/` では止まる。配線していない場所で起動したセッションの記憶は、ユーザー設定(`.config/claude/settings.json` の `autoMemoryDirectory`)の既定フォルダ `AgentMemory/home` へ行く |
 
 ---
 

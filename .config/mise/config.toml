@@ -19,9 +19,19 @@ set -euo pipefail
 # mise は追加引数をスクリプト最終行に付け足すので main() で受ける
 # mise appends CLI args to the last line, so a main() wrapper receives them as $1...
 main() {
-  # まず repo root に移動 — サブディレクトリから呼ばれても .claude/ の書き込み先と slug 判定を root に揃える
-  # cd to the repo root first so .claude/ writes and the slug check land there even from a subdirectory
-  root="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "git repo の中で実行してね(配線は repo root の .claude/ に書く)" >&2; exit 1; }
+  # まず root に移動 — git repo ならその root、git の外なら cwd を root として扱う(Claude Code の project root 判定と同じ)
+  # サブディレクトリから呼ばれても .claude/ の書き込み先と slug 判定を root に揃える。$HOME と / は配線せず止まる
+  # (配線していない場所の記憶はユーザー設定の autoMemoryDirectory の既定フォルダへ行く)
+  # cd to the root first: the git toplevel, or cwd outside a git repo (same as Claude Code's project root).
+  # .claude/ writes and the slug check land there even from a subdirectory. Refuse $HOME and / —
+  # unwired places fall back to the default folder set by autoMemoryDirectory in the user settings.
+  if ! root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    root="$(pwd)"
+    echo "git repo の外なので cwd を root として扱うよ: $root" >&2
+  fi
+  case "$root" in
+    "$HOME"|/) echo "ここは配線しないよ($root)。配線していない場所の記憶はユーザー設定の既定フォルダへ行く" >&2; exit 1 ;;
+  esac
   cd "$root"
   # 引数: AgentMemory フォルダ名(省略時は repo のディレクトリ名)
   project="${1:-}"
@@ -46,6 +56,8 @@ main() {
   tmp=$(mktemp "$settings.XXXXXX")
   trap 'rm -f "$tmp"' EXIT
   # NOTE: 値に末尾スラッシュを付けない(Claude Code 2.1.215 で実測: 付けると設定が無視される)。~ 展開は OK
+  # ~ は Claude Code に展開させるのでリテラルのまま書く(端末ごとに HOME が違っても同じ設定で済む)
+  # shellcheck disable=SC2088
   jq --arg d "~/Documents/Obsidian/AgentMemory/$project" '.autoMemoryDirectory = $d' "$settings" > "$tmp"
   mv "$tmp" "$settings"
   echo "autoMemoryDirectory を ~/Documents/Obsidian/AgentMemory/$project に配線したよ(新しいセッションから有効)"
