@@ -35,12 +35,12 @@ GitHub の Issue / Discussion / PR をコンテキストとして読み込みま
 
 **Issue の場合:**
 ```bash
-gh issue view <number> --json title,body,comments,labels,state,author
+gh issue view <number> --json title,body,comments,labels,state,author,createdAt
 ```
 
 **Pull Request の場合:**
 ```bash
-gh pr view <number> --json title,body,comments,reviews,labels,state,author,commits
+gh pr view <number> --json title,body,comments,reviews,labels,state,author,commits,createdAt
 ```
 
 **Discussion の場合:**
@@ -52,6 +52,7 @@ query($owner: String!, $repo: String!, $number: Int!) {
     discussion(number: $number) {
       title
       body
+      createdAt
       author { login }
       comments(first: 50) {
         nodes {
