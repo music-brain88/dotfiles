@@ -372,6 +372,12 @@ set -euo pipefail
 # /usr/bin を先頭に置いて Arch のツールチェーンを強制する。
 # The Nix-profile cmake/pkg-config are patched not to search /usr, so system
 # OpenGL/GLES3 is never found (#554); prepend /usr/bin to force the Arch toolchain.
+# Arch では hyprpm が hyprland と別パッケージ(extra/hyprpm)なので、無ければ導入方法を案内して止める(#641)。
+# On Arch hyprpm is a separate package (extra/hyprpm) from hyprland; if missing, say how to install it and stop (#641).
+if ! PATH="/usr/bin:$PATH" command -v hyprpm >/dev/null 2>&1; then
+  echo "hyprpm not found: on Arch it is a separate package from hyprland -> sudo pacman -S hyprpm" >&2
+  exit 1
+fi
 # sudo プロンプトが出るため対話ターミナルで実行すること / run from an interactive terminal (needs a sudo prompt)
 PATH="/usr/bin:$PATH" hyprpm update
 """
