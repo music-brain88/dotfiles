@@ -643,6 +643,16 @@ herdr pane read <pane-id> --source visible --format ansi | grep -a '❯' | tail 
 
 この判定は入力欄の 1 行目(`❯` を含む行)だけを見る。また、実測は Claude Code と herdr の上記の版に限られる。版上げ後に placeholder が `\e[2m` 以外(例: RGB のグレー指定)で描画されるようになると、この判定は placeholder を実入力と誤判定する(安全側の誤り)ため、その場合は手順5(1)の (a)〜(c) の基準に戻る。
 
+### 利用上限とアカウントの切り替えで worker が止まる
+2026-10-13、業務リポジトリ A の /wt 運用で、worker 2 体と司令塔の code-review のフォークが利用上限(`You've hit your session limit · resets 8pm`)に当たった(#706)。worker の pane には「Usage limit reached · Continuing automatically at 8pm · esc to cancel」が出て、`herdr agent get` は `idle` を返した。司令塔は `idle` の発火だけでは完了か上限かを見分けられず、pane を読んで初めて上限と分かった。続けてユーザーは、司令塔と worker の pane で別の組織のアカウントへ `/login` した。その組織の server-managed settings(`"disableAutoMode": "disable"` と `"allowManagedMcpServersOnly": true` と空の `allowedMcpServers`)により、worker は manual mode(pane に「auto mode disabled by settings」)になった。司令塔の claude.ai コネクタ(ClickUp など)も「blocked by enterprise managed policy」で使えなくなった。その後の再起動で再開した worker の effort は、起動のときの指定(high と xhigh)ではなく medium だった。司令塔は `/effort high` などを pane に送ったが、`~/.claude/settings.json` を読めない(EACCES)エラーで変えられなかった。
+
+司令塔は、次の 3 点で扱う:
+1. worker が `idle` で報告が無いときは、pane の末尾に「Usage limit reached」の表示があるかを読む。表示があれば、worker は上限で止まっている。司令塔はリセットの時刻まで待つか、ユーザーにアカウントの切り替えを頼む
+2. アカウントを切り替えた後は、司令塔は各 worker の pane の末尾で「auto mode on」と effort の表示を確かめる。manual mode なら、司令塔は差し戻しを送る前にユーザーに相談する(manual mode の worker は承認待ちで止まり、承認を司令塔が代行できないため)。effort が起動の指定と違えば、司令塔はユーザーに伝える(`~/.claude/settings.json` に書けない環境では `/effort` で変えられない)
+3. 司令塔の MCP が「blocked by enterprise managed policy」になったら、司令塔は `~/.claude/remote-settings.json` の `allowManagedMcpServersOnly` と `allowedMcpServers` を読む。組織の server-managed settings が原因なら、手元では直せない(組織の Owner が管理画面の `allowedMcpServers` に `serverUrl` を足す)。足した後も、動いているセッションは起動のときの設定を持ち続けるので、司令塔は新しいプロセス(`claude mcp list`)で接続を確かめる(2026-10-13 の観測では、動いているセッションの `/mcp` は blocked のままで、新しいプロセスの `claude mcp list` は Connected だった)
+
+再起動などで herdr の agent 名が外れたときの立て直し(自己命名のやり直し・`herdr agent list` での確かめ・pane ID 宛て)は、この節では扱わない(#698 で扱う)。
+
 ### GPG 署名コミットは worker pane から pinentry を出せない
 worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
 
