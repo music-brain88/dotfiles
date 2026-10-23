@@ -67,7 +67,7 @@ herdr worktree create --cwd <repo-root> --branch <branch-name> --base main --foc
 worktree 作成直後に以下を行う:
 
 **Constraints:**
-- **MUST**: `mise trust <worktree-path>` を実行する(詳細: Troubleshooting「mise trust 忘れ」参照)
+- **MUST**: worktree 内の全部の `.mise.toml` を trust する: `find <worktree-path> -name .mise.toml -not -path '*/node_modules/*' -not -path '*/target/*' -exec mise trust {} \;`(ルートだけを trust しても、子ディレクトリ(`backend/`・`frontend/` など)の `.mise.toml` は未信頼のまま残る。`.mise.local.toml` や `mise.toml` も拾うなら `-name '*mise*.toml'` にする。詳細: Troubleshooting「mise trust 忘れ」参照)
 - **MUST**: allowlist を配置する: `mkdir -p <worktree-path>/.claude && cp ~/.claude/templates/wt-settings.local.json <worktree-path>/.claude/settings.local.json`
   - コピー元は `<repo-root>/.config/claude/templates/...` ではなく `~/.claude/templates/...` を使う。`<repo-root>` は `/wt` を呼び出した対象リポジトリ次第で変わり、dotfiles 以外のリポジトリではこのテンプレートを含まないため
   - `~/.claude` への反映は home-manager 経由(`home.nix` の `home.file ".claude".source = ./.config/claude`)で、`mise run nix:switch` 実行時に `/nix/store` スナップショットへの per-file symlink が生成される方式。テンプレートを追加・変更したら `mise run nix:switch` を実行しないと `~/.claude/templates/` に反映されない(詳細: Troubleshooting「allowlist テンプレートの cp 失敗」参照)
@@ -532,6 +532,8 @@ herdr pane read "$HERDR_PANE_ID" --source visible
 
 ### mise trust 忘れ
 mise trust は絶対パス単位で管理されるため、新規 worktree は毎回 untrusted で始まる。忘れると `mise run` が「no tasks defined」で失敗する — #335。
+
+ルートの `.mise.toml` を trust しても、子ディレクトリ(`backend/`・`frontend/` など)の `.mise.toml` は別の設定ファイルなので未信頼のまま残る。2026-10-21、業務リポジトリ A のモノレポで、worker が `cd backend/` と `cd frontend/` の後にこれを 1 回ずつ踏んだ。mise の信頼の確認が出て `cd` の後のコマンドが止まり、`python3` も mise の shim で動かなかった(#737)。auto mode の worker はこの確認に自分で答えられないため、司令塔は worktree の準備で worktree 内の全部の `.mise.toml` を trust する(手順3「worktree の準備」参照)。
 
 ### allowlist テンプレートの cp 失敗
 `~/.claude` への反映は home-manager 経由で、`mise run nix:switch` を実行しないと `~/.claude/templates/` に反映されない。`cp` が `No such file or directory` で失敗したら、まず nix:switch 漏れを疑う。
