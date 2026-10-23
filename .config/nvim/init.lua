@@ -73,13 +73,14 @@ else
   vim.opt.runtimepath:prepend(dpp_ext_toml)
   vim.opt.runtimepath:prepend(dpp_protocol_git)
 
-  -- XDG_CACHE_HOMEを尊重し、未設定のときだけ$HOME/.cacheに戻る。stdpath('cache')は
+  -- XDG_CACHE_HOMEを尊重し、未設定か空のときだけ$HOME/.cacheに戻る(dpp_envは空文字も未設定と扱う)。stdpath('cache')は
   -- ~/.cache/nvimになり既存の~/.cache/dppと場所が変わる(全プラグインの再クローンが
   -- 走る)ので使わない(#503)。
-  -- Respect XDG_CACHE_HOME, falling back to $HOME/.cache only when it is unset.
+  -- Respect XDG_CACHE_HOME, falling back to $HOME/.cache only when it is
+  -- unset or empty (dpp_env treats an empty value as unset).
   -- stdpath('cache') resolves to ~/.cache/nvim, which would move dpp_base away from
   -- the existing ~/.cache/dpp and force a full re-clone, so it is not used (#503).
-  local cache_home = os.getenv('XDG_CACHE_HOME') or (vim.env.HOME .. '/.cache')
+  local cache_home = dpp_env('XDG_CACHE_HOME') or (vim.env.HOME .. '/.cache')
   local dpp_base = cache_home .. '/dpp'
   local dpp_config_path = vim.fn.stdpath('config') .. '/dpp/config.ts'
 
