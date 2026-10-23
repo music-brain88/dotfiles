@@ -119,7 +119,7 @@ nvim
 
 初回起動では次の順で進みます。
 
-1. `init.lua` が dpp の state(`~/.cache/dpp` 配下の `startup.vim` / `state.vim`)を生成する。
+1. `init.lua` が dpp の state(`~/.cache/dpp` 配下の `startup.vim` / `state.vim`。`XDG_CACHE_HOME` が設定されていればその配下の `dpp/`)を生成する。
 2. プラグインが1つも取得されていないことを検知し、`:DppInstall` 相当の処理を自動で開始する(通知が出ます。数分かかることがあります)。
 3. `dpp: initial plugin install finished. Restart Neovim to load them.` と通知されたら、Neovim を再起動する(手順1の直後に出る `dpp#make_state() done. Restart Neovim to load plugins.` の時点ではまだインストール中なので、こちらの通知を待ちます)。
 
