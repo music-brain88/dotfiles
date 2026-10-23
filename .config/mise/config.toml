@@ -29,9 +29,12 @@ main() {
     root="$(pwd)"
     echo "git repo の外なので cwd を root として扱うよ: $root" >&2
   fi
-  case "$root" in
-    "$HOME"|/) echo "ここは配線しないよ($root)。配線していない場所の記憶はユーザー設定の既定フォルダへ行く" >&2; exit 1 ;;
-  esac
+  # パスの文字列ではなく実体(-ef)で比べる — symlink 経由の別名で呼ばれても $HOME と / を拒否する
+  # Compare directory identity (-ef), not the path string, so symlink aliases of $HOME and / are refused too
+  if [ "$root" -ef "$HOME" ] || [ "$root" -ef / ]; then
+    echo "ここは配線しないよ($root)。配線していない場所の記憶はユーザー設定の既定フォルダへ行く" >&2
+    exit 1
+  fi
   cd "$root"
   # 引数: AgentMemory フォルダ名(省略時は repo のディレクトリ名)
   project="${1:-}"
