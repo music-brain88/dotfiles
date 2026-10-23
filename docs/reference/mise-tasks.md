@@ -47,6 +47,7 @@ shellcheck の定義の正は `flake.nix` の `apps.${system}.shellcheck` であ
 |------|-------------|---------------------|
 | `mise run claude:effort <level>` | Claude Code の effort 設定(effortLevel/ultracode)を更新してNix経由で反映 (`low` / `medium` / `high` / `xhigh` / `ultracode`) | `.config/claude/settings.json` を jq で書き換え + `nix:switch` |
 | `mise run claude:wtclose-test` | 締め skill `wtclose` の検問スクリプトのテストを、一時ディレクトリの fixture と偽の `gh` だけで実行する(実物の vault には触らない) | `bash .config/claude/skills/wtclose/tests/close_gate_test.sh` |
+| `mise run claude:wtclean-test` | 掃除 skill `wtclean` の収穫ステップの検索スクリプトのテストを、一時ディレクトリのノートと偽の `gh` だけで実行する(実物の vault は読まない) | `bash .config/claude/skills/wtclean/tests/harvest_search_test.sh` |
 
 `ultracode` は effortLevel の値ではなく、独立した boolean 設定キーである。xhigh 相当の effort に加えて、常設の dynamic-workflow(マルチエージェント)オーケストレーションをセッション全体で有効にする。`mise run claude:effort ultracode` を実行すると `effortLevel = "xhigh"` と `ultracode = true` が書き込まれる。通常レベル(low/medium/high/xhigh)に戻すと `ultracode` キー自体を削除し、設定ファイルを最小に保つ。
 
@@ -62,11 +63,13 @@ shellcheck の定義の正は `flake.nix` の `apps.${system}.shellcheck` であ
 
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
-| `mise run memory:index` | AgentMemory の各プロジェクトについて、記憶ファイルの frontmatter から枝の索引(`index/project.md`・`index/reference.md`)と root `MEMORY.md` のマーカー区間を生成する。既定では実物の vault(`~/Documents/Obsidian/AgentMemory`)に書く | `python3 -I .config/claude/scripts/build_memory_index.py` |
-| `mise run memory:index-check` | 各プロジェクトの root `MEMORY.md` の行数とバイト数を、上限(200 行 / 25,000 バイト)と目標(100 行 / 15,000 バイト)に並べて表にする。上限を超えた root があれば終了コード 1 を返す。何も書かない | `python3 -I .config/claude/scripts/build_memory_index.py --check` |
-| `mise run memory:index-test` | 索引ビルダーのテストを、一時ディレクトリの fixture だけで実行する(実物の vault には触らない) | `python3 -I -B -m unittest discover -s .config/claude/scripts/tests -p '*_test.py'` |
+| `mise run memory:index` | AgentMemory の各プロジェクトについて、記憶ファイルの frontmatter から枝の索引(`index/project.md`・`index/reference.md`)と root `MEMORY.md` のマーカー区間を生成する。`--project` を付けない全体実行では、vault のセッションノート(`Zettelkasten/ResearchNotes/ClaudeCodeSession-*.md`)から `sessions/INDEX.md` と月別の `sessions/YYYY-MM.md` を、私記(`episodes/*.md`)から `episodes/INDEX.md` も生成する。既定では実物の vault(`~/Documents/Obsidian/AgentMemory`)に書く | `python3 -I .config/claude/scripts/build_memory_index.py` |
+| `mise run memory:index-check` | 各プロジェクトの root `MEMORY.md` の行数とバイト数を、上限(200 行 / 25,000 バイト)と目標(100 行 / 15,000 バイト)に並べて表にする。上限を超えた root があれば終了コード 1 を返す。全体実行では `sessions/INDEX.md`・`sessions/YYYY-MM.md`・`episodes/INDEX.md` の行数とバイト数も並べる(これらは必要なときに開くファイルなので上限と目標の列は `-` で、終了コードに影響しない)。何も書かない | `python3 -I .config/claude/scripts/build_memory_index.py --check` |
+| `mise run memory:index-test` | 索引ビルダーのテストを、一時ディレクトリの fixture だけで実行する(実物の vault には触らない) | `python3 -I -B -m unittest discover -s .config/claude/scripts/tests -p '*_test.py' -v` |
 
-`memory:index` と `memory:index-check` には、スクリプトの引数をそのまま続けて渡せる。`--root <path>` は AgentMemory のルートを変え、`--project <name>` は対象を 1 プロジェクトに絞る。vault のコピーで試すときは `mise run memory:index --root <コピーのパス>` のように実行する。
+`memory:index` と `memory:index-check` には、スクリプトの引数をそのまま続けて渡せる。`--root <path>` は AgentMemory のルートを変え、`--vault <path>` はセッションノートを探す vault のルートを変え(既定は `--root` の親ディレクトリ)、`--project <name>` は対象を 1 プロジェクトに絞る(`--project` を付けると sessions と episodes の索引は作らない)。vault のコピーで試すときは、コピーの中の AgentMemory と `Zettelkasten/ResearchNotes` を実物と同じ相対配置に置き、`mise run memory:index --root <コピーのパス>/AgentMemory` のように実行する。セッションノートの置き場が無いとき、スクリプトは sessions の索引を 1 行の通知だけ出して飛ばす。
+
+セッションの索引は vault 共通の月別で、`sessions/INDEX.md` に月ごと 1 行(本数・月内で多い順の上位 tags 3 つ・⏳ の本数)、`sessions/YYYY-MM.md` に 1 ノート 1 行(日付・wikilink・最初の H1 の文・tags・⏳)が載る。⏳ は `triage: candidate` のまま `distilled_to` が空(キー無し・空文字・`[]`)のノートに付く。`episodes/INDEX.md` には私記が 1 本 1 行(日付・`name`・`description`・`origin_session`)で日付順に載る。どのファイルも先頭に `type: index` の frontmatter が付く。書き先に先頭がこの frontmatter でない手書きのファイルがあると、スクリプトはどのファイルも書かずに終了コード 2 で止まる。中身が無くなった月のファイルと `episodes/INDEX.md` は、スクリプトの生成物のときだけ消える([#729](https://github.com/music-brain88/dotfiles/issues/729))。
 
 スクリプトが root `MEMORY.md` で書き換えるのは、`<!-- memory-index:begin -->` と `<!-- memory-index:end -->` の間だけである。マーカーの外は手書き領域として残る。ただし、手書き領域の箇条書きの行が同じプロジェクトの記憶ファイルを指していて、その記憶が今回の生成に載った場合は、スクリプトがその行を取り除き、stdout に `removed:` の行として出力する。マーカーの無い root に初めて実行すると、スクリプトはファイル全体を手書き領域とみなし、末尾にマーカー区間を足す。マーカーが片方しか無いなど壊れた root が 1 つでもあると、スクリプトはどのファイルも書かずに終了コード 2 で止まる([#720](https://github.com/music-brain88/dotfiles/issues/720))。
 
@@ -135,9 +138,9 @@ SOPS age タスクは、hexhive の Secrets(SOPS + age)で使う鍵を管理す�
 
 | Task | Description | Equivalent Command |
 |------|-------------|---------------------|
-| `mise run hypr:pm-update` | Hyprland アップグレード後に hyprpm 管理プラグインを再ビルド(Nix ではなく Arch のツールチェーンを強制) | `PATH="/usr/bin:$PATH" hyprpm update` |
+| `mise run hypr:pm-update` | Hyprland アップグレード後に hyprpm 管理プラグインを再ビルド(Nix ではなく Arch のツールチェーンを強制)。`hyprpm` は `hyprland` とは別の pacman パッケージ(`extra/hyprpm`)なので、事前に `sudo pacman -S hyprpm` で導入しておく(無ければタスクが案内して止まる) | `PATH="/usr/bin:$PATH" hyprpm update` |
 
-Nix プロファイルの cmake/pkg-config は純粋性パッチにより `/usr` を探索できず、システムの OpenGL/GLES3 が見つからずビルドに失敗する([#554](https://github.com/music-brain88/dotfiles/issues/554))。`/usr/bin` を先頭に置いて Arch のツールチェーンを強制する。sudo プロンプトが出るため対話ターミナルで実行すること。
+Nix プロファイルの cmake は純粋性パッチにより `/usr` を探索できず、システムの OpenGL/GLES3 が見つからずビルドに失敗する([#554](https://github.com/music-brain88/dotfiles/issues/554))。同じ理由で Nix の pkg-config は AUR のビルドも壊すため、[#740](https://github.com/music-brain88/dotfiles/issues/740) で Nix から外した。`/usr/bin` を先頭に置いて Arch のツールチェーンを強制する。sudo プロンプトが出るため対話ターミナルで実行すること。
 
 ---
 

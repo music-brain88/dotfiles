@@ -4,6 +4,9 @@ on_ft = ['md', 'markdown']
 
 [[plugins]]
 repo = 'thinca/vim-quickrun'
+on_cmd = ['QuickRun']
 
 [[plugins]]
 repo = 'kat0h/bufpreview.vim'
+# コマンドはftpluginがバッファローカルに定義するのでon_ftで読む / Commands are defined buffer-locally by the ftplugin, so load via on_ft.
+on_ft = ['markdown']

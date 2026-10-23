@@ -7,7 +7,7 @@
   # git: git.nix
   # cmake, gnumake: dev-tools.nix
   # htop: dev-tools.nix
-  # pkg-config: rust-tools.nix (paired with openssl.dev for native crates)
+  # pkg-config: not provided by Nix; Arch's pkgconf is used so builds can see /usr/lib/pkgconfig (#740)
   home.packages = with pkgs; [
     # Core utilities (not duplicated elsewhere)
     gnutar

@@ -1,6 +1,6 @@
 [tools]
 poetry = "latest"
-node = "22.15.1"
+node = "22.23.4"
 uv = "latest"
 
 [env]
@@ -104,13 +104,14 @@ description = "Run the tests of the wtclean harvest search script (fixtures only
 run = "bash .config/claude/skills/wtclean/tests/harvest_search_test.sh"
 
 [tasks."memory:index"]
-description = "Build the AgentMemory indexes (index/*.md and the marked region of each root MEMORY.md) from memory frontmatter"
-# 各記憶の frontmatter から枝の索引(index/*.md)と root MEMORY.md のマーカー区間を作る。既定は実物の vault に書く。
-# Writes into the real vault by default; pass --root <copy> to try it on a copy, --project <name> to limit it.
+description = "Build the AgentMemory indexes: index/*.md and the marked region of each root MEMORY.md from memory frontmatter, plus sessions/INDEX.md, sessions/YYYY-MM.md from the session notes and episodes/INDEX.md on a full run"
+# 各記憶の frontmatter から枝の索引(index/*.md)と root MEMORY.md のマーカー区間を作る。--project を付けない全体実行では、
+# セッションノートから sessions/INDEX.md と月別の sessions/YYYY-MM.md を、私記から episodes/INDEX.md も作る。既定は実物の vault に書く。
+# Writes into the real vault by default; pass --root <copy> to try it on a copy (--vault defaults to its parent), --project <name> to limit it.
 run = "python3 -I .config/claude/scripts/build_memory_index.py"
 
 [tasks."memory:index-check"]
-description = "Report the size of each AgentMemory root MEMORY.md and exit 1 over 200 lines / 25,000 bytes (writes nothing)"
+description = "Report the size of each AgentMemory root MEMORY.md (and of the sessions / episodes indexes) and exit 1 when a root is over 200 lines / 25,000 bytes (writes nothing)"
 # 各プロジェクトの root の行数とバイト数を表にする。上限(200 行 / 25,000 バイト)を超えたら終了コード 1。何も書かない。
 # Prints lines and bytes of every root against the limit and the 100-line / 15,000-byte target. Read-only.
 run = "python3 -I .config/claude/scripts/build_memory_index.py --check"
@@ -371,6 +372,12 @@ set -euo pipefail
 # /usr/bin を先頭に置いて Arch のツールチェーンを強制する。
 # The Nix-profile cmake/pkg-config are patched not to search /usr, so system
 # OpenGL/GLES3 is never found (#554); prepend /usr/bin to force the Arch toolchain.
+# Arch では hyprpm が hyprland と別パッケージ(extra/hyprpm)なので、無ければ導入方法を案内して止める(#641)。
+# On Arch hyprpm is a separate package (extra/hyprpm) from hyprland; if missing, say how to install it and stop (#641).
+if ! PATH="/usr/bin:$PATH" command -v hyprpm >/dev/null 2>&1; then
+  echo "hyprpm not found: on Arch it is a separate package from hyprland -> sudo pacman -S hyprpm" >&2
+  exit 1
+fi
 # sudo プロンプトが出るため対話ターミナルで実行すること / run from an interactive terminal (needs a sudo prompt)
 PATH="/usr/bin:$PATH" hyprpm update
 """

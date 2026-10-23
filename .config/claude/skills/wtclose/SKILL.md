@@ -1,7 +1,9 @@
 ---
 name: wtclose
 description: "/wt の司令塔がセッションを締めるときに呼ぶ。締めの 4 項目(open の PR・残っている worktree・裏の待ち受け・次の入口)と作業物の仕分けを確かめ、状態ファイルを上書きする。呼ぶと Stop hook の検問が登録され、締めの条件がそろうまでターンを終えられない。ユーザーが「締めよう」「今日はここまで」「/wtclose」と言った時に使う。作業の途中の書き出しには使わない。"
-allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/close_gate.sh *)
+allowed-tools:
+  - Bash(bash ${CLAUDE_SKILL_DIR}/close_gate.sh *)
+  - Bash(python3 -I ~/.claude/scripts/build_memory_index.py*)
 hooks:
   Stop:
     - hooks:
@@ -83,6 +85,33 @@ bash ${CLAUDE_SKILL_DIR}/close_gate.sh --where
 - **MUST**: 残っている PR と worktree は、1 件ずつ理由の種類を付けて書く。種類は「マージ待ち」「レビュー待ち」「worker 稼働中」「別のセッションの管轄」の 4 つから選ぶ
 - **MUST**: 記憶の索引 `MEMORY.md` には、状態ファイルへの 1 行だけを置く(例: `- [状態: commander-<repo名>](state_commander-<repo名>.md) — 2026-10-04 18:30 時点の状態と次の入口`)
 - **SHOULD**: 200 行を超えないようにする。超えた部分は、セッションノートかメモリに移してリンクする
+
+状態ファイルを上書きしたら、司令塔は AgentMemory の索引を作り直す。このコマンドは、状態ファイルを含む記憶の索引と、手順 2 で書いたセッションノートの月別索引(`AgentMemory/sessions/`)を作り直す。
+
+```bash
+python3 -I ~/.claude/scripts/build_memory_index.py
+```
+
+dotfiles リポジトリの中では `mise run memory:index` と同じ処理になる。mise のタスクは dotfiles の外では解決できないので、司令塔は配備済みのスクリプトをこのパスで呼ぶ。索引の更新が失敗しても、司令塔は締めを止めない。索引は派生物で、次の実行で追いつく。司令塔は失敗の理由を 1 行でユーザーに報告し、次の「蒸留を提案する」に進む。
+
+#### 蒸留を提案する
+
+索引を作り直したら、司令塔はこのセッションの話題と重なる未蒸留のセッションノートを列挙し、`/distill` で蒸留するかをユーザーに提案する。未蒸留のノートは、セッションノートの月別索引 `~/Documents/Obsidian/AgentMemory/sessions/YYYY-MM.md` で、行末に ` · ⏳` が付いている行である。⏳ は、そのノートの frontmatter が `triage: candidate` のままで、`distilled_to` が空であることを表す。
+
+司令塔は、今月と前月の月別索引を読み、行末に ` · ⏳` が付いた行を拾う。司令塔は、状態ファイルに書いた今の状態から語(リポジトリ名・Issue 番号・ツール名・話題の語)を拾い、⏳ の行のタイトルか tags に 1 つ以上が現れる行を候補にする。提案は次の形で会話に出す。
+
+```markdown
+- ⏳ [[ClaudeCodeSession-20261019-ExampleTopic]](2026-10-19) — 重なり: dotfiles, #729
+`/distill <ノート名>` で蒸留する?
+```
+
+**Constraints:**
+- **MUST**: 候補 1 件を 1 行で書き、`- ⏳ [[ノート名]](日付) — 重なり: <重なった tag や語>` の形にする。最後に「`/distill <ノート名>` で蒸留する?」の 1 行を添える
+- **MUST**: 候補が無いときは「蒸留の候補: 該当なし」と 1 行書く
+- **MUST**: 索引の更新が失敗しても、司令塔はこの提案を月別索引にある既存の ⏳ 行で行い、手順 4 に進む
+- **MUST NOT**: 候補のノートの本文を読んで、要約を提案に添えない。索引はノートへのポインタであって知識の置き場ではなく、LLM が書いた要約を知識として残さないためである
+- **MUST NOT**: 提案したことや断られたことを、ノートの frontmatter・状態ファイル・索引に記録しない。以前に提案したノートでも、重なれば再び提案する。候補の件数に上限を設けない
+- **MUST NOT**: ユーザーの返事を待たずに `/distill` を呼ばない。蒸留するかどうかはユーザーが決める。検問(手順 4)はこの提案を確かめないので、提案は締めの条件にならない
 
 ### 4. 検問を通す
 

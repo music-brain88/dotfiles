@@ -10,7 +10,7 @@
 
 ### base.nix
 
-`base.nix` は、最小構成の基本的なシステムパッケージを定義します。curl/wget/cmakeはdev-tools.nixへ、gitはgit.nixへ、pkg-configはrust-tools.nixへ移動済みです。
+`base.nix` は、最小構成の基本的なシステムパッケージを定義します。curl/wget/cmakeはdev-tools.nixへ、gitはgit.nixへ移動済みです。pkg-config は Nix では入れず、Arch の pkgconf を使います(#740)。
 - gnutar, gzip
 - protobuf
 - mako, libnotify
@@ -19,7 +19,7 @@
 
 ### rust-tools.nix
 
-`rust-tools.nix` は、Rust開発ツールとCLIツールを定義します。
+`rust-tools.nix` は、Rust開発ツールとCLIツールを定義します。 native crate のビルドに使う pkg-config と openssl は Nix では入れず、Arch の pkgconf と openssl に任せます。Nix の pkg-config は `/usr` を探索できないので、PATH で先に来ると AUR のビルドが Arch のライブラリを見つけられなくなるためです([#740](https://github.com/music-brain88/dotfiles/issues/740))。
 - rustup, cargo
 - fd, ripgrep, eza, bat
 - gitui, tealdeer, hyperfine
@@ -102,6 +102,12 @@
 - 版を上げた後に残る古いプロファイルを消す activation (`cleanTerminalBrowserProfiles`)
 
 設定ごとの理由は [terminal-browser.md](./terminal-browser.md) を参照してください。
+
+### paru.nix
+
+`paru.nix` は、AUR ヘルパー paru のユーザー設定 `.config/paru/paru.conf` を `~/.config/paru/paru.conf` に symlink します (`xdg.configFile`、Issue #743)。この設定は `Include = /etc/paru.conf` で system 側の設定を取り込み、`LocalRepo`・`Chroot`・`SudoLoop` を有効にして、AUR のビルドを devtools の chroot に移します。paru と devtools は OS 層 (pacman) が入れるので、このモジュールはパッケージを入れません。`home.nix` は native profile のときだけこのモジュールを読み込みます。chroot が使う systemd-nspawn が WSL 機で動く保証は無いからです。
+
+symlink を当てる前に system 側で `/etc/pacman.conf` の `[aur]` と devtools を準備する必要があります。手順と順序の理由は [build-aur-packages-in-chroot.md](../how-to/build-aur-packages-in-chroot.md) を参照してください。
 
 ### wsl.nix
 
