@@ -46,6 +46,12 @@ set -x LC_CTYPE en_US.UTF-8
 set -x EDITOR nvim
 set -x VISUAL nvim
 
+# Silence the startup greeting. Declared here, not via a universal variable
+# (`set -U`) or a local functions/fish_greeting.fish, so every machine behaves the same.
+# 起動時の挨拶を無言にする。universal 変数(`set -U`)やローカルの
+# functions/fish_greeting.fish に頼らず repo で宣言し、全マシンで同じ挙動にする。
+set -g fish_greeting
+
 # GPG: tell gpg-agent which tty to use for pinentry (interactive shells only)
 # gpg-agentにこのシェルのttyを伝える(pinentry用、対話シェルのみ)
 if status is-interactive; and isatty stdin
