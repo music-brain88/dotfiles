@@ -73,6 +73,13 @@ in
     vimAlias = true;
     vimdiffAlias = true;
 
+    # NOTE: 設定 (TOML / init.lua) に python3 / ruby プロバイダへの参照は無く、プラグインは denops (Deno) 駆動なので不要。
+    # home-manager の既定変更の警告を消すため明示する (#426)。
+    # No python3 / ruby provider is referenced in the config (TOML / init.lua) and plugins run on denops (Deno),
+    # so neither is needed. Set explicitly to silence home-manager's default-change warnings (#426).
+    withRuby = false;
+    withPython3 = false;
+
     # Additional packages available to Neovim
     extraPackages = with pkgs; [
       # Language servers (LSP)
