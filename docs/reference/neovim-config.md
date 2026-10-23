@@ -123,7 +123,7 @@ codecompanion.nvim は CopilotChat.nvimの後継である。`codecompanion.toml`
 
 ### 初回起動時の自動インストール
 
-`init.lua`は`~/.cache/dpp/repos/`配下にクローン済みプラグインが1つもない状態を検知すると、`:DppInstall`相当の処理を通知付きで自動発動する。検知タイミングは次の2箇所である。
+`init.lua`は`~/.cache/dpp/repos/`配下(`XDG_CACHE_HOME`が設定されていればその配下の`dpp/repos/`)にクローン済みプラグインが1つもない状態を検知すると、`:DppInstall`相当の処理を通知付きで自動発動する。検知タイミングは次の2箇所である。
 
 - `Dpp:makeStatePost`(state生成直後。主に初回起動でここに引っかかる)
 - `DenopsReady`(state生成済みの通常起動時。`repos/`がキャッシュ掃除等で out-of-band に消失していた場合の保険)
