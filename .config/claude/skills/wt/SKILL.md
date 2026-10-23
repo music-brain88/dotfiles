@@ -444,6 +444,16 @@ gh api graphql -f query='
 - **MUST NOT**: `mergeStateStatus` が `CLEAN` になる前にマージを実行しない
 - **MUST NOT**: マージ時に `--delete-branch` を付けない。worktree が生存中はローカルブランチ削除が必ず失敗して紛らわしいため、ブランチ削除(リモート含む)は `/wtclean` の領分とする
 
+#### 差し戻しの渡し方
+
+Copilot などのレビュー指摘を作業者に差し戻すとき、司令塔は判定表を作業記憶(手順4「作業物の置き場」参照)にファイルとして置き、1 行の `agent prompt` で渡す(#725)。差し戻しの文面をその場で組み立てると、thread id や「直さない理由」が会話にしか残らないため。2026-10-19 の PR #721 の運用では、司令塔が Copilot の未解決 thread 5 件の判定表を置いて 1 行で渡し、作業者は修正・テスト追加・5 thread への返信と resolve・PR 本文の更新・CI 待ち・【報告】の push まで自走した(司令塔の介入は 0 回)。
+
+**Constraints:**
+- **MUST**: 未解決の review thread を作業者へ差し戻すときは、司令塔が各 thread を読んで判定(直す・一部直す・直さない)を決め、判定表を作業記憶に `<YYYYMMDD>-verdict-<branch-slug>.md`(frontmatter の `kind: verdict`。ファイル名と frontmatter の規約は手順4「作業物の置き場」に従う)として書く。表の列は、場所・thread id・判定・やること(足すテストを含む)にする。thread id は `reviewThreads(first:100){nodes{id isResolved line}}` の GraphQL で引ける。判定表に載せると作業者が引き直さずに済む
+- **MUST**: 判定表の「手順」に、返信と resolve のコマンド(`gh api graphql` の `addPullRequestReviewThreadReply` と `resolveReviewThread`)、新しいコミットを積む(amend しない)こと、PR 本文の更新、CI 待ちと【報告】の push を書く
+- **MUST**: 差し戻しは手順5(1) の手順で送る(context 50% の確認を含む)。起動プロンプトは「<判定表の絶対パス> をあなた自身が読み(サブエージェントに委任しない)、PR #<番号> のレビュー対応として忠実に実行してください。」の 1 行にする
+- **SHOULD**: 「直さない」判定は、thread に理由を返信して resolve させる。仕様の読み違いによる指摘は、コードではなく docstring や docs の明文化で応える
+
 ### 7. 自己更新(Self-update)
 
 運用中に踏んだ罠・バグ・環境摩擦の知見を、該当する skill/command の SOP に還流するプロトコル(背景: #358)。入力は以下のいずれか:
