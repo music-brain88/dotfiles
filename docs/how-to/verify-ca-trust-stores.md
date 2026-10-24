@@ -43,7 +43,7 @@ deno eval "try{await fetch('$CHECKER');console.log('TRUSTED')}catch(e){console.l
 # awscli(mise)。AWS_CA_BUNDLE が効いていれば SSL validation failed になる
 aws --no-sign-request --endpoint-url "$CHECKER" s3 ls
 
-# pip(mise の python)。環境変数では変わらないので、pip 本体を修正版に上げてから確かめる
+# pip(mise の python)。同梱の certifi も信頼に使うので環境変数では閉じない(トラブルシューティング参照)。pip 本体を修正版に上げてから確かめる
 python -m pip install -U pip
 python -m pip download --no-deps -d /tmp/pipchk --index-url "${CHECKER}simple/" nonexistent-pkg-xyz
 ```
@@ -146,5 +146,5 @@ nix eval --raw github:NixOS/nixpkgs/nixos-unstable#cacert.version
 
 - **node に `--use-system-ca` を付けても信頼したまま**: `--use-system-ca` は同梱の束に OS の束を追加する動きなので、同梱の束にある問題のルートは消えません。同梱の束を捨てて OS の束に置き換える `--use-openssl-ca` を使います。
 - **mise の mirror 設定を checker に向けても `mise ls-remote` が成功する**: `ls-remote` は版の一覧をキャッシュから読むので mirror に接続しません。`mise install node@<版>` で実際のダウンロードを起こすと判定できます。
-- **pip に `--cert` や `PIP_CERT` を渡しても信頼したまま**: 2026-10 の実測では pip 26.1.2 がどの指定でも問題のチェーンを通し、原因は特定できていません。pip 26.2.2 に上げると拒否に変わりました。
+- **pip に `--cert` や `PIP_CERT` を渡しても信頼したまま**: pip 24.2 以降は既定で truststore を使い、`pip/_internal/cli/index_command.py` の `_create_truststore_ssl_context()` が、システムの信頼ストアで検証する SSL コンテキストに `ctx.load_verify_locations(certifi.where())` で同梱の certifi の束を足します。検証はシステムの束と同梱の束の和集合になるので、同梱の certifi に問題のルートが残っているかぎり、`--cert`・`PIP_CERT`・`REQUESTS_CA_BUNDLE` で束を差し替えても通してしまいます。2026-10 の実測では pip 26.1.2(certifi 2026.06.17 同梱)がどの指定でも問題のチェーンを通し、pip 26.2.2(certifi 2026.10.19 同梱)に上げると拒否に変わりました。truststore が opt-in だった pip 24.0 と 24.1.2 は、`REQUESTS_CA_BUNDLE` の束だけで拒否しました。venv の pip も同じ構造なので、古い venv では `python -m pip install -U pip` を個別に実行してください。
 - **Vivaldi で checker を開いても証明書エラーのページにならない**: CRLSet が古い可能性があります。`vivaldi://components`(Chromium では `chrome://components`)で CRLSet を更新してから開き直します。
