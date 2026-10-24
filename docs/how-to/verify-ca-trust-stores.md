@@ -120,16 +120,24 @@ CACHK_USERDATA=$S/userdata "$S/$BIN" --no-sandbox --disable-gpu --user-data-dir=
 
 checker が `HTTP 200 TRUSTED` で返れば、そのアプリは同梱の Electron ごと修正前です。`ERR_CERT_AUTHORITY_INVALID` や `ERR_CERT_REVOKED` で止まれば拒否しています。通常サイトが 200 で返ることも一緒に見て、checker の失敗がネットワークのせいでないことを確かめてください。
 
-最後に、修正の有無はバイナリを読むだけでも分かります。Electron の修正は root を削るのではなく、中間 CA の SPKI の SHA-256 をブロックリストに焼き込む形なので、root「emSign ECC Root CA - G3」の DER は修正版の electron にも残っています。root の有無で判定しないでください。checker の chain から中間 CA の SPKI ハッシュ(生の 32 バイト)を計算し、それがバイナリにあれば修正版、無ければ修正前と読めます。
+最後に、修正の有無はバイナリを読むだけでも分かります。Electron の修正は root を削るのではなく、中間 CA の SPKI の SHA-256 をブロックリストに焼き込む形なので、root「emSign ECC Root CA - G3」の DER は修正版の electron にも残っています。root の有無で判定しないでください。checker の chain から中間 CA の SPKI ハッシュ(生の 32 バイト)を計算し、それがバイナリにあれば修正版、無ければ修正前と読めます。ただし、中間証明書を取り出せなかったときの `not patched` は修正前の証拠になりません。空入力の SHA-256 も 32 バイトになるので、取り出した証明書の名前を確かめてから比較し、確かめられなければ「未検証」と記録してください。
 
 ```bash
 H=${CHECKER#https://}; H=${H%%/*}
+INTERMEDIATE_CN='EM DV TLS CA - G3B'   # 問題の中間 CA の名前。事故ごとに置き換える
+set -o pipefail
 openssl s_client -connect "$H:443" -servername "$H" -showcerts </dev/null 2>/dev/null \
-  | awk '/BEGIN CERT/{n++} n==2' | openssl x509 -noout -pubkey \
-  | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary > /tmp/cachk/spki.bin
-python3 -c 'import sys, pathlib; k = pathlib.Path(sys.argv[1]).read_bytes()
+  | awk '/BEGIN CERT/{n++} n==2' > /tmp/cachk/intermediate.pem
+if openssl x509 -in /tmp/cachk/intermediate.pem -noout -subject 2>/dev/null | grep -qF "$INTERMEDIATE_CN"; then
+  openssl x509 -in /tmp/cachk/intermediate.pem -noout -pubkey \
+    | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary > /tmp/cachk/spki.bin
+  python3 -c 'import sys, pathlib; k = pathlib.Path(sys.argv[1]).read_bytes()
+assert len(k) == 32, "未検証: SPKI ハッシュを計算できなかった"
 for b in sys.argv[2:]: print(b, "patched (blocklist entry present)" if k in pathlib.Path(b).read_bytes() else "not patched")' \
-  /tmp/cachk/spki.bin /usr/lib/electron43/electron /usr/lib/claude-desktop/claude-desktop /usr/lib/slack/slack /opt/clickup/ClickUp
+    /tmp/cachk/spki.bin /usr/lib/electron43/electron /usr/lib/claude-desktop/claude-desktop /usr/lib/slack/slack /opt/clickup/ClickUp
+else
+  echo "未検証: checker から $INTERMEDIATE_CN の証明書を取り出せなかった"
+fi
 ```
 
 ## 5. Nix の cacert を参照するパッケージを洗い出す
