@@ -249,6 +249,10 @@ jobs:
       # Build and verify inside container with host's Nix store mounted
       # Runs as archie user to match Home Manager configuration
       # Executes activation to fully test the deployment process
+      # check ジョブの `nix flake check --no-build` は checks を実行しないので、ビルドが要る検査はここで走らせる。
+      # herdr の Claude Code 用フックは直前の archie のビルドで出来ているので、増える依存は jq だけ (#755)。
+      # The check job's `nix flake check --no-build` never runs checks, so checks that need a build run here.
+      # The herdr Claude Code hook is already built by the archie build just before, so this only adds jq (#755).
       - name: Build and verify Home Manager configuration in container
         run: |
           docker run --rm \
@@ -259,6 +263,8 @@ jobs:
             bash -c '
               git config --global --add safe.directory /workspace
               nix build .#homeConfigurations.archie.activationPackage
+              echo "=== Running flake checks that need a build (herdr hook entries, #755) ==="
+              nix build .#checks.x86_64-linux.herdr-claude-hook-entries --no-link --print-build-logs
               echo "=== Building WSL profile (build only; activation needs a real WSL host) ==="
               nix build .#homeConfigurations.archie-wsl.activationPackage -o result-wsl
               echo "=== Verifying build output ==="

@@ -74,7 +74,7 @@ herdr は、server を止めて起動し直したときに、Claude Code の pan
 - **起動フラグは復元されません。** herdr が組み立てる再開コマンドは `claude --resume <id>` だけです。`/wt` の作業者のように `--permission-mode` などのフラグを付けて起動した pane は、再開した後にそのフラグを失います。
 - **`herdr integration status` は、フックを呼ぶエントリを見ません。** status はスクリプトの存在と版だけを見て `claude: current (vN)` と表示するので、エントリが無くても正常に見えます。エントリの有無は、上の検査で確かめます。
 
-herdr の版が上がったとき (週次の `flake.lock` の自動更新 PR を含む) は、手元で `mise run nix:check` を実行してください。スクリプトは flake の更新で自動的に新しい版になりますが、エントリは手書きなので、herdr が matcher などを変えるとずれます。ずれていれば `checks.herdr-claude-hook-entries` が生成物と手書きの差分を表示して落ちるので、表示に合わせて `.config/claude/settings.json` を直します。CI の `check` ジョブは `nix flake check --no-build` なので、この検査を実行しません。herdr がスクリプトの形を変えて `python3` の置き換えが当たらなくなったときは、`substituteInPlace --replace-fail` が `pkgs.herdr-claude-hook` のビルドを落とします。このビルドの失敗は、CI の `verify-docker` ジョブでも起きます。
+herdr の版が上がったときのずれは、`checks.herdr-claude-hook-entries` が見つけます。スクリプトは flake の更新で自動的に新しい版になりますが、エントリは手書きなので、herdr が matcher などを変えるとずれます。ずれていれば `checks.herdr-claude-hook-entries` が生成物と手書きの差分を表示して落ちるので、表示に合わせて `.config/claude/settings.json` を直します。CI の `check` ジョブは `nix flake check --no-build` なのでこの検査を実行しませんが、`verify-docker` ジョブがコンテナの中でこの検査をビルドして実行します。そのため、週次の `flake.lock` の自動更新 PR で herdr の版が上がったときも、ずれていれば CI が落ちます。手元で `mise run nix:check` を実行すると、PR を出す前に同じ検査を走らせられます。herdr がスクリプトの形を変えて `python3` の置き換えが当たらなくなったときは、`substituteInPlace --replace-fail` が `pkgs.herdr-claude-hook` のビルドを落とします。このビルドの失敗は、CI の `verify-docker` ジョブでも起きます。
 
 ### neovim.nix
 
