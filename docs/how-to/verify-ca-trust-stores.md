@@ -43,7 +43,7 @@ deno eval "try{await fetch('$CHECKER');console.log('TRUSTED')}catch(e){console.l
 # awscli(mise)。AWS_CA_BUNDLE が効いていれば SSL validation failed になる
 aws --no-sign-request --endpoint-url "$CHECKER" s3 ls
 
-# pip(mise の python)。環境変数では変わらないので、pip 本体を修正版に上げてから確かめる
+# pip(mise の python)。同梱の certifi も信頼に使うので環境変数では閉じない(トラブルシューティング参照)。pip 本体を修正版に上げてから確かめる
 python -m pip install -U pip
 python -m pip download --no-deps -d /tmp/pipchk --index-url "${CHECKER}simple/" nonexistent-pkg-xyz
 ```
@@ -71,10 +71,73 @@ electron43 --disable-gpu /tmp/electron_check.js "$CHECKER"   # ERR_CERT_REVOKED 
 pacman -Qi electron43 | grep 'Required By'                    # どのアプリがこの electron に乗っているか
 ```
 
-Electron を同梱するアプリ(Discord・Slack・Claude Desktop など)は、バイナリから `Electron/x.y.z` を読み、Electron の advisory が示す修正版(2026-10 の事故では 44.9.1 / 43.8.1 / 42.11.16)と比べて判定するのが確実です。同じメジャーの electron パッケージを起こすテストは目安にとどまります。修正はパッチ版で入るので、43.7.x と 43.8.x のように同じメジャーでも結果が変わるからです。版が読めないか修正版と比べられないアプリは「未検証」と記録し、安全側に数えないでください。
+Electron を同梱するアプリ(Discord・Slack・Claude Desktop・ClickUp など)は、同梱の Electron をベンダーが決めているので、Arch や AUR の側では差し替えられません。確かめ方は、版を読む・実機で叩く・バイナリを読む、の 3 段です。
+
+まず、バイナリから `Electron/x.y.z` を読み、Electron の advisory が示す修正版(2026-10 の事故では GHSA-jr5w-w6x2-84p9 の 44.9.1 / 43.8.1 / 42.11.16)と比べます。修正はパッチ版で入るので、43.7.x と 43.8.x のように同じメジャーでも結果が変わります。同じメジャーの electron パッケージを起こす代理テストは目安にとどめてください。Discord のように自己更新するアプリは、パッケージではなく `~/.config/discord/app-*/Discord` のような実体を読んでください。
 
 ```bash
-grep -aoE 'Electron/[0-9]+\.[0-9]+\.[0-9]+' /opt/discord/Discord /usr/lib/slack/slack /usr/lib/claude-desktop/claude-desktop 2>/dev/null
+grep -aoE 'Electron/[0-9]+\.[0-9]+\.[0-9]+' /usr/lib/slack/slack /usr/lib/claude-desktop/claude-desktop /opt/clickup/ClickUp ~/.config/discord/app-*/Discord 2>/dev/null
+```
+
+次に、確定させたいアプリは同梱の実行ファイルそのもので checker を叩きます。アプリのディレクトリを影コピー(実行ファイルだけ複製し、ほかはシンボリックリンク)して、`resources/app.asar` を自前の checker アプリに差し替えて起こすと、同梱の Electron がそのまま動きます。`OnlyLoadAppFromAsar` fuse が有効なアプリでも、asar で渡せば読まれます。userData は影コピーの中に向けて、本物の設定に触らないようにしてください。
+
+```bash
+# 1) checker アプリを asar に詰める(Chromium 側の net.fetch と Node 側の https を両方試す)
+S=/tmp/cachk/shadow; mkdir -p "$S/resources" "$S/userdata"
+cat > /tmp/cachk/main.js <<'JS'
+const { app, net } = require('electron');
+const https = require('https');
+if (process.env.CACHK_USERDATA) app.setPath('userData', process.env.CACHK_USERDATA);
+const nodeGet = (u) => new Promise((res) => https.get(u, (r) => { res(`HTTP ${r.statusCode} TRUSTED`); r.resume(); }).on('error', (e) => res(e.code || e.message)));
+app.whenReady().then(async () => {
+  console.log('[versions] electron', process.versions.electron);
+  for (const u of process.argv.slice(1).filter((a) => a.startsWith('https://'))) {
+    try { const r = await net.fetch(u); console.log('[chromium]', u, '-> HTTP', r.status, 'TRUSTED'); }
+    catch (e) { console.log('[chromium]', u, '->', e.message); }
+    console.log('[node https]', u, '->', await nodeGet(u));
+  }
+  app.quit();
+});
+JS
+echo '{"name":"cachk","version":"1.0.0","main":"main.js"}' > /tmp/cachk/package.json
+python3 - "$S/resources/app.asar" /tmp/cachk/main.js /tmp/cachk/package.json <<'PY'
+import json, struct, sys, pathlib
+out, entries, blobs, off = pathlib.Path(sys.argv[1]), {}, [], 0
+for f in sys.argv[2:]:
+    b = pathlib.Path(f).read_bytes(); entries[pathlib.Path(f).name] = {"size": len(b), "offset": str(off)}; off += len(b); blobs.append(b)
+hdr = json.dumps({"files": entries}).encode(); pad = (4 - len(hdr) % 4) % 4
+payload = struct.pack("<I", len(hdr)) + hdr + b"\0" * pad
+header = struct.pack("<I", len(payload)) + payload
+out.write_bytes(struct.pack("<II", 4, len(header)) + header + b"".join(blobs))
+PY
+
+# 2) 影コピーを作って起こす(例は Claude Desktop。ClickUp は APP=/opt/clickup BIN=ClickUp、Discord は APP=~/.config/discord/app-<版> BIN=Discord に読み替える)
+APP=/usr/lib/claude-desktop; BIN=claude-desktop
+for f in "$APP"/*; do n=$(basename "$f"); case "$n" in resources) ;; "$BIN") cp -f "$f" "$S/$n";; *) ln -sfn "$f" "$S/$n";; esac; done
+for f in "$APP"/resources/*; do n=$(basename "$f"); case "$n" in app|app.asar|app.asar.unpacked) ;; *) ln -sfn "$f" "$S/resources/$n";; esac; done
+CACHK_USERDATA=$S/userdata "$S/$BIN" --no-sandbox --disable-gpu --user-data-dir="$S/userdata" "$CHECKER" https://www.google.com/ 2>&1 | grep '^\['
+```
+
+checker が `HTTP 200 TRUSTED` で返れば、そのアプリは同梱の Electron ごと修正前です。`ERR_CERT_AUTHORITY_INVALID` や `ERR_CERT_REVOKED` で止まれば拒否しています。通常サイトが 200 で返ることも一緒に見て、checker の失敗がネットワークのせいでないことを確かめてください。
+
+最後に、修正の有無はバイナリを読むだけでも分かります。Electron の修正は root を削るのではなく、中間 CA の SPKI の SHA-256 をブロックリストに焼き込む形なので、root「emSign ECC Root CA - G3」の DER は修正版の electron にも残っています。root の有無で判定しないでください。checker の chain から中間 CA の SPKI ハッシュ(生の 32 バイト)を計算し、それがバイナリにあれば修正版、無ければ修正前と読めます。ただし、中間証明書を取り出せなかったときの `not patched` は修正前の証拠になりません。空入力の SHA-256 も 32 バイトになるので、取り出した証明書の名前を確かめてから比較し、確かめられなければ「未検証」と記録してください。
+
+```bash
+H=${CHECKER#https://}; H=${H%%/*}
+INTERMEDIATE_CN='EM DV TLS CA - G3B'   # 問題の中間 CA の名前。事故ごとに置き換える
+set -o pipefail
+openssl s_client -connect "$H:443" -servername "$H" -showcerts </dev/null 2>/dev/null \
+  | awk '/BEGIN CERT/{n++} n==2' > /tmp/cachk/intermediate.pem
+if openssl x509 -in /tmp/cachk/intermediate.pem -noout -subject 2>/dev/null | grep -qF "$INTERMEDIATE_CN"; then
+  openssl x509 -in /tmp/cachk/intermediate.pem -noout -pubkey \
+    | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary > /tmp/cachk/spki.bin
+  python3 -c 'import sys, pathlib; k = pathlib.Path(sys.argv[1]).read_bytes()
+assert len(k) == 32, "未検証: SPKI ハッシュを計算できなかった"
+for b in sys.argv[2:]: print(b, "patched (blocklist entry present)" if k in pathlib.Path(b).read_bytes() else "not patched")' \
+    /tmp/cachk/spki.bin /usr/lib/electron43/electron /usr/lib/claude-desktop/claude-desktop /usr/lib/slack/slack /opt/clickup/ClickUp
+else
+  echo "未検証: checker から $INTERMEDIATE_CN の証明書を取り出せなかった"
+fi
 ```
 
 ## 5. Nix の cacert を参照するパッケージを洗い出す
@@ -91,5 +154,5 @@ nix eval --raw github:NixOS/nixpkgs/nixos-unstable#cacert.version
 
 - **node に `--use-system-ca` を付けても信頼したまま**: `--use-system-ca` は同梱の束に OS の束を追加する動きなので、同梱の束にある問題のルートは消えません。同梱の束を捨てて OS の束に置き換える `--use-openssl-ca` を使います。
 - **mise の mirror 設定を checker に向けても `mise ls-remote` が成功する**: `ls-remote` は版の一覧をキャッシュから読むので mirror に接続しません。`mise install node@<版>` で実際のダウンロードを起こすと判定できます。
-- **pip に `--cert` や `PIP_CERT` を渡しても信頼したまま**: 2026-10 の実測では pip 26.1.2 がどの指定でも問題のチェーンを通し、原因は特定できていません。pip 26.2.2 に上げると拒否に変わりました。
+- **pip に `--cert` や `PIP_CERT` を渡しても信頼したまま**: pip 24.2 以降は既定で truststore を使い、`pip/_internal/cli/index_command.py` の `_create_truststore_ssl_context()` が、システムの信頼ストアで検証する SSL コンテキストに `ctx.load_verify_locations(certifi.where())` で同梱の certifi の束を足します。検証はシステムの束と同梱の束の和集合になるので、同梱の certifi に問題のルートが残っているかぎり、`--cert`・`PIP_CERT`・`REQUESTS_CA_BUNDLE` で束を差し替えても通してしまいます。2026-10 の実測では pip 26.1.2(certifi 2026.06.17 同梱)がどの指定でも問題のチェーンを通し、pip 26.2.2(certifi 2026.10.19 同梱)に上げると拒否に変わりました。truststore が opt-in だった pip 24.0 と 24.1.2 は、`REQUESTS_CA_BUNDLE` の束だけで拒否しました。venv の pip も同じ構造なので、古い venv では `python -m pip install -U pip` を個別に実行してください。
 - **Vivaldi で checker を開いても証明書エラーのページにならない**: CRLSet が古い可能性があります。`vivaldi://components`(Chromium では `chrome://components`)で CRLSet を更新してから開き直します。
