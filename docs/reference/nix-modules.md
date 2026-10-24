@@ -48,10 +48,33 @@
 
 ### herdr.nix
 
-`herdr.nix` は、herdr (agent multiplexer、tmuxの後継) に関する次の 3 つを管理します。
+`herdr.nix` は、herdr (agent multiplexer、tmuxの後継) に関する次の 4 つを管理します。
 - herdr パッケージ (flake.nix の overlay 経由で新しい nixpkgs から供給)
 - `.config/herdr/config.toml` のシンボリックリンク (keybindは旧tmux設定互換)
 - device-auth の承認 URL を、herdr の中では terminal-browser の pane に開く `$BROWSER` ラッパー (Issue #523, #701)。terminal-browser 本体は `terminal-browser.nix` が native 機だけに入れる。
+- herdr 公式の Claude Code 用フックを、`~/.claude/hooks/herdr-agent-state.sh` に置きます (Issue #755)。仕組みと制約は、次の「Claude Code の pane の復元」に書きます。
+
+#### Claude Code の pane の復元
+
+herdr は、server を止めて起動し直したときに、Claude Code の pane を `claude --resume <id>` で会話ごと再開します。再開に使う session ID は、herdr 公式の Claude Code 用フックが Claude Code の `SessionStart` のたびに herdr へ報告します。フックが入っていないか、フックを呼ぶエントリが `settings.json` に無いと、herdr は session ID を受け取れません。その場合、pane は保存されたディレクトリの普通のシェルとして戻ります。herdr の sidebar と `herdr agent list` は画面の検出で agent を見分けて再開しない pane も `claude` と表示するので、見た目では配線の欠けに気づけません。
+
+公式インストーラ `herdr integration install claude` は `~/.claude/settings.json` に書き込もうとしますが、このリポジトリではこのファイルが home-manager の読み取り専用の symlink なので失敗します。そこでこのリポジトリは、インストーラを Nix のビルドの中で生成器として実行し、生成されたスクリプトを home-manager で配ります。本物の `~/.claude` に対してインストーラを実行しないでください。
+
+次の表は、復元を支える部品と置き場所を並べたものです。
+
+| 部品 | 置き場所 | 役割 |
+|---|---|---|
+| フックのスクリプトの生成 | `flake.nix` の overlay (`pkgs.herdr-claude-hook`) | ビルド時に `CLAUDE_CONFIG_DIR=$out herdr integration install claude` を実行し、flake で固定した herdr と同じ版のスクリプトを作る。スクリプトの中の `python3` は Nix の python3 の絶対パスに置き換える。単体のビルドは `nix build .#herdr-claude-hook` |
+| フックのスクリプトの配置 | `nix/modules/herdr.nix` | 生成したスクリプトを `~/.claude/hooks/herdr-agent-state.sh` に置く。`home.nix` の `".claude"` の recursive マウントの下に、`statusline-command.sh` と同じ形の個別エントリで足す。`.config/claude/` には `hooks/` が無いので、recursive マウントとは衝突しない |
+| フックを呼ぶエントリ | `.config/claude/settings.json` の `hooks.SessionStart` | matcher `^(startup\|resume\|clear\|compact\|fork)$` で `bash $HOME/.claude/hooks/herdr-agent-state.sh session` を呼ぶ。手書きで、既存の `inject_core_memory.sh` のエントリとは別のエントリにしてある |
+| エントリの検査 | `flake.nix` の `checks.herdr-claude-hook-entries` と `nix/checks/herdr_claude_hook_entries.sh` | インストーラが生成した `settings.json` のエントリと、手書きのエントリを比べる。比べるのは、イベント名・matcher・スクリプトの後ろの引数・timeout の 4 つ。手書きの `SessionStart` に herdr のエントリが無いときも落ちる |
+
+この配線には、次の制約があります。
+
+- **起動フラグは復元されません。** herdr が組み立てる再開コマンドは `claude --resume <id>` だけです。`/wt` の作業者のように `--permission-mode` などのフラグを付けて起動した pane は、再開した後にそのフラグを失います。
+- **`herdr integration status` は、フックを呼ぶエントリを見ません。** status はスクリプトの存在と版だけを見て `claude: current (vN)` と表示するので、エントリが無くても正常に見えます。エントリの有無は、上の検査で確かめます。
+
+herdr の版が上がったとき (週次の `flake.lock` の自動更新 PR を含む) は、手元で `mise run nix:check` を実行してください。スクリプトは flake の更新で自動的に新しい版になりますが、エントリは手書きなので、herdr が matcher などを変えるとずれます。ずれていれば `checks.herdr-claude-hook-entries` が生成物と手書きの差分を表示して落ちるので、表示に合わせて `.config/claude/settings.json` を直します。CI の `check` ジョブは `nix flake check --no-build` なので、この検査を実行しません。herdr がスクリプトの形を変えて `python3` の置き換えが当たらなくなったときは、`substituteInPlace --replace-fail` が `pkgs.herdr-claude-hook` のビルドを落とします。このビルドの失敗は、CI の `verify-docker` ジョブでも起きます。
 
 ### neovim.nix
 

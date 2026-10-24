@@ -21,6 +21,8 @@ mise tasks
 | `mise run nix:update` | Flake inputs を更新 | `nix flake update` |
 | `mise run nix:gc` | 古い世代をガベージコレクト | `nix-collect-garbage -d` |
 
+`nix:check` は、flake の `checks` 出力もビルドして実行する。いまの検査は、herdr の Claude Code 用フックを呼ぶ hooks のエントリが、herdr のインストーラの生成物とずれていないかを見る `checks.herdr-claude-hook-entries` である。herdr の版が上がったときは、このタスクを手元で実行する。CI の `check` ジョブは `nix flake check --no-build` なので、この検査を実行しない（[nix-modules.md の「Claude Code の pane の復元」](./nix-modules.md#claude-code-の-pane-の復元)、[#755](https://github.com/music-brain88/dotfiles/issues/755)）。
+
 `nix:build` と `nix:switch` は、profile を `uname -r` から自動判別する。WSL カーネル (`microsoft` を含む) なら `archie-wsl` を使い、それ以外なら `archie` を使う。そのため、両マシンで実行するコマンドは同一である。
 
 次の表は、mise タスクではないが、あわせてよく使うNix関連コマンドを並べたものである。

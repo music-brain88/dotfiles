@@ -18,7 +18,7 @@ dotfiles/
 │   ├── reference/           # 逆引き向け
 │   └── explanation/         # 理解向け
 ├── llm/                     # LLM コンテキストファイル
-├── nix/                     # Nix モジュール
+├── nix/                     # Nix モジュールと flake の検査
 ├── tools/                   # 自作ツールのソース (Rust、flake の overlay でパッケージ化)
 ├── .mise.toml               # タスクランナー設定
 ├── flake.nix                # Nix Flake エントリーポイント
@@ -170,6 +170,16 @@ Home Manager の設定は、`nix/modules/` の下でモジュールに分けて�
 | `wsl.nix` | WSL 固有: Obsidian vault symlink と Windows 側 WezTerm/Alacritty 設定の配布 — wsl profile のみ |
 
 profile 分割の設計意図は [architecture.md の Per-Host Profiles](../explanation/architecture.md#-per-host-profiles) に書いてある。
+
+---
+
+## 📁 nix/checks/ - Flake Checks
+
+`nix/checks/` には、`flake.nix` の `checks` 出力が呼ぶ検査スクリプトを置く。`mise run nix:check` (`nix flake check`) がこれらを実行する。CI の `check` ジョブは `nix flake check --no-build` なので、評価だけして実行しない。
+
+| File | Description |
+|------|-------------|
+| `herdr_claude_hook_entries.sh` | herdr の Claude Code 用フックを呼ぶ hooks のエントリを、herdr のインストーラが生成した `settings.json` と `.config/claude/settings.json` とで比べる (`checks.herdr-claude-hook-entries`、Issue #755)。詳細は [nix-modules.md の「Claude Code の pane の復元」](./nix-modules.md#claude-code-の-pane-の復元) |
 
 ---
 

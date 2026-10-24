@@ -43,6 +43,7 @@ changes ─┬─→ build-image ─┬─→ verify-docker
 - `build-image` と `check` はどちらも `needs: changes` のみなので**並列実行**される。`verify-docker` は両方の完了を待つ。
 - `changes` 以外の3ジョブは `if: needs.changes.outputs.code == 'true'` を持ち、docs 等のみの変更では skip される。skip されたジョブは required status checks 上は成功扱いになる。
 - トリガーに `paths-ignore` を使わずこの構成にしているのは、トリガー段階で workflow を止めるとチェックが一切報告されず、PR が「Expected — waiting for status」のままマージ不能になるためである（[#312](https://github.com/music-brain88/dotfiles/issues/312)）。
+- `check` ジョブの `nix flake check --no-build` は、flake の `checks` 出力を評価するだけで、ビルドも実行もしない。そのため、herdr の Claude Code 用フックのエントリの検査 `checks.herdr-claude-hook-entries` は CI では走らず、手元の `mise run nix:check` で走る（[nix-modules.md の「Claude Code の pane の復元」](./nix-modules.md#claude-code-の-pane-の復元)、[#755](https://github.com/music-brain88/dotfiles/issues/755)）。
 - `check` ジョブの shellcheck は、runner にプリインストールされた版ではなく、`flake.lock` が固定する nixpkgs の版で走る。ジョブは flake の app を `nix run .#shellcheck` で呼び、app は版を表示してから `git ls-files '*.sh' | xargs --no-run-if-empty shellcheck` を実行する。手元では `mise run lint:shellcheck` が同じ app を呼ぶので、手元と CI で版と対象が一致する。mise が無い環境では `nix run .#shellcheck` を直接実行すればよい（[#665](https://github.com/music-brain88/dotfiles/issues/665)）。
 
 ### Container Configuration
