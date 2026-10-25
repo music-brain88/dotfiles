@@ -95,6 +95,40 @@
           (final: prev: {
             herdr = inputs.nixpkgs-herdr.legacyPackages.${system}.herdr;
           })
+          # herdr 公式の Claude Code 用フック (Issue #755)。herdr は、このフックが報告した
+          # session ID で、server の再起動後に Claude Code の pane を `claude --resume <id>` で
+          # 再開する。公式インストーラは ~/.claude/settings.json に書き込もうとするが、この
+          # ファイルは home-manager の読み取り専用の symlink なので、利用者の環境では失敗する。
+          # そこでインストーラをビルド時の生成器として使い、上の herdr と同じ版のスクリプトを作る。
+          # $out/hooks/herdr-agent-state.sh は nix/modules/herdr.nix が ~/.claude/hooks/ に置く。
+          # $out/settings.json はどこにも置かず、checks.herdr-claude-hook-entries が
+          # .config/claude/settings.json の手書きのエントリと比べるためだけに使う。
+          # herdr's official Claude Code hook (Issue #755). herdr resumes a Claude Code pane
+          # after a server restart with `claude --resume <id>`, using the session ID this hook
+          # reports. The official installer writes ~/.claude/settings.json, which is a read-only
+          # home-manager symlink here, so it fails on the live machine. Run it as a build-time
+          # generator instead, so the script always matches the herdr pinned above.
+          # nix/modules/herdr.nix links $out/hooks/herdr-agent-state.sh into ~/.claude/hooks/.
+          # $out/settings.json is not deployed; checks.herdr-claude-hook-entries only compares
+          # it with the hand-written entry in .config/claude/settings.json.
+          (final: prev: {
+            herdr-claude-hook = prev.runCommand "herdr-claude-hook-${final.herdr.version}"
+              {
+                nativeBuildInputs = [ final.herdr ];
+              } ''
+              # 出力先のディレクトリが無いと、インストーラは "claude directory not found" で失敗する
+              # The installer fails with "claude directory not found" unless the directory exists
+              mkdir -p "$out"
+              CLAUDE_CONFIG_DIR="$out" herdr integration install claude
+              # フックは python3 が PATH に無いと何も言わずに終わるので、Nix の python3 に固定する。
+              # --replace-fail は、herdr がスクリプトの形を変えたときにビルドを落として知らせる。
+              # The hook silently exits when python3 is not on PATH, so pin Nix's python3.
+              # --replace-fail breaks the build if herdr changes the shape of the script.
+              substituteInPlace "$out/hooks/herdr-agent-state.sh" \
+                --replace-fail 'command -v python3 ' 'command -v ${final.python3}/bin/python3 ' \
+                --replace-fail 'python3 - <<' '${final.python3}/bin/python3 - <<'
+            '';
+          })
           # terminal-browser (zenbu-labs/terminal-browser、MIT): Electron の画面外の描画で
           # ページを描き、kitty graphics で端末へ送るブラウザ。device-auth の承認ページを
           # herdr の pane で開くために使う (Issue #701)。nixpkgs には無いので、GitHub の
@@ -246,9 +280,30 @@
           "archie-wsl" = mkHome "wsl";
         };
 
-      # 自作ツールを `nix build .#standalone-check` で単体ビルドできるように出す
-      # Expose the in-repo tool so `nix build .#standalone-check` works on its own
-      packages.${system}.standalone-check = pkgs.standalone-check;
+      packages.${system} = {
+        # 自作ツールを `nix build .#standalone-check` で単体ビルドできるように出す
+        # Expose the in-repo tool so `nix build .#standalone-check` works on its own
+        standalone-check = pkgs.standalone-check;
+        # herdr の Claude Code 用フックを `nix build .#herdr-claude-hook` で単体ビルドして確かめられるように出す
+        # Expose the generated herdr hook so `nix build .#herdr-claude-hook` can inspect it on its own
+        herdr-claude-hook = pkgs.herdr-claude-hook;
+      };
+
+      # `nix flake check` (`mise run nix:check`) で走る検査。CI の check ジョブは
+      # `nix flake check --no-build` なので、評価だけして中身は実行しない。
+      # Checks run by `nix flake check` (`mise run nix:check`). The CI check job uses
+      # `nix flake check --no-build`, which evaluates them without running them.
+      checks.${system}.herdr-claude-hook-entries = pkgs.runCommand "herdr-claude-hook-entries"
+        {
+          nativeBuildInputs = [ pkgs.jq ];
+        } ''
+        # 手書きのエントリが、herdr のインストーラが生成したエントリとずれていないかを見る (Issue #755)
+        # Fail when the hand-written entry drifts from the one herdr's installer generates (Issue #755)
+        bash ${./nix/checks/herdr_claude_hook_entries.sh} \
+          ${pkgs.herdr-claude-hook}/settings.json \
+          ${./.config/claude/settings.json}
+        touch "$out"
+      '';
 
       # shellcheck の入口: CI と mise の lint:shellcheck の両方がこれを呼ぶ (#665)。
       # 版の正は flake.lock の nixpkgs。runner や手元の PATH の shellcheck は使わない。
