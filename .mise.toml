@@ -104,15 +104,19 @@ description = "Run the tests of the wtclean harvest search script (fixtures only
 run = "bash .config/claude/skills/wtclean/tests/harvest_search_test.sh"
 
 [tasks."memory:index"]
-description = "Build the AgentMemory indexes: index/*.md and the marked region of each root MEMORY.md from memory frontmatter, plus sessions/INDEX.md, sessions/YYYY-MM.md from the session notes and episodes/INDEX.md on a full run"
+description = "Build the AgentMemory indexes: index/*.md and the marked region of each root MEMORY.md from memory frontmatter, plus sessions/INDEX.md, sessions/YYYY-MM.md from the session notes and episodes/INDEX.md on a full run; after writing, exit 1 and list the longest lines when a root is over 200 lines / 25,000 bytes"
 # 各記憶の frontmatter から枝の索引(index/*.md)と root MEMORY.md のマーカー区間を作る。--project を付けない全体実行では、
 # セッションノートから sessions/INDEX.md と月別の sessions/YYYY-MM.md を、私記から episodes/INDEX.md も作る。既定は実物の vault に書く。
+# 書いた後に各 root を --check と同じ判定で検問し、上限超えなら長い行の上位 3 件を標準エラーに並べて終了コード 1(書き込みは止めない)。
+# 目標超えは警告だけ。description が 600 バイトを超える記憶も警告する(切り詰めない)。
 # Writes into the real vault by default; pass --root <copy> to try it on a copy (--vault defaults to its parent), --project <name> to limit it.
+# After writing, each root is gated like --check: over the limit lists its longest lines and exits 1 (the files stay written),
+# over the target only warns; a description over 600 bytes is warned about and kept uncut.
 run = "python3 -I .config/claude/scripts/build_memory_index.py"
 
 [tasks."memory:index-check"]
-description = "Report the size of each AgentMemory root MEMORY.md (and of the sessions / episodes indexes) and exit 1 when a root is over 200 lines / 25,000 bytes (writes nothing)"
-# 各プロジェクトの root の行数とバイト数を表にする。上限(200 行 / 25,000 バイト)を超えたら終了コード 1。何も書かない。
+description = "Report the size of each AgentMemory root MEMORY.md (and of the sessions / episodes indexes) and exit 1, listing the longest lines, when a root is over 200 lines / 25,000 bytes (writes nothing)"
+# 各プロジェクトの root の行数とバイト数を表にする。上限(200 行 / 25,000 バイト)を超えたら長い行の上位 3 件を標準エラーに並べて終了コード 1。何も書かない。
 # Prints lines and bytes of every root against the limit and the 100-line / 15,000-byte target. Read-only.
 run = "python3 -I .config/claude/scripts/build_memory_index.py --check"
 

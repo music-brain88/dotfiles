@@ -2,6 +2,7 @@
   "model": "fable",
   "effortLevel": "xhigh",
   "autoMemoryDirectory": "~/Documents/Obsidian/AgentMemory/home",
+  "idleCompaction": false,
   "statusLine": {
     "type": "command",
     "command": "bash $HOME/.claude/statusline-command.sh"

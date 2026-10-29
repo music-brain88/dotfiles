@@ -287,6 +287,73 @@ class BuildMemoryIndexTest(unittest.TestCase):
         self.assertIn("over", result.stdout)
         self.assertFalse(self.exists("beta/index"))
 
+    # (6b) A root over the limit is written, then fails with its longest lines, on every run
+    # 上限を超えた root は書いたうえで、長い行とともに終了コード 1。2 回目の実行でも同じ
+    def test_root_over_the_limit_is_written_and_exits_1(self):
+        self.make_alpha()
+        big = "x" * 26000
+        self.write("beta/feedback_big.md", memory("big", big, "feedback"))
+        self.write("beta/feedback_small.md", memory("small", "Small rule", "feedback"))
+        for run in ("first", "second"):
+            with self.subTest(run):
+                result = self.run_script()
+                self.assertEqual(result.returncode, 1, result.stderr)
+                # The writes and the summary are not stopped / 書き込みと summary は止めない
+                self.assertIn("書き換えたファイル: ", result.stdout)
+                if run == "second":
+                    self.assertIn("書き換えたファイル: 0 本", result.stdout)
+                data = self.read_bytes("beta/MEMORY.md")
+                self.assertIn(f"- [big](feedback_big.md) — {big}\n", data.decode("utf-8"))
+                self.assertIn(
+                    f"error: beta/MEMORY.md: {len(data.splitlines())} 行 / {len(data)} バイトで、"
+                    "上限の 200 行 / 25000 バイトを超えている",
+                    result.stderr,
+                )
+                longest = len(f"- [big](feedback_big.md) — {big}".encode("utf-8"))
+                listed = re.findall(r"^  長い行: (\d+) バイト: (.*)$", result.stderr, re.M)
+                self.assertEqual(len(listed), 3)
+                self.assertEqual(listed[0], (str(longest), "feedback_big.md"))
+                self.assertIn("上限を超えた root: 1 本", result.stderr)
+                # The healthy project is neither reported nor left unwritten / 正常なプロジェクトは名指しされず、書かれている
+                self.assertNotIn("alpha/MEMORY.md", result.stderr)
+                self.assertTrue(self.exists("alpha/index/project.md"))
+        # --check lists the same long lines on stderr / --check も同じ長い行を標準エラーに並べる
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(f"  長い行: {longest} バイト: feedback_big.md", result.stderr)
+        self.assertNotIn("長い行", result.stdout)
+
+    # (6c) A root over the target only is warned about, exit 0 / 目標を超えただけの root は警告だけで終了コード 0
+    def test_root_over_the_target_only_warns(self):
+        self.make_alpha()
+        for i in range(120):
+            self.write(f"beta/feedback_rule_{i:03}.md", memory(f"rule-{i:03}", f"Rule {i}", "feedback"))
+        result = self.build()
+        data = self.read_bytes("beta/MEMORY.md")
+        self.assertGreater(len(data.splitlines()), 100)
+        self.assertIn(
+            f"warning: beta/MEMORY.md: {len(data.splitlines())} 行 / {len(data)} バイトで、"
+            "目標の 100 行 / 15000 バイトを超えている",
+            result.stderr,
+        )
+        self.assertNotIn("長い行", result.stderr)
+        self.assertNotIn("上限を超えた root", result.stderr)
+
+    # (6d) A description over the budget is warned about and indexed uncut
+    # 予算を超えた description は警告し、索引には切り詰めずに載せる
+    def test_description_over_the_budget_is_warned_and_kept(self):
+        self.make_alpha()
+        long_description = "あ" * 201
+        self.write("alpha/feedback_long.md", memory("long", long_description, "feedback"))
+        self.write("alpha/feedback_edge.md", memory("edge", "y" * 600, "feedback"))
+        result = self.build()
+        self.assertIn(
+            "warning: alpha/feedback_long.md: description が 603 バイトあり、予算の 600 バイトを超えている",
+            result.stderr,
+        )
+        self.assertNotIn("feedback_edge.md", result.stderr)
+        self.assertIn(f"- [long](feedback_long.md) — {long_description}\n", self.read("alpha/MEMORY.md"))
+
     # (7) Broken markers stop the run with 2, nothing written / 壊れたマーカーは終了コード 2、何も書かない
     def test_broken_markers_exit_2_without_writing(self):
         self.make_alpha()
