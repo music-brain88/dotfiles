@@ -3,6 +3,10 @@
   "effortLevel": "xhigh",
   "autoMemoryDirectory": "~/Documents/Obsidian/AgentMemory/home",
   "idleCompaction": false,
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "statusLine": {
     "type": "command",
     "command": "bash $HOME/.claude/statusline-command.sh"
