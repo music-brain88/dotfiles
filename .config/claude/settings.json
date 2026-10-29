@@ -4,7 +4,8 @@
   "autoMemoryDirectory": "~/Documents/Obsidian/AgentMemory/home",
   "idleCompaction": false,
   "attribution": {
-    "commit": ""
+    "commit": "",
+    "pr": ""
   },
   "statusLine": {
     "type": "command",
