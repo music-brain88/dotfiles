@@ -24,7 +24,15 @@ episodes/INDEX.md を作る。
 Usage / 使い方:
   python3 -I build_memory_index.py [--root PATH] [--vault PATH] [--project NAME] [--check]
 
-Exit status / 終了コード: 0 ok, 1 --check found a root over the limit, 2 bad input.
+After writing, every planned root is checked like --check: a root over the limit
+is reported with its longest lines (exit 1, the files are still written), a root
+over the target only is warned about. A description over DESCRIPTION_BYTES is
+warned about and indexed as it is.
+書き込みの後、計画した各 root を --check と同じ判定で検問する。上限を超えた root は
+長い行の上位とともに知らせて終了コード 1 にする(ファイルは書いたまま)。目標を超えただけの
+root は警告だけ出す。description が DESCRIPTION_BYTES を超える記憶は警告し、切り詰めずに載せる。
+
+Exit status / 終了コード: 0 ok, 1 a root is over the limit (after writing, or with --check), 2 bad input.
 Standard library only, no PyYAML / 標準ライブラリだけで動く(PyYAML は使わない)。
 """
 
@@ -83,8 +91,15 @@ EPISODES_NOTE = (
 
 # Claude Code stops reading MEMORY.md here / Claude Code が MEMORY.md を読むのはここまで
 LIMIT_LINES, LIMIT_BYTES = 200, 25000
-# Aim, shown in the --check table only / 目標。--check の表に出すだけで終了コードには効かせない
+# Aim, warned about but never in the exit status / 目標。警告や表に出すだけで終了コードには効かせない
 TARGET_LINES, TARGET_BYTES = 100, 15000
+# UTF-8 bytes one description may take; longer ones are warned about, never cut,
+# since a cut would hide what the index leaves out in another way.
+# 記憶 1 件の description の予算(UTF-8 のバイト数)。超えたら警告するが切り詰めない。
+# 切り詰めると、索引の欠け方が見えなくなる問題を別の形で作るため。
+DESCRIPTION_BYTES = 600
+# Longest lines listed for a root over the limit / 上限を超えた root について並べる長い行の件数
+LONG_LINES = 3
 
 TOP_KEY = re.compile(r"^([A-Za-z_][\w-]*):(?:\s(.*))?$")
 NESTED_KEY = re.compile(r"^  ([A-Za-z_][\w-]*):(?:\s(.*))?$")
@@ -253,6 +268,15 @@ def load_memories(project_dir, project):
             warn(project, entry, "name が無いのでファイル名を使う")
         if not top.get("description"):
             warn(project, entry, "description が無い")
+        description = top.get("description", "")
+        size = len(description.encode("utf-8")) if isinstance(description, str) else 0
+        if size > DESCRIPTION_BYTES:
+            warn(
+                project,
+                entry,
+                f"description が {size} バイトあり、予算の {DESCRIPTION_BYTES} バイトを超えている"
+                "(切り詰めずに索引へ載せる。経過は本文へ移す)",
+            )
         memories.append(
             Memory(
                 file=entry,
@@ -800,6 +824,40 @@ def list_projects(root, only):
     return [only]
 
 
+def size_status(lines, size):
+    """(within the limit, within the target) of a root, shared by build and --check.
+    root が上限内か・目標内か。書き出し後の検問と --check の両方がこの判定を使う。
+    """
+    return (
+        lines <= LIMIT_LINES and size <= LIMIT_BYTES,
+        lines <= TARGET_LINES and size <= TARGET_BYTES,
+    )
+
+
+def long_lines(data, count=LONG_LINES):
+    """The longest lines of a root as (UTF-8 bytes, memory file or the first 60 characters).
+    root の長い行の上位を (UTF-8 のバイト数, 行が指す記憶ファイル名か先頭 60 文字) で返す。
+    """
+    ranked = sorted(data.splitlines(), key=len, reverse=True)[:count]
+    rows = []
+    for raw in ranked:
+        line = raw.decode("utf-8", errors="replace")
+        rows.append((len(raw), inbox_target(line) or line[:60]))
+    return rows
+
+
+def report_over_limit(project, data):
+    """Tell which root is over the limit and which lines make it so / 上限を超えた root と長い行を知らせる"""
+    lines, size = len(data.splitlines()), len(data)
+    print(
+        f"error: {project}/MEMORY.md: {lines} 行 / {size} バイトで、上限の "
+        f"{LIMIT_LINES} 行 / {LIMIT_BYTES} バイトを超えている(Claude Code は上限より後ろを読まない)",
+        file=sys.stderr,
+    )
+    for length, label in long_lines(data):
+        print(f"  長い行: {length} バイト: {label}", file=sys.stderr)
+
+
 def build(root, projects, vault=None):
     # Plan every project first, so a broken root stops the run before any write
     # 先に全プロジェクトを計算し、壊れた root が 1 つでもあれば 1 ファイルも書かずに止める
@@ -829,6 +887,30 @@ def build(root, projects, vault=None):
         written += apply_plan(root, plan)
         print(plan.summary)
     print(f"書き換えたファイル: {written} 本")
+    # Gate every planned root, written or unchanged, after all writes: an index over the
+    # limit is still written, and an unchanged one keeps failing on every later run.
+    # 書き込みを全部終えてから、計画した全 root(書かなかった同じ内容の root も含む)を検問する。
+    # 上限を超えた索引も書いたうえで知らせ、変わらないまま超えている root も毎回知らせる。
+    over = 0
+    for plan in plans:
+        content = plan.files.get("MEMORY.md")
+        if content is None:
+            continue
+        data = content.encode("utf-8")
+        lines, size = len(data.splitlines()), len(data)
+        within_limit, within_target = size_status(lines, size)
+        if not within_limit:
+            over += 1
+            report_over_limit(plan.project, data)
+        elif not within_target:
+            warn(
+                plan.project,
+                "MEMORY.md",
+                f"{lines} 行 / {size} バイトで、目標の {TARGET_LINES} 行 / {TARGET_BYTES} バイトを超えている",
+            )
+    if over:
+        print(f"上限を超えた root: {over} 本", file=sys.stderr)
+        return 1
     return 0
 
 
@@ -846,11 +928,12 @@ def shared_rows(root):
 
 
 def check(root, projects, shared=False):
-    rows = []
+    rows, contents = [], {}
     for project in projects:
         data = read_bytes(os.path.join(root, project, "MEMORY.md"))
         if data is not None:
             rows.append((project, len(data.splitlines()), len(data)))
+            contents[project] = data
     # Read on demand, so no limit applies; listed for their size only
     # 必要なときに Read で開くものなので上限は無い。大きさを見るためだけに表に出す
     extra = shared_rows(root) if shared else []
@@ -858,11 +941,11 @@ def check(root, projects, shared=False):
     target = f"target({TARGET_LINES}/{TARGET_BYTES})"
     width = max([len("project")] + [len(row[0]) for row in rows + extra])
     print(f"{'project':<{width}}  {'lines':>5}  {'bytes':>6}  {limit}  {target}")
-    over = 0
+    over = []
     for project, lines, size in rows:
-        within_limit = lines <= LIMIT_LINES and size <= LIMIT_BYTES
-        within_target = lines <= TARGET_LINES and size <= TARGET_BYTES
-        over += not within_limit
+        within_limit, within_target = size_status(lines, size)
+        if not within_limit:
+            over.append(project)
         print(
             f"{project:<{width}}  {lines:>5}  {size:>6}  "
             f"{'ok' if within_limit else 'OVER':<{len(limit)}}  {'ok' if within_target else 'over'}"
@@ -870,7 +953,11 @@ def check(root, projects, shared=False):
     for label, lines, size in extra:
         print(f"{label:<{width}}  {lines:>5}  {size:>6}  {'-':<{len(limit)}}  -")
     if over:
-        print(f"上限を超えた root: {over} 本", file=sys.stderr)
+        # The table stays on stdout as it was; the long lines go to stderr
+        # 標準出力の表の形は変えず、長い行の列挙は標準エラーに出す
+        for project in over:
+            report_over_limit(project, contents[project])
+        print(f"上限を超えた root: {len(over)} 本", file=sys.stderr)
         return 1
     return 0
 
