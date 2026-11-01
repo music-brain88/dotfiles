@@ -67,19 +67,27 @@ bind x run-shell "your-command"
 
 ## Adding Hyprland Keybindings
 
-Hyprland のキーバインドは、`.config/hypr/keybinds.conf` に `bind` で追加します。次のコードブロックの後半は、サブマップ(モード)を使う場合の書き方です。
+Hyprland のキーバインドは、`.config/hypr/keybinds.lua` に `hl.bind` で追加します。Hyprland 0.57 から設定は Lua で書きます(`.conf` 形式は読まれません)。次のコードブロックの後半は、サブマップ(モード)を使う場合の書き方です。
+
+```lua
+-- .config/hypr/keybinds.lua
+-- Super + X でカスタムコマンドを実行
+hl.bind(mainMod .. " + X", hl.dsp.exec_cmd("your-command"))
+
+-- サブマップ（モード）を使う場合
+hl.bind(mainMod .. " + X", hl.dsp.submap("mymode"))
+hl.define_submap("mymode", function ()
+  hl.bind("A", hl.dsp.exec_cmd("command-a"))
+  hl.bind("Escape", hl.dsp.submap("reset"))
+end)
+```
+
+長押しでリピートするキーは第 3 引数に `{ repeating = true }` を、ロック画面でも効かせるキーは `{ locked = true }` を渡します。使える dispatcher の一覧は `/usr/share/hypr/stubs/hl.meta.lua` と Hyprland wiki の Dispatchers のページにあります。
+
+追加したら、次のコマンドで設定を検証します。Hyprland は起動せず、成功すると `config ok` を出します。
 
 ```bash
-# .config/hypr/keybinds.conf
-# Super + x でカスタムコマンドを実行
-bind = $mainMod, X, exec, your-command
-
-# サブマップ（モード）を使う場合
-bind = $mainMod, X, submap, mymode
-submap = mymode
-bind = , A, exec, command-a
-bind = , Escape, submap, reset
-submap = reset
+Hyprland --verify-config -c .config/hypr/hyprland.lua
 ```
 
 ---

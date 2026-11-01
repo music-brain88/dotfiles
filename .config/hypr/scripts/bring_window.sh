@@ -11,6 +11,16 @@ set -euo pipefail
 
 mode="${1:-bring}"
 
+# Hyprland 0.57 から hyprctl dispatch の引数は Lua 式になった。ワークスペース名などの値を
+# Lua の文字列リテラルとして埋め込むため、\ と " をエスケープして "..." で囲む
+# Since Hyprland 0.57 `hyprctl dispatch` takes a Lua expression. To embed values such as a
+# workspace name as a Lua string literal, escape \ and " and wrap the result in "..."
+lua_str() {
+  local s="${1//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  printf '"%s"' "$s"
+}
+
 # mapped なウィンドウを「class: title [ws]」の表示行とアドレスのペアで、
 # 同じ並び順の配列に読み込む(タブ区切り、選択後にアドレスへ逆引きするため)
 # Load mapped windows as "display line \t address" pairs in matching order,
@@ -69,11 +79,13 @@ case "$mode" in
       {address, class, title, origin_ws: .workspace.name, dest_ws: $dest}
     ' > "${state_file}.tmp"
     mv "${state_file}.tmp" "$state_file"
-    hyprctl dispatch movetoworkspacesilent "${active_ws},address:${address}"
-    hyprctl dispatch focuswindow "address:${address}"
+    # 旧 movetoworkspacesilent は window.move の follow = false、旧 focuswindow は focus({ window }) に当たる
+    # Former movetoworkspacesilent = window.move with follow = false; former focuswindow = focus({ window })
+    hyprctl dispatch "hl.dsp.window.move({ workspace = $(lua_str "$active_ws"), window = $(lua_str "address:${address}"), follow = false })"
+    hyprctl dispatch "hl.dsp.focus({ window = $(lua_str "address:${address}") })"
     ;;
   go)
-    hyprctl dispatch focuswindow "address:${address}"
+    hyprctl dispatch "hl.dsp.focus({ window = $(lua_str "address:${address}") })"
     ;;
   *)
     echo "Unknown mode: ${mode} (expected 'bring' or 'go')" >&2

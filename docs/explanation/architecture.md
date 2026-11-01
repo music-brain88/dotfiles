@@ -78,7 +78,7 @@ Nix/Home Manager
 既存の設定ファイル（柔軟性）
 ├── .config/nvim/*.toml
 ├── .config/fish/config.fish
-├── .config/hypr/keybinds.conf
+├── .config/hypr/keybinds.lua
 └── ...
 ```
 

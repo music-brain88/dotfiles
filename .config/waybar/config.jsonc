@@ -43,8 +43,8 @@
     "tray",
   ],
 
-  // 3層構造(window-rules.conf 冒頭コメント参照)をバー上でも宣言する
-  // Mirror the three-layer workspace design (see window-rules.conf header) in the bar:
+  // 3層構造(.config/hypr/window_rules.lua 冒頭コメント参照)をバー上でも宣言する
+  // Mirror the three-layer workspace design (see the .config/hypr/window_rules.lua header) in the bar:
   //   作業台 ws1〜3 = 数字アイコン(persistent-workspacesで常時表示) / Workbench: numeral icons, always shown
   //   詰め所 ws4〜  = 共通アイコン(default) / Depot: shared "default" icon
   //   引き出し special = show-special + special-visible-only で開いている時だけ表示 / Drawer: shown only while open
@@ -64,9 +64,9 @@
     },
     "window-rewrite-default": "\u25aa", // U+25AA BLACK SMALL SQUARE (not a Nerd Font glyph)
     "format-window-separator": " ",
-    // 辞書は window-rules.conf で運用中のアプリを網羅する(#548)。漏れると ▪ に落ちて中身が判別できない。
+    // 辞書は .config/hypr/window_rules.lua で運用中のアプリを網羅する(#548)。漏れると ▪ に落ちて中身が判別できない。
     // wofi はレイヤーシェル(WSに現れない)、Emacs / neovide は不使用(エディタは端末内 neovim)のため対象外
-    // Cover the apps managed in window-rules.conf (#548); anything missing falls back to an unreadable ▪.
+    // Cover the apps managed in .config/hypr/window_rules.lua (#548); anything missing falls back to an unreadable ▪.
     // Excluded: wofi (layer-shell, never a workspace window) and Emacs/neovide (unused; editing happens in terminal neovim).
     // マッチ方式: ルール全体を正規表現(icase)として "class<実class>" に regex_search する。
     // class< の内側に ^ / $ を書くと構造的に絶対マッチしない(#556 で全ルール沈黙から復旧)。
@@ -108,8 +108,12 @@
     "show-special": true,
     "special-visible-only": true,
     "sort-by": "number",
-    "on-scroll-up": "hyprctl dispatch workspace e+1",
-    "on-scroll-down": "hyprctl dispatch workspace e-1",
+    // Hyprland 0.57 から hyprctl dispatch の引数は Lua 式。waybar は sh -c で実行するので、
+    // JSON の \" がシェルに渡る時点で " になり、シングルクォートの中で Lua の文字列になる
+    // Since Hyprland 0.57 `hyprctl dispatch` takes a Lua expression; waybar runs this via sh -c,
+    // so the JSON \" reaches the shell as " and becomes a Lua string inside the single quotes
+    "on-scroll-up": "hyprctl dispatch 'hl.dsp.focus({ workspace = \"e+1\" })'",
+    "on-scroll-down": "hyprctl dispatch 'hl.dsp.focus({ workspace = \"e-1\" })'",
   },
 
   "hyprland/window": {
