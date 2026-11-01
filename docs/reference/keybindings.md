@@ -241,7 +241,7 @@ Tmux のコピーモードはviキーバインドを使用します。
 
 ## 🪟 Hyprland
 
-Hyprlandの設定は `.config/hypr/keybinds.conf` で定義されています。
+Hyprlandのキーバインドは `.config/hypr/keybinds.lua` で定義されています(Hyprland 0.57 から設定は Lua で書きます)。
 
 > **Note**: メインの修飾キーは `Super` (Windowsキー) です。以下では `Super` と表記します。
 
@@ -404,8 +404,8 @@ Neovimのキーバインドは量が多いため、別ドキュメントにま�
 | `.config/fish/functions/fish_user_key_bindings.fish` | Fish キーバインド定義 |
 | `.config/fish/config.fish` | Fish 基本設定・エイリアス |
 | `.tmux.conf` | Tmux 設定 |
-| `.config/hypr/keybinds.conf` | Hyprland キーバインド定義 |
-| `.config/hypr/hyprland.conf` | Hyprland メイン設定 |
+| `.config/hypr/keybinds.lua` | Hyprland キーバインド定義 |
+| `.config/hypr/hyprland.lua` | Hyprland メイン設定(エントリ。ほかのファイルを `require` で読む) |
 
 キーバインドを追加・変更したい場合は [customize-keybindings.md](../how-to/customize-keybindings.md) を参照してください。
 
