@@ -8,16 +8,24 @@
 
 # Source Nix environment (required before launching Nix-managed fish)
 if [ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
+  # nix.sh lives outside the repo, so ShellCheck cannot follow it (SC1091)
+  # nix.sh はリポジトリ外のファイルなので ShellCheck は追わない(SC1091)
+  # shellcheck source=/dev/null
   . "$HOME/.nix-profile/etc/profile.d/nix.sh"
 fi
 
 # Set up environment variables that need to be inherited by fish
+# SSH_AUTH_SOCK (gpg-agent) is set only in config.fish: herdr panes start fish directly and never
+# see what this file exports, so no ssh-agent is started here (#440).
+# SSH_AUTH_SOCK(gpg-agent)は config.fish だけで設定する。herdr の pane は fish を直起動し、
+# このファイルの export を受け継がないため、ここでは ssh-agent を起動しない(#440)。
 if [ "$(uname -s)" = 'Linux' ]; then
-  # Start ssh-agent if not already running
-  if [ -z "$SSH_AUTH_SOCK" ]; then
-    eval "$(ssh-agent -s)"
-  fi
-  export GPG_TTY=$(tty)
+  # config.fish is the source of truth for GPG_TTY and updatestartuptty; these lines are only a
+  # stepping stone until `exec fish`, where fish sets the same values again.
+  # GPG_TTY と updatestartuptty の正は config.fish 側。ここは exec fish までの踏み台で、
+  # fish 側で同じ値に上書きされる。
+  GPG_TTY=$(tty)
+  export GPG_TTY
   # SSH session: refresh gpg-agent's cached tty so pinentry can reach us
   # SSHセッション時はgpg-agentが保持するttyを更新する
   if [ -n "$SSH_CONNECTION" ]; then

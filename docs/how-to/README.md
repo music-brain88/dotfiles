@@ -9,7 +9,7 @@
 - [customize-keybindings.md](./customize-keybindings.md) — キーバインドの追加・変更
 - [daily-workflow-commands.md](./daily-workflow-commands.md) — 日常的によく使うコマンド集
 - [troubleshoot-fonts.md](./troubleshoot-fonts.md) — フォント関連のトラブルシューティング
-- [manage-gpg-keys.md](./manage-gpg-keys.md) — GPG鍵の複数端末運用(新端末セットアップ・期限延長)
+- [manage-gpg-keys.md](./manage-gpg-keys.md) — GPG鍵の複数端末運用(新端末セットアップ・SSH 認証の一元化・期限延長)
 - [install-unmanaged-tools.md](./install-unmanaged-tools.md) — Nix管理外ツールの導入(Claude Code・OS層・化石の掃除)
 - [sync-atuin-history-across-machines.md](./sync-atuin-history-across-machines.md) — atuin の履歴を複数端末で同期する(register・同じ鍵での login)
 - [verify-ca-trust-stores.md](./verify-ca-trust-stores.md) — CA の事故のときに各 TLS クライアントが問題のチェーンを拒否するか確かめる

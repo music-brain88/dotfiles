@@ -73,7 +73,6 @@ Fish で作業
 │  .bashrc                                                │
 │  ├── 非インタラクティブなら終了                         │
 │  ├── Nix 環境の source (nix.sh)                         │
-│  ├── ssh-agent 起動（未起動の場合）                     │
 │  ├── GPG_TTY 設定                                       │
 │  ├── gpg-agent の tty 更新（SSH接続時）                 │
 │  └── exec fish                                          │
@@ -98,6 +97,8 @@ Fish で作業
 │  ├── set -eg fish_user_paths の直後に                   │
 │  │   Nix bin を PATH へ（fish_add_path --path）         │
 │  ├── ロケール設定 (LANG, LC_CTYPE)                      │
+│  ├── SSH_AUTH_SOCK（gpg-agent）・GPG_TTY 設定           │
+│  ├── fish_preexec で gpg-agent の tty を毎回更新        │
 │  ├── PATH 設定 (~/.local/bin, cargo, go, etc.)          │
 │  ├── エイリアス設定 (vim, rm, ls, cat, ps)              │
 │  ├── プロンプト設定 (starship)                          │
@@ -114,6 +115,8 @@ Fish で作業
 - **ssh 越しに fish を明示起動するコマンド実行**（`ssh host fish -c '…'` など）: ログインシェルの bash は非対話なので `.bashrc` 冒頭で return し、nix.sh を通らないまま fish が起動する。なお fish を介さない `ssh host cmd` は bash が `-c` で実行するだけで config.fish を通らないので、この対策の範囲外
 
 このため、Nix 管理ツール（herdr / starship / mise / bass）を見せるのに必要な設定は、`.bashrc` の nix.sh に頼らず config.fish の冒頭で自前でブートストラップしています（#632）。bash 経由の経路では nix.sh が既に PATH に入れているので、config.fish 側の追加は冪等に何もしません。
+
+SSH の agent も同じ理由で config.fish 側に置いています。herdr の pane は `.bashrc` の export を受け継がないので、config.fish が `SSH_AUTH_SOCK` を gpg-agent の SSH ソケット（`gpgconf --list-dirs agent-ssh-socket`）に設定します。また SSH の署名要求には tty の情報が無く、gpg-agent は最後に `updatestartuptty` された tty に pinentry を出すので、config.fish の `fish_preexec` ハンドラがコマンドのたびに `updatestartuptty` を実行し、pinentry がコマンドを打った pane に出るようにしています（#440）。
 
 ### `exec` コマンドについて
 
@@ -154,12 +157,11 @@ if [ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
 fi
 
 # 3. 環境変数の設定（exec で引き継がれる）
+# SSH_AUTH_SOCK（gpg-agent）は config.fish だけで設定する。ssh-agent は起動しない（#440）
 if [ "$(uname -s)" = 'Linux' ]; then
-  # ssh-agent（既に起動中なら何もしない）
-  if [ -z "$SSH_AUTH_SOCK" ]; then
-    eval "$(ssh-agent -s)"
-  fi
-  export GPG_TTY=$(tty)
+  # GPG_TTY と updatestartuptty の正は config.fish 側。ここは exec fish までの踏み台
+  GPG_TTY=$(tty)
+  export GPG_TTY
   # SSH 接続時は gpg-agent が保持する tty を更新する
   if [ -n "$SSH_CONNECTION" ]; then
     gpg-connect-agent updatestartuptty /bye >/dev/null 2>&1
@@ -191,6 +193,23 @@ set -x LC_CTYPE en_US.UTF-8
 
 # 起動時の greeting を無言にする（universal 変数に頼らず repo で宣言。#694）
 set -g fish_greeting
+
+# GPG / SSH（Nix の PATH 設定より後。gpgconf は Nix profile の gnupg にある。#440）
+if command -q gpgconf; and command -q gpg-connect-agent
+  # 未設定なら SSH の向き先を gpg-agent にする（agent forwarding 等で設定済みなら触らない）
+  if test -z "$SSH_AUTH_SOCK"
+    set -gx SSH_AUTH_SOCK (gpgconf --list-dirs agent-ssh-socket)
+    # systemd のソケット起動が無い環境向け: ソケットが無ければ agent を起動する（systemd 下では何もしない）
+    test -S "$SSH_AUTH_SOCK"; or gpgconf --launch gpg-agent >/dev/null 2>&1
+  end
+  if status is-interactive; and isatty stdin
+    set -gx GPG_TTY (tty)
+    # コマンドのたびに pinentry の出先 tty を更新する（同期実行。& を付けない）
+    function __gpg_agent_update_tty --on-event fish_preexec
+      gpg-connect-agent updatestartuptty /bye >/dev/null 2>&1
+    end
+  end
+end
 
 # エイリアス
 alias vim 'nvim'
@@ -296,7 +315,7 @@ exec fish
 | Nix の PATH | `config.fish` | fish 直起動でも効く。`.bashrc` の nix.sh は `exec fish` 前の踏み台として残す |
 | エイリアス | `config.fish` | alias はプロセス間で引き継がれない |
 | プロンプト | `config.fish` | Fish 専用 |
-| ssh-agent | `.bashrc` | `exec` 前に起動、環境変数が引き継がれる |
+| SSH_AUTH_SOCK(gpg-agent) | config.fish | herdr の pane は fish 直起動で .bashrc を通らないため |
 
 ---
 
