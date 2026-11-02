@@ -2,23 +2,25 @@
 
 > **Diátaxis:** 🔧 How-to
 
-コミット署名用GPG鍵を複数端末で運用するための手順です。新端末セットアップ、有効期限の延長、主キーのオフライン保管をカバーします。タスクコマンドの一覧は [mise-tasks.md](../reference/mise-tasks.md) を参照してください。
+コミット署名用GPG鍵を複数端末で運用するための手順です。新端末セットアップ、SSH 認証の一元化、有効期限の延長、主キーのオフライン保管をカバーします。タスクコマンドの一覧は [mise-tasks.md](../reference/mise-tasks.md) を参照してください。
 
 ---
 
 ## 鍵構成の考え方 / Key Layout
 
-この運用は「主キー + サブキー」構成を前提としています。次の図は、主キーと 2 つのサブキーの構成と、それぞれの役割を示します。
+この運用は「主キー + サブキー」構成を前提としています。次の図は、主キーと 3 つのサブキーの構成と、それぞれの役割を示します。
 
 ```
 sec  ed25519 [SC]  ← 主キー: 証明(Certify)専用。サブキーの発行・失効に使う
 ssb  cv25519 [E]   ← 暗号化サブキー: 日常の暗号化
 ssb  ed25519 [S]   ← 署名サブキー: コミット署名の実体
+ssb  ed25519 [A]   ← 認証サブキー: SSH 認証(GitHub 等)の実体
 ```
 
 - **利用者が各端末に配るのは、サブキーの秘密鍵だけです**。主キーの秘密鍵は信頼できる1箇所(オフラインのUSB等)に保管します。
 - 端末が漏洩しても、サブキーだけを失効(revoke)すれば、主キーと鍵のアイデンティティは守られます。
 - git の `user.signingkey` には主キーIDを指定すれば足ります。GPGが自動的に有効な署名サブキーを選んで署名します。
+- SSH 認証も同じ鍵束で管理し、端末ごとに別の SSH 鍵は持ちません。1 台の端末が漏洩したら全端末の [A] サブキーをローテーションする運用を受け入れています。端末ごとに [A] サブキーを分ける案は、必要になったときに追加できます。
 
 ---
 
@@ -84,6 +86,64 @@ rm -rf .backup/gpg   # 両端末で
 
 ---
 
+## SSH 認証の一元化 / SSH Authentication via gpg-agent
+
+SSH 認証には、素の `ssh-agent` と端末ごとの SSH 鍵ではなく、gpg-agent と [A] サブキーを使います。gpg-agent の SSH ソケットは `gpgconf --list-dirs agent-ssh-socket` で得られ、config.fish がこの値を `SSH_AUTH_SOCK` に設定します。利用者は、[A] サブキーを次の手順で作成し、登録し、配布します。
+
+### 1. [A] サブキーを作成
+
+利用者は、**主キーの秘密鍵がある端末で**次のコマンドを実行します。
+
+```bash
+gpg --quick-add-key <主キーの fingerprint> ed25519 auth <既存サブキーと同じ期限 YYYY-MM-DD>
+```
+
+期限を既存サブキーと揃えておくと、`mise run gpg:extend` で全サブキーを一括で延長できます。
+
+### 2. SSH に出す鍵として印を付ける
+
+利用者は、[A] サブキーの keygrip を確かめてから、その鍵に `Use-for-ssh` 属性を付けます。
+
+```bash
+# [A] 行の直後の「Keygrip =」の値を控える
+gpg --list-secret-keys --with-keygrip
+
+gpg-connect-agent 'KEYATTR <[A] サブキーの keygrip> Use-for-ssh: yes' /bye
+```
+
+GnuPG 2.4 では `~/.gnupg/sshcontrol` は非推奨で、鍵ファイルの `Use-for-ssh` 属性が正です(`man gpg-agent` に明記されています)。
+
+### 3. agent が鍵を出していることを確認
+
+次のコマンドで、gpg-agent が [A] サブキーを SSH 鍵として出していることを確認します。
+
+```bash
+SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket) ssh-add -L
+gpg --export-ssh-key <主キーの fingerprint>
+```
+
+`ssh-add -L` に鍵が出ていて、その鍵が `gpg --export-ssh-key` の出力と同じであれば正常です。
+
+### 4. GitHub に SSH 鍵として登録
+
+利用者は、次のコマンドで公開鍵を GitHub に登録します。
+
+```bash
+gpg --export-ssh-key <主キーの fingerprint> | gh ssh-key add --title "gpg-auth <[A] サブキーの ID>"
+```
+
+gh の token には `admin:public_key` スコープが必要です。スコープが無い場合は、先に `gh auth refresh -h github.com -s admin:public_key` を実行します。
+
+### 5. 他端末へ配布
+
+`mise run gpg:export` は `--export-secret-subkeys` を使うので、[A] サブキーも自動でバンドルに入ります。ただし `Use-for-ssh` 属性は agent 側の鍵ファイルの属性で、OpenPGP のバンドルには含まれません。そのため利用者は、各端末で `mise run gpg:import` を実行した後に、手順 2 の `KEYATTR` をやり直します。
+
+### 6. pinentry の出方
+
+SSH の署名要求には tty の情報が無いので、gpg-agent は「最後に `updatestartuptty` された tty」に pinentry を出します。config.fish の `fish_preexec` ハンドラがコマンドのたびにこの tty を更新するので、pinentry は通常、コマンドを打った pane に出ます。pinentry は `pinentry-tty` なので、どの大きさの pane でも 1 行のプロンプトとして出ます。入力したパスフレーズは `default-cache-ttl-ssh`(8 時間)の間キャッシュされます。
+
+---
+
 ## 有効期限の延長 / Extending Expiry
 
 期限切れが近づいたら(`mise run gpg:status` が警告したら)、利用者は**主キーの秘密鍵がある端末で**次のコマンドを実行します。
@@ -94,7 +154,7 @@ mise run gpg:extend
 
 このタスクは主キーの期限を5年、サブキーの期限を2年延ばし、バンドルを再エクスポートします。その後、利用者は次の 2 つを行います。
 
-1. **GitHub に公開鍵を再登録**: Settings → SSH and GPG keys で旧鍵を削除し、`public.asc` の内容を再登録します(GitHubは期限情報を自動更新しません)。
+1. **GitHub に公開鍵を再登録**: Settings → SSH and GPG keys で旧鍵を削除し、`public.asc` の内容を再登録します(GitHubは期限情報を自動更新しません)。SSH 鍵として登録した公開鍵は期限の情報を持たないので、SSH 鍵の再登録は不要です。
 2. **他端末に公開鍵を配布**: バンドルを転送して `mise run gpg:import` を実行します。期限延長は公開鍵の更新だけで反映されるので、秘密鍵を再転送する必要はありません。
 
 > **Note:** 期限延長は秘密鍵の作り直しではありません。署名済みコミットの検証にも影響しません。
@@ -136,6 +196,9 @@ gpg --list-secret-keys
 | pinentry が出ない | `~/.gnupg/gpg-agent.conf` を確認し `gpg-connect-agent reloadagent /bye` |
 | `gpg: signing failed: No pinentry`(`gpg-unlock` でも出る) | 稼働中の agent が Nix 版 gnupg(`readlink /proc/$(gpg-connect-agent 'getinfo pid' /bye \| awk '/^D/{print $2}')/exe`)。`gpg-agent.conf` の `pinentry-program` が効いていない世代なら `mise run nix:switch` 後に `gpg-connect-agent reloadagent /bye`。それでも駄目なら手元で `gpgconf --kill gpg-agent` → `/usr/bin/gpg-agent --homedir ~/.gnupg --daemon` → `gpg-unlock`(#634) |
 | trust が `unknown` になる | `gpg --import-ownertrust .backup/gpg/ownertrust.txt` |
+| `git@github.com: Permission denied (publickey)` で、`ssh -v` の `Offering public key` に agent の鍵が無い | `SSH_AUTH_SOCK` が空か、別の agent を指しています。`echo $SSH_AUTH_SOCK` の値が `gpgconf --list-dirs agent-ssh-socket` の値と一致するか確認する |
+| `sign_and_send_pubkey: signing failed ... agent refused operation` | `journalctl --user -u gpg-agent.service -n 5` を読む。`Screen or window too small` なら、pinentry が curses のまま(#440 より前の設定)なので、`mise run nix:switch` 後に `gpg-connect-agent reloadagent /bye` を実行する。`Timeout` なら、pinentry が別の pane に出て 60 秒放置されているので、今の pane で `gpg-connect-agent updatestartuptty /bye` を実行してから再試行する |
+| 他端末で `ssh-add -L` に [A] サブキーが出ない | `Use-for-ssh` 属性が付いていません。[SSH 認証の一元化](#ssh-認証の一元化--ssh-authentication-via-gpg-agent) の手順 2 で付け直す |
 
 ---
 

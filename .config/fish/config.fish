@@ -52,14 +52,41 @@ set -x VISUAL nvim
 # functions/fish_greeting.fish に頼らず repo で宣言し、全マシンで同じ挙動にする。
 set -g fish_greeting
 
-# GPG: tell gpg-agent which tty to use for pinentry (interactive shells only)
-# gpg-agentにこのシェルのttyを伝える(pinentry用、対話シェルのみ)
-if status is-interactive; and isatty stdin
-  set -gx GPG_TTY (tty)
-  # SSH session: refresh gpg-agent's cached tty so pinentry can reach us
-  # SSHセッション時はgpg-agentが保持するttyを更新する
-  if set -q SSH_CONNECTION
-    gpg-connect-agent updatestartuptty /bye >/dev/null 2>&1
+# GPG / SSH: gpg-agent is the SSH agent too (#440); no plain ssh-agent is started anywhere
+# GPG / SSH: SSH の agent も gpg-agent に一本化する(#440)。素の ssh-agent はどこでも起動しない
+# This block sits after the Nix PATH setup above on purpose: gpgconf / gpg-connect-agent come from the
+# Nix profile's gnupg, and on launch paths that skip bash (herdr panes, WezTerm→wsl.exe) they are only
+# on PATH once `fish_add_path --path --prepend ~/.nix-profile/bin` has run.
+# このブロックは上の Nix の PATH 設定より後に置く。gpgconf / gpg-connect-agent は Nix profile の gnupg にあり、
+# bash を通らない起動経路(herdr の pane・WezTerm→wsl.exe)では fish_add_path で ~/.nix-profile/bin を
+# 入れた後でないと見えないため。
+if command -q gpgconf; and command -q gpg-connect-agent
+  # Point SSH at gpg-agent's SSH socket. This lives here, not in .bashrc, because herdr panes start
+  # fish directly and never inherit anything .bashrc exports. An SSH_AUTH_SOCK that is already set
+  # (e.g. ssh agent forwarding) is left alone. Not limited to interactive shells, so `fish -c` scripts
+  # that call ssh/git also reach the agent.
+  # SSH の向き先を gpg-agent の SSH ソケットにする。herdr の pane は fish を直起動し .bashrc の export を
+  # 受け継がないので、.bashrc ではなくここで設定する。既に設定済み(ssh の agent forwarding 等)なら触らない。
+  # ssh/git を呼ぶ `fish -c` のスクリプトでも agent に届くよう、対話シェルに限定しない。
+  if test -z "$SSH_AUTH_SOCK"
+    set -gx SSH_AUTH_SOCK (gpgconf --list-dirs agent-ssh-socket)
+  end
+
+  # Tell gpg-agent which tty to use for pinentry (interactive shells only)
+  # gpg-agent にこのシェルの tty を伝える(pinentry 用、対話シェルのみ)
+  if status is-interactive; and isatty stdin
+    set -gx GPG_TTY (tty)
+    # An SSH signing request carries no tty, so gpg-agent shows pinentry on the tty of the last
+    # `updatestartuptty`. Refresh it before every command so the prompt lands in the pane where the
+    # command was typed (~4 ms each). Run it synchronously, never with `&`: the update must reach the
+    # agent before ssh asks it to sign. This also covers the old one-shot refresh for SSH sessions.
+    # SSH の署名要求には tty の情報が無いので、gpg-agent は「最後に updatestartuptty された tty」に
+    # pinentry を出す。コマンドのたびに更新して、コマンドを打った pane に出るようにする(1 回約 4 ms)。
+    # ssh の署名要求より先に agent へ届くことを保証するため、& を付けず同期で実行する。
+    # 以前の SSH 接続時だけの 1 回きりの更新も、このハンドラが兼ねる。
+    function __gpg_agent_update_tty --on-event fish_preexec
+      gpg-connect-agent updatestartuptty /bye >/dev/null 2>&1
+    end
   end
 end
 
