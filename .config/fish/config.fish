@@ -70,6 +70,13 @@ if command -q gpgconf; and command -q gpg-connect-agent
   # ssh/git を呼ぶ `fish -c` のスクリプトでも agent に届くよう、対話シェルに限定しない。
   if test -z "$SSH_AUTH_SOCK"
     set -gx SSH_AUTH_SOCK (gpgconf --list-dirs agent-ssh-socket)
+    # Without systemd socket activation the socket only appears once the agent runs, so start it on
+    # demand (`fish -c 'ssh …'` has no fish_preexec to do it later). Under systemd the socket file
+    # always exists, so this costs nothing there.
+    # systemd のソケット起動が無い環境ではソケットは agent が動いて初めて現れるので、無ければここで
+    # 起動する(`fish -c 'ssh …'` には後で起動してくれる fish_preexec が無い)。systemd 下では
+    # ソケットファイルが常にあるので、この行は何もしない。
+    test -S "$SSH_AUTH_SOCK"; or gpgconf --launch gpg-agent >/dev/null 2>&1
   end
 
   # Tell gpg-agent which tty to use for pinentry (interactive shells only)
