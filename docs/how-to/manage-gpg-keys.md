@@ -40,6 +40,8 @@ mise run gpg:export
 | `secret-subkeys.asc` | **サブキーのみ**の秘密鍵(パスフレーズで保護されたまま) |
 | `ownertrust.txt` | trust設定(これがあると「trustを毎回設定し直す」作業が消える) |
 
+タスクは最後に `gpg --show-keys` で `public.asc` の中身を表示するので、`sub` の行に [E] [S] [A] がそろっていることを確かめます。
+
 ### 2. 新端末へ安全に転送
 
 バンドルを新端末へ転送する方法は 2 つあります。推奨するのは方法A の Bitwarden 経由で、方法B は scp による直接転送です。
@@ -199,6 +201,7 @@ gpg --list-secret-keys
 | `git@github.com: Permission denied (publickey)` で、`ssh -v` の `Offering public key` に agent の鍵が無い | `SSH_AUTH_SOCK` が空か、別の agent を指しています。`echo $SSH_AUTH_SOCK` の値が `gpgconf --list-dirs agent-ssh-socket` の値と一致するか確認する |
 | `sign_and_send_pubkey: signing failed ... agent refused operation` | `journalctl --user -u gpg-agent.service -n 5` を読む。`Screen or window too small` なら、pinentry が curses のまま(#440 より前の設定)なので、`mise run nix:switch` 後に `gpg-connect-agent reloadagent /bye` を実行する。`Timeout` なら、pinentry が別の pane に出て 60 秒放置されているので、今の pane で `gpg-connect-agent updatestartuptty /bye` を実行してから再試行する |
 | 他端末で `ssh-add -L` に [A] サブキーが出ない | `Use-for-ssh` 属性が付いていません。[SSH 認証の一元化](#ssh-認証の一元化--ssh-authentication-via-gpg-agent) の手順 2 で付け直す |
+| `gpg --show-keys .backup/gpg/public.asc` に [E] や [A] のサブキーが出ない | #770 より前の `gpg:export` は `signingkey` の `!` 付き指定をそのまま使っていたので、[S] だけのバンドルになっていました。`mise run gpg:export` を実行し直し、最後に表示される `gpg --show-keys` の出力に全サブキーが出ることを確かめます。Bitwarden の添付も `mise run gpg:bw:push` で差し替えます |
 
 ---
 
