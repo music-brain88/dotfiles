@@ -198,7 +198,7 @@ set -g fish_greeting
 
 # GPG / SSH（Nix の PATH 設定より後。gpgconf は Nix profile の gnupg にある。#440）
 if command -q gpgconf; and command -q gpg-connect-agent
-  # 未設定なら SSH の向き先を gpg-agent にする（agent forwarding 等で設定済みなら触らない）
+  # 未設定か、死んだソケットを指していれば SSH の向き先を gpg-agent にする（生きたソケットなら触らない）
   if test -z "$SSH_AUTH_SOCK"; or not test -S "$SSH_AUTH_SOCK"
     set -gx SSH_AUTH_SOCK (gpgconf --list-dirs agent-ssh-socket)
     # systemd のソケット起動が無い環境向け: ソケットが無ければ agent を起動する（systemd 下では何もしない）
