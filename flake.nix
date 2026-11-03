@@ -142,10 +142,10 @@
           (final: prev: {
             terminal-browser = prev.stdenv.mkDerivation (finalAttrs: {
               pname = "terminal-browser";
-              version = "0.13.4";
+              version = "0.15.3";
               src = prev.fetchurl {
                 url = "https://github.com/zenbu-labs/terminal-browser/releases/download/v${finalAttrs.version}/terminal-browser-linux-x64.tar.gz";
-                hash = "sha256-YnfaqrqxZxGrPxlhzf+tnvrF5wrFXVB24shkltZJ06Q=";
+                hash = "sha256-JE6ZW1VO2yn2bPB/f4MKdoha5qb6Iz3sU5gL+wpQlUE=";
               };
               # tarball の中身は terminal-browser/ の下にまとまっている
               # The tarball keeps everything under terminal-browser/

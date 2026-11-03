@@ -16,7 +16,7 @@ terminal-browser ([zenbu-labs/terminal-browser](https://github.com/zenbu-labs/te
 | 導入 | `nix/modules/terminal-browser.nix` の `home.packages` | native 機だけに入れる (`home.nix` が native のときだけこのモジュールを読む) |
 | スキルの自動リンクの拒否 | 同モジュールの `xdg.stateFile."terminal-browser/skills-choice"` | `~/.local/state/terminal-browser/skills-choice` に `no` を置く |
 | テレメトリの停止 | 同モジュールの `home.sessionVariables.TERMINAL_BROWSER_NO_TELEMETRY` | 利用状況とクラッシュの報告を止める |
-| 古いプロファイルの掃除 | 同モジュールの `home.activation.cleanTerminalBrowserProfiles` | 版を上げた後に残る古いプロファイルを消す |
+| 古いプロファイルの掃除 | 同モジュールの `home.activation.cleanTerminalBrowserProfiles` | store のパスが変わった後 (版を上げたときと、flake.lock の更新で依存が変わったとき) に残る古いプロファイルを消す |
 | herdr の設定 | `.config/herdr/config.toml` の `[terminal]` 節の `kitty_graphics = true` | terminal-browser が herdr の設定に書き込もうとするのを止める |
 | WezTerm の設定 | `.config/wezterm/wezterm.lua` の `enable_kitty_graphics = true` | WezTerm で kitty graphics を有効にする (「端末の要件」節) |
 | `$BROWSER` ラッパー | `.config/herdr/scripts/device_auth_browser.sh` | herdr の中では承認ページを terminal-browser の pane で開く |
@@ -37,7 +37,7 @@ terminal-browser ([zenbu-labs/terminal-browser](https://github.com/zenbu-labs/te
 1. 上流の release のページで、新しい版の `terminal-browser-linux-x64.tar.gz` の sha256 を確かめる。`gh release view v<版> -R zenbu-labs/terminal-browser --json assets` の `digest` にも載っている。
 2. `nix hash convert --hash-algo sha256 --to sri <16 進の sha256>` で SRI 形式に変え、`hash` に書く。
 3. `mise run nix:build` で包めることを確かめてから、`mise run nix:switch` で反映する。
-4. 版を上げると導入先の store のパスが変わるので、プロファイルも新しくなる。利用者は承認ページで 1 回ログインし直す (「古いプロファイルの掃除」節)。
+4. 版を上げると導入先の store のパスが変わるので、プロファイルも新しくなる。利用者は承認ページで 1 回ログインし直す。flake.lock の更新で依存が変わったときも、同じ理由でプロファイルが新しくなる (「古いプロファイルの掃除」節)。
 
 `terminal-browser upgrade` は使わない。このコマンドは上流のインストーラーを `curl | bash` で実行し、Nix の管理の外に別の一式を入れる。ブラウザの画面に新しい版の案内が出ても、版は上の手順で上げる。
 
@@ -67,7 +67,7 @@ terminal-browser の既定の挙動のうち 4 つは、このリポジトリの
 
 ### スキルの自動リンク
 
-terminal-browser は、初回の起動と、版か導入先のパスが変わった後の最初の起動で、自分のスキルを `~/.claude/skills/terminal-browser` と `~/.agents/skills/terminal-browser` に symlink する (`cli/src/setup.ts` の `ensureSetup()`)。`~/.codex/skills` などの親ディレクトリがあれば、そこにもリンクする。Nix で入れると版を上げるたびに store のパスが変わるので、止めないとリンクが毎回作り直される。
+terminal-browser は、初回の起動と、版か導入先のパスが変わった後の最初の起動で、自分のスキルを `~/.claude/skills/terminal-browser` と `~/.agents/skills/terminal-browser` に symlink する (`cli/src/setup.ts` の `ensureSetup()`)。`~/.codex/skills` などの親ディレクトリがあれば、そこにもリンクする。Nix で入れると、版を上げたときと、flake.lock の更新で依存が変わったときに store のパスが変わる (「古いプロファイルの掃除」節)。止めないと、そのたびにリンクが作り直される。
 
 `$XDG_STATE_HOME/terminal-browser/skills-choice` (既定は `~/.local/state/terminal-browser/skills-choice`) の中身が `no` なら、terminal-browser はリンクを作らない (`skillsDeclined()`)。home-manager がこのファイルを置く。エージェントに terminal-browser を操作させる用途は今は無いので、スキルは配らない。
 
@@ -98,7 +98,7 @@ terminal-browser は、プロファイルの置き場の名前に、導入先の
 - `~/.local/state/terminal-browser-<8 桁>` には、ログが入る。
 - `~/.cache/terminal-browser-<8 桁>` には、favicon が入る (`FAVICONS_DIR`)。2026-10-11 の試験では作られなかったが、ソースはここを置き場にしている。
 
-Nix で入れると版を上げるたびに名前が変わり、古いプロファイルが Cookie ごと残る。
+Nix で入れると、導入先の store のパスが変わるたびに名前が変わり、古いプロファイルが Cookie ごと残る。store のパスは、パッケージの中身ではなく、ビルドの材料 (`buildInputs` の glib・nss・gtk3 など) から決まる。そのため、版を上げたときだけでなく、flake.lock の更新で依存が変わったときにも変わる。2026-10-30 の flake.lock の更新 ([#757](https://github.com/music-brain88/dotfiles/pull/757)) では、同じ 0.13.4 の store のパスが変わり、プロファイルが新しくなった。
 
 home-manager の activation (`cleanTerminalBrowserProfiles`、`mise run nix:switch` のたびに走る) が、古いプロファイルを消す。activation は `~/.local/share/terminal-browser-<8 桁>/install` に書かれた導入先を読み、次の条件をすべて満たすときだけ、同じ 8 桁を持つ 4 つのディレクトリを消す。
 
@@ -112,6 +112,14 @@ home-manager の activation (`cleanTerminalBrowserProfiles`、`mise run nix:swit
 terminal-browser は、`~/.config` 側の置き場の lock が生きた PID に握られていると、`terminal-browser-<8 桁>-2` から `-32` までの別名の置き場を使う (`browser/src/profile.ts` の `claimProfile()`)。こうした別名の置き場は名前の条件に合わないので、activation は消さない。
 
 削除は home-manager の `run` を通すので、dry-run では消す対象を表示するだけで何も消さない。消すときは、`install` を持つ `~/.local/share` 側を最後に消す。途中で止まっても、次の activation が残りを消す。
+
+プロファイルの名前は、外から固定できない。terminal-browser は導入先を `TERMINAL_BROWSER_DIST_ROOT` の `realpath` で求め (`installRoot()`)、版をまたいで名前を保つ置き換え (`stableIdentity()`) は Homebrew の `Caskroom` のパスにしか効かないためである。
+
+release の bundle の `stableIdentity()` を置き換えて名前を固定する案は、次の 3 つの理由で採らなかった ([Issue #778](https://github.com/music-brain88/dotfiles/issues/778))。ログインし直す回数が負担になったときか、上流の `stableIdentity()` が Nix の store のパスを扱うようになったときに、この判断を見直す。
+
+- 名前が変わらなくなると、上の「導入先が今のパッケージの導入先と違う」という条件が、今使っているプロファイルを消しうる。掃除の設計も作り直しになる。
+- 版を上げるたびに、置き換える文字列 (bundle の中の関数や変数の名前) が変わっていないかを追う手間が増える。
+- Cookie が長く残るぶん、セキュリティの面で不利になる。
 
 ## device_auth_browser.sh の振り分け
 
@@ -136,7 +144,7 @@ GUI ブラウザで開くときは、`BROWSER` を unset してから `xdg-open`
 
 ### 標準出力を捨てる理由
 
-`open` は、開いた後のブラウザの状態を JSON で標準出力に書く。2026-10-11 の試験では、`aws sso login` の pane に約 40 行が流れた。ラッパーは標準出力を `/dev/null` に捨て、失敗の理由が見えるように標準エラーは残す。
+`open` は、開いた先を `opened <開いた先> (terminal-browser ls for details)` の 1 行で標準出力に書く。0.13.4 の `open` は開いた後のブラウザの状態を JSON で書いていて、2026-10-11 の試験では `aws sso login` の pane に約 40 行が流れた。どちらの版でも、ラッパーは標準出力を `/dev/null` に捨て、失敗の理由が見えるように標準エラーは残す。
 
 ### 2 回続けて開いたとき
 

@@ -17,14 +17,15 @@ in
   home.packages = [ pkgs.terminal-browser ];
 
   # スキルの自動リンクを止める。terminal-browser は初回の起動と、版か導入先が変わった後の
-  # 最初の起動で、自分のスキルを ~/.claude/skills などへ symlink する。Nix では版を上げる
-  # たびに store のパスが変わるので、止めないと毎回作り直される。このファイルの中身が
-  # "no" ならリンクしない (cli/src/setup.ts の skillsDeclined())。
+  # 最初の起動で、自分のスキルを ~/.claude/skills などへ symlink する。Nix では版を上げた
+  # ときと、flake.lock の更新で依存が変わったときに store のパスが変わるので、止めないと
+  # そのたびに作り直される。このファイルの中身が "no" ならリンクしない
+  # (cli/src/setup.ts の skillsDeclined())。
   # Stop the automatic skill links. On first launch, and on the first launch after the
   # version or install root changes, terminal-browser symlinks its skill into
-  # ~/.claude/skills and friends. Under Nix the store path changes on every bump, so the
-  # links would be recreated each time. A "no" here makes it skip linking
-  # (skillsDeclined() in cli/src/setup.ts).
+  # ~/.claude/skills and friends. Under Nix the store path changes on every bump and
+  # whenever a flake.lock update changes a dependency, so the links would be recreated
+  # each time. A "no" here makes it skip linking (skillsDeclined() in cli/src/setup.ts).
   # terminal-browser setup が普通のファイルとして書いた skills-choice が既にあっても、
   # activation を「would be clobbered」で止めずに symlink で置き換えるため force にする。
   # force: if `terminal-browser setup` already wrote skills-choice as a regular file,
@@ -46,8 +47,9 @@ in
   # 古いプロファイルの掃除。プロファイルの置き場の名前には、導入先の実パスの sha256 の
   # 先頭 8 桁が付く (shared/src/paths.ts)。置き場は config (Electron のデータと Cookie)、
   # data (データベースと install)、state (ログ)、cache (favicon) の 4 つにできる。
-  # 版を上げると名前が変わり、古いプロファイルが Cookie ごと残るので、ここで 4 つとも
-  # 消す (版を上げた後は 1 回ログインし直すことになる)。
+  # 版を上げたときと、flake.lock の更新で依存が変わったときに store のパスが変わって
+  # 名前も変わり、古いプロファイルが Cookie ごと残るので、ここで 4 つとも消す (その後は
+  # 1 回ログインし直すことになる)。
   # 消すのは次の条件をすべて満たすものだけ:
   #   - 名前が terminal-browser- と 16 進 8 桁だけ (-dev や -interop などは対象外)
   #   - data 側に install があり、そこに書かれた導入先が /nix/store/ で始まる
@@ -58,9 +60,10 @@ in
   # Clean up stale profiles. Profile directories carry the first 8 hex digits of the
   # sha256 of the real install root (shared/src/paths.ts). A profile can live in four
   # places: config (Electron data and cookies), data (database and install), state (logs)
-  # and cache (favicons). Every version bump changes the name and leaves the old profile
-  # behind, cookies included, so remove all four here (the user logs in again once after a
-  # bump). Only directories meeting all of these are removed:
+  # and cache (favicons). Every version bump, and every flake.lock update that changes a
+  # dependency, changes the store path and thus the name, leaving the old profile behind,
+  # cookies included, so remove all four here (the user logs in again once afterwards).
+  # Only directories meeting all of these are removed:
   #   - named exactly terminal-browser-<8 hex digits> (-dev, -interop, ... are left alone)
   #   - the data dir has an install file whose install root starts with /nix/store/
   #     (profiles of installs outside the store, e.g. a trial or manual install, are kept)
