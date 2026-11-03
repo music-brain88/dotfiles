@@ -35,17 +35,6 @@ hl.monitor({
 })
 
 
----------------------
----- MY PROGRAMS ----
----------------------
-
--- Set programs that you use
--- 旧設定と同じく定義だけで、keybinds.lua では使っていない / defined only, as before; keybinds.lua does not use them
-local terminal    = "Alacritty"
-local fileManager = "dolphin"
-local menu        = "wofi --show drun"
-
-
 -------------------------------
 ---- ENVIRONMENT VARIABLES ----
 -------------------------------
@@ -76,21 +65,19 @@ hl.config({
       inactive_border = "rgba(595959aa)",
     },
 
-    -- Set to true enable resizing windows by clicking and dragging on borders and gaps
+    -- 枠と隙間をドラッグしてウィンドウの大きさを変えられるようにする / resize windows by dragging their borders and gaps
     resize_on_border = true,
 
-    -- Please see https://wiki.hypr.land/configuring/extra/tearing/ before you turn this on
+    -- 有効にする前に wiki を読む / read this before enabling: https://wiki.hypr.land/configuring/extra/tearing/
     allow_tearing = false,
 
     layout = "dwindle",
-
-    -- cursor_inactive_timeout = 5
   },
 
   decoration = {
     rounding = 10,
 
-    -- Change transparency of focused and unfocused windows
+    -- フォーカスの有無ごとの不透明度 / opacity of focused and unfocused windows
     active_opacity   = 1.0,
     inactive_opacity = 1.0,
 
@@ -101,7 +88,6 @@ hl.config({
       color        = "rgba(1a1a1aee)",
     },
 
-    -- https://wiki.hypr.land/configuring/core/config-options/
     blur = {
       enabled  = true,
       size     = 3,
@@ -116,7 +102,7 @@ hl.config({
   },
 })
 
--- Default animations, see https://wiki.hypr.land/configuring/core/animations/ for more
+-- アニメーション / animations: https://wiki.hypr.land/configuring/core/animations/
 -- 旧 animations ブロック内の bezier / animation は、0.57 では hl.curve / hl.animation のトップレベル呼び出しになる
 -- The bezier / animation lines of the former animations block are top-level hl.curve / hl.animation calls in 0.57
 hl.curve("myBezier", { type = "bezier", points = { { 0.05, 0.9 }, { 0.1, 1.05 } } })
@@ -133,7 +119,8 @@ hl.config({
   dwindle = {
     -- NOTE: v0.55 で dwindle:pseudotile オプションは廃止。擬似タイル化は keybinds.lua の `pseudo` dispatcher (mainMod+P) で操作する
     -- NOTE: dwindle:pseudotile option removed in v0.55; use the `pseudo` dispatcher instead
-    preserve_split = true, -- You probably want this
+    -- ウィンドウを閉じても分割の向きを保つ / keep the split direction when windows close
+    preserve_split = true,
   },
 
   -- See https://wiki.hypr.land/configuring/layouts/master-layout/ for more
@@ -142,8 +129,6 @@ hl.config({
   },
 
   misc = {
-    force_default_wallpaper = -1, -- Set to 0 or 1 to disable the anime mascot wallpapers
-    disable_hyprland_logo = false, -- If true disables the random hyprland logo / anime girl background. :(
     -- obsidian:// URI 経由の Web Clipper 連携のため、アクティベーション要求時にフォーカスを渡す
     -- (Wayland では非フォーカスウィンドウはクリップボードを読めず、クリップ本文が空になる)
     -- NOTE: allow apps to take focus on activation; required for Obsidian Web Clipper
@@ -178,21 +163,6 @@ hl.config({
 
     follow_mouse = 1,
 
-    sensitivity = 0, -- -1.0 - 1.0, 0 means no modification.
-
-    touchpad = {
-      natural_scroll = false,
-    },
+    sensitivity = 0, -- -1.0〜1.0、0 は変更なし / -1.0 to 1.0, 0 means no modification
   },
-
-  gestures = {
-    workspace_swipe_forever = true,
-  },
-})
-
--- Example per-device config
--- See https://wiki.hypr.land/configuring/core/devices/ for more
-hl.device({
-  name        = "epic-mouse-v1",
-  sensitivity = -0.5,
 })

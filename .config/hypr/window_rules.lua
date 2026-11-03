@@ -116,6 +116,23 @@ hl.window_rule({ match = { class = "^(Spotify)$" }, tile = true })
 hl.window_rule({ match = { xwayland = true }, rounding = 0 })
 hl.window_rule({ match = { xwayland = true }, opacity = "0.95 0.95" })
 
+-- XWayland アプリのドラッグ中に出る、クラスもタイトルも空の浮動ウィンドウにフォーカスを渡さない
+-- (公式の例 /usr/share/hypr/hyprland.lua の fix-xwayland-drags と同じ条件)
+-- Keep focus away from the class-less, title-less floating windows XWayland apps create while dragging
+-- (same match as fix-xwayland-drags in the official example /usr/share/hypr/hyprland.lua)
+hl.window_rule({
+  name  = "fix-xwayland-drags",
+  match = {
+    class      = "^$",
+    title      = "^$",
+    xwayland   = true,
+    float      = true,
+    fullscreen = false,
+    pin        = false,
+  },
+  no_focus = true,
+})
+
 -- ─── ピクチャーインピクチャーモード ─────────────────
 -- 旧設定の `move = 75% 75%` は、0.57 の式パーサ(muParser)が `%` を解釈しないため
 -- モニタ寸法の式 monitor_w*0.75 / monitor_h*0.75 に書き換えた(位置はモニタ内の座標)
