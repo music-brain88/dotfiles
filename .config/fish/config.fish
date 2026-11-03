@@ -62,13 +62,16 @@ set -g fish_greeting
 # 入れた後でないと見えないため。
 if command -q gpgconf; and command -q gpg-connect-agent
   # Point SSH at gpg-agent's SSH socket. This lives here, not in .bashrc, because herdr panes start
-  # fish directly and never inherit anything .bashrc exports. An SSH_AUTH_SOCK that is already set
-  # (e.g. ssh agent forwarding) is left alone. Not limited to interactive shells, so `fish -c` scripts
-  # that call ssh/git also reach the agent.
+  # fish directly and never inherit anything .bashrc exports. An SSH_AUTH_SOCK that already points at
+  # a live socket (e.g. ssh agent forwarding) is left alone; one that is unset or dangling (a herdr or
+  # terminal proxy symlink left behind by a terminal restarted without re-login) is replaced (#440).
+  # Not limited to interactive shells, so `fish -c` scripts that call ssh/git also reach the agent.
   # SSH の向き先を gpg-agent の SSH ソケットにする。herdr の pane は fish を直起動し .bashrc の export を
-  # 受け継がないので、.bashrc ではなくここで設定する。既に設定済み(ssh の agent forwarding 等)なら触らない。
+  # 受け継がないので、.bashrc ではなくここで設定する。生きたソケットを指している値(ssh の agent forwarding 等)
+  # は触らない。未設定か、死んだソケットを指している値(ログインし直さずに端末だけ起動し直したあとに残る
+  # herdr や端末の proxy の symlink)は付け替える(#440)。
   # ssh/git を呼ぶ `fish -c` のスクリプトでも agent に届くよう、対話シェルに限定しない。
-  if test -z "$SSH_AUTH_SOCK"
+  if test -z "$SSH_AUTH_SOCK"; or not test -S "$SSH_AUTH_SOCK"
     set -gx SSH_AUTH_SOCK (gpgconf --list-dirs agent-ssh-socket)
     # Without systemd socket activation the socket only appears once the agent runs, so start it on
     # demand (`fish -c 'ssh …'` has no fish_preexec to do it later). Under systemd the socket file
