@@ -16,7 +16,7 @@ terminal-browser ([zenbu-labs/terminal-browser](https://github.com/zenbu-labs/te
 | 導入 | `nix/modules/terminal-browser.nix` の `home.packages` | native 機だけに入れる (`home.nix` が native のときだけこのモジュールを読む) |
 | スキルの自動リンクの拒否 | 同モジュールの `xdg.stateFile."terminal-browser/skills-choice"` | `~/.local/state/terminal-browser/skills-choice` に `no` を置く |
 | テレメトリの停止 | 同モジュールの `home.sessionVariables.TERMINAL_BROWSER_NO_TELEMETRY` | 利用状況とクラッシュの報告を止める |
-| 古いプロファイルの掃除 | 同モジュールの `home.activation.cleanTerminalBrowserProfiles` | 版を上げた後に残る古いプロファイルを消す |
+| 古いプロファイルの掃除 | 同モジュールの `home.activation.cleanTerminalBrowserProfiles` | store のパスが変わった後 (版を上げたときと、flake.lock の更新で依存が変わったとき) に残る古いプロファイルを消す |
 | herdr の設定 | `.config/herdr/config.toml` の `[terminal]` 節の `kitty_graphics = true` | terminal-browser が herdr の設定に書き込もうとするのを止める |
 | WezTerm の設定 | `.config/wezterm/wezterm.lua` の `enable_kitty_graphics = true` | WezTerm で kitty graphics を有効にする (「端末の要件」節) |
 | `$BROWSER` ラッパー | `.config/herdr/scripts/device_auth_browser.sh` | herdr の中では承認ページを terminal-browser の pane で開く |
