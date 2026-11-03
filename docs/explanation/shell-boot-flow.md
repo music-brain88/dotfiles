@@ -118,6 +118,8 @@ Fish で作業
 
 SSH の agent も同じ理由で config.fish 側に置いています。herdr の pane は `.bashrc` の export を受け継がないので、config.fish が `SSH_AUTH_SOCK` を gpg-agent の SSH ソケット（`gpgconf --list-dirs agent-ssh-socket`）に設定します。また SSH の署名要求には tty の情報が無く、gpg-agent は最後に `updatestartuptty` された tty に pinentry を出すので、config.fish の `fish_preexec` ハンドラがコマンドのたびに `updatestartuptty` を実行し、pinentry がコマンドを打った pane に出るようにしています（#440）。
 
+WezTerm には内蔵の ssh-agent proxy（`mux_enable_ssh_agent`、既定で有効）があり、pane を開くたびに config.fish より先に `SSH_AUTH_SOCK` を proxy のソケットに設定します。これが残っていると config.fish の「未設定なら設定する」ガードが効かず、pane は WezTerm 起動時に見えていた agent に繋がったままになるので、wezterm.lua で proxy を無効にしています（#440）。
+
 ### `exec` コマンドについて
 
 `exec fish` は新しいプロセスを fork するのではなく、現在の Bash プロセスを Fish で**置き換え**ます。

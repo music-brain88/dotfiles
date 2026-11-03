@@ -61,6 +61,21 @@ config.window_padding = { left = 0, right = 0, top = 0, bottom = 0 }
 config.enable_kitty_graphics = true
 
 -- ---------------------------------------------------------------------------
+-- SSH agent
+-- ---------------------------------------------------------------------------
+-- WezTerm 内蔵の ssh-agent proxy(mux_enable_ssh_agent、既定で有効)は、pane を開くたびに
+-- config.fish より先に SSH_AUTH_SOCK を proxy のソケットに設定する。すると config.fish の
+-- 「未設定なら gpg-agent の SSH ソケットにする」ガードが効かず、pane は WezTerm 起動時に
+-- 見えていた agent(あれば)に繋がったままになる。proxy を切って pane には何も継がせず、
+-- SSH_AUTH_SOCK の決め手を config.fish の 1 か所にする(#440)。
+-- WezTerm's built-in ssh-agent proxy (mux_enable_ssh_agent, on by default) sets
+-- SSH_AUTH_SOCK to its proxy socket in every new pane before config.fish runs, so
+-- fish's "set only when unset" guard never fires and panes stay on whatever agent
+-- WezTerm saw at startup, if any. Disable it so panes inherit nothing and config.fish
+-- remains the single place that points SSH_AUTH_SOCK at gpg-agent (#440).
+config.mux_enable_ssh_agent = false
+
+-- ---------------------------------------------------------------------------
 -- シェル / Shell (herdr は既存セッションへ自動アタッチするため分岐不要)
 -- ---------------------------------------------------------------------------
 if is_windows then
