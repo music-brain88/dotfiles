@@ -108,10 +108,10 @@ if ! command -v terminal-browser >/dev/null 2>&1; then
   fallback_gui
 fi
 
-# open は開いた後のブラウザの状態を JSON (約 40 行) で標準出力に書くので、
-# 呼び出し元の pane に流れないよう捨てる。標準エラーは失敗の理由を見るために残す。
-# 隣に terminal-browser の pane があれば、既定でそこにタブとして開く。
-# `open` prints the browser state as ~40 lines of JSON on stdout; discard it so it
-# doesn't spill into the calling pane. Keep stderr so failures stay visible. By
-# default it opens a tab in an adjacent terminal-browser pane when there is one.
+# open は開いた先を 1 行 (opened ... (terminal-browser ls for details)) で標準出力に
+# 書くので、呼び出し元の pane に流れないよう捨てる。標準エラーは失敗の理由を見るために
+# 残す。隣に terminal-browser の pane があれば、既定でそこにタブとして開く。
+# `open` prints one line (opened ... (terminal-browser ls for details)) on stdout;
+# discard it so it doesn't spill into the calling pane. Keep stderr so failures stay
+# visible. By default it opens a tab in an adjacent terminal-browser pane when there is one.
 terminal-browser open "$url" --split right >/dev/null || fallback_gui
