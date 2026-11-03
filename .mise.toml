@@ -225,17 +225,24 @@ run = """
 set -euo pipefail
 key=$(git config user.signingkey)
 [ -n "$key" ] || { echo "git config user.signingkey is not set" >&2; exit 1; }
+# git 向けの "!" 付き指定を gpg の鍵選択にそのまま使うと 1 本のサブキーに絞られるので、主キーの fingerprint に解決する (#770)
+# A git-style "!" specifier used as a gpg key selector narrows the export to one subkey, so resolve it to the primary fingerprint (#770)
+fpr=$(gpg --list-keys --with-colons "$key" | awk -F: '$1=="fpr" {print $10; exit}')
+[ -n "$fpr" ] || { echo "Could not resolve the primary key fingerprint for user.signingkey '$key'" >&2; exit 1; }
 # 秘密鍵を含むファイルを 600 で作る (ディレクトリ 700 との多層防御)
 # Create key files as 600 — defence in depth on top of the 700 directory
 umask 077
 out=.backup/gpg
 mkdir -p "$out"
 chmod 700 "$out"
-gpg --export --armor "$key" > "$out/public.asc"
+gpg --export --armor "$fpr" > "$out/public.asc"
 # 秘密鍵はサブキーのみ。主キーの秘密鍵はバンドルに含めない
 # Secret subkeys only — the primary secret key never enters the bundle
-gpg --export-secret-subkeys --armor "$key" > "$out/secret-subkeys.asc"
+gpg --export-secret-subkeys --armor "$fpr" > "$out/secret-subkeys.asc"
 gpg --export-ownertrust > "$out/ownertrust.txt"
+# 配布前にサブキーの本数を目で確かめられるよう、公開鍵バンドルの中身を表示する
+# Show the public bundle so the subkey count can be checked before distribution
+gpg --show-keys --keyid-format long "$out/public.asc"
 echo "Bundle written to $out/ — transfer it securely (e.g. scp) and delete it after import."
 """
 
