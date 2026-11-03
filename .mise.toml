@@ -92,10 +92,13 @@ fi
 """
 
 [tasks."claude:wtclose-test"]
-description = "Run the tests of the wtclose close gate script (fixtures only, never touches the real vault)"
-# 一時ディレクトリの fixture と偽の gh だけで検問スクリプトを試す。実物の vault には触らない。
-# Exercises close_gate.sh with temporary fixtures and a fake gh; the real vault is never touched.
-run = "bash .config/claude/skills/wtclose/tests/close_gate_test.sh"
+description = "Run the tests of the wtclose scripts close_gate.sh and forget.sh (fixtures only, never touches the real vault or trash)"
+# 一時ディレクトリの fixture と偽の gh・gio だけで、検問スクリプトと forget.sh を試す。実物の vault とゴミ箱には触らない。
+# Exercises close_gate.sh and forget.sh with temporary fixtures and a fake gh / gio; the real vault and trash are never touched.
+run = [
+  "bash .config/claude/skills/wtclose/tests/close_gate_test.sh",
+  "bash .config/claude/skills/wtclose/tests/forget_test.sh",
+]
 
 [tasks."claude:wtclean-test"]
 description = "Run the tests of the wtclean harvest search script (fixtures only, never reads the real vault)"

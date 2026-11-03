@@ -19,6 +19,11 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
   },
+  "permissions": {
+    "allow": [
+      "Bash(bash ~/.claude/skills/wtclose/forget.sh *)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
