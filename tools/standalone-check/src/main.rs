@@ -74,11 +74,6 @@ lazy_re!(
     re_context_words,
     r"こっち|あっち|そっち|先方|あの人|例の|さっき|先ほどの|前に話した|前回話した|この前の|あの件|その件|くだんの|上で言った|冒頭で言った"
 );
-// yomiyasu の指摘のうち、本環境の表記と衝突するため読まないもの(SKILL.md「yomiyasu の指摘の読み方」)
-lazy_re!(
-    re_yomiyasu_ignore,
-    r"半角空白|太字の頻度|箇条書きの比率|「正本」|正本"
-);
 lazy_re!(re_trailing_paren, r"\s*[（(][^（）()]*[）)]\s*$");
 lazy_re!(re_ascii_tail, r"[A-Za-z0-9)\]]$");
 lazy_re!(re_ascii_head, r"^[A-Za-z0-9(\[]");
@@ -115,6 +110,28 @@ struct YomiyasuFinding {
 
 fn default_yomiyasu_severity() -> String {
     "warn".into()
+}
+
+// yomiyasu の指摘のうち、本環境の表記と衝突するため読まないもの(SKILL.md「yomiyasu の指摘の読み方」)。
+// 判定は指摘の rule ID で行う。rule を持たない指摘は除外しない(上流が形式を変えたら、消さずに表示する)。
+// Findings we do not read because they conflict with this environment's notation; matched by rule ID.
+// Findings without a rule are never dropped, so an upstream format change shows up instead of hiding findings.
+/// 指摘ごと読まない規則 / Rules whose findings are always dropped.
+const YOMIYASU_IGNORED_RULES: &[&str] = &["excess_bold", "excess_list"];
+/// slop_vocabulary のうち読まない語の印。上流 v2.5.0 の snippet は行全体で、当たった語は JSON に出ないため、
+/// message「AI頻出語彙「<語>」が含まれています…」の鉤括弧の部分で見分ける。上流がこの形を変えたら、
+/// 「正本」の指摘は除外されずに表示される。
+/// Marker of the slop word we do not read. Upstream v2.5.0 puts the whole line in `snippet` and omits the
+/// matched word, so we look for it in the message; if upstream changes that shape, the finding is shown.
+const YOMIYASU_IGNORED_SLOP_MARK: &str = "「正本」";
+
+/// 本環境では読まない yomiyasu の指摘か / Whether a yomiyasu finding is one we do not read.
+fn is_ignored_yomiyasu(f: &YomiyasuFinding) -> bool {
+    match f.extra.get("rule").and_then(|v| v.as_str()) {
+        Some(rule) if YOMIYASU_IGNORED_RULES.contains(&rule) => true,
+        Some("slop_vocabulary") => f.message.contains(YOMIYASU_IGNORED_SLOP_MARK),
+        _ => false,
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -767,9 +784,7 @@ fn run_yomiyasu(script: &Path, file: &Path) -> (&'static str, Vec<serde_json::Va
                 format!("lint の応答形式が不正: 未知の severity {:?}", f.severity),
             );
         }
-        if re_yomiyasu_ignore().is_match(&f.message)
-            || (f.snippet.contains("正本") && f.message.contains("スロップ"))
-        {
+        if is_ignored_yomiyasu(&f) {
             continue;
         }
         let mut obj = f.extra;
@@ -929,7 +944,7 @@ fn main() -> ExitCode {
                     println!("[PASS] yomiyasu: 読む対象の指摘なし");
                 } else {
                     println!(
-                        "[NOTICE] yomiyasu: {} 件(うち warn {yomi_warns}。半角空白・太字頻度・箇条書き比率・「正本」は除外)",
+                        "[NOTICE] yomiyasu: {} 件(うち warn {yomi_warns}。excess_bold・excess_list と slop_vocabulary の「正本」は除外)",
                         yomi.len()
                     );
                     for y in &yomi {

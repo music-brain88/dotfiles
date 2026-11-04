@@ -84,19 +84,20 @@ description: 話者の説明なしで、後から文章だけを読んでも「�
 
 ## yomiyasu の指摘の読み方
 
-yomiyasu の lint(`../yomiyasu/scripts/yomiyasu_lint.py`)は文単位の機械検査として使う。ただし本環境の表記と衝突する指摘があるので、次の表に従って読む。上流のファイルは書き換えない(`../yomiyasu/UPSTREAM.md`)。次の表は、指摘の種類ごとに従うか読まないかを示す。
+yomiyasu の lint(`../yomiyasu/scripts/yomiyasu_lint.py`)は文単位の機械検査として使う。ただし本環境の表記と衝突する指摘があるので、次の表に従って読む。上流のファイルは書き換えない。yomiyasu の取り込み元とバージョンの上げ方は、dotfiles リポジトリの `docs/how-to/update-yomiyasu.md` に書いてある。lint は各指摘に規則の ID(rule ID)を付けて出す。次の表は、指摘の種類ごとに、対応する yomiyasu v2.5.0 の rule ID と、従うか読まないかを示す。
 
-| yomiyasu の指摘 | 扱い | 理由 |
-|---|---|---|
-| 比喩動詞(効く、壊れる、倒す、溶かす、潰す)、非生物主語 | 従う | 読み手に比喩の解釈を求める。本規範の 2 と同じ趣旨 |
-| 前置きフィラー(重要なのは、結論から言うと)、定型クロージング | 従う | 主文の前に置かれる前置きは、主文を遅らせる |
-| 否定対比(A ではなく B) | 従う。ただし対比が内容そのもののとき(設計案の比較)は残す | 修辞としての否定対比と、比較としての否定対比は別 |
-| 読点 3 つ以上の文、同一文末の 3 連続 | 従う | 本規範の 2 と同じ |
-| 絵文字、文末コロン、ダッシュ記号 | 従う | 配布文書に装飾は要らない |
-| 英単語前後の半角空白 | **読まない** | 本環境の表記は和欧文間に半角スペースを置く(`../japanese-tech-writing/SKILL.md` と全スキルの文体がこの表記) |
-| 太字頻度、箇条書き比率 | **走査型文書では読まない** | 走査される文書では見出し・表・箇条書きが区分の分解を肩代わりする(グローバル CLAUDE.md「報告と分解の形」)。読み物に適用するときだけ従う |
-| スロップ語「正本」 | **読まない** | 本環境では「正本」は版管理と法律文書の用語として使う |
-| スロップ語「土台」「本質的」「装置」など | 文脈で判断する | 専門用語や固有の名称(例: cognitive-rhythm-writing の「装置」)は言い換えない。yomiyasu 自身も専門用語の保持を指示している |
+| yomiyasu の指摘 | rule ID(v2.5.0) | 扱い | 理由 |
+|---|---|---|---|
+| 比喩動詞(効く、壊れる、倒す、溶かす、潰す)、非生物主語 | `metaphor_verb` | 従う | 読み手に比喩の解釈を求める。本規範の 2 と同じ趣旨 |
+| 前置きフィラー(重要なのは、結論から言うと)、定型クロージング | `meta_filler` | 従う | 主文の前に置かれる前置きは、主文を遅らせる |
+| 否定対比(A ではなく B) | `negative_parallelism`、`negative_parallelism_density` | 従う。ただし対比が内容そのもののとき(設計案の比較)は残す | 修辞としての否定対比と、比較としての否定対比は別 |
+| 1 文の読点の多さと、間を作るだけの読点 | lint は読点の数を数えない。上流の SKILL.md の「文長と読点の調整」が 1 文の読点を 0〜2 個の目安にしている。間を作るだけの読点の `pause_comma` は、`--doc-type` を付けたときだけ出る | 従う | 本規範の 2 と同じ |
+| 同一文末の 3 連続 | `sentence_end_repetition` | 従う | 同じ文末が続いて読みにくいときは、語順や文のまとめ方を変える。文の働きは変えない |
+| 絵文字、文末コロン、ダッシュ記号 | `emoji_prohibited`、`trailing_colon`、`dash_decoration`、`dash_insertion`、`dash_list_ending` | 従う | 配布文書に装飾は要らない |
+| 英語の直訳語(version の意味の「版」、regression の意味の「回帰」) | `translated_term` | 従う。ソフトウェアの version は「バージョン」と書く | 「正本」と違い、本環境で意味を決めて使っている語ではない。「バージョン」と書いても意味を失わない |
+| 太字頻度、箇条書き比率 | `excess_bold`、`excess_list` | **走査型文書では読まない** | 走査される文書では見出し・表・箇条書きが区分の分解を肩代わりする(グローバル CLAUDE.md「報告と分解の形」)。読み物に適用するときだけ従う |
+| スロップ語「正本」 | `slop_vocabulary`(message が「正本」を含むもの) | **読まない** | 本環境では「正本」は版管理と法律文書の用語として使う |
+| スロップ語「土台」「本質的」「装置」など | `slop_vocabulary` | 文脈で判断する | 専門用語や固有の名称(例: cognitive-rhythm-writing の「装置」)は言い換えない。yomiyasu 自身も専門用語の保持を指示している |
 
 ## 執筆後の点検手順
 
@@ -111,7 +112,7 @@ yomiyasu の lint(`../yomiyasu/scripts/yomiyasu_lint.py`)は文単位の機械�
    standalone-check <対象ファイル> --with-yomiyasu
    ```
 
-   `--with-yomiyasu` を付けると、`~/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py` を `python3` で続けて実行し、上の表で「読まない」とした指摘を除いて表示する。lint の場所は `--yomiyasu-script <パス>` か環境変数 `STANDALONE_CHECK_YOMIYASU` で指定できる。判定は物理行ではなく段落単位で行うので、Markdown の折り返し(読点の後で改行した 1 文)は体言止めに数えない。終了コードは、本スクリプトの WARN か yomiyasu の warn があれば 1、ファイルを読めないか lint を実行できなければ 2、それ以外は 0 になる。INFO と yomiyasu の info は表示だけで、終了コードに影響しない。lint を実行できなかったときは `[SKIP]` と表示し、検査済みとはみなさない。`standalone-check` が PATH に無いときは、dotfiles で `mise run nix:switch` を実行してから使う。
+   `--with-yomiyasu` を付けると、`~/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py` を `python3` で続けて実行し、上の表で「読まない」とした指摘を rule ID で見分けて除いて表示する。lint の場所は `--yomiyasu-script <パス>` か環境変数 `STANDALONE_CHECK_YOMIYASU` で指定できる。判定は物理行ではなく段落単位で行うので、Markdown の折り返し(読点の後で改行した 1 文)は体言止めに数えない。終了コードは、本スクリプトの WARN か yomiyasu の warn があれば 1、ファイルを読めないか lint を実行できなければ 2、それ以外は 0 になる。INFO と yomiyasu の info は表示だけで、終了コードに影響しない。lint を実行できなかったときは `[SKIP]` と表示し、検査済みとはみなさない。`standalone-check` が PATH に無いときは、dotfiles で `mise run nix:switch` を実行してから使う。
 4. **修正は 2 回まで**。警告をゼロにすることを目的にしない。専門用語、固有名詞、意図した短い見出し語は残す。
 
 ## 修正指示への使い方
