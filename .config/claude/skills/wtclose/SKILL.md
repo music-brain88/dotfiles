@@ -55,7 +55,7 @@ bash ${CLAUDE_SKILL_DIR}/close_gate.sh --where
 **Constraints:**
 - **MUST**: open の PR は `gh pr list --state open` で、残っている worktree は `git worktree list` で、実物を確かめる。会話の記憶で埋めない
 - **MUST**: 司令塔が作っていない PR と worktree(別のセッションの司令塔が作ったもの、依存を更新する CI が作った PR など)も一覧に出る。司令塔はそれらを消さず、状態ファイルに「別のセッションの管轄」として書く
-- **MUST**: 司令塔は、裏の待ち受け(`run_in_background` で仕掛けた `herdr agent wait`、Monitor、ScheduleWakeup や /loop の予約)を、締める前に止めるか、張り直し方を状態ファイルの「稼働中の worker」に書く。`herdr agent wait` 以外の待ち受け(Monitor、ScheduleWakeup、/loop の予約、`gh pr checks --watch`)は止める。待ち受けは新しいセッションに引き継がれないので、次のセッションの司令塔は「張り直し:」のコマンドをそのまま打つ。
+- **MUST**: 司令塔は、裏の待ち受け(`run_in_background` で仕掛けた `herdr agent wait`、Monitor、ScheduleWakeup や /loop の予約)を、締める前に止めるか、張り直し方を状態ファイルの「稼働中の worker」に書く。`herdr agent wait` 以外の待ち受け(Monitor、ScheduleWakeup、/loop の予約、`gh pr checks --watch`)は止める。待ち受けは新しいセッションに引き継がれないので、次のセッションの司令塔は、worker の状態を確かめてから「張り直し:」のコマンドを打つ(Troubleshooting「待ち受けを残して締めたい」)。
 - **MUST**: 次の入口(次のセッションの司令塔が最初にすること)を決める
 
 ### 2. 作業物を仕分ける
@@ -225,16 +225,17 @@ Claude Code は、Stop hook が 8 回続けてターンを続行させると、�
 | `herdr agent wait <名前>` | `<名前>` を語として含み、`張り直し:` の後ろにコマンドがある行があれば通す |
 | `herdr agent wait "$AGENT_NAME"`(`${AGENT_NAME}` も同じ) | 同じコマンドの中の `AGENT_NAME=<名前>` から名前を読み、上と同じように判定する。代入が無ければ止める |
 | `herdr agent wait --until working <名前>` | オプションが名前より前にあるので、名前を読めずに止める。司令塔は、待ち受けを止めてから、名前を先に書く形 `herdr agent wait <名前> --until …` に直して張り直す |
-| `herdr agent wait` の対象に pane ID を書いたもの | 名前として読めないので止める |
+| 対象の語全体が名前の形でないもの(pane ID、`"claude-x"-2`、`"claude-x${SUFFIX}"`) | 展開や連結を解決できないので止める。`AGENT_NAME=` の代入の値も同じように読む |
 | `herdr agent wait` 以外の裏タスク、`session_crons` の予約 | 張り直しの形が無いので止める |
 
 1 つのコマンドの中に読めない対象が 1 つでもあれば、検問はそのコマンド全体を止める。
 
-次のセッションの司令塔は、次の順で待ち受けを張り直す。
+次のセッションの司令塔は、次の順で待ち受けを張り直す。状態ファイルの「張り直し:」に連結の形(`--until working` と既定の wait の連結)が書いてあっても、司令塔は worker の状態に応じて前半を省く。
 
 1. 司令塔は、状態ファイルの「稼働中の worker」を読み、行ごとに `herdr agent get <名前>` で worker の状態を確かめる。
-2. worker が `working` なら、司令塔は「張り直し:」のコマンドをそのまま `run_in_background` で打つ。
-3. worker がすでに `idle` か `done` なら、司令塔はコマンドを打たず、`herdr agent read <名前> --source recent --lines 50` で報告を読む。前半の `--until working` は worker が再開するまで解決しないので、打つと待ち続けるためである。
+2. worker が `working` なら、司令塔は既定の `herdr agent wait <名前>` だけを `run_in_background` で張る。連結しない理由は、`herdr agent get` の直後に worker が完了すると、前半の `--until working` が次の再開まで解決しないためである。
+3. worker が `idle` か `done` なら、司令塔は `~/.claude/skills/wt/SKILL.md` の「相談 idle の判別」の 4 通り(相談待ち・完了・作業続行中のフラップ・裏の処理の待ち)で判定する。司令塔が張り直しを省いてよいのは、完了報告があるときだけである。
+4. worker が裏の処理(CI の watch など)を待っていて最終報告が無いなら、司令塔は連結の形を `run_in_background` で張る。前半が worker の再開で解決し、後半が最終報告の後に解決する。
 
 ### `rm` が auto mode の分類器に止められる
 司令塔は、忘れる候補と古い状態ファイルを `rm` で消さず、`forget.sh` で消す(手順 4)。この決まりは、2026-11-03 に次の順で起きたことから作った。

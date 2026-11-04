@@ -786,6 +786,66 @@ test_p5_pane_id_target_blocks() {
   assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
 }
 
+test_p5_extra_spaces_between_words_are_still_read() {
+  new_case
+  write_workers "$p5_worker"
+  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait claude-x && herdr  agent  wait  claude-y"}]')"
+  assert_exit 2
+  assert_err_has '[P5] herdr agent wait の張り直し方が'
+  assert_err_has '- claude-y(pane <pane_id>'
+}
+
+test_p5_target_with_a_suffix_after_the_quote_blocks() {
+  new_case
+  write_workers "$p5_worker"
+  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait \"claude-x\"-2"}]')"
+  assert_exit 2
+  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
+  assert_err_lacks '通した'
+}
+
+test_p5_target_with_an_expansion_inside_the_quotes_blocks() {
+  new_case
+  write_workers "$p5_worker"
+  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait \"claude-x${SUFFIX}\""}]')"
+  assert_exit 2
+  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
+  assert_err_lacks '通した'
+}
+
+test_p5_assignment_with_an_expansion_blocks() {
+  local value
+  for value in '\"claude-x${SUFFIX}\"' 'claude-x$SUFFIX' '\"claude-x\"-2' '\"$(pick)\"'; do
+    new_case
+    write_workers "$p5_worker"
+    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"SUFFIX=-2; AGENT_NAME='"$value"'; herdr agent wait \"$AGENT_NAME\""}]')"
+    assert_exit 2
+    assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
+    assert_err_lacks '通した'
+  done
+}
+
+test_p5_wait_without_a_target_next_to_a_covered_name_blocks() {
+  new_case
+  write_workers "$p5_worker"
+  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait claude-x && herdr agent wait ;"}]')"
+  assert_exit 2
+  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
+}
+
+test_p5_quoted_names_and_separators_are_read() {
+  local cmd
+  for cmd in 'herdr agent wait \"claude-x\" --until working' "herdr agent wait 'claude-x'" \
+    'herdr agent wait claude-x>/s/a.json' 'herdr agent wait claude-x;true' '(herdr agent wait claude-x)' \
+    'herdr agent wait claude-x|cat' 'herdr agent wait claude-x&&true'; do
+    new_case
+    write_workers "$p5_worker"
+    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"'"$cmd"'"}]')"
+    assert_exit 0
+    assert_out_has '通した(claude-x)'
+  done
+}
+
 test_p5_name_is_compared_as_a_whole_word() {
   local wait_name line
   for wait_name in claude-x claude-x-2; do

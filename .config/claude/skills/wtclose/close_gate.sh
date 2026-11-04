@@ -51,18 +51,23 @@ readonly -a state_sections=("$sec_workers" '判定の途中' 'ユーザー待ち
 readonly -a reason_kinds=('マージ待ち' 'レビュー待ち' 'worker 稼働中' '別のセッションの管轄')
 readonly pr_unverified_tag='PR の状態は未確認' # P8: "- [PR の状態は未確認] YYYY-MM-DD HH:MM ..."
 readonly rearm_tag='張り直し:' # P5: "- <name>(... 張り直し: <command>)"
-# P5: jq regexes for the waits in background_tasks. wait_re takes every target of a
-# wait (group 1); a target counts only when it matches agent_name_re or is
-# $AGENT_NAME with an assignment (assign_re) in the same task. A leading "-" is an
-# option such as --until, not a name.
-# P5: background_tasks の待ち受けを読む jq の正規表現。wait_re は wait の対象を全部取る
-# (1 番目の組)。対象として数えるのは、agent_name_re に一致するものか、同じ task に
-# 代入(assign_re)のある $AGENT_NAME だけである。「-」で始まるのは --until などの
-# オプションで、名前ではない。
-readonly wait_re="herdr agent wait[[:space:]]+[\"']?([^[:space:]\"'<>;&|()]+)"
-readonly assign_re="(?<![A-Za-z0-9_])AGENT_NAME=[\"']?([a-z0-9_-]+)"
-readonly agent_var_re='^[$]([{]AGENT_NAME[}]|AGENT_NAME)$'
-readonly agent_name_re='^[a-z0-9_][a-z0-9_-]*$'
+# P5: jq regexes for the waits in background_tasks. wait_re and assign_re take a
+# whole shell word (group 1), up to a space, the end of the line or one of ; & | ) >.
+# The word must then match agent_name_re as a whole, bare or inside one pair of
+# quotes, or be $AGENT_NAME with an assignment in the same task. Anything else (an
+# option such as --until, "claude-x"-2, "claude-x${SUFFIX}") cannot be resolved.
+# P5: background_tasks の待ち受けを読む jq の正規表現。wait_re と assign_re は、シェルの
+# 語全体(1 番目の組)を、空白・行末・; & | ) > の手前まで取る。語は全体が agent_name_re
+# に一致する(素のままか、1 組の引用符の中)か、同じ task に代入のある $AGENT_NAME で
+# なければならない。それ以外(--until などのオプション、"claude-x"-2、
+# "claude-x${SUFFIX}")は解決できない。
+readonly word_re='([^[:space:];&|)>]*)'
+readonly wait_re="herdr[[:space:]]+agent[[:space:]]+wait[[:space:]]+${word_re}"
+readonly assign_re="(?<![A-Za-z0-9_])AGENT_NAME=${word_re}"
+readonly agent_var='[$]([{]AGENT_NAME[}]|AGENT_NAME)'
+readonly agent_var_re="^(${agent_var}|\"${agent_var}\")\$"
+readonly agent_name='[a-z0-9_][a-z0-9_-]*'
+readonly agent_name_re="^(${agent_name}|\"${agent_name}\"|'${agent_name}')\$"
 # Optional repository qualifier (owner/repo) for P4 lines and unit:
 #   P4:   "- [マージ待ち] PR owner/repo#663 ..."  (omitted = this repository)
 #   unit: "owner/repo#663" | "owner/repo@feat/x" (omitted = this repository)
@@ -816,10 +821,10 @@ check_p5() {
     # 覆われたように見せないためである。
     def wait_names:
       ([(.command // ""), (.description // "")] | map(tostring) | join(" ")) as $text
-      | [$text | scan($assign_re)[0]] as $assigned
-      | [$text | scan($wait_re)[0]
+      | [$text | scan($assign_re)[0] | (. // "")] as $assigned
+      | [$text | scan($wait_re)[0] | (. // "")
           | if test($var_re) then (if ($assigned | length) > 0 then $assigned[] else "" end) else . end
-          | if test($name_re) then . else "" end]
+          | if test($name_re) then gsub("[\"\u0027]"; "") else "" end]
       | if any(.[]; . == "") then "" else unique | join(" ") end;
     ((.background_tasks // [])[] | select(done_status | not)
       | ["task", wait_names,
