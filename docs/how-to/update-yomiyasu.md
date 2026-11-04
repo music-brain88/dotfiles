@@ -50,12 +50,12 @@ dotfiles は上流のファイルを書き換えません。本環境の表記�
    - lint が、`--strict` も `--fail-on` も付けないときに、指摘があっても終了コード 0 で終わるかを確かめます。standalone-check は 0 以外を失敗として扱います。
    - 新しく足された規則のうち、本環境の表記と衝突するものがないかを確かめます。
 5. 手順 4 で変わっていた項目に合わせて、「本環境での読み替え」の節の 2 か所を直します。standalone-check を直したときは、`cd tools/standalone-check && cargo test` を実行します。
-6. 動作を確かめます。`mise run nix:build` は Home Manager の設定をビルドするだけで、反映はしません。
+6. 動作を確かめます。`mise run nix:build` は Home Manager の設定をビルドするだけで、反映はしません。そのため、PATH にある `standalone-check` は前に反映した版のままです。手順 5 で除外判定を直した場合も確かめられるように、新しくビルドした `result/home-path/bin/standalone-check` を使います。
 
    ```bash
    mise run nix:build
    grep -m1 'version:' result/home-files/.claude/skills/yomiyasu/SKILL.md
-   standalone-check <日本語の Markdown> --with-yomiyasu \
+   result/home-path/bin/standalone-check <日本語の Markdown> --with-yomiyasu \
      --yomiyasu-script result/home-files/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py
    ```
 
