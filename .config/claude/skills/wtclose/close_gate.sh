@@ -44,11 +44,25 @@ readonly state_prefix='state_'      # <memory_dir>/state_<commander name>.md
 readonly fm_as_of='as_of'           # frontmatter: "YYYY-MM-DD HH:MM" (local time)
 readonly fm_session='session_id'    # frontmatter: the commander's session ID
 readonly as_of_re='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}$'
+readonly sec_workers='稼働中の worker' # P5
 readonly sec_remaining='残っているもの' # P4 / P8
 readonly sec_next='次の入口'           # P3
-readonly -a state_sections=('稼働中の worker' '判定の途中' 'ユーザー待ち' "$sec_remaining" "$sec_next")
+readonly -a state_sections=("$sec_workers" '判定の途中' 'ユーザー待ち' "$sec_remaining" "$sec_next")
 readonly -a reason_kinds=('マージ待ち' 'レビュー待ち' 'worker 稼働中' '別のセッションの管轄')
 readonly pr_unverified_tag='PR の状態は未確認' # P8: "- [PR の状態は未確認] YYYY-MM-DD HH:MM ..."
+readonly rearm_tag='張り直し:' # P5: "- <name>(... 張り直し: <command>)"
+# P5: jq regexes for the waits in background_tasks. wait_re takes every target of a
+# wait (group 1); a target counts only when it matches agent_name_re or is
+# $AGENT_NAME with an assignment (assign_re) in the same task. A leading "-" is an
+# option such as --until, not a name.
+# P5: background_tasks の待ち受けを読む jq の正規表現。wait_re は wait の対象を全部取る
+# (1 番目の組)。対象として数えるのは、agent_name_re に一致するものか、同じ task に
+# 代入(assign_re)のある $AGENT_NAME だけである。「-」で始まるのは --until などの
+# オプションで、名前ではない。
+readonly wait_re="herdr agent wait[[:space:]]+[\"']?([^[:space:]\"'<>;&|()]+)"
+readonly assign_re="(?<![A-Za-z0-9_])AGENT_NAME=[\"']?([a-z0-9_-]+)"
+readonly agent_var_re='^[$]([{]AGENT_NAME[}]|AGENT_NAME)$'
+readonly agent_name_re='^[a-z0-9_][a-z0-9_-]*$'
 # Optional repository qualifier (owner/repo) for P4 lines and unit:
 #   P4:   "- [マージ待ち] PR owner/repo#663 ..."  (omitted = this repository)
 #   unit: "owner/repo#663" | "owner/repo@feat/x" (omitted = this repository)
@@ -722,12 +736,62 @@ check_p4_p8() {
 }
 
 # ---------------------------------------------------------------------------
-# P5: background waits must not remain (no exceptions).
-# P5: 裏の待ち受けが残っていれば止める(例外を作らない)。
+# P5: background waits. A wait does not move to the next session, so a
+# "herdr agent wait" may remain only when the state file says how to re-arm it.
+# Everything else (other background tasks, session crons) must be stopped.
+# P5: 裏の待ち受け。待ち受けは次のセッションに引き継がれないので、残してよいのは
+# 張り直し方が状態ファイルに書いてある「herdr agent wait」だけである。
+# それ以外(ほかの裏タスク、予約)は止める。
 # ---------------------------------------------------------------------------
+# Succeed when the line has the rearm tag followed by a command. A closing
+# parenthesis right after the tag is the end of the line's note, not a command.
+# 行に張り直しの印があり、その後ろにコマンドが続けば成功を返す。印の直後の閉じ括弧は
+# 行の補足の終わりであって、コマンドではない。
+has_rearm() {
+  local rest
+  [[ "$1" == *"$rearm_tag"* ]] || return 1
+  rest="${1#*"$rearm_tag"}"
+  rest="${rest#"${rest%%[![:space:]]*}"}"
+  case "$rest" in
+    '' | ')'* | '）'*) return 1 ;;
+  esac
+}
+
+# Succeed when a line of the workers section names the agent and has a rearm command.
+# The name is compared as a whole word, so claude-x is not covered by claude-x-2.
+# 「稼働中の worker」の節に、その agent の名前と張り直しのコマンドを持つ行があれば成功を
+# 返す。名前は語として比べるので、claude-x は claude-x-2 の行では覆われない。
+worker_covers() {
+  local line re="(^|[^a-z0-9_-])${1}(\$|[^a-z0-9_-])"
+  while IFS= read -r line; do
+    [[ "$line" =~ $re ]] || continue
+    if has_rearm "$line"; then return 0; fi
+  done <<<"$2"
+  return 1
+}
+
+# In --check, only warn about the worker lines without a rearm command.
+# --check では、張り直しのコマンドが無い worker の行に注意を出すだけにする。
+note_workers_without_rearm() {
+  local line re_item='^[[:space:]]*[-*][[:space:]]+'
+  while IFS= read -r line; do
+    [[ "$line" =~ $re_item ]] || continue
+    if ! has_rearm "$line"; then
+      note "P5: ${sec_workers} に張り直し方が無い行がある。待ち受けを残して締めるなら書く"
+      return
+    fi
+  done <<<"$1"
+}
+
 check_p5() {
+  local src="${own_state:-/dev/null}" workers records kind names label name covered form
+  local -a stop_items=() bare_items=() bare_forms=() rearmed=()
+  local -A seen=()
+  local n_rearmed=0
+  workers="$(section_body "$src" "$sec_workers")"
   if [ "$mode" = 'check' ]; then
     note "P5: --check では確かめない(裏の待ち受けは Stop hook の入力にしか無い)"
+    note_workers_without_rearm "$workers"
     return
   fi
   if ! have_jq; then
@@ -738,19 +802,69 @@ check_p5() {
     note "P5: hook 入力に background_tasks が無いので、未確認として通した"
     return
   fi
-  local waits
-  waits="$(printf '%s' "$input_json" | jq -r '
+  # One record per line: kind \037 names \037 label. Unlike a tab, \037 is not IFS
+  # whitespace, so empty names survive read.
+  # 1 行 1 件で「種類 \037 名前 \037 表示」を出す。\037 はタブと違って IFS の空白に
+  # 当たらないので、名前が空でも read でつぶれない。
+  records="$(printf '%s' "$input_json" | jq -r --arg wait_re "$wait_re" --arg assign_re "$assign_re" \
+    --arg var_re "$agent_var_re" --arg name_re "$agent_name_re" '
     def done_status: (.status // "running") | test("^(completed|failed|killed|stopped|done)$");
+    def oneline: gsub("[\\n\\r\\t]+"; " ");
+    # One target that cannot be resolved empties the whole task, so that a good name
+    # next to it cannot make the task look covered.
+    # 解決できない対象が 1 つでもあれば task ごと空にする。隣の正しい名前だけで
+    # 覆われたように見せないためである。
+    def wait_names:
+      ([(.command // ""), (.description // "")] | map(tostring) | join(" ")) as $text
+      | [$text | scan($assign_re)[0]] as $assigned
+      | [$text | scan($wait_re)[0]
+          | if test($var_re) then (if ($assigned | length) > 0 then $assigned[] else "" end) else . end
+          | if test($name_re) then . else "" end]
+      | if any(.[]; . == "") then "" else unique | join(" ") end;
     ((.background_tasks // [])[] | select(done_status | not)
-      | "裏タスク \(.id // "?")(\(.type // "?")): \(.description // "")\(if .command then " — " + .command else "" end)"),
+      | ["task", wait_names,
+         ("裏タスク \(.id // "?")(\(.type // "?")): \(.description // "")\(if .command then " — " + .command else "" end)" | oneline)]
+      | join("\u001f")),
     ((.session_crons // [])[]
-      | "予約 \(.id // "?")(\(.schedule // "?")): \(.prompt // "")")' 2>/dev/null)" || {
+      | ["cron", "", ("予約 \(.id // "?")(\(.schedule // "?")): \(.prompt // "")" | oneline)]
+      | join("\u001f"))' 2>/dev/null)" || {
     note "P5: hook 入力の background_tasks を読めなかったので、未確認として通した"
     return
   }
-  if [ -n "$waits" ]; then
-    fail P5 "裏の待ち受けが残っている。待ち受けは新しいセッションに引き継がれない:"$'\n'"$(printf '%s\n' "$waits" | sed 's/^/      - /')" \
-      "TaskStop などで裏の待ち受けをすべて止め、待っていたものを状態ファイルの「稼働中の worker」に書く"
+  while IFS=$'\037' read -r kind names label; do
+    [ -n "$kind" ] || continue
+    if [ -z "$names" ]; then
+      stop_items+=("$label")
+      continue
+    fi
+    covered=1
+    for name in $names; do
+      if worker_covers "$name" "$workers"; then
+        [ -n "${seen[$name]:-}" ] || rearmed+=("$name")
+        seen[$name]=1
+      else
+        covered=0
+        form="- ${name}(pane <pane_id>、worktree <path>、指示書 <path>、待っているもの: <何>、${rearm_tag} herdr agent wait ${name} --until working && herdr agent wait ${name})"
+        bare_forms+=("$form")
+      fi
+    done
+    if [ "$covered" -eq 1 ]; then
+      n_rearmed=$((n_rearmed + 1))
+    else
+      bare_items+=("$label")
+    fi
+  done <<<"$records"
+
+  if [ "${#stop_items[@]}" -gt 0 ]; then
+    fail P5 "張り直しの形が無い裏の待ち受けが残っている。待ち受けは新しいセッションに引き継がれない:"$'\n'"$(printf '      - %s\n' "${stop_items[@]}")" \
+      "TaskStop などで止め、待っていたものを状態ファイルの「${sec_workers}」に書く(予約と、herdr agent wait 以外の裏タスクは止めるしかない)。herdr agent wait なのに名前を読めなかったものは、止めてから、名前を先に書く形 herdr agent wait <名前> --until … に直して張り直す(\$AGENT_NAME を使うなら同じコマンドの中で AGENT_NAME=<名前> と代入する)"
+  fi
+  if [ "${#bare_items[@]}" -gt 0 ]; then
+    fail P5 "herdr agent wait の張り直し方が「## ${sec_workers}」に書いてない:"$'\n'"$(printf '      - %s\n' "${bare_items[@]}")" \
+      "TaskStop などで止めるか、「## ${sec_workers}」に次の形の行を書く:"$'\n'"$(printf '%s\n' "${bare_forms[@]}")"
+  fi
+  if [ "${#stop_items[@]}" -eq 0 ] && [ "${#bare_items[@]}" -eq 0 ] && [ "$n_rearmed" -gt 0 ]; then
+    note "P5: 待ち受け ${n_rearmed} 件は張り直し方が書いてあるので通した(${rearmed[*]})"
   fi
 }
 
