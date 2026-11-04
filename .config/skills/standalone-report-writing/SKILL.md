@@ -84,7 +84,7 @@ description: 話者の説明なしで、後から文章だけを読んでも「�
 
 ## yomiyasu の指摘の読み方
 
-yomiyasu の lint(`../yomiyasu/scripts/yomiyasu_lint.py`)は文単位の機械検査として使う。ただし本環境の表記と衝突する指摘があるので、次の表に従って読む。上流のファイルは書き換えない。yomiyasu の取り込み元と版の上げ方は、dotfiles リポジトリの `docs/how-to/update-yomiyasu.md` に書いてある。lint は各指摘に規則の ID(rule ID)を付けて出す。次の表は、指摘の種類ごとに、対応する yomiyasu v2.5.0 の rule ID と、従うか読まないかを示す。
+yomiyasu の lint(`../yomiyasu/scripts/yomiyasu_lint.py`)は文単位の機械検査として使う。ただし本環境の表記と衝突する指摘があるので、次の表に従って読む。上流のファイルは書き換えない。yomiyasu の取り込み元とバージョンの上げ方は、dotfiles リポジトリの `docs/how-to/update-yomiyasu.md` に書いてある。lint は各指摘に規則の ID(rule ID)を付けて出す。次の表は、指摘の種類ごとに、対応する yomiyasu v2.5.0 の rule ID と、従うか読まないかを示す。
 
 | yomiyasu の指摘 | rule ID(v2.5.0) | 扱い | 理由 |
 |---|---|---|---|
@@ -94,6 +94,7 @@ yomiyasu の lint(`../yomiyasu/scripts/yomiyasu_lint.py`)は文単位の機械�
 | 1 文の読点の多さと、間を作るだけの読点 | lint は読点の数を数えない。上流の SKILL.md の「文長と読点の調整」が 1 文の読点を 0〜2 個の目安にしている。間を作るだけの読点の `pause_comma` は、`--doc-type` を付けたときだけ出る | 従う | 本規範の 2 と同じ |
 | 同一文末の 3 連続 | `sentence_end_repetition` | 従う | 同じ文末が続いて読みにくいときは、語順や文のまとめ方を変える。文の働きは変えない |
 | 絵文字、文末コロン、ダッシュ記号 | `emoji_prohibited`、`trailing_colon`、`dash_decoration`、`dash_insertion`、`dash_list_ending` | 従う | 配布文書に装飾は要らない |
+| 英語の直訳語(version の意味の「版」、regression の意味の「回帰」) | `translated_term` | 従う。ソフトウェアの version は「バージョン」と書く | 「正本」と違い、本環境で意味を決めて使っている語ではない。「バージョン」と書いても意味を失わない |
 | 太字頻度、箇条書き比率 | `excess_bold`、`excess_list` | **走査型文書では読まない** | 走査される文書では見出し・表・箇条書きが区分の分解を肩代わりする(グローバル CLAUDE.md「報告と分解の形」)。読み物に適用するときだけ従う |
 | スロップ語「正本」 | `slop_vocabulary`(message が「正本」を含むもの) | **読まない** | 本環境では「正本」は版管理と法律文書の用語として使う |
 | スロップ語「土台」「本質的」「装置」など | `slop_vocabulary` | 文脈で判断する | 専門用語や固有の名称(例: cognitive-rhythm-writing の「装置」)は言い換えない。yomiyasu 自身も専門用語の保持を指示している |

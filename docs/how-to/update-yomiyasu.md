@@ -2,7 +2,7 @@
 
 > **Diátaxis:** 🔧 How-to
 
-dotfiles が参照している yomiyasu スキルの版を上げる手順です。yomiyasu は AI が書いた日本語を推敲するスキルで、`standalone-report-writing` スキルの点検手順と点検ツール `standalone-check --with-yomiyasu` が、yomiyasu の lint(`scripts/yomiyasu_lint.py`)を使います。dotfiles は yomiyasu をリポジトリにコピーせず、flake input でタグを固定して上流を参照します(Issue #782)。それまでは、#638 で取り込んだ v1.0.0 を `.config/skills/yomiyasu/` にコピーしていました。
+dotfiles が参照している yomiyasu スキルのバージョンを上げる手順です。yomiyasu は AI が書いた日本語を推敲するスキルで、`standalone-report-writing` スキルの点検手順と点検ツール `standalone-check --with-yomiyasu` が、yomiyasu の lint(`scripts/yomiyasu_lint.py`)を使います。dotfiles は yomiyasu をリポジトリにコピーせず、flake input でタグを固定して上流を参照します(Issue #782)。それまでは、#638 で取り込んだ v1.0.0 を `.config/skills/yomiyasu/` にコピーしていました。
 
 ## 取り込み元と固定の仕方 / Source and pinning
 
@@ -11,11 +11,11 @@ dotfiles が参照している yomiyasu スキルの版を上げる手順です�
 | 項目 | 値 |
 |---|---|
 | 取り込み元 | [nanaism/yomiyasu](https://github.com/nanaism/yomiyasu) の `skills/yomiyasu/` を丸ごと使います |
-| 固定している版 | タグ `v2.5.0`(コミット `29d67ccb05e370b5958d72920a9cd1aa829dee80`)に固定しています |
+| 固定しているバージョン | タグ `v2.5.0`(コミット `29d67ccb05e370b5958d72920a9cd1aa829dee80`)に固定しています |
 | 固定の仕方 | `flake.nix` の `inputs.yomiyasu` に `url = "github:nanaism/yomiyasu/v2.5.0"; flake = false;` と書き、`flake.lock` がコミットと narHash を記録します |
 | マウント先 | `home.nix` が `"${inputs.yomiyasu}/skills/yomiyasu"` を `~/.claude/skills/yomiyasu` と `~/.copilot/skills/yomiyasu` に `recursive = true` でマウントします |
 
-- `flake.nix` にタグを書いているので、`nix flake update`(`mise run nix:update`)を実行しても yomiyasu の版は変わりません。`nix flake update` はタグを解決し直すだけなので、上流がタグを付け直さない限り同じコミットになります。
+- `flake.nix` にタグを書いているので、`nix flake update`(`mise run nix:update`)を実行しても yomiyasu のバージョンは変わりません。`nix flake update` はタグを解決し直すだけなので、上流がタグを付け直さない限り同じコミットになります。
 - `flake.lock` の narHash が上流のファイルの中身を固定します。dotfiles の側で上流のファイルを書き換える場所はないので、上流のファイルは無改変のまま使われます。
 - マウント先はコピーしていたころと同じです。そのため、`standalone-check` が lint を探す場所(`~/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py`、次に `~/.copilot/skills/yomiyasu/scripts/yomiyasu_lint.py`)も変わっていません。
 - lint は Python の標準ライブラリだけで動きます。python3 は `nix/modules/dev-tools.nix` が入れています。
@@ -31,12 +31,12 @@ dotfiles は上流のファイルを書き換えません。本環境の表記�
 
 ## 更新の手順 / Update procedure
 
-版を上げる作業者は、次の順で作業します。手順 1 から 6 は作業ブランチで行い、手順 7 だけを PR のマージ後に main で行います。
+バージョンを上げる作業者は、次の順で作業します。手順 1 から 6 は作業ブランチで行い、手順 7 だけを PR のマージ後に main で行います。
 
 1. `flake.nix` の `inputs.yomiyasu` の `url` のタグを、新しいタグに書き換えます。上流のタグの一覧は `gh release list -R nanaism/yomiyasu` で見られます。
 2. `nix flake lock` を実行します。`nix flake lock` は `url` が変わった input だけを解決し直し、`• Updated input 'yomiyasu'` と表示します。ほかの input を動かさないため、`nix flake update` は使いません。
 3. `git diff flake.lock` で、yomiyasu のノードの `locked` と `original` の `ref` だけが変わったことを確かめます。
-4. 上流の `CHANGELOG.md` を、今の版から新しい版まで読みます。新しい版の store のパスは、次のコマンドで引けます。
+4. 上流の `CHANGELOG.md` を、今のバージョンから新しいバージョンまで読みます。新しいバージョンの store のパスは、次のコマンドで引けます。
 
    ```bash
    nix eval --raw --impure --expr '(builtins.getFlake (toString ./.)).inputs.yomiyasu.outPath'
@@ -50,7 +50,7 @@ dotfiles は上流のファイルを書き換えません。本環境の表記�
    - lint が、`--strict` も `--fail-on` も付けないときに、指摘があっても終了コード 0 で終わるかを確かめます。standalone-check は 0 以外を失敗として扱います。
    - 新しく足された規則のうち、本環境の表記と衝突するものがないかを確かめます。
 5. 手順 4 で変わっていた項目に合わせて、「本環境での読み替え」の節の 2 か所を直します。standalone-check を直したときは、`cd tools/standalone-check && cargo test` を実行します。
-6. 動作を確かめます。`mise run nix:build` は Home Manager の設定をビルドするだけで、反映はしません。そのため、PATH にある `standalone-check` は前に反映した版のままです。手順 5 で除外判定を直した場合も確かめられるように、新しくビルドした `result/home-path/bin/standalone-check` を使います。
+6. 動作を確かめます。`mise run nix:build` は Home Manager の設定をビルドするだけで、反映はしません。そのため、PATH にある `standalone-check` は前に反映したバージョンのままです。手順 5 で除外判定を直した場合も確かめられるように、新しくビルドした `result/home-path/bin/standalone-check` を使います。
 
    ```bash
    mise run nix:build
@@ -59,7 +59,7 @@ dotfiles は上流のファイルを書き換えません。本環境の表記�
      --yomiyasu-script result/home-files/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py
    ```
 
-   `SKILL.md` の `version` が新しい版になっていて、standalone-check の出力が `[SKIP] yomiyasu` にならなければ、動作の確認は済みです。
+   `SKILL.md` の `version` が新しいバージョンになっていて、standalone-check の出力が `[SKIP] yomiyasu` にならなければ、動作の確認は済みです。
 7. PR のマージ後に、main で `mise run nix:switch` を実行します。
 
 ## ライセンス / License
