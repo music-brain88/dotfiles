@@ -218,7 +218,7 @@ Claude Code は、Stop hook が 8 回続けてターンを続行させると、�
 - claude-feat-x(pane w1:p2、worktree /path/feat-x、指示書 ~/path/brief.md、待っているもの: CI、張り直し: herdr agent wait claude-feat-x --until working && herdr agent wait claude-feat-x)
 ```
 
-検問は、裏タスクの `command` と `description` から `herdr agent wait` の対象を読み、次のように判定する。
+検問は、裏タスクの `command` から `herdr agent wait` の対象を読み、次のように判定する。`description` を読むのは `command` が空のときだけで、その場合は名前の直書きだけを受ける。
 
 | 裏タスクの形 | 検問の判定 |
 |---|---|
@@ -226,6 +226,7 @@ Claude Code は、Stop hook が 8 回続けてターンを続行させると、�
 | `herdr agent wait "$AGENT_NAME"`(`${AGENT_NAME}` も同じ) | 同じコマンドの中の `AGENT_NAME=<名前>` から名前を読み、上と同じように判定する。代入が無ければ止める |
 | `herdr agent wait --until working <名前>` | オプションが名前より前にあるので、名前を読めずに止める。司令塔は、待ち受けを止めてから、名前を先に書く形 `herdr agent wait <名前> --until …` に直して張り直す |
 | 対象の語全体が名前の形でないもの(pane ID、`"claude-x"-2`、`"claude-x${SUFFIX}"`) | 展開や連結を解決できないので止める。`AGENT_NAME=` の代入の値も同じように読む |
+| wait 以外の監視が混ざったコマンド(例: `herdr agent wait <名前> && gh pr checks 700 --watch`) | 止める。`&&`・`\|\|`・`;`・`\|`・`&`・改行で分けた各部分の先頭が、`herdr agent wait`・`herdr agent get`・`AGENT_NAME=` の代入だけ・空のどれかでなければならない。司令塔は、待ち受けを止めてから、wait だけの形に分けて張り直す |
 | `herdr agent wait` 以外の裏タスク、`session_crons` の予約 | 張り直しの形が無いので止める |
 
 1 つのコマンドの中に読めない対象が 1 つでもあれば、検問はそのコマンド全体を止める。

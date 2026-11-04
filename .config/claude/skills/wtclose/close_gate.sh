@@ -62,7 +62,9 @@ readonly rearm_tag='張り直し:' # P5: "- <name>(... 張り直し: <command>)"
 # なければならない。それ以外(--until などのオプション、"claude-x"-2、
 # "claude-x${SUFFIX}")は解決できない。
 readonly word_re='([^[:space:];&|)>]*)'
-readonly wait_re="herdr[[:space:]]+agent[[:space:]]+wait[[:space:]]+${word_re}"
+# The target is optional: a wait with no target reads as an empty, unresolved word.
+# 対象は省略可として読む。対象の無い wait は、空の(解決できない)語として読む。
+readonly wait_re="herdr[[:space:]]+agent[[:space:]]+wait(?![^[:space:];&|)>])(?:[[:space:]]+${word_re})?"
 readonly assign_re="(?<![A-Za-z0-9_])AGENT_NAME=${word_re}"
 readonly agent_var='[$]([{]AGENT_NAME[}]|AGENT_NAME)'
 readonly agent_var_re="^(${agent_var}|\"${agent_var}\")\$"
@@ -789,10 +791,10 @@ note_workers_without_rearm() {
 }
 
 check_p5() {
-  local src="${own_state:-/dev/null}" workers records kind names label name covered form
+  local src="${own_state:-/dev/null}" workers records kind names label others name covered form
   local -a stop_items=() bare_items=() bare_forms=() rearmed=()
   local -A seen=()
-  local n_rearmed=0
+  local n_rearmed=0 n_mixed=0
   workers="$(section_body "$src" "$sec_workers")"
   if [ "$mode" = 'check' ]; then
     note "P5: --check では確かめない(裏の待ち受けは Stop hook の入力にしか無い)"
@@ -807,37 +809,68 @@ check_p5() {
     note "P5: hook 入力に background_tasks が無いので、未確認として通した"
     return
   fi
-  # One record per line: kind \037 names \037 label. Unlike a tab, \037 is not IFS
-  # whitespace, so empty names survive read.
-  # 1 行 1 件で「種類 \037 名前 \037 表示」を出す。\037 はタブと違って IFS の空白に
-  # 当たらないので、名前が空でも read でつぶれない。
+  # One record per line: kind \037 names \037 label \037 other heads. Unlike a tab,
+  # \037 is not IFS whitespace, so empty names survive read.
+  # 1 行 1 件で「種類 \037 名前 \037 表示 \037 wait 以外の先頭の語」を出す。\037 はタブと
+  # 違って IFS の空白に当たらないので、名前が空でも read でつぶれない。
   records="$(printf '%s' "$input_json" | jq -r --arg wait_re "$wait_re" --arg assign_re "$assign_re" \
     --arg var_re "$agent_var_re" --arg name_re "$agent_name_re" '
     def done_status: (.status // "running") | test("^(completed|failed|killed|stopped|done)$");
     def oneline: gsub("[\\n\\r\\t]+"; " ");
+    def has_text: test("[^[:space:]]");
+    def cmd: (.command // "") | tostring;
+    # The shell runs only the command: the description is read only when the command
+    # is empty, and it never resolves a variable.
+    # シェルが実行するのは command だけである。description は command が空のときだけ
+    # 読み、変数の解決には使わない。
+    def wait_text: if (cmd | has_text) then cmd else (.description // "") | tostring end;
     # One target that cannot be resolved empties the whole task, so that a good name
     # next to it cannot make the task look covered.
     # 解決できない対象が 1 つでもあれば task ごと空にする。隣の正しい名前だけで
     # 覆われたように見せないためである。
     def wait_names:
-      ([(.command // ""), (.description // "")] | map(tostring) | join(" ")) as $text
-      | [$text | scan($assign_re)[0] | (. // "")] as $assigned
-      | [$text | scan($wait_re)[0] | (. // "")
+      [cmd | scan($assign_re)[0] | (. // "")] as $assigned
+      | [wait_text | scan($wait_re)[0] | (. // "")
           | if test($var_re) then (if ($assigned | length) > 0 then $assigned[] else "" end) else . end
           | if test($name_re) then gsub("[\"\u0027]"; "") else "" end]
       | if any(.[]; . == "") then "" else unique | join(" ") end;
+    # The allowlist: each part of a command that has a wait must be a wait, a get, a
+    # lone AGENT_NAME assignment or empty. Redirections are removed first, because
+    # "2>&1" holds a separator character; a single "&" separates like ";".
+    # 許可リスト: wait のある command の各部分は、wait・get・代入だけ・空のどれかでなければ
+    # ならない。「2>&1」は区切りの文字を含むので、先にリダイレクトを外す。単独の「&」は
+    # 「;」と同じように区切る。
+    def command_parts:
+      gsub("\\\\\n"; " ") | gsub("[0-9]*[<>]&[0-9-]+"; " ") | gsub("&>"; ">")
+      | [splits("[;&|\n]+")]
+      | map(sub("^[[:space:](){}]+"; "") | sub("[[:space:](){}]+$"; ""));
+    def allowed_part:
+      . == ""
+      or test("^herdr[[:space:]]+agent[[:space:]]+(wait|get)([[:space:]]|$)")
+      or test("^AGENT_NAME=[^[:space:]]*$");
+    def other_heads:
+      if (cmd | test($wait_re)) then
+        cmd | command_parts | map(select(allowed_part | not) | [splits("[[:space:]]+")][0]) | unique | join(" ")
+      else "" end;
     ((.background_tasks // [])[] | select(done_status | not)
       | ["task", wait_names,
-         ("裏タスク \(.id // "?")(\(.type // "?")): \(.description // "")\(if .command then " — " + .command else "" end)" | oneline)]
+         ("裏タスク \(.id // "?")(\(.type // "?")): \(.description // "")\(if .command then " — " + .command else "" end)" | oneline),
+         other_heads]
       | join("\u001f")),
     ((.session_crons // [])[]
-      | ["cron", "", ("予約 \(.id // "?")(\(.schedule // "?")): \(.prompt // "")" | oneline)]
+      | ["cron", "", ("予約 \(.id // "?")(\(.schedule // "?")): \(.prompt // "")" | oneline), ""]
       | join("\u001f"))' 2>/dev/null)" || {
     note "P5: hook 入力の background_tasks を読めなかったので、未確認として通した"
     return
   }
-  while IFS=$'\037' read -r kind names label; do
+  while IFS=$'\037' read -r kind names label others; do
     [ -n "$kind" ] || continue
+    if [ -n "$others" ]; then
+      n_mixed=$((n_mixed + 1))
+      fail P5 "wait 以外の監視(${others})が混ざっている: ${label}" \
+        "止めてから、wait だけの形に分けて張り直す"
+      continue
+    fi
     if [ -z "$names" ]; then
       stop_items+=("$label")
       continue
@@ -868,7 +901,7 @@ check_p5() {
     fail P5 "herdr agent wait の張り直し方が「## ${sec_workers}」に書いてない:"$'\n'"$(printf '      - %s\n' "${bare_items[@]}")" \
       "TaskStop などで止めるか、「## ${sec_workers}」に次の形の行を書く:"$'\n'"$(printf '%s\n' "${bare_forms[@]}")"
   fi
-  if [ "${#stop_items[@]}" -eq 0 ] && [ "${#bare_items[@]}" -eq 0 ] && [ "$n_rearmed" -gt 0 ]; then
+  if [ "${#stop_items[@]}" -eq 0 ] && [ "${#bare_items[@]}" -eq 0 ] && [ "$n_mixed" -eq 0 ] && [ "$n_rearmed" -gt 0 ]; then
     note "P5: 待ち受け ${n_rearmed} 件は張り直し方が書いてあるので通した(${rearmed[*]})"
   fi
 }
