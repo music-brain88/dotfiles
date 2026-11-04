@@ -99,6 +99,17 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v herdr-ctx >/dev/null 2>&1 && herdr-ctx self || true",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }
