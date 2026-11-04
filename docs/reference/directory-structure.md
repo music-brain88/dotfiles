@@ -127,6 +127,7 @@ dotfiles/
 |-----------|-------------|
 | `skills/` | ツール中立な共有スキル層。各サブディレクトリに `SKILL.md`(frontmatter は `name`/`description` のみ)。`home.nix` で `.claude/skills/<name>` と `.copilot/skills/<name>` の両方にマウントし、単一ソースからのドリフトを構造的に防ぐ(Issue #404)。スキルの一覧は `.config/skills/` 配下が正(列挙は追加のたびに腐るためここには書かない)。例外は yomiyasu で、`.config/skills/` に置かず、`flake.nix` の flake input でタグを固定した上流を同じ 2 か所にマウントする([how-to/update-yomiyasu.md](../how-to/update-yomiyasu.md)) |
 | `claude/skills/` | Claude Code 専用スキル。`herdr`(環境固有)、`wt`/`wtclean`/`wtclose`(Claude の人格・herdr 前提。`wtclose` は Stop hook が呼ぶ検問スクリプト `close_gate.sh` とそのテストを同梱する)。旧 `claude/commands/` はスキル形式に統合済み(Claude Code はスキルをスラッシュコマンドとしても呼べる) |
+| `claude/agents/` | Claude Code のユーザー階層のサブエージェント。`.claude` 全体の recursive マウントで `~/.claude/agents/` に配布される。`secretary.md` は /wt の司令塔の手足の仕事を引き受ける秘書エージェントで、司令塔が `subagent_type: secretary` で呼ぶ(Issue #784) |
 | `copilot/` | GitHub Copilot CLI 設定。実体は `~/.copilot/`(`~/.config/copilot` ではない)。スキルは `skills/` からマウントされる共有分のみで、Copilot 固有のスキルディレクトリは持たない |
 
 ### Security
