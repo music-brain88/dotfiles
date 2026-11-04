@@ -716,7 +716,7 @@ test_p5_assignment_only_in_the_description_blocks() {
 test_p5_description_never_resolves_a_variable() {
   new_case
   write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","description":"AGENT_NAME=claude-x herdr agent wait \"$AGENT_NAME\"","command":""}]')"
+  run_gate "$(hook_input '[{"id":"b1","status":"running","description":"AGENT_NAME=claude-x; herdr agent wait \"$AGENT_NAME\"","command":""}]')"
   assert_exit 2
   assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
 }
@@ -756,6 +756,102 @@ herdr agent wait claude-x &> /s/a.json
 herdr agent wait claude-x --until working > /s/a.json \\\n  && herdr agent wait claude-x > /s/b.json
 { herdr agent wait claude-x; }
 EOF
+}
+
+test_p5_wt_step_5_block_with_its_comment_passes() {
+  new_case
+  write_workers "$p5_worker"
+  run_gate "$(hook_input '[{"id":"b1","status":"running","description":"wait worker","command":"# gotcha: 対象が既に指定ステータスだと即座に解決してしまうため、working に遷移済みか確認してから仕掛ける\nAGENT_NAME=claude-x\nherdr agent get \"$AGENT_NAME\"\n\nherdr agent wait \"$AGENT_NAME\" --until working > \"/s/wait-working-${AGENT_NAME}.json\" \\\n  && herdr agent wait \"$AGENT_NAME\" > \"/s/wait-${AGENT_NAME}.json\""}]')"
+  assert_exit 0
+  assert_out_has 'P5: 待ち受け 1 件は張り直し方が書いてあるので通した(claude-x)'
+}
+
+test_p5_comments_are_ignored() {
+  local cmd
+  while IFS= read -r cmd; do
+    new_case
+    write_workers "$p5_worker"
+    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"'"$cmd"'"}]')"
+    assert_exit 0
+    assert_out_has '通した(claude-x)'
+  done <<'EOF'
+herdr agent wait claude-x # gh pr checks 700 --watch
+# herdr agent wait claude-y\nherdr agent wait claude-x
+# do not use $(gh pr checks 700 --watch)\nherdr agent wait claude-x
+# it's a note\nherdr agent wait claude-x
+EOF
+}
+
+test_p5_assignment_in_a_comment_blocks() {
+  new_case
+  write_workers "$p5_worker"
+  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"# AGENT_NAME=claude-x\nherdr agent wait \"$AGENT_NAME\""}]')"
+  assert_exit 2
+  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
+}
+
+test_p5_comment_does_not_hide_a_command() {
+  local cmd
+  while IFS= read -r cmd; do
+    new_case
+    write_workers "$p5_worker"
+    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"'"$cmd"'"}]')"
+    assert_exit 2
+    assert_err_has '[P5] wait 以外の監視(gh)が混ざっている'
+    assert_err_lacks '通した'
+  done <<'EOF'
+# note \\\ngh pr checks 700 --watch\nherdr agent wait claude-x
+herdr agent wait claude-x \"# x\" && gh pr checks 700 --watch
+herdr agent wait claude-x '# x' && gh pr checks 700 --watch
+EOF
+}
+
+test_p5_hash_inside_a_word_is_not_a_comment() {
+  new_case
+  write_workers "$p5_worker"
+  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait claude-x#y"}]')"
+  assert_exit 2
+  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
+}
+
+test_p5_command_substitution_blocks() {
+  local cmd
+  while IFS= read -r cmd; do
+    new_case
+    write_workers "$p5_worker"
+    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"'"$cmd"'"}]')"
+    assert_exit 2
+    assert_err_has '[P5] コマンド置換(`$()` など)が混ざっている'
+    assert_err_has '止めてから、wait だけの形に分けて張り直す'
+    assert_err_lacks '通した'
+  done <<'EOF'
+herdr agent wait claude-x > \"$(gh pr checks 700 --watch)\"
+herdr agent wait claude-x > `gh pr checks 700 --watch`
+herdr agent wait claude-x < <(gh pr checks 700 --watch)
+herdr agent wait claude-x > >(cat)
+AGENT_NAME=\"$(pick)\"; herdr agent wait \"$AGENT_NAME\"
+EOF
+}
+
+test_p5_description_fallback_goes_through_the_allowlist() {
+  local task
+  for task in '{"id":"b1","status":"running","description":"herdr agent wait claude-x && gh pr checks 700 --watch"}' \
+    '{"id":"b1","status":"running","description":"herdr agent wait claude-x && gh pr checks 700 --watch","command":""}'; do
+    new_case
+    write_workers "$p5_worker"
+    run_gate "$(hook_input "[$task]")"
+    assert_exit 2
+    assert_err_has '[P5] wait 以外の監視(gh)が混ざっている'
+    assert_err_lacks '通した'
+  done
+}
+
+test_p5_description_fallback_blocks_a_substitution() {
+  new_case
+  write_workers "$p5_worker"
+  run_gate "$(hook_input '[{"id":"b1","status":"running","description":"herdr agent wait claude-x > \"$(gh pr checks 700 --watch)\""}]')"
+  assert_exit 2
+  assert_err_has '[P5] コマンド置換(`$()` など)が混ざっている'
 }
 
 test_p5_wait_without_a_target_before_a_separator_blocks() {
@@ -895,7 +991,7 @@ test_p5_target_with_an_expansion_inside_the_quotes_blocks() {
 
 test_p5_assignment_with_an_expansion_blocks() {
   local value
-  for value in '\"claude-x${SUFFIX}\"' 'claude-x$SUFFIX' '\"claude-x\"-2' '\"$(pick)\"'; do
+  for value in '\"claude-x${SUFFIX}\"' 'claude-x$SUFFIX' '\"claude-x\"-2'; do
     new_case
     write_workers "$p5_worker"
     run_gate "$(hook_input '[{"id":"b1","status":"running","command":"AGENT_NAME='"$value"'; herdr agent wait \"$AGENT_NAME\""}]')"

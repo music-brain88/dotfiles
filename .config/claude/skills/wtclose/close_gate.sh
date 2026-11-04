@@ -791,7 +791,7 @@ note_workers_without_rearm() {
 }
 
 check_p5() {
-  local src="${own_state:-/dev/null}" workers records kind names label others name covered form
+  local src="${own_state:-/dev/null}" workers records kind names label others subst name covered form
   local -a stop_items=() bare_items=() bare_forms=() rearmed=()
   local -A seen=()
   local n_rearmed=0 n_mixed=0
@@ -809,21 +809,29 @@ check_p5() {
     note "P5: hook 入力に background_tasks が無いので、未確認として通した"
     return
   fi
-  # One record per line: kind \037 names \037 label \037 other heads. Unlike a tab,
-  # \037 is not IFS whitespace, so empty names survive read.
-  # 1 行 1 件で「種類 \037 名前 \037 表示 \037 wait 以外の先頭の語」を出す。\037 はタブと
-  # 違って IFS の空白に当たらないので、名前が空でも read でつぶれない。
+  # One record per line: kind \037 names \037 label \037 other heads \037 substitution.
+  # Unlike a tab, \037 is not IFS whitespace, so empty names survive read.
+  # 1 行 1 件で「種類 \037 名前 \037 表示 \037 wait 以外の先頭の語 \037 コマンド置換の印」
+  # を出す。\037 はタブと違って IFS の空白に当たらないので、名前が空でも read でつぶれない。
   records="$(printf '%s' "$input_json" | jq -r --arg wait_re "$wait_re" --arg assign_re "$assign_re" \
     --arg var_re "$agent_var_re" --arg name_re "$agent_name_re" '
     def done_status: (.status // "running") | test("^(completed|failed|killed|stopped|done)$");
     def oneline: gsub("[\\n\\r\\t]+"; " ");
     def has_text: test("[^[:space:]]");
-    def cmd: (.command // "") | tostring;
+    # Comments follow the shell: a "#" at the start of a word up to the end of the line.
+    # Quoted text is matched first, so a "#" inside quotes stays. All reading below
+    # uses this text, so a comment neither adds nor hides a wait or an assignment.
+    # コメントはシェルに合わせて、語の頭の「#」から行末までとする。引用符の中を先に読むので、
+    # 引用符の中の「#」は残る。以下の読み取りはすべてこの文字列を使うので、コメントが wait
+    # や代入を足すことも隠すこともない。
+    def strip_comments:
+      gsub("(?<q>\"(?:[^\"\\\\]|\\\\[\\s\\S])*\"|\u0027[^\u0027]*\u0027)|(?<![^[:space:]])#[^\n]*"; (.q // ""));
+    def cmd: (.command // "") | tostring | strip_comments;
     # The shell runs only the command: the description is read only when the command
     # is empty, and it never resolves a variable.
     # シェルが実行するのは command だけである。description は command が空のときだけ
     # 読み、変数の解決には使わない。
-    def wait_text: if (cmd | has_text) then cmd else (.description // "") | tostring end;
+    def wait_text: if (cmd | has_text) then cmd else (.description // "") | tostring | strip_comments end;
     # One target that cannot be resolved empties the whole task, so that a good name
     # next to it cannot make the task look covered.
     # 解決できない対象が 1 つでもあれば task ごと空にする。隣の正しい名前だけで
@@ -849,26 +857,38 @@ check_p5() {
       or test("^herdr[[:space:]]+agent[[:space:]]+(wait|get)([[:space:]]|$)")
       or test("^AGENT_NAME=[^[:space:]]*$");
     def other_heads:
-      if (cmd | test($wait_re)) then
-        cmd | command_parts | map(select(allowed_part | not) | [splits("[[:space:]]+")][0]) | unique | join(" ")
-      else "" end;
+      wait_text as $text
+      | if ($text | test($wait_re)) then
+          $text | command_parts | map(select(allowed_part | not) | [splits("[[:space:]]+")][0]) | unique | join(" ")
+        else "" end;
+    # A substitution runs a command that the head of a part does not show.
+    # コマンド置換は、部分の先頭に現れないコマンドを実行する。
+    def substitution:
+      wait_text as $text
+      | if ($text | test($wait_re)) and ($text | test("[$][(]|\u0060|[<>][(]")) then "1" else "" end;
     ((.background_tasks // [])[] | select(done_status | not)
       | ["task", wait_names,
          ("裏タスク \(.id // "?")(\(.type // "?")): \(.description // "")\(if .command then " — " + .command else "" end)" | oneline),
-         other_heads]
+         other_heads, substitution]
       | join("\u001f")),
     ((.session_crons // [])[]
-      | ["cron", "", ("予約 \(.id // "?")(\(.schedule // "?")): \(.prompt // "")" | oneline), ""]
+      | ["cron", "", ("予約 \(.id // "?")(\(.schedule // "?")): \(.prompt // "")" | oneline), "", ""]
       | join("\u001f"))' 2>/dev/null)" || {
     note "P5: hook 入力の background_tasks を読めなかったので、未確認として通した"
     return
   }
-  while IFS=$'\037' read -r kind names label others; do
+  while IFS=$'\037' read -r kind names label others subst; do
     [ -n "$kind" ] || continue
+    if [ -n "$subst" ]; then
+      fail P5 "コマンド置換(\`\$()\` など)が混ざっている: ${label}" \
+        "止めてから、wait だけの形に分けて張り直す"
+    fi
     if [ -n "$others" ]; then
-      n_mixed=$((n_mixed + 1))
       fail P5 "wait 以外の監視(${others})が混ざっている: ${label}" \
         "止めてから、wait だけの形に分けて張り直す"
+    fi
+    if [ -n "$subst$others" ]; then
+      n_mixed=$((n_mixed + 1))
       continue
     fi
     if [ -z "$names" ]; then
