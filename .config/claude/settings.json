@@ -45,6 +45,28 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/compact_readback.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/precompact_checkpoint.sh",
+            "timeout": 30,
+            "statusMessage": "compact の前に盤面を控えてる…"
+          }
+        ]
       }
     ],
     "Notification": [
