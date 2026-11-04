@@ -56,7 +56,25 @@
       "inputs": {
         "home-manager": "home-manager",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-herdr": "nixpkgs-herdr"
+        "nixpkgs-herdr": "nixpkgs-herdr",
+        "yomiyasu": "yomiyasu"
+      }
+    },
+    "yomiyasu": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1793326902,
+        "narHash": "sha256-9cGUSvLgc1+996i3lWQuQm1aTWOxSY6fbS9+vn5aElw=",
+        "owner": "nanaism",
+        "repo": "yomiyasu",
+        "rev": "29d67ccb05e370b5958d72920a9cd1aa829dee80",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nanaism",
+        "ref": "v2.5.0",
+        "repo": "yomiyasu",
+        "type": "github"
       }
     }
   },

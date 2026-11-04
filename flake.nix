@@ -14,6 +14,15 @@
     # Newer nixpkgs pin for herdr only: the main locked nixpkgs predates herdr.
     # Avoids a full nixpkgs bump while keeping Hydra's binary cache.
     nixpkgs-herdr.url = "github:nixos/nixpkgs/nixos-unstable";
+
+    # yomiyasu skill (日本語の推敲スキル) の上流。リポジトリへのコピーをやめ、タグで固定して参照する。
+    # タグ固定なので `nix flake update` では動かない。上げ方は docs/how-to/update-yomiyasu.md。
+    # Upstream of the yomiyasu skill, referenced by tag instead of a vendored copy.
+    # Pinned to a tag, so `nix flake update` does not move it; see docs/how-to/update-yomiyasu.md.
+    yomiyasu = {
+      url = "github:nanaism/yomiyasu/v2.5.0";
+      flake = false;
+    };
   };
 
   outputs = { self, nixpkgs, home-manager, ... }@inputs:

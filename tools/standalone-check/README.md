@@ -33,7 +33,22 @@ standalone-check FILE --json                      # JSON で出力する
 
 lint の異常終了は、JSON を出力していても失敗として扱う。終了コードが 0 の場合も、応答は `findings` 配列を持つ JSON オブジェクトでなければならない。各指摘には文字列の `message` と `snippet` が必要で、`severity` は `info` / `warn` / `error` を大文字小文字を区別せずに受ける。`severity` の省略時は従来どおり `warn` とする。`line` や `rule` などの追加フィールドは保持する。応答形式が不正な場合は、終了コード 2 と `yomiyasu_status` の `failed` で返し、通常出力では `[SKIP]` と表示する。
 
-`--with-yomiyasu` は `~/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py`(次に `~/.copilot/skills/...`)を探し、`python3` で実行する。本環境の表記と衝突する指摘(和欧文間の半角スペース、太字頻度、箇条書き比率、用語「正本」)は除いて表示する。環境変数 `STANDALONE_CHECK_YOMIYASU` でも場所を指定できる。
+`--with-yomiyasu` は `~/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py`(次に `~/.copilot/skills/...`)を探し、`python3` で実行する。環境変数 `STANDALONE_CHECK_YOMIYASU` でも場所を指定できる。yomiyasu は dotfiles にコピーせず、`flake.nix` の flake input でタグを固定して参照している(上げ方は `docs/how-to/update-yomiyasu.md`)。
+
+### yomiyasu の指摘のうち除外するもの
+
+本ツールは、yomiyasu の指摘のうち本環境の表記と衝突するものを、指摘の `rule`(規則の ID)で見分けて除外する。除外の理由は `.config/skills/standalone-report-writing/SKILL.md` の「yomiyasu の指摘の読み方」にある。次の表は、除外する指摘と見分け方を示す。
+
+| 除外する指摘 | 見分け方 |
+|---|---|
+| 太字の頻度 | `rule` が `excess_bold` である |
+| 箇条書きの比率 | `rule` が `excess_list` である |
+| 用語「正本」 | `rule` が `slop_vocabulary` で、`message` が `「正本」`(鉤括弧つき)を含む |
+
+- `rule` を持たない指摘と、`rule` が文字列でない指摘は除外しない。上流が出力の形式を変えたときに、指摘を消さずに表示するためである。`message` の文言だけを見て除外することはしない。
+- 「正本」の判定は、上流 v2.5.0 の `slop_vocabulary` の message の形「AI頻出語彙「<語>」が含まれています…」に依存する。v2.5.0 の `snippet` は当たった語ではなく行全体で、当たった語は JSON に出ない。`snippet` で判定すると、同じ行にある別のスロップ語(「土台」など)の指摘まで消えるので、`message` の鉤括弧の部分で見分ける。上流がこの形を変えると、「正本」の指摘は除外されずに表示される。yomiyasu を上げるたびに、この形が変わっていないかを確かめる(`docs/how-to/update-yomiyasu.md` の更新手順)。
+- 和欧文間の半角空白の指摘は、上流が v2 系から出さなくなったので、除外の対象から外した。
+- 上流の `--doc-type`(文書の種類ごとに規則を外す)と `.yomiyasu-words/allow.txt`(語の一覧)は使わない。本ツールは点検する文書の種類を知らない。また、上流は `.yomiyasu-words/` を作業中のリポジトリの git の最上位から探すので、ほかのリポジトリで書く文書には dotfiles の一覧が適用されない。
 
 ## 開発
 

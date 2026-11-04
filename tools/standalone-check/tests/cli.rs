@@ -133,10 +133,94 @@ fn yomiyasu_info_only_exits_zero_and_filters_ignored() {
     assert_eq!(o.status.code(), Some(0), "{out}");
     assert!(out.contains("[info]"), "{out}");
     assert!(
-        !out.contains("半角空白が"),
+        !out.contains("太字の頻度"),
         "読まない指摘が表示された: {out}"
     );
     assert!(out.contains("うち warn 0"), "{out}");
+}
+
+/// 偽の lint に report を返させ、(終了コード, 除外の後に残った指摘) を返す。
+/// Runs the fake lint with `report` and returns (exit code, findings kept after filtering).
+fn yomiyasu_kept(report: &str) -> (Option<i32>, Vec<serde_json::Value>) {
+    let o = run_yomiyasu_report(report, "0", true);
+    let v: serde_json::Value = serde_json::from_str(&stdout(&o)).expect("valid JSON");
+    assert_eq!(
+        v["yomiyasu_status"]
+            .as_object()
+            .unwrap()
+            .values()
+            .next()
+            .unwrap(),
+        "ok",
+        "report: {report}"
+    );
+    (o.status.code(), v["yomiyasu"].as_array().unwrap().clone())
+}
+
+fn kept_messages(kept: &[serde_json::Value]) -> Vec<&str> {
+    kept.iter()
+        .map(|f| f["message"].as_str().unwrap())
+        .collect()
+}
+
+#[test]
+fn yomiyasu_excess_bold_and_excess_list_are_dropped() {
+    let (code, kept) = yomiyasu_kept(
+        r#"{"findings":[
+          {"rule":"excess_bold","line":1,"severity":"warn","message":"太字の頻度（1,000字あたり 8.0個）が設定した目安を超えています（推奨: 2.0以下）。","snippet":"**a**"},
+          {"rule":"excess_list","line":1,"severity":"warn","message":"箇条書きの比率（60.0%）が設定した目安を超えています（推奨: 15%以下）。","snippet":"- a"}
+        ]}"#,
+    );
+    assert!(kept.is_empty(), "{kept:?}");
+    assert_eq!(code, Some(0));
+}
+
+#[test]
+fn yomiyasu_slop_vocabulary_drops_only_seihon() {
+    let (code, kept) = yomiyasu_kept(
+        r#"{"findings":[
+          {"rule":"slop_vocabulary","line":1,"severity":"warn","message":"AI頻出語彙「正本」が含まれています。","snippet":"正本を更新する。"},
+          {"rule":"slop_vocabulary","line":2,"severity":"warn","message":"AI頻出語彙「土台」が含まれています。","snippet":"土台を作る。"}
+        ]}"#,
+    );
+    assert_eq!(
+        kept_messages(&kept),
+        vec!["AI頻出語彙「土台」が含まれています。"]
+    );
+    assert_eq!(code, Some(1));
+}
+
+#[test]
+fn yomiyasu_slop_vocabulary_on_same_line_keeps_other_word() {
+    // v2.5.0 の snippet は行全体なので、snippet ではなく message の「<語>」で見分ける
+    // Upstream v2.5.0 puts the whole line in snippet, so the word is matched in the message
+    let (code, kept) = yomiyasu_kept(
+        r#"{"findings":[
+          {"rule":"slop_vocabulary","line":1,"severity":"warn","message":"AI頻出語彙「正本」が含まれています。","snippet":"正本の土台を作る。"},
+          {"rule":"slop_vocabulary","line":1,"severity":"warn","message":"AI頻出語彙「土台」が含まれています。","snippet":"正本の土台を作る。"}
+        ]}"#,
+    );
+    assert_eq!(
+        kept_messages(&kept),
+        vec!["AI頻出語彙「土台」が含まれています。"]
+    );
+    assert_eq!(code, Some(1));
+}
+
+#[test]
+fn yomiyasu_findings_without_rule_id_are_kept() {
+    // rule を持たない指摘(rule が文字列でない指摘を含む)は、message の文言によらず残す。
+    // 和欧文間の半角空白の指摘も、上流 v2 が出さないので除外しない
+    // Findings without a string rule are kept whatever the message says
+    let (code, kept) = yomiyasu_kept(
+        r#"{"findings":[
+          {"line":1,"severity":"warn","message":"太字の頻度（1,000字あたり 8.0個）が設定した目安を超えています。","snippet":"**a**"},
+          {"rule":null,"line":2,"severity":"warn","message":"箇条書きの比率（60.0%）が設定した目安を超えています。","snippet":"- a"},
+          {"rule":"unnatural_halfwidth_space","line":3,"severity":"warn","message":"英単語の前後に不要な半角空白が空けられています。","snippet":"run 1 の"}
+        ]}"#,
+    );
+    assert_eq!(kept.len(), 3, "{kept:?}");
+    assert_eq!(code, Some(1));
 }
 
 #[test]

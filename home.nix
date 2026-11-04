@@ -127,7 +127,10 @@
     ".claude/skills/cognitive-rhythm-writing" = { source = ./.config/skills/cognitive-rhythm-writing; recursive = true; };
     ".claude/skills/japanese-tech-writing" = { source = ./.config/skills/japanese-tech-writing; recursive = true; };
     ".claude/skills/standalone-report-writing" = { source = ./.config/skills/standalone-report-writing; recursive = true; };
-    ".claude/skills/yomiyasu" = { source = ./.config/skills/yomiyasu; recursive = true; };
+    # yomiyasu はリポジトリにコピーせず、flake input (flake.nix の inputs.yomiyasu) で上流をタグ固定で参照する。
+    # 上げ方は docs/how-to/update-yomiyasu.md
+    # yomiyasu is not vendored: it comes from the tag-pinned upstream flake input (inputs.yomiyasu).
+    ".claude/skills/yomiyasu" = { source = "${inputs.yomiyasu}/skills/yomiyasu"; recursive = true; };
 
     # mise global config (tools available outside project dirs; claude is NOT here — it uses its native installer)
     # mise グローバル設定（プロジェクト外でも使うツール。claude は native installer 管理で node 経由ではない）
@@ -162,7 +165,9 @@
     ".copilot/skills/cognitive-rhythm-writing" = { source = ./.config/skills/cognitive-rhythm-writing; recursive = true; };
     ".copilot/skills/japanese-tech-writing" = { source = ./.config/skills/japanese-tech-writing; recursive = true; };
     ".copilot/skills/standalone-report-writing" = { source = ./.config/skills/standalone-report-writing; recursive = true; };
-    ".copilot/skills/yomiyasu" = { source = ./.config/skills/yomiyasu; recursive = true; };
+    # Claude 側と同じく、タグ固定の上流 (inputs.yomiyasu) を参照する
+    # Same tag-pinned upstream as ".claude/skills/yomiyasu" above
+    ".copilot/skills/yomiyasu" = { source = "${inputs.yomiyasu}/skills/yomiyasu"; recursive = true; };
     # Global copilot-instructions for GitHub Copilot (VS Code, etc.)
     ".github/copilot-instructions.md".source = ./.config/copilot/copilot-instructions.md;
 

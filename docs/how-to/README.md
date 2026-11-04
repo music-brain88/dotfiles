@@ -14,3 +14,4 @@
 - [sync-atuin-history-across-machines.md](./sync-atuin-history-across-machines.md) — atuin の履歴を複数端末で同期する(register・同じ鍵での login)
 - [verify-ca-trust-stores.md](./verify-ca-trust-stores.md) — CA の事故のときに各 TLS クライアントが問題のチェーンを拒否するか確かめる
 - [build-aur-packages-in-chroot.md](./build-aur-packages-in-chroot.md) — paru が AUR のパッケージを devtools の chroot でビルドするように設定する
+- [update-yomiyasu.md](./update-yomiyasu.md) — flake input でタグを固定して参照している yomiyasu スキルの版を上げ、読み替えを見直す
