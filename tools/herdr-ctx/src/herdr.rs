@@ -10,7 +10,7 @@ use std::process::Command;
 pub trait Herdr {
   fn agent_list(&self) -> Result<String, String>;
   fn agent_get(&self, target: &str) -> Result<String, String>;
-  fn notify(&self, title: &str, body: &str) -> Result<(), String>;
+  fn notify(&self, title: &str, body: &str) -> Result<String, String>;
 }
 
 pub struct HerdrCli;
@@ -39,7 +39,7 @@ impl Herdr for HerdrCli {
     Self::run(&["agent", "get", target])
   }
 
-  fn notify(&self, title: &str, body: &str) -> Result<(), String> {
+  fn notify(&self, title: &str, body: &str) -> Result<String, String> {
     Self::run(&[
       "notification",
       "show",
@@ -49,7 +49,6 @@ impl Herdr for HerdrCli {
       "--sound",
       "request",
     ])
-    .map(|_| ())
   }
 }
 
@@ -106,6 +105,12 @@ struct AgentInfo {
   agent: Agent,
 }
 
+#[derive(Deserialize)]
+struct NotificationShow {
+  shown: Option<bool>,
+  reason: Option<String>,
+}
+
 fn parse_result<T: DeserializeOwned>(raw: &str) -> Result<T, String> {
   let envelope: Envelope<T> =
     serde_json::from_str(raw).map_err(|e| format!("herdr の JSON を読めない: {e}"))?;
@@ -124,6 +129,26 @@ pub fn list_agents(herdr: &dyn Herdr) -> Result<Vec<Agent>, String> {
 pub fn get_agent(herdr: &dyn Herdr, target: &str) -> Result<Agent, String> {
   let raw = herdr.agent_get(target)?;
   parse_result::<AgentInfo>(&raw).map(|info| info.agent)
+}
+
+/// 通知を出す。herdr はレート制限などで表示しなかったときも成功の応答を返すので、終了コードでは
+/// 判断できない。`result.shown` が true のときだけ Ok にして、それ以外は再試行できるように Err にする。
+/// Shows a notification. herdr answers with success even when it did not display it, for example
+/// when rate limited, so the exit code proves nothing. Only `result.shown` true counts as Ok;
+/// anything else is an Err so the caller can retry.
+pub fn show_notification(herdr: &dyn Herdr, title: &str, body: &str) -> Result<(), String> {
+  let raw = herdr.notify(title, body)?;
+  let result = parse_result::<NotificationShow>(&raw)?;
+  if result.shown == Some(true) {
+    return Ok(());
+  }
+  let shown = result
+    .shown
+    .map_or_else(|| "なし".to_string(), |shown| shown.to_string());
+  let reason = result.reason.as_deref().unwrap_or("なし");
+  Err(format!(
+    "通知は表示されなかった(shown={shown}, reason={reason})"
+  ))
 }
 
 /// 失敗した herdr の出力から、理由を 1 行にする。herdr はエラーも JSON で返す。
@@ -148,7 +173,9 @@ fn failure_reason(stdout: &str, stderr: &str) -> String {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::testutil::{FakeHerdr, AGENT_GET_JSON, AGENT_LIST_JSON};
+  use crate::testutil::{
+    FakeHerdr, AGENT_GET_JSON, AGENT_LIST_JSON, NOTIFY_NOT_SHOWN_JSON, NOTIFY_SHOWN_JSON,
+  };
 
   #[test]
   fn list_reads_the_envelope_and_allows_a_missing_name() {
@@ -181,6 +208,32 @@ mod tests {
   fn broken_json_is_an_error() {
     let error = list_agents(&FakeHerdr::with_list("not json")).unwrap_err();
     assert!(error.starts_with("herdr の JSON を読めない"), "{error}");
+  }
+
+  fn notify_with(response: &str) -> Result<(), String> {
+    let mut herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
+    herdr.notify_result = Ok(response.to_string());
+    show_notification(&herdr, "title", "body")
+  }
+
+  #[test]
+  fn a_shown_notification_is_ok() {
+    assert_eq!(notify_with(NOTIFY_SHOWN_JSON), Ok(()));
+  }
+
+  #[test]
+  fn a_notification_that_was_not_shown_is_an_error_with_its_reason() {
+    let error = notify_with(NOTIFY_NOT_SHOWN_JSON).unwrap_err();
+    assert_eq!(
+      error,
+      "通知は表示されなかった(shown=false, reason=rate_limited)"
+    );
+  }
+
+  #[test]
+  fn a_response_without_shown_is_an_error() {
+    let error = notify_with(r#"{"id":"x","result":{"type":"notification_show"}}"#).unwrap_err();
+    assert_eq!(error, "通知は表示されなかった(shown=なし, reason=なし)");
   }
 
   #[test]

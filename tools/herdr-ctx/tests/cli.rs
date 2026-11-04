@@ -5,6 +5,7 @@
 //! The fake herdr uses shell builtins only, so it does not depend on the build sandbox's PATH.
 
 use std::fs;
+use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
@@ -13,6 +14,8 @@ use std::time::{Duration, Instant};
 
 const LIST_JSON: &str = r#"{"id":"cli:agent:list","result":{"agents":[{"agent":"claude","agent_status":"working","cwd":"/home/archie/dotfiles","name":"commander-dotfiles","pane_id":"w3C:p1W"},{"agent":"claude","agent_status":"idle","cwd":"/home/archie/notes","pane_id":"w3T:p2"},{"agent":"copilot","agent_status":"idle","cwd":"/home/archie/tools","pane_id":"w3U:p1"}]}}"#;
 const GET_COMMANDER_JSON: &str = r#"{"id":"cli:agent:get","result":{"agent":{"name":"commander-dotfiles","pane_id":"w3C:p1W"},"type":"agent_info"}}"#;
+const SHOWN_JSON: &str = r#"{"id":"cli:notification:show","result":{"reason":"shown","shown":true,"type":"notification_show"}}"#;
+const NOT_SHOWN_JSON: &str = r#"{"id":"cli:notification:show","result":{"reason":"rate_limited","shown":false,"type":"notification_show"}}"#;
 const SERVER_DOWN_JSON: &str = r#"{"id":"cli:agent:list","error":{"code":"server_not_running","message":"no herdr server is running"}}"#;
 
 struct Sandbox {
@@ -43,8 +46,12 @@ impl Sandbox {
   /// 呼ばれた引数を記録し、サブコマンドごとに固定の JSON を返す偽の herdr を置く。
   /// Installs a fake herdr that logs its arguments and answers each subcommand with fixed JSON.
   fn fake_herdr(&self, list: &str, get: &str, exit_code: i32) {
+    self.fake_herdr_notifying(list, get, SHOWN_JSON, exit_code);
+  }
+
+  fn fake_herdr_notifying(&self, list: &str, get: &str, notify: &str, exit_code: i32) {
     let script = format!(
-      "#!/bin/sh\necho \"$*\" >> '{log}'\ncase \"$1 $2\" in\n  'agent list') printf '%s\\n' '{list}' ;;\n  'agent get') printf '%s\\n' '{get}' ;;\nesac\nexit {exit_code}\n",
+      "#!/bin/sh\necho \"$*\" >> '{log}'\ncase \"$1 $2\" in\n  'agent list') printf '%s\\n' '{list}' ;;\n  'agent get') printf '%s\\n' '{get}' ;;\n  'notification show') printf '%s\\n' '{notify}' ;;\nesac\nexit {exit_code}\n",
       log = self.log().display(),
     );
     let path = self.bin().join("herdr");
@@ -56,7 +63,7 @@ impl Sandbox {
   /// updated_at is a fixed time always older than ten minutes, so results do not depend on the date.
   fn sidecar(&self, file: &str, pct: u32) {
     let text = format!(
-      r#"{{"pane_id":"w3C:p1W","used_percentage":{pct},"context_window_size":1000000,"total_input_tokens":620000,"model_id":"claude-fable-5-1","model_name":"Fable 5.1","updated_at":"2020-01-01T00:00:00Z"}}"#
+      r#"{{"pane_id":"w3C:p1W","session_id":"session-a","transcript_path":"/t/a.jsonl","used_percentage":{pct},"context_window_size":1000000,"total_input_tokens":620000,"model_id":"claude-fable-5-1","model_name":"Fable 5.1","updated_at":"2020-01-01T00:00:00Z"}}"#
     );
     fs::write(self.home().join(".herdr/ctx/panes").join(file), text).unwrap();
   }
@@ -73,6 +80,24 @@ impl Sandbox {
 
   fn run(&self, args: &[&str]) -> Output {
     self.command(args).output().expect("binary runs")
+  }
+
+  fn run_with_stdin(&self, args: &[&str], pane_id: &str, input: &str) -> Output {
+    let mut child = self
+      .command(args)
+      .env("HERDR_PANE_ID", pane_id)
+      .stdin(Stdio::piped())
+      .stdout(Stdio::piped())
+      .stderr(Stdio::piped())
+      .spawn()
+      .expect("binary runs");
+    child
+      .stdin
+      .take()
+      .unwrap()
+      .write_all(input.as_bytes())
+      .unwrap();
+    child.wait_with_output().expect("binary runs")
   }
 
   fn run_in_pane(&self, args: &[&str], pane_id: &str) -> Output {
@@ -210,6 +235,64 @@ fn self_prints_the_line_for_its_own_pane() {
 }
 
 #[test]
+fn self_stays_silent_when_neither_key_matches_the_hook() {
+  let sandbox = Sandbox::new("self-other-session");
+  sandbox.sidecar("w3C_p1W.json", 62);
+
+  let input = r#"{"session_id":"session-b","transcript_path":"/t/b.jsonl","prompt":"hi"}"#;
+  let output = sandbox.run_with_stdin(&["self"], "w3C:p1W", input);
+
+  assert_eq!(output.status.code(), Some(0));
+  assert_eq!(stdout(&output), "");
+  assert_eq!(
+    stderr(&output).trim_end(),
+    "herdr-ctx: sidecar は別の session のもの"
+  );
+}
+
+#[test]
+fn self_prints_when_the_session_id_differs_but_the_transcript_path_matches() {
+  let sandbox = Sandbox::new("self-same-transcript");
+  sandbox.sidecar("w3C_p1W.json", 15);
+
+  let input = r#"{"session_id":"session-b","transcript_path":"/t/a.jsonl"}"#;
+  let output = sandbox.run_with_stdin(&["self"], "w3C:p1W", input);
+
+  assert_eq!(output.status.code(), Some(0));
+  assert!(
+    stdout(&output).starts_with("context 15% "),
+    "{}",
+    stdout(&output)
+  );
+}
+
+#[test]
+fn self_prints_when_the_session_id_matches() {
+  let sandbox = Sandbox::new("self-same-session");
+  sandbox.sidecar("w3C_p1W.json", 15);
+
+  let input = r#"{"session_id":"session-a","transcript_path":"/t/b.jsonl"}"#;
+  let output = sandbox.run_with_stdin(&["self"], "w3C:p1W", input);
+
+  assert!(
+    stdout(&output).starts_with("context 15% "),
+    "{}",
+    stdout(&output)
+  );
+}
+
+#[test]
+fn self_skips_the_check_without_json_on_stdin() {
+  let sandbox = Sandbox::new("self-no-json");
+  sandbox.sidecar("w3C_p1W.json", 15);
+
+  for input in ["", "not json"] {
+    let output = sandbox.run_with_stdin(&["self"], "w3C:p1W", input);
+    assert!(stdout(&output).starts_with("context 15% "), "{input:?}");
+  }
+}
+
+#[test]
 fn self_adds_the_handover_line_for_a_commander() {
   let sandbox = Sandbox::new("self-commander");
   sandbox.fake_herdr("", GET_COMMANDER_JSON, 0);
@@ -287,6 +370,35 @@ fn watch_writes_agents_json_and_notifies_once_across_cycles() {
     log.lines().filter(|l| *l == "agent list").count() >= 2,
     "{log}"
   );
+}
+
+#[test]
+fn watch_retries_a_notice_that_herdr_did_not_show() {
+  let sandbox = Sandbox::new("watch-not-shown");
+  sandbox.fake_herdr_notifying(LIST_JSON, "", NOT_SHOWN_JSON, 0);
+  sandbox.sidecar("w3C_p1W.json", 62);
+  let ctx = sandbox.home().join(".herdr/ctx");
+
+  let mut child = sandbox
+    .command(&["watch", "--interval", "1"])
+    .stdout(Stdio::null())
+    .stderr(Stdio::null())
+    .spawn()
+    .expect("binary runs");
+
+  let agents_written = wait_for(&ctx.join("agents.json"));
+  thread::sleep(Duration::from_millis(1500));
+  child.kill().unwrap();
+  child.wait().unwrap();
+
+  assert!(agents_written);
+  let log = fs::read_to_string(sandbox.log()).unwrap();
+  let attempts = log
+    .lines()
+    .filter(|line| line.starts_with("notification show"))
+    .count();
+  assert!(attempts >= 2, "{log}");
+  assert!(!ctx.join("notify_state.json").exists());
 }
 
 #[test]

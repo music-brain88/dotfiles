@@ -2,9 +2,9 @@
 //! Joins agents with sidecars and builds the output of list and self.
 
 use crate::herdr::{get_agent, list_agents, Agent, Herdr};
-use crate::sidecar::{read_sidecar, SidecarRead};
+use crate::sidecar::{read_sidecar, Sidecar, SidecarRead};
 use chrono::{DateTime, Duration, TimeZone, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::path::Path;
 
@@ -171,6 +171,43 @@ where
   text
 }
 
+/// UserPromptSubmit の hook が stdin に渡す JSON のうち、session の照合に使う鍵。
+/// The keys of the UserPromptSubmit hook's stdin JSON used to match a session.
+#[derive(Debug, Default, Deserialize)]
+pub struct HookInput {
+  pub session_id: Option<String>,
+  pub transcript_path: Option<String>,
+}
+
+impl HookInput {
+  /// 照合の材料がある JSON だけを受ける。手で `herdr-ctx self` を打ったときは stdin に JSON が無い。
+  /// Accepts only JSON that can be matched. A manual `herdr-ctx self` has no JSON on stdin.
+  pub fn parse(text: &str) -> Option<Self> {
+    let input: Self = serde_json::from_str(text).ok()?;
+    (input.session_id.is_some() || input.transcript_path.is_some()).then_some(input)
+  }
+}
+
+fn same(left: Option<&str>, right: Option<&str>) -> bool {
+  left.is_some() && left == right
+}
+
+/// sidecar が hook の session のものかを判定する。pane id は場所しか示さないので、同じ pane で新しい
+/// session が最初の statusline の更新より前に prompt を送ると、前の session の sidecar が残っている。
+/// transcript_path を第 2 の鍵にするのは、裏の job に乗った session では TUI 側と backend 側で
+/// session id が違うことがあり、statusline がどちらを受け取るかは確かめられていないから。
+/// Tells whether a sidecar belongs to the hook's session. A pane id only names a place, so a new
+/// session prompting before its first statusline update still finds the previous sidecar.
+/// transcript_path is the second key because a session on a background job can have different
+/// session ids on the TUI and backend sides, and which one the statusline receives is unverified.
+fn belongs_to(sidecar: &Sidecar, hook: &HookInput) -> bool {
+  same(sidecar.session_id.as_deref(), hook.session_id.as_deref())
+    || same(
+      sidecar.transcript_path.as_deref(),
+      hook.transcript_path.as_deref(),
+    )
+}
+
 fn advice(name: Option<&str>, pct: u32) -> Option<&'static str> {
   let is_commander = name.is_some_and(|name| name.starts_with(COMMANDER_PREFIX));
   if is_commander {
@@ -188,6 +225,7 @@ pub fn self_report<Tz: TimeZone>(
   herdr: &dyn Herdr,
   panes_dir: &Path,
   pane_id: Option<&str>,
+  hook: Option<&HookInput>,
   tz: &Tz,
 ) -> Option<String>
 where
@@ -197,6 +235,10 @@ where
   let SidecarRead::Found(sidecar) = read_sidecar(panes_dir, pane_id) else {
     return None;
   };
+  if hook.is_some_and(|hook| !belongs_to(&sidecar, hook)) {
+    eprintln!("herdr-ctx: sidecar は別の session のもの");
+    return None;
+  }
   let pct = sidecar.pct()?;
 
   let model = sidecar.model().unwrap_or("?");
@@ -226,7 +268,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::sidecar::{sidecar_path, Sidecar};
+  use crate::sidecar::sidecar_path;
   use crate::testutil::{temp_dir, FakeHerdr, AGENT_GET_JSON, AGENT_LIST_JSON};
   use std::fs;
 
@@ -249,6 +291,7 @@ mod tests {
   fn sidecar(updated_at: &str) -> Sidecar {
     Sidecar {
       session_id: Some("session-a".to_string()),
+      transcript_path: Some("/t/a.jsonl".to_string()),
       used_percentage: Some(62.0),
       context_window_size: Some(1_000_000),
       total_input_tokens: Some(620_000),
@@ -404,14 +447,14 @@ mod tests {
   fn self_is_silent_without_a_pane_or_a_usable_sidecar() {
     let dir = temp_dir("self-silent");
     let herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
-    assert_eq!(self_report(&herdr, &dir, None, &Utc), None);
-    assert_eq!(self_report(&herdr, &dir, Some("w1:p1"), &Utc), None);
+    assert_eq!(self_report(&herdr, &dir, None, None, &Utc), None);
+    assert_eq!(self_report(&herdr, &dir, Some("w1:p1"), None, &Utc), None);
 
     fs::write(sidecar_path(&dir, "w1:p1"), "{broken").unwrap();
-    assert_eq!(self_report(&herdr, &dir, Some("w1:p1"), &Utc), None);
+    assert_eq!(self_report(&herdr, &dir, Some("w1:p1"), None, &Utc), None);
 
     fs::write(sidecar_path(&dir, "w1:p1"), r#"{"used_percentage":null}"#).unwrap();
-    assert_eq!(self_report(&herdr, &dir, Some("w1:p1"), &Utc), None);
+    assert_eq!(self_report(&herdr, &dir, Some("w1:p1"), None, &Utc), None);
   }
 
   #[test]
@@ -420,7 +463,7 @@ mod tests {
     write_sidecar(&dir, "w3C:p1W", 49);
     let mut herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
     herdr.get = Err("must not be called".to_string());
-    let text = self_report(&herdr, &dir, Some("w3C:p1W"), &Utc).unwrap();
+    let text = self_report(&herdr, &dir, Some("w3C:p1W"), None, &Utc).unwrap();
     assert_eq!(
       text,
       "context 49% (pane w3C:p1W, model Fable 5.1, as of 12:34)\n"
@@ -432,7 +475,7 @@ mod tests {
     write_sidecar(&dir, "w3C:p1W", pct);
     let mut herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
     herdr.get = Ok(AGENT_GET_JSON.replace("commander-dotfiles", name));
-    self_report(&herdr, &dir, Some("w3C:p1W"), &Utc).unwrap()
+    self_report(&herdr, &dir, Some("w3C:p1W"), None, &Utc).unwrap()
   }
 
   #[test]
@@ -454,13 +497,75 @@ mod tests {
     assert_eq!(advice(None, 49), None);
   }
 
+  fn identified(session_id: Option<&str>, transcript_path: Option<&str>) -> Sidecar {
+    Sidecar {
+      session_id: session_id.map(str::to_string),
+      transcript_path: transcript_path.map(str::to_string),
+      ..Sidecar::default()
+    }
+  }
+
+  fn hook(session_id: Option<&str>, transcript_path: Option<&str>) -> HookInput {
+    HookInput {
+      session_id: session_id.map(str::to_string),
+      transcript_path: transcript_path.map(str::to_string),
+    }
+  }
+
+  #[test]
+  fn a_matching_session_id_is_enough() {
+    let sidecar = identified(Some("a"), Some("/t/a.jsonl"));
+    assert!(belongs_to(&sidecar, &hook(Some("a"), Some("/t/b.jsonl"))));
+  }
+
+  #[test]
+  fn a_matching_transcript_path_covers_a_different_session_id() {
+    let sidecar = identified(Some("a"), Some("/t/a.jsonl"));
+    assert!(belongs_to(&sidecar, &hook(Some("b"), Some("/t/a.jsonl"))));
+  }
+
+  #[test]
+  fn a_matching_transcript_path_covers_a_missing_session_id() {
+    let sidecar = identified(None, Some("/t/a.jsonl"));
+    assert!(belongs_to(&sidecar, &hook(Some("a"), Some("/t/a.jsonl"))));
+  }
+
+  #[test]
+  fn no_matching_key_means_another_session() {
+    let sidecar = identified(Some("a"), Some("/t/a.jsonl"));
+    assert!(!belongs_to(&sidecar, &hook(Some("b"), Some("/t/b.jsonl"))));
+    assert!(!belongs_to(&sidecar, &hook(Some("b"), None)));
+    assert!(!belongs_to(&identified(None, None), &hook(Some("a"), None)));
+  }
+
+  #[test]
+  fn hook_input_needs_json_with_a_key_to_match() {
+    assert!(HookInput::parse("").is_none());
+    assert!(HookInput::parse("not json").is_none());
+    assert!(HookInput::parse("{}").is_none());
+    assert!(HookInput::parse(r#"{"session_id":"a","prompt":"x"}"#).is_some());
+    assert!(HookInput::parse(r#"{"transcript_path":"/t/a.jsonl"}"#).is_some());
+  }
+
+  #[test]
+  fn self_prints_nothing_for_a_sidecar_of_another_session() {
+    let dir = temp_dir("self-other-session");
+    write_sidecar(&dir, "w3C:p1W", 62);
+    let herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
+    let other = hook(Some("session-b"), Some("/t/b.jsonl"));
+    assert_eq!(
+      self_report(&herdr, &dir, Some("w3C:p1W"), Some(&other), &Utc),
+      None
+    );
+  }
+
   #[test]
   fn self_keeps_the_usage_line_when_herdr_fails_above_the_limit() {
     let dir = temp_dir("self-herdr-fails");
     write_sidecar(&dir, "w3C:p1W", 62);
     let mut herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
     herdr.get = Err("no herdr server is running".to_string());
-    let text = self_report(&herdr, &dir, Some("w3C:p1W"), &Utc).unwrap();
+    let text = self_report(&herdr, &dir, Some("w3C:p1W"), None, &Utc).unwrap();
     assert_eq!(
       text,
       "context 62% (pane w3C:p1W, model Fable 5.1, as of 12:34)\n"

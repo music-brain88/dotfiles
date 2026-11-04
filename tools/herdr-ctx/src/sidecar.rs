@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct Sidecar {
   pub session_id: Option<String>,
+  pub transcript_path: Option<String>,
   pub used_percentage: Option<f64>,
   pub context_window_size: Option<u64>,
   pub total_input_tokens: Option<u64>,

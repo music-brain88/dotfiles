@@ -5,7 +5,7 @@
 //! SIGTERM keeps its default action. Writes go through a temp file and rename, so dying mid-way
 //! never exposes a partial file, and systemd treats a SIGTERM exit as clean.
 
-use crate::herdr::Herdr;
+use crate::herdr::{show_notification, Herdr};
 use crate::report::{collect_rows, Row};
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
@@ -214,7 +214,7 @@ fn advance(
 
   let (mut next, notices) = plan(prev, &rows, thresholds);
   for notice in notices {
-    if let Err(reason) = herdr.notify(&notice.title, &notice.body) {
+    if let Err(reason) = show_notification(herdr, &notice.title, &notice.body) {
       eprintln!("herdr-ctx: 通知できない: {reason}");
       // 届かなかった通知は知らせた扱いにせず、次の周期でもう一度試す
       // An undelivered notice does not count, so the next cycle tries again
@@ -266,7 +266,9 @@ pub fn run(herdr: &dyn Herdr, ctx_dir: &Path, options: &WatchOptions) -> ! {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::testutil::{temp_dir, FakeHerdr, AGENT_LIST_JSON};
+  use crate::testutil::{
+    temp_dir, FakeHerdr, AGENT_LIST_JSON, NOTIFY_NOT_SHOWN_JSON, NOTIFY_SHOWN_JSON,
+  };
 
   const THRESHOLDS: [u32; 3] = [50, 60, 80];
 
@@ -534,9 +536,26 @@ mod tests {
     tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
     assert!(state.current.is_empty());
 
-    herdr.notify_result = Ok(());
+    herdr.notify_result = Ok(NOTIFY_SHOWN_JSON.to_string());
     tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
     assert_eq!(level(&state), Some(60));
+  }
+
+  #[test]
+  fn a_notice_that_was_not_shown_is_retried_on_the_next_tick() {
+    let dir = temp_dir("not-shown");
+    write_pane(&dir, 62);
+    let mut herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
+    herdr.notify_result = Ok(NOTIFY_NOT_SHOWN_JSON.to_string());
+    let mut state = WatchState::default();
+
+    tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
+    assert!(state.current.is_empty());
+
+    herdr.notify_result = Ok(NOTIFY_SHOWN_JSON.to_string());
+    tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
+    assert_eq!(level(&state), Some(60));
+    assert_eq!(herdr.notified.borrow().len(), 2);
   }
 
   #[test]

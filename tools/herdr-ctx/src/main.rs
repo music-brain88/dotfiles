@@ -18,7 +18,7 @@ mod watch;
 use chrono::{Local, Utc};
 use herdr::HerdrCli;
 use std::env;
-use std::io::Write;
+use std::io::{IsTerminal, Read, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::Duration;
@@ -125,13 +125,34 @@ fn run_list(table: bool) -> ExitCode {
   }
 }
 
+/// hook が stdin に渡す JSON を読む。stdin が端末のときは読まない。手で打った `herdr-ctx self` が
+/// 入力待ちで止まらないようにするため。
+/// Reads the JSON the hook passes on stdin, skipping a terminal so a manual `herdr-ctx self` does
+/// not block waiting for input.
+fn read_hook_input() -> Option<report::HookInput> {
+  let mut stdin = std::io::stdin();
+  if stdin.is_terminal() {
+    return None;
+  }
+  let mut text = String::new();
+  stdin.read_to_string(&mut text).ok()?;
+  report::HookInput::parse(&text)
+}
+
 fn run_self() -> ExitCode {
   let Some(dir) = ctx_dir() else {
     return ExitCode::SUCCESS;
   };
   let pane_id = env::var("HERDR_PANE_ID").ok().filter(|id| !id.is_empty());
-  if let Some(text) = report::self_report(&HerdrCli, &dir.join("panes"), pane_id.as_deref(), &Local)
-  {
+  let hook = read_hook_input();
+  let text = report::self_report(
+    &HerdrCli,
+    &dir.join("panes"),
+    pane_id.as_deref(),
+    hook.as_ref(),
+    &Local,
+  );
+  if let Some(text) = text {
     emit(&text);
   }
   ExitCode::SUCCESS
@@ -231,10 +252,14 @@ pub mod testutil {
 
   pub const AGENT_GET_JSON: &str = r#"{"id":"cli:agent:get","result":{"agent":{"agent":"claude","agent_status":"working","cwd":"/home/archie/dotfiles","name":"commander-dotfiles","pane_id":"w3C:p1W"},"type":"agent_info"}}"#;
 
+  pub const NOTIFY_SHOWN_JSON: &str = r#"{"id":"cli:notification:show","result":{"reason":"shown","shown":true,"type":"notification_show"}}"#;
+
+  pub const NOTIFY_NOT_SHOWN_JSON: &str = r#"{"id":"cli:notification:show","result":{"reason":"rate_limited","shown":false,"type":"notification_show"}}"#;
+
   pub struct FakeHerdr {
     pub list: Result<String, String>,
     pub get: Result<String, String>,
-    pub notify_result: Result<(), String>,
+    pub notify_result: Result<String, String>,
     pub notified: RefCell<Vec<(String, String)>>,
   }
 
@@ -243,7 +268,7 @@ pub mod testutil {
       Self {
         list: Ok(list.to_string()),
         get: Err("agent get is not set up".to_string()),
-        notify_result: Ok(()),
+        notify_result: Ok(NOTIFY_SHOWN_JSON.to_string()),
         notified: RefCell::new(Vec::new()),
       }
     }
@@ -258,13 +283,13 @@ pub mod testutil {
       self.get.clone()
     }
 
-    fn notify(&self, title: &str, body: &str) -> Result<(), String> {
-      self.notify_result.clone()?;
+    fn notify(&self, title: &str, body: &str) -> Result<String, String> {
+      let response = self.notify_result.clone()?;
       self
         .notified
         .borrow_mut()
         .push((title.to_string(), body.to_string()));
-      Ok(())
+      Ok(response)
     }
   }
 

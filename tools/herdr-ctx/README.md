@@ -58,6 +58,8 @@ context 62% (pane w3C:p1W, model Fable 5.1, as of 21:34)
 
 `$HERDR_PANE_ID` か sidecar が無いときと使用率が null のときは、何も出さず終了コード 0 で終わる。sidecar を読めないときも同じである。使用率が 50% 未満のときは、hook の実行を軽くするために `herdr` を呼ばない。`herdr` に繋がらないときは、1 行目の使用率だけを出して助言を省き、理由を stderr に 1 行書く。hook の主な役目は 1 行目の使用率を届けることなので、このときも終了コードは 0 である。
 
+hook から呼ばれたときは、stdin の JSON の `session_id` と `transcript_path` を sidecar の値と照らす。同じ pane で新しいセッションが最初の statusline の更新より前に prompt を送ると、前のセッションの sidecar が残っているからである。どちらかの鍵が両方にあって一致すれば、sidecar を使う。どちらも一致しないときは、何も出さず終了コード 0 で終わり、stderr に「sidecar は別の session のもの」と 1 行書く。`transcript_path` を第 2 の鍵にするのは、`/remote-control` などで裏の job に乗ったセッションでは、TUI 側と backend 側で session id が違うことがあるからである。stdin に照合できる JSON が無いときは、照合せずに出す。stdin が端末か空のときと、JSON でないときと、鍵が無いときがこれに当たる。手で `herdr-ctx self` を打ったときも同じである。
+
 ### watch
 
 `herdr-ctx watch` は、常駐して 30 秒おきに `list` と同じ計算をする。結果を `~/.herdr/ctx/agents.json` に書き、50 / 60 / 80 % の閾値を下から上に跨いだ agent ごとに、`herdr notification show` で 1 回だけ知らせる。周期は `--interval <秒>` で、閾値は `--thresholds <カンマ区切り>` で変えられる。
@@ -70,7 +72,7 @@ context 62% (pane w3C:p1W, model Fable 5.1, as of 21:34)
 - agent が一覧から消えると、その agent の記録を消す。
 - 同じ pane で sidecar の `session_id` が変わると、前の session の記録を消してから判定する。前の session が 80% で知らせた pane で別の session が 62% から始まると、新しい session の閾値として 1 回知らせる。
 - pct が null の周期は、同じ session の記録を変えない。`/compact` の直後の null で同じ閾値を知らせ直さないためである。
-- 通知に失敗したときは、知らせた記録を残さず、次の周期でもう一度試す。
+- 通知に失敗したときは、知らせた記録を残さず、次の周期でもう一度試す。herdr は通知を表示しなかったときも成功の応答を返すので、応答の `shown` が `true` でないときも失敗として扱う。
 - `notify_state.json` の保存に失敗したときは、メモリ上の記録を保ったまま、次の周期で保存をもう一度試す。
 
 herdr のソケットに繋がらないときは、stderr に 1 行書いて次の周期まで待つ。このとき `agents.json` は更新しない。SIGTERM を受けると、`watch` はそのまま終了する。
@@ -97,11 +99,12 @@ WSL 機で systemd の user session が動いていないときは、home-manage
 
 ## 確かめ方
 
-`mise run nix:switch` の後に、次の 3 つを確かめる。
+`mise run nix:switch` の後に、次の 4 つを確かめる。
 
 1. `herdr-ctx list --table` の pct が、各 pane の statusline の `💭` の値と一致する。一致を見るには、対象の agent が switch の後に 1 ターン以上動いて、sidecar が書かれている必要がある。
 2. `systemctl --user status herdr-ctx-watch` が `active (running)` を示す。
 3. 新しい Claude Code のセッションの最初のターンで、文脈に `context n%` の行が入る。
+4. 裏の job に乗ったセッション(`/remote-control` など)でも、文脈に `context n%` の行が入る。statusline が TUI 側と backend 側のどちらの session id を受け取るかが未確認なので、司令塔が配備後に確かめる。
 
 ## 開発
 
