@@ -36,6 +36,10 @@ pub struct Row {
   pub last_turn_at: Option<String>,
   pub stale: bool,
   pub note: Option<String>,
+  /// 通知の記録の持ち主を見分けるために watch が使う。list の出力の鍵には含めない。
+  /// Used by watch to tell whose notification record this is; not part of the list output.
+  #[serde(skip)]
+  pub session_id: Option<String>,
 }
 
 fn is_stale(updated_at: Option<&str>, now: DateTime<Utc>) -> bool {
@@ -62,9 +66,19 @@ pub fn join(agent: &Agent, sidecar: &SidecarRead, now: DateTime<Utc>) -> Row {
     last_turn_at: None,
     stale: false,
     note: None,
+    session_id: None,
   };
+  // pane には前の Claude の sidecar が残っていることがある。stale は古さしか示さないので、
+  // 持ち主が違う agent に結合すると、別の使用率とモデルを報告してしまう
+  // A pane can hold a sidecar left by an earlier Claude. stale only tells age, so joining it to
+  // another kind of agent would report someone else's usage and model
+  if !agent.is_claude() {
+    row.note = Some("not a claude agent".to_string());
+    return row;
+  }
   match sidecar {
     SidecarRead::Found(sidecar) => {
+      row.session_id = sidecar.session_id.clone();
       row.pct = sidecar.pct();
       row.ctx_tokens = sidecar.total_input_tokens;
       row.context_window_size = sidecar.context_window_size;
@@ -166,28 +180,24 @@ fn advice(name: Option<&str>, pct: u32) -> Option<&'static str> {
   }
 }
 
-/// self の出力。Ok(None) は「何も出さず終了コード 0」、Err は「stderr に理由、終了コード 1」。
-/// 文面を全部組み立ててから返すので、herdr が失敗したときに 1 行目だけが出ることはない。
-/// Output of self. Ok(None) means silent exit 0, Err means a reason on stderr and exit 1. The text
-/// is built in full first, so a herdr failure never leaves a lone first line on stdout.
+/// self の出力。None は「何も出さない」を表す。hook の主の価値は 1 行目の使用率で、助言は従なので、
+/// 役割を読むための herdr が失敗しても 1 行目は出し、助言だけを省いて理由を stderr に書く。
+/// Output of self; None means print nothing. The hook's main value is the usage line and advice is
+/// secondary, so a herdr failure while reading the role keeps the line and only drops the advice.
 pub fn self_report<Tz: TimeZone>(
   herdr: &dyn Herdr,
   panes_dir: &Path,
   pane_id: Option<&str>,
   tz: &Tz,
-) -> Result<Option<String>, String>
+) -> Option<String>
 where
   Tz::Offset: Display,
 {
-  let Some(pane_id) = pane_id else {
-    return Ok(None);
-  };
+  let pane_id = pane_id?;
   let SidecarRead::Found(sidecar) = read_sidecar(panes_dir, pane_id) else {
-    return Ok(None);
+    return None;
   };
-  let Some(pct) = sidecar.pct() else {
-    return Ok(None);
-  };
+  let pct = sidecar.pct()?;
 
   let model = sidecar.model().unwrap_or("?");
   let as_of = sidecar
@@ -200,13 +210,17 @@ where
   // 役割が要るのは助言を足す可能性があるときだけ。hook は毎ターン走るので、下回る間は herdr を呼ばない
   // The role only matters when advice may follow. The hook runs every turn, so skip herdr below it
   if pct >= WORKER_LIMIT.min(COMMANDER_LIMIT) {
-    let agent = get_agent(herdr, pane_id)?;
-    if let Some(line) = advice(agent.name.as_deref(), pct) {
-      text.push_str(line);
-      text.push('\n');
+    match get_agent(herdr, pane_id) {
+      Ok(agent) => {
+        if let Some(line) = advice(agent.name.as_deref(), pct) {
+          text.push_str(line);
+          text.push('\n');
+        }
+      }
+      Err(reason) => eprintln!("herdr-ctx: {reason}"),
     }
   }
-  Ok(Some(text))
+  Some(text)
 }
 
 #[cfg(test)]
@@ -225,6 +239,7 @@ mod tests {
   fn agent() -> Agent {
     Agent {
       pane_id: "w3C:p1W".to_string(),
+      agent: Some("claude".to_string()),
       name: Some("commander-dotfiles".to_string()),
       agent_status: Some("working".to_string()),
       cwd: Some("/home/archie/dotfiles".to_string()),
@@ -233,6 +248,7 @@ mod tests {
 
   fn sidecar(updated_at: &str) -> Sidecar {
     Sidecar {
+      session_id: Some("session-a".to_string()),
       used_percentage: Some(62.0),
       context_window_size: Some(1_000_000),
       total_input_tokens: Some(620_000),
@@ -266,6 +282,23 @@ mod tests {
   }
 
   #[test]
+  fn join_does_not_attach_a_leftover_sidecar_to_another_kind_of_agent() {
+    let mut copilot = agent();
+    copilot.agent = Some("copilot".to_string());
+    let found = SidecarRead::Found(sidecar("2026-11-05T12:34:56Z"));
+    let row = join(&copilot, &found, now());
+    assert_eq!(row.name.as_deref(), Some("commander-dotfiles"));
+    assert_eq!(row.pct, None);
+    assert_eq!(row.ctx_tokens, None);
+    assert_eq!(row.context_window_size, None);
+    assert_eq!(row.model, None);
+    assert_eq!(row.last_turn_at, None);
+    assert_eq!(row.session_id, None);
+    assert!(!row.stale);
+    assert_eq!(row.note.as_deref(), Some("not a claude agent"));
+  }
+
+  #[test]
   fn join_fills_the_row_from_a_fresh_sidecar() {
     let found = SidecarRead::Found(sidecar("2026-11-05T12:34:56Z"));
     let row = join(&agent(), &found, now());
@@ -274,6 +307,7 @@ mod tests {
     assert_eq!(row.context_window_size, Some(1_000_000));
     assert_eq!(row.model.as_deref(), Some("Fable 5.1"));
     assert_eq!(row.last_turn_at.as_deref(), Some("2026-11-05T12:34:56Z"));
+    assert_eq!(row.session_id.as_deref(), Some("session-a"));
     assert!(!row.stale);
     assert_eq!(row.note, None);
   }
@@ -301,11 +335,12 @@ mod tests {
   fn json_lines_has_one_object_per_agent_with_every_key() {
     let dir = temp_dir("json-lines");
     write_sidecar(&dir, "w3C:p1W", 62);
+    write_sidecar(&dir, "w3U:p1", 70);
     let rows = collect_rows(&FakeHerdr::with_list(AGENT_LIST_JSON), &dir, now()).unwrap();
     let text = json_lines(&rows).unwrap();
 
     let lines: Vec<&str> = text.lines().collect();
-    assert_eq!(lines.len(), 2);
+    assert_eq!(lines.len(), 3);
 
     let first: serde_json::Value = serde_json::from_str(lines[0]).unwrap();
     assert_eq!(first["name"], "commander-dotfiles");
@@ -317,6 +352,10 @@ mod tests {
     assert!(second["name"].is_null());
     assert!(second["pct"].is_null());
     assert_eq!(second["note"], "no sidecar");
+
+    let third: serde_json::Value = serde_json::from_str(lines[2]).unwrap();
+    assert!(third["pct"].is_null());
+    assert_eq!(third["note"], "not a claude agent");
 
     let keys = [
       "name",
@@ -365,23 +404,14 @@ mod tests {
   fn self_is_silent_without_a_pane_or_a_usable_sidecar() {
     let dir = temp_dir("self-silent");
     let herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
-    assert_eq!(self_report(&herdr, &dir, None, &Utc).unwrap(), None);
-    assert_eq!(
-      self_report(&herdr, &dir, Some("w1:p1"), &Utc).unwrap(),
-      None
-    );
+    assert_eq!(self_report(&herdr, &dir, None, &Utc), None);
+    assert_eq!(self_report(&herdr, &dir, Some("w1:p1"), &Utc), None);
 
     fs::write(sidecar_path(&dir, "w1:p1"), "{broken").unwrap();
-    assert_eq!(
-      self_report(&herdr, &dir, Some("w1:p1"), &Utc).unwrap(),
-      None
-    );
+    assert_eq!(self_report(&herdr, &dir, Some("w1:p1"), &Utc), None);
 
     fs::write(sidecar_path(&dir, "w1:p1"), r#"{"used_percentage":null}"#).unwrap();
-    assert_eq!(
-      self_report(&herdr, &dir, Some("w1:p1"), &Utc).unwrap(),
-      None
-    );
+    assert_eq!(self_report(&herdr, &dir, Some("w1:p1"), &Utc), None);
   }
 
   #[test]
@@ -390,9 +420,7 @@ mod tests {
     write_sidecar(&dir, "w3C:p1W", 49);
     let mut herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
     herdr.get = Err("must not be called".to_string());
-    let text = self_report(&herdr, &dir, Some("w3C:p1W"), &Utc)
-      .unwrap()
-      .unwrap();
+    let text = self_report(&herdr, &dir, Some("w3C:p1W"), &Utc).unwrap();
     assert_eq!(
       text,
       "context 49% (pane w3C:p1W, model Fable 5.1, as of 12:34)\n"
@@ -404,9 +432,7 @@ mod tests {
     write_sidecar(&dir, "w3C:p1W", pct);
     let mut herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
     herdr.get = Ok(AGENT_GET_JSON.replace("commander-dotfiles", name));
-    self_report(&herdr, &dir, Some("w3C:p1W"), &Utc)
-      .unwrap()
-      .unwrap()
+    self_report(&herdr, &dir, Some("w3C:p1W"), &Utc).unwrap()
   }
 
   #[test]
@@ -429,12 +455,15 @@ mod tests {
   }
 
   #[test]
-  fn self_prints_nothing_when_herdr_fails_above_the_limit() {
+  fn self_keeps_the_usage_line_when_herdr_fails_above_the_limit() {
     let dir = temp_dir("self-herdr-fails");
     write_sidecar(&dir, "w3C:p1W", 62);
     let mut herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
     herdr.get = Err("no herdr server is running".to_string());
-    let error = self_report(&herdr, &dir, Some("w3C:p1W"), &Utc).unwrap_err();
-    assert_eq!(error, "no herdr server is running");
+    let text = self_report(&herdr, &dir, Some("w3C:p1W"), &Utc).unwrap();
+    assert_eq!(
+      text,
+      "context 62% (pane w3C:p1W, model Fable 5.1, as of 12:34)\n"
+    );
   }
 }

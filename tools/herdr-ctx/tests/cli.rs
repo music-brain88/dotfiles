@@ -11,7 +11,7 @@ use std::process::{Command, Output, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
-const LIST_JSON: &str = r#"{"id":"cli:agent:list","result":{"agents":[{"agent_status":"working","cwd":"/home/archie/dotfiles","name":"commander-dotfiles","pane_id":"w3C:p1W"},{"agent_status":"idle","cwd":"/home/archie/notes","pane_id":"w3T:p2"}]}}"#;
+const LIST_JSON: &str = r#"{"id":"cli:agent:list","result":{"agents":[{"agent":"claude","agent_status":"working","cwd":"/home/archie/dotfiles","name":"commander-dotfiles","pane_id":"w3C:p1W"},{"agent":"claude","agent_status":"idle","cwd":"/home/archie/notes","pane_id":"w3T:p2"},{"agent":"copilot","agent_status":"idle","cwd":"/home/archie/tools","pane_id":"w3U:p1"}]}}"#;
 const GET_COMMANDER_JSON: &str = r#"{"id":"cli:agent:get","result":{"agent":{"name":"commander-dotfiles","pane_id":"w3C:p1W"},"type":"agent_info"}}"#;
 const SERVER_DOWN_JSON: &str = r#"{"id":"cli:agent:list","error":{"code":"server_not_running","message":"no herdr server is running"}}"#;
 
@@ -108,19 +108,23 @@ fn list_prints_json_lines() {
   let sandbox = Sandbox::new("list");
   sandbox.fake_herdr(LIST_JSON, "", 0);
   sandbox.sidecar("w3C_p1W.json", 62);
+  sandbox.sidecar("w3U_p1.json", 70);
 
   let output = sandbox.run(&["list"]);
 
   assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
   let text = stdout(&output);
   let lines: Vec<&str> = text.lines().collect();
-  assert_eq!(lines.len(), 2);
+  assert_eq!(lines.len(), 3);
   let first: serde_json::Value = serde_json::from_str(lines[0]).unwrap();
   assert_eq!(first["pct"], 62);
   assert_eq!(first["model"], "Fable 5.1");
   assert_eq!(first["stale"], true);
   let second: serde_json::Value = serde_json::from_str(lines[1]).unwrap();
   assert_eq!(second["note"], "no sidecar");
+  let third: serde_json::Value = serde_json::from_str(lines[2]).unwrap();
+  assert!(third["pct"].is_null());
+  assert_eq!(third["note"], "not a claude agent");
 }
 
 #[test]
@@ -220,14 +224,16 @@ fn self_adds_the_handover_line_for_a_commander() {
 }
 
 #[test]
-fn self_prints_nothing_on_stdout_when_herdr_is_missing_above_the_limit() {
+fn self_keeps_the_usage_line_when_herdr_is_missing_above_the_limit() {
   let sandbox = Sandbox::new("self-no-herdr");
   sandbox.sidecar("w3C_p1W.json", 62);
 
   let output = sandbox.run_in_pane(&["self"], "w3C:p1W");
 
-  assert_eq!(output.status.code(), Some(1));
-  assert_eq!(stdout(&output), "");
+  assert_eq!(output.status.code(), Some(0));
+  let text = stdout(&output);
+  assert_eq!(text.lines().count(), 1);
+  assert!(text.starts_with("context 62% (pane w3C:p1W"), "{text}");
   assert_eq!(stderr(&output).lines().count(), 1);
 }
 
@@ -265,7 +271,7 @@ fn watch_writes_agents_json_and_notifies_once_across_cycles() {
   assert!(state_written);
   let agents: serde_json::Value =
     serde_json::from_str(&fs::read_to_string(ctx.join("agents.json")).unwrap()).unwrap();
-  assert_eq!(agents["agents"].as_array().unwrap().len(), 2);
+  assert_eq!(agents["agents"].as_array().unwrap().len(), 3);
   assert!(agents["generated_at"].is_string());
 
   let log = fs::read_to_string(sandbox.log()).unwrap();

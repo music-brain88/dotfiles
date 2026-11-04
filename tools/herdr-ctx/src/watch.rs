@@ -8,7 +8,7 @@
 use crate::herdr::Herdr;
 use crate::report::{collect_rows, Row};
 use chrono::{DateTime, SecondsFormat, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
@@ -23,9 +23,37 @@ pub const DEFAULT_THRESHOLDS: [u32; 3] = [50, 60, 80];
 const AGENTS_FILE: &str = "agents.json";
 const STATE_FILE: &str = "notify_state.json";
 
-/// pane id ごとの「今いる段」。知らせ済みの閾値のうち、今の pct 以下で最大のもの。
-/// The level each pane sits at: the highest notified threshold not above the current pct.
-pub type NotifyState = BTreeMap<String, u32>;
+/// pane の「今いる段」と、その段を知らせた session。段は、知らせ済みの閾値のうち今の pct 以下で最大のもの。
+/// pane id は場所しか示さないので、session_id で記録の持ち主を見分ける。
+/// A pane's level and the session it was announced for. The level is the highest notified threshold
+/// not above the current pct. A pane id only names a place, so session_id tells whose record it is.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Notified {
+  pub threshold: u32,
+  pub session_id: Option<String>,
+}
+
+pub type NotifyState = BTreeMap<String, Notified>;
+
+/// メモリ上の記録と、最後にファイルへ保存できた記録。分けて持つと、保存の失敗中も通知を繰り返さず、
+/// 次の周期で保存を再試行できる。
+/// The in-memory record and the last one saved to disk. Keeping both means a failed save neither
+/// repeats notifications nor loses the retry on the next cycle.
+#[derive(Debug, Default)]
+pub struct WatchState {
+  current: NotifyState,
+  saved: NotifyState,
+}
+
+impl WatchState {
+  fn load(ctx_dir: &Path) -> Self {
+    let state = load_state(ctx_dir);
+    Self {
+      current: state.clone(),
+      saved: state,
+    }
+  }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WatchOptions {
@@ -85,24 +113,38 @@ fn notice(row: &Row, pct: u32) -> Notice {
 /// Decides the next state and this tick's notices. Crossing several thresholds at once yields one
 /// notice. Going down only lowers the level silently: wiping the record would announce a lower
 /// threshold that was never crossed upward. Agents absent from rows simply drop out of next.
+///
+/// session_id が変わった pane は、前の記録を無いものとして判定する。前の session が 80% で知らせた
+/// pane で別の session が 62% から始まっても、新しい session の閾値を知らせるため。
+/// A pane whose session_id changed is judged as if it had no record, so a new session starting at
+/// 62% in a pane notified at 80% by an earlier session still gets its own notice.
 pub fn plan(prev: &NotifyState, rows: &[Row], thresholds: &[u32]) -> (NotifyState, Vec<Notice>) {
   let mut next = NotifyState::new();
   let mut notices = Vec::new();
   for row in rows {
-    let last = prev.get(&row.pane_id).copied();
+    let last = prev
+      .get(&row.pane_id)
+      .filter(|record| record.session_id == row.session_id);
     let Some(pct) = row.pct else {
-      // /compact の直後などは値が null になる。情報が無いだけなので記録は保つ
-      // pct is null right after /compact and the like: no information, so keep the record
-      if let Some(level) = last {
-        next.insert(row.pane_id.clone(), level);
+      // /compact の直後などは値が null になる。同じ session なら情報が無いだけなので記録は保つ
+      // pct is null right after /compact and the like: within a session that is merely no
+      // information, so keep the record
+      if let Some(record) = last {
+        next.insert(row.pane_id.clone(), record.clone());
       }
       continue;
     };
     let Some(level) = thresholds.iter().copied().filter(|t| *t <= pct).max() else {
       continue;
     };
-    next.insert(row.pane_id.clone(), level);
-    if last.is_none_or(|last| level > last) {
+    next.insert(
+      row.pane_id.clone(),
+      Notified {
+        threshold: level,
+        session_id: row.session_id.clone(),
+      },
+    );
+    if last.is_none_or(|record| level > record.threshold) {
       notices.push(notice(row, pct));
     }
   }
@@ -148,49 +190,73 @@ fn save_state(ctx_dir: &Path, state: &NotifyState) -> Result<(), String> {
     .map_err(|e| format!("{STATE_FILE} を書けない: {e}"))
 }
 
-/// 1 周期ぶんの処理。herdr に繋がらなければ stderr に 1 行書くだけで、状態を変えない。
-/// One cycle. If herdr is unreachable it writes one stderr line and leaves the state alone.
-pub fn tick(
+/// 一覧を読んで agents.json を書き、通知を出して、次の記録を返す。
+/// herdr に繋がらなければ stderr に 1 行書いて None を返す。
+/// Reads the list, writes agents.json, sends notices and returns the next record.
+/// If herdr is unreachable it writes one stderr line and returns None.
+fn advance(
   herdr: &dyn Herdr,
   ctx_dir: &Path,
   thresholds: &[u32],
-  state: &mut NotifyState,
+  prev: &NotifyState,
   now: DateTime<Utc>,
-) {
+) -> Option<NotifyState> {
   let rows = match collect_rows(herdr, &ctx_dir.join("panes"), now) {
     Ok(rows) => rows,
     Err(reason) => {
       eprintln!("herdr-ctx: {reason}");
-      return;
+      return None;
     }
   };
   if let Err(reason) = write_agents(ctx_dir, &rows, now) {
     eprintln!("herdr-ctx: {reason}");
   }
 
-  let (mut next, notices) = plan(state, &rows, thresholds);
+  let (mut next, notices) = plan(prev, &rows, thresholds);
   for notice in notices {
     if let Err(reason) = herdr.notify(&notice.title, &notice.body) {
       eprintln!("herdr-ctx: 通知できない: {reason}");
       // 届かなかった通知は知らせた扱いにせず、次の周期でもう一度試す
       // An undelivered notice does not count, so the next cycle tries again
-      match state.get(&notice.pane_id) {
-        Some(level) => next.insert(notice.pane_id, *level),
+      match prev.get(&notice.pane_id) {
+        Some(record) => next.insert(notice.pane_id, record.clone()),
         None => next.remove(&notice.pane_id),
       };
     }
   }
+  Some(next)
+}
 
-  if next != *state {
-    if let Err(reason) = save_state(ctx_dir, &next) {
-      eprintln!("herdr-ctx: {reason}");
-    }
-    *state = next;
+/// 最後に保存できた記録と違う間は、周期ごとに保存を試みる。失敗してもメモリ上の記録は戻さない。
+/// Tries to save on every cycle while the record differs from the last saved one. A failure never
+/// rolls back the in-memory record.
+fn persist(ctx_dir: &Path, state: &mut WatchState) {
+  if state.current == state.saved {
+    return;
+  }
+  match save_state(ctx_dir, &state.current) {
+    Ok(()) => state.saved = state.current.clone(),
+    Err(reason) => eprintln!("herdr-ctx: {reason}"),
   }
 }
 
+/// 1 周期ぶんの処理。herdr に繋がらない周期も、保存の再試行だけは行う。
+/// One cycle. Even a cycle without herdr still retries a pending save.
+pub fn tick(
+  herdr: &dyn Herdr,
+  ctx_dir: &Path,
+  thresholds: &[u32],
+  state: &mut WatchState,
+  now: DateTime<Utc>,
+) {
+  if let Some(next) = advance(herdr, ctx_dir, thresholds, &state.current, now) {
+    state.current = next;
+  }
+  persist(ctx_dir, state);
+}
+
 pub fn run(herdr: &dyn Herdr, ctx_dir: &Path, options: &WatchOptions) -> ! {
-  let mut state = load_state(ctx_dir);
+  let mut state = WatchState::load(ctx_dir);
   loop {
     tick(herdr, ctx_dir, &options.thresholds, &mut state, Utc::now());
     thread::sleep(options.interval);
@@ -205,6 +271,10 @@ mod tests {
   const THRESHOLDS: [u32; 3] = [50, 60, 80];
 
   fn row(pct: Option<u32>) -> Row {
+    row_in("session-a", pct)
+  }
+
+  fn row_in(session_id: &str, pct: Option<u32>) -> Row {
     Row {
       name: Some("worker-a".to_string()),
       pane_id: "w1:p1".to_string(),
@@ -217,6 +287,7 @@ mod tests {
       last_turn_at: None,
       stale: false,
       note: None,
+      session_id: Some(session_id.to_string()),
     }
   }
 
@@ -293,6 +364,37 @@ mod tests {
   }
 
   #[test]
+  fn a_new_session_in_the_same_pane_starts_from_no_record() {
+    let (state, _) = plan(
+      &NotifyState::new(),
+      &[row_in("session-a", Some(85))],
+      &THRESHOLDS,
+    );
+    let (state, notices) = plan(&state, &[row_in("session-b", Some(62))], &THRESHOLDS);
+    assert_eq!(notices.len(), 1);
+    assert_eq!(notices[0].title, "worker-a context 62%");
+    assert_eq!(
+      state.get("w1:p1"),
+      Some(&Notified {
+        threshold: 60,
+        session_id: Some("session-b".to_string()),
+      })
+    );
+  }
+
+  #[test]
+  fn a_null_pct_does_not_carry_the_record_into_another_session() {
+    let (state, _) = plan(
+      &NotifyState::new(),
+      &[row_in("session-a", Some(85))],
+      &THRESHOLDS,
+    );
+    let (state, notices) = plan(&state, &[row_in("session-b", None)], &THRESHOLDS);
+    assert!(state.is_empty());
+    assert!(notices.is_empty());
+  }
+
+  #[test]
   fn the_notice_uses_the_name_and_the_cwd_basename() {
     let (_, notices) = plan(&NotifyState::new(), &[row(Some(62))], &THRESHOLDS);
     assert_eq!(notices[0].title, "worker-a context 62%");
@@ -314,11 +416,19 @@ mod tests {
     assert!(parse_thresholds("").is_err());
   }
 
-  fn write_pane(ctx_dir: &Path, pct: u32) {
+  fn write_sidecar_file(ctx_dir: &Path, file: &str, pct: u32) {
     let panes = ctx_dir.join("panes");
     fs::create_dir_all(&panes).unwrap();
     let text = format!(r#"{{"used_percentage":{pct},"updated_at":"2026-11-05T12:34:56Z"}}"#);
-    fs::write(panes.join("w3C_p1W.json"), text).unwrap();
+    fs::write(panes.join(file), text).unwrap();
+  }
+
+  fn write_pane(ctx_dir: &Path, pct: u32) {
+    write_sidecar_file(ctx_dir, "w3C_p1W.json", pct);
+  }
+
+  fn level(state: &WatchState) -> Option<u32> {
+    state.current.get("w3C:p1W").map(|record| record.threshold)
   }
 
   fn now() -> DateTime<Utc> {
@@ -332,7 +442,7 @@ mod tests {
     let dir = temp_dir("tick");
     write_pane(&dir, 62);
     let herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
-    let mut state = NotifyState::new();
+    let mut state = WatchState::default();
 
     tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
     tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
@@ -345,8 +455,21 @@ mod tests {
     let text = fs::read_to_string(dir.join(AGENTS_FILE)).unwrap();
     let file: serde_json::Value = serde_json::from_str(&text).unwrap();
     assert_eq!(file["generated_at"], "2026-11-05T12:35:00Z");
-    assert_eq!(file["agents"].as_array().unwrap().len(), 2);
+    assert_eq!(file["agents"].as_array().unwrap().len(), 3);
     assert_eq!(file["agents"][0]["pct"], 62);
+  }
+
+  #[test]
+  fn a_leftover_sidecar_under_another_kind_of_agent_is_not_announced() {
+    let dir = temp_dir("leftover");
+    write_sidecar_file(&dir, "w3U_p1.json", 70);
+    let herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
+    let mut state = WatchState::default();
+
+    tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
+
+    assert!(herdr.notified.borrow().is_empty());
+    assert!(state.current.is_empty());
   }
 
   #[test]
@@ -354,13 +477,50 @@ mod tests {
     let dir = temp_dir("restart");
     write_pane(&dir, 62);
     let herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
-    let mut state = NotifyState::new();
+    let mut state = WatchState::default();
     tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
 
-    let mut restarted = load_state(&dir);
-    assert_eq!(restarted, state);
+    let mut restarted = WatchState::load(&dir);
+    assert_eq!(restarted.current, state.current);
     tick(&herdr, &dir, &THRESHOLDS, &mut restarted, now());
     assert_eq!(herdr.notified.borrow().len(), 1);
+  }
+
+  #[test]
+  fn a_failed_save_is_retried_without_notifying_again() {
+    let dir = temp_dir("save-retry");
+    write_pane(&dir, 62);
+    // 置き換え先がディレクトリだと rename が失敗する / rename fails onto a directory
+    fs::create_dir(dir.join(STATE_FILE)).unwrap();
+    let herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
+    let mut state = WatchState::default();
+
+    tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
+    assert_eq!(level(&state), Some(60));
+    assert!(state.saved.is_empty());
+
+    fs::remove_dir(dir.join(STATE_FILE)).unwrap();
+    tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
+
+    assert_eq!(state.saved, state.current);
+    assert_eq!(load_state(&dir), state.current);
+    assert_eq!(herdr.notified.borrow().len(), 1);
+  }
+
+  #[test]
+  fn a_pending_save_is_retried_even_while_herdr_is_unreachable() {
+    let dir = temp_dir("save-retry-down");
+    write_pane(&dir, 62);
+    fs::create_dir(dir.join(STATE_FILE)).unwrap();
+    let mut herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
+    let mut state = WatchState::default();
+    tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
+
+    fs::remove_dir(dir.join(STATE_FILE)).unwrap();
+    herdr.list = Err("no herdr server is running".to_string());
+    tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
+
+    assert_eq!(load_state(&dir), state.current);
   }
 
   #[test]
@@ -369,14 +529,14 @@ mod tests {
     write_pane(&dir, 62);
     let mut herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
     herdr.notify_result = Err("no server".to_string());
-    let mut state = NotifyState::new();
+    let mut state = WatchState::default();
 
     tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
-    assert!(state.is_empty());
+    assert!(state.current.is_empty());
 
     herdr.notify_result = Ok(());
     tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
-    assert_eq!(state.get("w3C:p1W"), Some(&60));
+    assert_eq!(level(&state), Some(60));
   }
 
   #[test]
@@ -384,11 +544,19 @@ mod tests {
     let dir = temp_dir("unreachable");
     let mut herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
     herdr.list = Err("no herdr server is running".to_string());
-    let mut state = NotifyState::from([("w3C:p1W".to_string(), 60)]);
+    let record = Notified {
+      threshold: 60,
+      session_id: None,
+    };
+    let current = NotifyState::from([("w3C:p1W".to_string(), record)]);
+    let mut state = WatchState {
+      saved: current.clone(),
+      current,
+    };
 
     tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
 
-    assert_eq!(state.get("w3C:p1W"), Some(&60));
+    assert_eq!(level(&state), Some(60));
     assert!(!dir.join(AGENTS_FILE).exists());
   }
 

@@ -58,9 +58,18 @@ impl Herdr for HerdrCli {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Agent {
   pub pane_id: String,
+  pub agent: Option<String>,
   pub name: Option<String>,
   pub agent_status: Option<String>,
   pub cwd: Option<String>,
+}
+
+impl Agent {
+  /// sidecar を書くのは Claude Code の statusline だけなので、結合できるのは Claude の agent に限る。
+  /// Only the Claude Code statusline writes sidecars, so only Claude agents can be joined with one.
+  pub fn is_claude(&self) -> bool {
+    self.agent.as_deref() == Some("claude")
+  }
 }
 
 /// herdr の応答の封筒。成功は result、失敗は error に入る。
@@ -144,8 +153,10 @@ mod tests {
   #[test]
   fn list_reads_the_envelope_and_allows_a_missing_name() {
     let agents = list_agents(&FakeHerdr::with_list(AGENT_LIST_JSON)).unwrap();
-    assert_eq!(agents.len(), 2);
+    assert_eq!(agents.len(), 3);
     assert_eq!(agents[0].name.as_deref(), Some("commander-dotfiles"));
+    assert!(agents[0].is_claude());
+    assert!(!agents[2].is_claude());
     assert_eq!(agents[0].pane_id, "w3C:p1W");
     assert_eq!(agents[0].agent_status.as_deref(), Some("working"));
     assert_eq!(agents[1].name, None);

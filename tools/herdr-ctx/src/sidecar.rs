@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 /// The sidecar keys herdr-ctx uses; the rest are ignored.
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct Sidecar {
+  pub session_id: Option<String>,
   pub used_percentage: Option<f64>,
   pub context_window_size: Option<u64>,
   pub total_input_tokens: Option<u64>,

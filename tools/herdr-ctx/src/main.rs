@@ -6,8 +6,8 @@
 //! transcript JSONL.
 //!
 //! 終了コード / Exit code:
-//!   0  成功。self は値が無いときも 0 で何も出さない
-//!   1  herdr が無い、JSON を読めない、herdr に繋がらない(list と self)
+//!   0  成功。self は hook から呼ぶので常に 0 で、値が無いときは何も出さない
+//!   1  herdr が無い、JSON を読めない、herdr に繋がらない(list)
 //!   2  引数が正しくない
 
 mod herdr;
@@ -130,14 +130,11 @@ fn run_self() -> ExitCode {
     return ExitCode::SUCCESS;
   };
   let pane_id = env::var("HERDR_PANE_ID").ok().filter(|id| !id.is_empty());
-  match report::self_report(&HerdrCli, &dir.join("panes"), pane_id.as_deref(), &Local) {
-    Ok(Some(text)) => {
-      emit(&text);
-      ExitCode::SUCCESS
-    }
-    Ok(None) => ExitCode::SUCCESS,
-    Err(reason) => fail(&reason),
+  if let Some(text) = report::self_report(&HerdrCli, &dir.join("panes"), pane_id.as_deref(), &Local)
+  {
+    emit(&text);
   }
+  ExitCode::SUCCESS
 }
 
 fn main() -> ExitCode {
@@ -228,7 +225,8 @@ pub mod testutil {
 
   pub const AGENT_LIST_JSON: &str = r#"{"id":"cli:agent:list","result":{"agents":[
     {"agent":"claude","agent_status":"working","cwd":"/home/archie/dotfiles","name":"commander-dotfiles","pane_id":"w3C:p1W","workspace_id":"w3C"},
-    {"agent":"claude","agent_status":"idle","cwd":"/home/archie/notes","pane_id":"w3T:p2","workspace_id":"w3T"}
+    {"agent":"claude","agent_status":"idle","cwd":"/home/archie/notes","pane_id":"w3T:p2","workspace_id":"w3T"},
+    {"agent":"copilot","agent_status":"idle","cwd":"/home/archie/tools","pane_id":"w3U:p1","workspace_id":"w3U"}
   ]}}"#;
 
   pub const AGENT_GET_JSON: &str = r#"{"id":"cli:agent:get","result":{"agent":{"agent":"claude","agent_status":"working","cwd":"/home/archie/dotfiles","name":"commander-dotfiles","pane_id":"w3C:p1W"},"type":"agent_info"}}"#;

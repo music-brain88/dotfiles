@@ -35,6 +35,7 @@ statusline のスクリプトは Claude Code の子プロセスなので、herdr
 |---|---|
 | sidecar が無い | `pct` が null で、`note` が `"no sidecar"` になる |
 | sidecar を読めない | `pct` が null で、`note` が `"unreadable sidecar"` になる |
+| agent が Claude Code ではない(`herdr agent list` の `agent` が `claude` 以外) | context の欄が null で、`note` が `"not a claude agent"` になる。前の Claude Code の sidecar が pane に残っていても結合しない |
 | `used_percentage` が null である(最初の API 呼び出しの前と `/compact` の直後) | `pct` が null で、`note` も null になる |
 | `updated_at` が 10 分より古い | `stale` が true になり、値はそのまま出る |
 
@@ -55,7 +56,7 @@ context 62% (pane w3C:p1W, model Fable 5.1, as of 21:34)
 | `commander-` で始まる | 60% | 次の worker の報告の節目で `/wtclose` を呼び、新しいセッションに交代する |
 | それ以外 | 50% | 差し戻しのラウンドを受ける前に、司令塔へ引き継ぎの準備を相談する |
 
-`$HERDR_PANE_ID` か sidecar が無いときと使用率が null のときは、何も出さず終了コード 0 で終わる。sidecar を読めないときも同じである。使用率が 50% 未満のときは、hook の実行を軽くするために `herdr` を呼ばない。
+`$HERDR_PANE_ID` か sidecar が無いときと使用率が null のときは、何も出さず終了コード 0 で終わる。sidecar を読めないときも同じである。使用率が 50% 未満のときは、hook の実行を軽くするために `herdr` を呼ばない。`herdr` に繋がらないときは、1 行目の使用率だけを出して助言を省き、理由を stderr に 1 行書く。hook の主な役目は 1 行目の使用率を届けることなので、このときも終了コードは 0 である。
 
 ### watch
 
@@ -67,8 +68,10 @@ context 62% (pane w3C:p1W, model Fable 5.1, as of 21:34)
 - 起動して最初に見た値が閾値を超えていたときも、1 回知らせる。
 - pct が下がると、記録を今の pct 以下の閾値まで下げる。このとき通知は出さない。同じ閾値をもう一度上に跨ぐと、再び知らせる。
 - agent が一覧から消えると、その agent の記録を消す。
-- pct が null の周期は記録を変えない。`/compact` の直後の null で同じ閾値を知らせ直さないためである。
+- 同じ pane で sidecar の `session_id` が変わると、前の session の記録を消してから判定する。前の session が 80% で知らせた pane で別の session が 62% から始まると、新しい session の閾値として 1 回知らせる。
+- pct が null の周期は、同じ session の記録を変えない。`/compact` の直後の null で同じ閾値を知らせ直さないためである。
 - 通知に失敗したときは、知らせた記録を残さず、次の周期でもう一度試す。
+- `notify_state.json` の保存に失敗したときは、メモリ上の記録を保ったまま、次の周期で保存をもう一度試す。
 
 herdr のソケットに繋がらないときは、stderr に 1 行書いて次の周期まで待つ。このとき `agents.json` は更新しない。SIGTERM を受けると、`watch` はそのまま終了する。
 
@@ -84,7 +87,7 @@ sidecar のファイル名は、pane id の `:` を `_` に置き換えたもの
 
 `used_percentage` は statusline の入力の `context_window.used_percentage` をそのまま写した値である。入力に無いときは、statusline が `current_usage` から計算した値を書く。`total_input_tokens` は `current_usage` の 3 つのトークン数の合計である。
 
-`agents.json` は、`generated_at` と、`list` の 1 行と同じ形の要素を持つ配列 `agents` からなる。`notify_state.json` は、pane id をキーに、今いる閾値を値に持つオブジェクトである。`watch` を再起動しても同じ通知を繰り返さないように、この状態をファイルに残す。
+`agents.json` は、`generated_at` と、`list` の 1 行と同じ形の要素を持つ配列 `agents` からなる。`notify_state.json` は、pane id をキーに、今いる閾値(`threshold`)とその閾値を知らせた session(`session_id`)の組を値に持つオブジェクトである。`watch` を再起動しても同じ通知を繰り返さないように、この状態をファイルに残す。
 
 ## 常駐の起動のしかた
 
