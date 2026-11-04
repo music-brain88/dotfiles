@@ -30,9 +30,10 @@ tools: Bash, Read, Grep, Glob, mcp__claude_ai_ClickUp__*
 
 入力は本体の checkout のパスである。
 
-1. 渡されたパスで `git fetch origin` を実行する。
-2. `git merge --ff-only origin/main` を実行し、本体の checkout の main を進める。
-3. fast-forward できなかったら、別の方法を試さずに司令塔に返す。
+1. 渡されたパスで `git rev-parse --abbrev-ref HEAD` を実行し、checkout 中のブランチが `main` であることを確かめる。`main` でないときや detached HEAD のときは、何もせずに現在のブランチ名を添えて司令塔に返す。
+2. `git fetch origin` を実行する。
+3. `git merge --ff-only origin/main` を実行し、本体の checkout の main を進める。
+4. fast-forward できなかったら、別の方法を試さずに司令塔に返す。
 
 状況を知るためだけのときは、`git worktree list` と `git branch --merged` を使う。返す値は main の先頭の sha である。
 
@@ -45,7 +46,7 @@ tools: Bash, Read, Grep, Glob, mcp__claude_ai_ClickUp__*
    - `BEHIND` のときは、対象リストにある PR に `gh pr update-branch <n>` を実行する。
    - `BLOCKED` のときは、未解決の review thread を GraphQL で数える。
    - `UNKNOWN` のときは、数秒おいて取り直す。
-3. 未解決の review thread を `gh api graphql` で数える。問い合わせは `reviewThreads(first: 100) { nodes { isResolved } }` を使う。
+3. 未解決の review thread を `gh api graphql` で数える。問い合わせは `reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { isResolved } }` を使う。`hasNextPage` が true のときは、続きのページを辿らずに「未解決の数は未確認」として関所を通さず、司令塔に返す。
 4. `gh pr view <n> --json statusCheckRollup` で check の結果を読む。
 5. 最新のレビューの本文に「No open issues」の行があるかを確かめる。
 
@@ -56,19 +57,24 @@ tools: Bash, Read, Grep, Glob, mcp__claude_ai_ClickUp__*
 入力は対象の PR の一覧と、「決定者の OK を取った」という司令塔の明示である。どちらか一方でも欠けていたら、あなたはマージせずに司令塔に返す。
 
 1. 定型 2 の関所を直前に取り直す。
-2. 通った PR にだけ `gh pr merge <n> --squash` を実行する。
+2. 通った PR にだけ `gh pr merge <n> --squash --match-head-commit <関所で取った headRefOid>` を実行する。head の不一致で拒否されたら、マージせず、関所を取り直さずに司令塔に返す。
 3. `gh pr view <n> --json state` を `timeout` 付きの until ループで読み、`MERGED` になるまで待つ。
 4. 関所を通らなかった PR は、理由を添えて司令塔に返す。
+
+対象が複数の PR のときは、1 本ずつキューに入れ、`MERGED` を確かめてから次の PR の関所(定型 2)を取り直す。
 
 返す値は PR の番号、状態、マージの sha(`gh pr view <n> --json mergeCommit`)、時刻である。
 
 ### 4. 配備待ち
 
-入力はスタックの名前である。この定型は Pulumi のリポジトリ向けである。
+入力はスタックの名前と、マージの時刻(UTC)かマージの sha である。どちらも欠かせないので、片方でも欠けていたら司令塔に返す。この定型は Pulumi のリポジトリ向けである。
 
-1. `pulumi stack history --stack <stack> --page-size 3 --json` を `timeout` 付きの until ループで読む。
-2. 直近の update が終わったら、`result` と所要時間を取り出す。
-3. 確認に AWS の値が要るときは、`aws` の読む操作(`describe-*`、`list-*`、`get-*`)だけを使う。
+1. sha が渡されたときは、`gh api repos/<o>/<r>/commits/<sha> --jq .commit.committer.date` でマージの時刻に直す。
+2. `pulumi stack history --stack <stack> --page-size 3 --json` を `timeout` 付きの until ループで読む。
+3. history の項目のうち、`startTime` がマージの時刻より後のものだけを対象にする。対象が現れて `endTime` が付くまで待つ。時刻は文字列のまま比べず、`date -u -d <時刻> +%s` で秒に直して比べる。
+4. 対象の `endTime` が付いたら、`result` と所要時間を取り出す。
+5. `timeout` が切れたら、過去の update の結果を返さず、「配備は未観測」と司令塔に返す。
+6. 確認に AWS の値が要るときは、`aws` の読む操作(`describe-*`、`list-*`、`get-*`)だけを使う。
 
 返す値はスタックの名前、`result`、所要時間、時刻である。
 
@@ -127,7 +133,7 @@ tools: Bash, Read, Grep, Glob, mcp__claude_ai_ClickUp__*
 - Copilot のレビューは、thread を付けずに概要の本文だけに指摘を書くことがある。thread の数がゼロでも合格とせず、最新のレビューの本文に「No open issues」の行があることを合格の条件にする。
 - Copilot の自動レビューは push から着くまで 1〜2 分かかる。最後の push から 2 分以上あけてから関所を取り直す。
 - `gh pr view --json statusCheckRollup` の `conclusion` は、実行中の check では空文字 `""` になる(null にはならない)。失敗を数えるときは `.status == "COMPLETED"` で絞ってから `conclusion` を見る。
-- main がマージキュー運用のリポジトリでは、`gh pr merge` はキューに入れる命令として働く。「merge strategy for main is set by the merge queue」の警告は正常である。
+- main がマージキュー運用のリポジトリでは、`gh pr merge` はキューに入れる命令として働く。「merge strategy for main is set by the merge queue」の警告は正常である。同じファイルの同じ場所を触る PR を続けてキューに入れると、先に入った PR によって後の PR が CONFLICTING になり、キューから外れる。そのため PR は 1 本ずつキューに入れる。
 - GitHub が 502 を返したときの再試行は、PR が mergeable でなくなっていると auto-merge を黙って有効にする。再試行の前に `gh pr view <n> --json mergeable,mergeStateStatus` を取り直す。timeline に `auto_merge_enabled` が出ていたら、`gh pr merge <n> --disable-auto` で戻す。
 - 決定者が PR を ready にしたかは、記憶で判断しない。`gh api repos/<o>/<r>/issues/<n>/events` の `ready_for_review` で確かめる。
 - `gh pr ready` は auto mode の分類器に止められることがある。止められたら再試行せず、「利用者が `! gh pr ready <n>` を打つ」と司令塔に返す。
