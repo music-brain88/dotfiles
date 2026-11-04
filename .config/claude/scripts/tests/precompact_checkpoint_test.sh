@@ -320,6 +320,27 @@ EOF
   assert_lacks '#123,'
 }
 
+# Japanese right after an id must not hide it. The UTF-8 locale is what makes
+# GNU grep read Japanese as word characters, so the case pins it.
+# 番号の直後の日本語で番号を落とさない。GNU grep が日本語を語の文字と見るのは
+# UTF-8 のロケールのときなので、このケースはロケールを固定する。
+test_ids_followed_by_japanese() {
+  new_case
+  export LC_ALL=C.UTF-8
+  cat >"$transcript" <<'EOF'
+{"text":"#784を確認"}
+{"text":"#123456も見る"}
+{"text":"#123abcは番号でない"}
+{"text":"https://app.clickup.com/t/86abc123を更新"}
+{"text":"herdr agent wait claude-workerを待つ"}
+EOF
+  run_hook "$(hook_input)"
+  assert_exit_0
+  assert_has '- Issue / PR: #123456, #784'
+  assert_has '- ClickUp: 86abc123'
+  assert_has '- herdr の agent: claude-worker'
+}
+
 test_empty_answers_read_none() {
   new_case
   : >"$transcript"
