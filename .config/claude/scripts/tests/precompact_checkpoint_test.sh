@@ -306,6 +306,20 @@ test_unreadable_transcript_is_unknown() {
   assert_has '- herdr の agent: 未確認('
 }
 
+test_numbers_keep_every_digit() {
+  new_case
+  cat >"$transcript" <<'EOF'
+{"text":"#7 を見る"}
+{"text":"#123456 も見る"}
+{"text":"color: #111111;"}
+{"text":"#123abc は番号でない"}
+EOF
+  run_hook "$(hook_input)"
+  assert_exit_0
+  assert_has '- Issue / PR: #111111, #123456, #7'
+  assert_lacks '#123,'
+}
+
 test_empty_answers_read_none() {
   new_case
   : >"$transcript"

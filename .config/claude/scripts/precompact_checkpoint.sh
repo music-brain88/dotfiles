@@ -151,7 +151,11 @@ clickup="$unknown"
 named_agents="$unknown"
 if [ -n "$transcript" ] && [ -r "$transcript" ] && [ -f "$transcript" ]; then
   tail -n 400 "$transcript" >"$work/tail"
-  issues="$({ grep -oE '#[0-9]{2,5}' "$work/tail" || true; } | recent)"
+  # Take the whole run of digits: a cut number would point at another issue.
+  # Six-digit colour codes such as #111111 come along, which is the lesser harm.
+  # 数字の列を全部取る。途中で切った番号は別の Issue を指してしまう。#111111 の
+  # ような 6 桁の色コードも拾うが、切れた番号を出すよりよい。
+  issues="$({ grep -oE '#[0-9]+\b' "$work/tail" || true; } | recent)"
   clickup="$({ grep -oE 'app\.clickup\.com/t/[A-Za-z0-9]+' "$work/tail" || true; } | sed 's|.*/||' | recent)"
   # A name cut short by a shell variable or a flag ("claude-$slug", "--until")
   # is not a name, so drop what starts or ends with a hyphen.
