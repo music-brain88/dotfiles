@@ -128,6 +128,55 @@ if [ -n "$usage" ]; then
   fi
 fi
 
+# Claude Code が計算した使用率が来ていれば、表示にもそれを使う。上の手計算は切り捨てで、
+# used_percentage は四捨五入なので、手計算のままだと 💭 と herdr-ctx の値が 1 ずれることがある。
+# 小数や文字列が来ても下の算術で落ちないように、numbers と floor で整数に揃える
+# Prefer Claude Code's own percentage for the gauge too. The manual value above truncates while
+# used_percentage rounds, so 💭 and herdr-ctx could differ by 1 otherwise. numbers and floor keep
+# the arithmetic below safe against a float or a non-numeric value
+used_pct=$(echo "$input" | jq -r '.context_window.used_percentage | numbers | floor')
+if [ -n "$used_pct" ]; then
+  pct=$used_pct
+fi
+
+# ---------- context sidecar ----------
+
+# context の使用率を pane id 名義の JSON に書き出す (Issue #784)。herdr-ctx が読む。
+# pane の幅に依存せず値を読むための経路で、書けなくても statusline の描画は止めない。
+# 一時ファイルの名前に $$ を付けるのは、Claude Code が実行中の statusline を取り消して次を
+# 走らせることがあり、固定の名前だと書きかけのファイルを別の実行が mv しうるから
+# Writes context usage to a JSON named after the pane (Issue #784), read by herdr-ctx. Failing
+# to write must never stop the statusline from rendering. The temp name carries $$ because
+# Claude Code can cancel an in-flight statusline and start the next one, and a fixed name would
+# let one run mv a file the other is still writing
+write_ctx_sidecar() {
+  [ -n "${HERDR_PANE_ID:-}" ] || return 0
+  local dir="$HOME/.herdr/ctx/panes"
+  local file="$dir/${HERDR_PANE_ID//:/_}.json"
+  local tmp="$file.tmp.$$"
+  mkdir -p "$dir"
+  if echo "$input" | jq -c --arg pane_id "$HERDR_PANE_ID" --arg pct "$pct" '{
+    pane_id: $pane_id,
+    session_id: .session_id,
+    transcript_path: .transcript_path,
+    cwd: .workspace.current_dir,
+    model_id: .model.id,
+    model_name: .model.display_name,
+    used_percentage: (.context_window.used_percentage // ($pct | if . == "" then null else tonumber end)),
+    context_window_size: .context_window.context_window_size,
+    total_input_tokens: (.context_window.current_usage
+      | if . == null then null
+        else (.input_tokens // 0) + (.cache_creation_input_tokens // 0) + (.cache_read_input_tokens // 0)
+        end),
+    updated_at: (now | floor | todate)
+  }' >"$tmp"; then
+    mv -f "$tmp" "$file"
+  else
+    rm -f "$tmp"
+  fi
+}
+write_ctx_sidecar 2>/dev/null || true
+
 # ---------- context gauge color ----------
 
 # 使用率に応じたゲージ色を返す / return gauge pill color for a usage percentage

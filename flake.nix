@@ -38,6 +38,11 @@
           # shipped via home.packages in nix/modules/dev-tools.nix.
           (final: prev: {
             standalone-check = final.callPackage ./tools/standalone-check/package.nix { };
+            # 自作ツール: herdr-ctx (herdr の各 agent の context 使用率を読む、Rust)。
+            # ソースは tools/herdr-ctx/、配布は nix/modules/herdr.nix の home.packages。
+            # In-repo tool: herdr-ctx (Rust). Source in tools/herdr-ctx/,
+            # shipped via home.packages in nix/modules/herdr.nix.
+            herdr-ctx = final.callPackage ./tools/herdr-ctx/package.nix { };
           })
           # Bump github-copilot-cli to latest release (nixpkgs lags behind npm)
           (final: prev: {
@@ -293,6 +298,9 @@
         # 自作ツールを `nix build .#standalone-check` で単体ビルドできるように出す
         # Expose the in-repo tool so `nix build .#standalone-check` works on its own
         standalone-check = pkgs.standalone-check;
+        # 自作ツールを `nix build .#herdr-ctx` で単体ビルドできるように出す
+        # Expose the in-repo tool so `nix build .#herdr-ctx` works on its own
+        herdr-ctx = pkgs.herdr-ctx;
         # herdr の Claude Code 用フックを `nix build .#herdr-claude-hook` で単体ビルドして確かめられるように出す
         # Expose the generated herdr hook so `nix build .#herdr-claude-hook` can inspect it on its own
         herdr-claude-hook = pkgs.herdr-claude-hook;
