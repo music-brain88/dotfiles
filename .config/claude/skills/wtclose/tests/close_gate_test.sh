@@ -634,6 +634,8 @@ p5_line() {
 }
 
 p5_cmd='herdr agent wait claude-x --until working && herdr agent wait claude-x'
+p5_multiline=$'# gotcha: 確かめてから仕掛ける\nAGENT_NAME=claude-x\nherdr agent get "$AGENT_NAME"\n\nherdr agent wait "$AGENT_NAME"'
+p5_multiline_value='# gotcha: 確かめてから仕掛ける⏎AGENT_NAME=claude-x⏎herdr agent get "$AGENT_NAME"⏎⏎herdr agent wait "$AGENT_NAME"'
 
 test_p5_exact_command_passes() {
   new_case
@@ -672,14 +674,53 @@ test_p5_other_monitor_passes_when_the_same_text_is_written() {
   assert_out_has '待ち受け 1 件は張り直し方が書いてあるので通した'
 }
 
-test_p5_one_different_character_blocks_with_the_normalized_command() {
+test_p5_one_different_character_blocks_with_the_original_form() {
   new_case
   write_workers "$(p5_line 'herdr agent wait claude-y')"
   run_gate "$(hook_input "[$(p5_task b1 $'herdr  agent wait \\\n  claude-x')]")"
   assert_exit 2
   assert_err_has '[P5] 裏タスクの command が「## 稼働中の worker」の 張り直し: の値と一致しない'
   assert_err_has '裏タスク b1'
-  assert_err_has '- <worker の名前>(pane <pane_id>、worktree <path>、指示書 <path>、待っているもの: <何>、張り直し: `herdr agent wait claude-x`)'
+  assert_err_has '- <worker の名前>(pane <pane_id>、worktree <path>、指示書 <path>、待っているもの: <何>、張り直し: `herdr  agent wait \⏎  claude-x`)'
+}
+
+test_p5_multiline_command_passes_with_newline_marks() {
+  new_case
+  write_workers "$(p5_line "$p5_multiline_value")"
+  run_gate "$(hook_input "[$(p5_task b1 "$p5_multiline")]")"
+  assert_exit 0
+  assert_out_has '待ち受け 1 件は張り直し方が書いてあるので通した'
+}
+
+test_p5_multiline_command_is_shown_with_newline_marks() {
+  new_case
+  write_workers '- claude-y(pane w1:p3)'
+  run_gate "$(hook_input "[$(p5_task b1 "$p5_multiline")]")"
+  assert_exit 2
+  assert_err_has "張り直し: \`$p5_multiline_value\`)"
+}
+
+test_p5_newline_marks_in_the_fail_message_restore_the_command() {
+  local value
+  new_case
+  write_workers '- claude-y(pane w1:p3)'
+  run_gate "$(hook_input "[$(p5_task b1 "$p5_multiline")]")"
+  assert_exit 2
+  value="$(grep -F '<worker の名前>' <<<"$err" | sed -e 's/^.*張り直し: `//' -e 's/`)$//')"
+  [ "${value//⏎/$'\n'}" = "$p5_multiline" ] || flunk "not restored: $value"
+}
+
+test_p5_line_continuation_passes_when_copied_from_the_fail_message() {
+  local command=$'herdr agent wait claude-x --until working \\\n  && herdr agent wait claude-x' line
+  new_case
+  write_workers '- claude-y(pane w1:p3)'
+  run_gate "$(hook_input "[$(p5_task b1 "$command")]")"
+  assert_exit 2
+  assert_err_has 'working \⏎  && herdr'
+  line="$(grep -F '<worker の名前>' <<<"$err" | sed 's/^ *//')"
+  write_workers "$line"
+  run_gate "$(hook_input "[$(p5_task b1 "$command")]")"
+  assert_exit 0
 }
 
 test_p5_the_line_in_the_fail_message_passes_when_copied() {
@@ -715,6 +756,7 @@ test_p5_rearm_value_needs_backticks() {
   for line in '- claude-x(pane w1:p2、張り直し: herdr agent wait claude-x)' \
     '- claude-x(pane w1:p2、張り直し: `herdr agent wait claude-x)' \
     '- claude-x(pane w1:p2、張り直し: ``)' \
+    '- claude-x(pane w1:p2、張り直し: `⏎`)' \
     '- claude-x(pane w1:p2、`herdr agent wait claude-x`)'; do
     new_case
     write_workers "$line"

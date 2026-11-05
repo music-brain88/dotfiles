@@ -51,6 +51,7 @@ readonly -a state_sections=("$sec_workers" '判定の途中' 'ユーザー待ち
 readonly -a reason_kinds=('マージ待ち' 'レビュー待ち' 'worker 稼働中' '別のセッションの管轄')
 readonly pr_unverified_tag='PR の状態は未確認' # P8: "- [PR の状態は未確認] YYYY-MM-DD HH:MM ..."
 readonly rearm_tag='張り直し:' # P5: "- <name>(... 張り直し: `<command>`)"
+readonly rearm_newline='⏎' # P5: a newline of the command inside a rearm value / 張り直しの値の中の改行の印
 # Optional repository qualifier (owner/repo) for P4 lines and unit:
 #   P4:   "- [マージ待ち] PR owner/repo#663 ..."  (omitted = this repository)
 #   unit: "owner/repo#663" | "owner/repo@feat/x" (omitted = this repository)
@@ -732,18 +733,32 @@ check_p4_p8() {
 # command の字面が状態ファイルの張り直しの値と完全一致する裏タスクだけである。検問は
 # command のシェルの構文を読まない。確かめるのは、司令塔が控えを取ったことだけである。
 # ---------------------------------------------------------------------------
-# The only normalizer of commands, applied to both sides of the comparison: a line
-# continuation and any run of spaces become one space, and the ends are trimmed.
-# Quotes, "$", "#" and "&&" are not interpreted.
-# command を正規化するのはこの関数だけで、比べる両方に当てる。行継続と空白の連続を
-# 1 つの空白にし、前後の空白を取る。引用符・$・#・&& は解釈しない。
+# The only normalizer of commands, applied to both sides of the comparison: a
+# newline mark, a line continuation and any run of spaces become one space, and the
+# ends are trimmed. The mark turns back into a newline first, so that "\" + mark
+# reads as a line continuation. Quotes, "$", "#" and "&&" are not interpreted.
+# command を正規化するのはこの関数だけで、比べる両方に当てる。改行の印・行継続・空白の
+# 連続を 1 つの空白にし、前後の空白を取る。「\」と印の並びを行継続として読めるように、
+# 印は最初に改行へ戻す。引用符・$・#・&& は解釈しない。
 normalize_command() {
   local s="$1" continuation=$'\\\n'
+  s="${s//"$rearm_newline"/$'\n'}"
   s="${s//"$continuation"/ }"
   s="${s//[[:space:]]/ }"
   while [[ "$s" == *'  '* ]]; do s="${s//  / }"; done
   s="${s# }"
   printf '%s' "${s% }"
+}
+
+# Print a command as a rearm value for the next session to run: the newlines become
+# the mark and the other spaces stay, because a newline separates shell commands.
+# The normalized text is only for the comparison and must not be run.
+# 次のセッションが実行する張り直しの値として command を出す。改行はシェルの区切りなので
+# 印に置き換え、ほかの空白は残す。正規化した文字列は比較専用で、実行してはいけない。
+rearm_form() {
+  local s="${1//$'\r'/}"
+  s="${s//$'\t'/ }"
+  printf '%s' "${s//$'\n'/"$rearm_newline"}"
 }
 
 # Print the normalized rearm value of a line: the text from the backtick right
@@ -777,7 +792,7 @@ note_workers_without_rearm() {
 }
 
 check_p5() {
-  local src="${own_state:-/dev/null}" workers records line value kind command label known covered
+  local src="${own_state:-/dev/null}" workers records line value kind raw command label known covered
   local -a rearm_values=() stop_items=() bare_items=() bare_forms=()
   local n_covered=0
   workers="$(section_body "$src" "$sec_workers")"
@@ -813,8 +828,8 @@ check_p5() {
   while IFS= read -r line; do
     if value="$(rearm_value "$line")"; then rearm_values+=("$value"); fi
   done <<<"$workers"
-  while IFS=$'\037' read -r -d $'\036' kind command label; do
-    command="$(normalize_command "$command")"
+  while IFS=$'\037' read -r -d $'\036' kind raw label; do
+    command="$(normalize_command "$raw")"
     if [ "$kind" = 'cron' ] || [ -z "$command" ]; then
       stop_items+=("$label")
       continue
@@ -827,7 +842,7 @@ check_p5() {
       n_covered=$((n_covered + 1))
     else
       bare_items+=("$label")
-      bare_forms+=("- <worker の名前>(pane <pane_id>、worktree <path>、指示書 <path>、待っているもの: <何>、${rearm_tag} \`${command}\`)")
+      bare_forms+=("- <worker の名前>(pane <pane_id>、worktree <path>、指示書 <path>、待っているもの: <何>、${rearm_tag} \`$(rearm_form "$raw")\`)")
     fi
   done <<<"$records"
 
@@ -837,7 +852,7 @@ check_p5() {
   fi
   if [ "${#bare_items[@]}" -gt 0 ]; then
     fail P5 "裏タスクの command が「## ${sec_workers}」の ${rearm_tag} の値と一致しない:"$'\n'"$(printf '      - %s\n' "${bare_items[@]}")" \
-      "TaskStop などで止めるか、「## ${sec_workers}」に次の形の行を書く(${rearm_tag} の値は字面のまま写す):"$'\n'"$(printf '%s\n' "${bare_forms[@]}")"
+      "TaskStop などで止めるか、「## ${sec_workers}」に次の形の行を書く(${rearm_tag} の値は字面のまま写す。${rearm_newline} は改行の印である):"$'\n'"$(printf '%s\n' "${bare_forms[@]}")"
   fi
   if [ "${#stop_items[@]}" -eq 0 ] && [ "${#bare_items[@]}" -eq 0 ] && [ "$n_covered" -gt 0 ]; then
     note "P5: 待ち受け ${n_covered} 件は張り直し方が書いてあるので通した"
