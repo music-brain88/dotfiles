@@ -234,7 +234,15 @@ Claude Code は、Stop hook が 8 回続けてターンを続行させると、�
 次のセッションの司令塔は、次の順で待ち受けを張り直す。状態ファイルの「張り直し:」に連結の形(`--until working` と既定の wait の連結)が書いてあっても、司令塔は worker の状態に応じて前半を省く。
 
 1. 司令塔は、状態ファイルの「稼働中の worker」を読み、行ごとに `herdr agent get <名前>` で worker の状態を確かめる。
-2. worker が `working` のときは、司令塔は値の先頭を見る。値の先頭が `herdr agent wait <名前> --until working &&` なら、司令塔はその部分だけを省いて、残りを `run_in_background` で実行する。それ以外の形なら、司令塔は値のとおり実行する。`herdr agent get` の直後に worker が完了すると `--until working` は次の再開まで解決せず、後続のコマンドも始まらない。先頭を省くのはこの競合を避けるためである。
+2. worker が `working` のときは、司令塔は値の中で最初の `herdr agent wait` を見る。それが `--until working` 付きなら、司令塔はその wait の部分と、それに続く `&&` を省く。省く部分には、`"$AGENT_NAME"` のような変数の形と `> <パス>` のリダイレクトを含む。司令塔は、残り(代入・`herdr agent get`・後続の wait・監視)をそのまま `run_in_background` で実行する。最初の wait がこの形でなければ、司令塔は値のとおり実行する。`herdr agent get` の直後に worker が完了すると `--until working` は次の再開まで解決せず、後続のコマンドも始まらない。この部分を省くのは、その競合を避けるためである。次の例は、`/wt` の手順 5(2) の標準形である。
+
+   ```bash
+   # 「張り直し:」の値(⏎ の位置で改行する)
+   herdr agent wait "$AGENT_NAME" --until working > "<パス>/wait-working-${AGENT_NAME}.json" \⏎  && herdr agent wait "$AGENT_NAME" > "<パス>/wait-${AGENT_NAME}.json"
+   # worker が working のときに実行するコマンド
+   herdr agent wait "$AGENT_NAME" > "<パス>/wait-${AGENT_NAME}.json"
+   ```
+
 3. worker が `idle` か `done` なら、司令塔は `~/.claude/skills/wt/SKILL.md` の「相談 idle の判別」の 4 通り(相談待ち・完了・作業続行中のフラップ・裏の処理の待ち)で判定する。司令塔が張り直しを省いてよいのは、完了報告があるときだけである。
 4. worker が裏の処理(CI の watch など)を待っていて最終報告が無いなら、司令塔は連結の形を `run_in_background` で張る。前半が worker の再開で解決し、後半が最終報告の後に解決する。
 
