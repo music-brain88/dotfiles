@@ -111,7 +111,7 @@ WSL 機で systemd の user session が動いていないときは、home-manage
 
 1. `herdr-ctx list --table` の pct が、各 pane の statusline の `💭` の値と一致する。一致を見るには、対象の agent が switch の後に 1 ターン以上動いて、sidecar が書かれている必要がある。
 2. `systemctl --user status herdr-ctx-watch` が `active (running)` を示す。
-3. 新しい Claude Code のセッションの最初のターンで、文脈に `context n%` の行が入る。
+3. 新しい Claude Code のセッションの 2 ターン目以降の prompt で、文脈に `context n%` の行が入る。最初のターンでは出ない。最初の API 応答の前は `used_percentage` が null で、`self` は何も出さないからである。
 4. 裏の job に乗ったセッション(`/remote-control` など)でも、文脈に `context n%` の行が入り、`herdr-ctx list` の `session_match` が false にならない。statusline が TUI 側と backend 側のどちらの session id を受け取るかが未確認なので、司令塔が配備後に確かめる。false が付くと、`watch` はその agent を知らせない。
 
 ## 開発
