@@ -138,7 +138,7 @@ write_state_nested() {
 write_workers() {
   local f="$mem/state_commander-proj.md"
   write_state </dev/null
-  awk -v body="$1" '$0 == "なし" { print body; next } { print }' "$f" >"$case_dir/state.tmp"
+  BODY="$1" awk '$0 == "なし" { print ENVIRON["BODY"]; next } { print }' "$f" >"$case_dir/state.tmp"
   mv "$case_dir/state.tmp" "$f"
 }
 
@@ -623,435 +623,158 @@ test_p5_without_jq_is_recorded_not_blocked() {
   assert_out_has 'jq が無い'
 }
 
-# A wait and a worker line that covers it / 待ち受けと、それを覆う worker の行
-p5_wait='[{"id":"b1","type":"shell","status":"running","description":"wait worker","command":"herdr agent wait claude-x"}]'
-p5_chained_wait='[{"id":"b1","type":"shell","status":"running","description":"wait worker","command":"herdr agent wait claude-x --until working > /s/wait-working-claude-x.json && herdr agent wait claude-x > /s/wait-claude-x.json"}]'
-p5_worker='- claude-x(pane w1:p2、worktree /w/x、指示書 ~/b.md、待っているもの: CI、張り直し: herdr agent wait claude-x --until working && herdr agent wait claude-x)'
-p5_form='張り直し: herdr agent wait claude-x --until working && herdr agent wait claude-x)'
+# p5_task <id> <command>: a running background task as JSON / 走っている裏タスクの JSON
+p5_task() {
+  jq -cn --arg id "$1" --arg command "$2" '{id: $id, type: "shell", status: "running", description: "wait", command: $command}'
+}
 
-test_p5_rearmed_wait_passes() {
+# p5_line <rearm value>: a worker line / worker の行
+p5_line() {
+  printf -- '- claude-x(pane w1:p2、待っているもの: CI、張り直し: `%s`)' "$1"
+}
+
+p5_cmd='herdr agent wait claude-x --until working && herdr agent wait claude-x'
+
+test_p5_exact_command_passes() {
   new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input "$p5_wait")"
+  write_workers "$(p5_line "$p5_cmd")"
+  run_gate "$(hook_input "[$(p5_task b1 "$p5_cmd")]")"
   assert_exit 0
-  assert_out_has 'P5: 待ち受け 1 件は張り直し方が書いてあるので通した(claude-x)'
+  assert_out_has 'P5: 待ち受け 1 件は張り直し方が書いてあるので通した'
 }
 
-test_p5_wait_without_rearm_blocks_with_the_line_to_write() {
-  new_case
-  write_workers '- claude-x(pane w1:p2、worktree /w/x、指示書 ~/b.md、待っているもの: CI)'
-  run_gate "$(hook_input "$p5_wait")"
-  assert_exit 2
-  assert_err_has '[P5] herdr agent wait の張り直し方が「## 稼働中の worker」に書いてない'
-  assert_err_has 'herdr agent wait claude-x'
-  assert_err_has "- claude-x(pane <pane_id>、worktree <path>、指示書 <path>、待っているもの: <何>、$p5_form"
+test_p5_spaces_and_line_continuations_are_normalized() {
+  local command
+  for command in "herdr  agent   wait claude-x --until working && herdr agent wait claude-x" \
+    $'  herdr agent wait claude-x --until working \\\n  && herdr agent wait claude-x  ' \
+    $'herdr agent wait claude-x --until working\n&&\therdr agent wait claude-x'; do
+    new_case
+    write_workers "$(p5_line "$p5_cmd")"
+    run_gate "$(hook_input "[$(p5_task b1 "$command")]")"
+    assert_exit 0
+    assert_out_has '待ち受け 1 件は張り直し方が書いてあるので通した'
+  done
 }
 
-test_p5_wait_of_unlisted_agent_blocks() {
+test_p5_rearm_value_is_normalized_too() {
   new_case
-  write_workers '- claude-y(pane w1:p3、待っているもの: CI、張り直し: herdr agent wait claude-y)'
-  run_gate "$(hook_input "$p5_wait")"
-  assert_exit 2
-  assert_err_has '[P5] herdr agent wait の張り直し方が'
-  assert_err_has "$p5_form"
+  write_workers "$(p5_line "  herdr  agent wait claude-x --until working  &&  herdr agent wait claude-x ")"
+  run_gate "$(hook_input "[$(p5_task b1 "$p5_cmd")]")"
+  assert_exit 0
 }
 
-test_p5_task_without_agent_name_blocks() {
+test_p5_other_monitor_passes_when_the_same_text_is_written() {
+  local command='herdr agent wait claude-x && gh pr checks 700 --watch'
   new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b2","type":"shell","status":"running","description":"CI","command":"gh pr checks 700 --watch"}]')"
+  write_workers "$(p5_line "$command")"
+  run_gate "$(hook_input "[$(p5_task b1 "$command")]")"
+  assert_exit 0
+  assert_out_has '待ち受け 1 件は張り直し方が書いてあるので通した'
+}
+
+test_p5_one_different_character_blocks_with_the_normalized_command() {
+  new_case
+  write_workers "$(p5_line 'herdr agent wait claude-y')"
+  run_gate "$(hook_input "[$(p5_task b1 $'herdr  agent wait \\\n  claude-x')]")"
   assert_exit 2
-  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-  assert_err_has 'gh pr checks 700 --watch'
-  assert_err_lacks "$p5_form"
+  assert_err_has '[P5] 裏タスクの command が「## 稼働中の worker」の 張り直し: の値と一致しない'
+  assert_err_has '裏タスク b1'
+  assert_err_has '- <worker の名前>(pane <pane_id>、worktree <path>、指示書 <path>、待っているもの: <何>、張り直し: `herdr agent wait claude-x`)'
+}
+
+test_p5_the_line_in_the_fail_message_passes_when_copied() {
+  local command='herdr agent wait "$(pick)" > `date`.json && echo '"'"'# x'"'"' \ y' line
+  new_case
+  write_workers '- claude-y(pane w1:p3)'
+  run_gate "$(hook_input "[$(p5_task b1 "$command")]")"
+  assert_exit 2
+  line="$(grep -F '<worker の名前>' <<<"$err" | sed 's/^ *//')"
+  [ -n "$line" ] || flunk 'no line to copy'
+  write_workers "$line"
+  run_gate "$(hook_input "[$(p5_task b1 "$command")]")"
+  assert_exit 0
+}
+
+test_p5_task_without_a_command_blocks() {
+  local task
+  for task in '{"id":"b1","status":"running","description":"herdr agent wait claude-x"}' \
+    '{"id":"b1","status":"running","description":"herdr agent wait claude-x","command":""}' \
+    '{"id":"b1","status":"running","description":"herdr agent wait claude-x","command":"  "}'; do
+    new_case
+    write_workers "$(p5_line 'herdr agent wait claude-x')"
+    run_gate "$(hook_input "[$task]")"
+    assert_exit 2
+    assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
+    assert_err_has '裏タスク b1'
+    assert_err_lacks '通した'
+  done
+}
+
+test_p5_rearm_value_needs_backticks() {
+  local line
+  for line in '- claude-x(pane w1:p2、張り直し: herdr agent wait claude-x)' \
+    '- claude-x(pane w1:p2、張り直し: `herdr agent wait claude-x)' \
+    '- claude-x(pane w1:p2、張り直し: ``)' \
+    '- claude-x(pane w1:p2、`herdr agent wait claude-x`)'; do
+    new_case
+    write_workers "$line"
+    run_gate "$(hook_input "[$(p5_task b1 'herdr agent wait claude-x')]")"
+    assert_exit 2
+    assert_err_has '[P5] 裏タスクの command が'
+    assert_err_lacks '通した'
+  done
+}
+
+test_p5_one_of_two_tasks_uncovered_blocks() {
+  new_case
+  write_workers "$(p5_line 'herdr agent wait claude-x')"
+  run_gate "$(hook_input "[$(p5_task b1 'herdr agent wait claude-x'),$(p5_task b2 'herdr agent wait claude-y')]")"
+  assert_exit 2
+  assert_err_has '裏タスク b2'
+  assert_err_lacks '裏タスク b1'
+  assert_err_has '張り直し: `herdr agent wait claude-y`)'
+  assert_err_lacks '通した'
+}
+
+test_p5_two_covered_tasks_pass_and_are_counted() {
+  new_case
+  write_workers "$(p5_line 'herdr agent wait claude-x')"$'\n'"$(p5_line 'gh pr checks 700 --watch')"
+  run_gate "$(hook_input "[$(p5_task b1 'herdr agent wait claude-x'),$(p5_task b2 'gh pr checks 700 --watch')]")"
+  assert_exit 0
+  assert_out_has '待ち受け 2 件は張り直し方が書いてあるので通した'
 }
 
 test_p5_cron_blocks_even_with_a_rearm_line() {
   new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[]' '[{"id":"c1","schedule":"*/5 * * * *","recurring":true,"prompt":"herdr agent wait claude-x"}]')"
+  write_workers "$(p5_line 'check CI')"
+  run_gate "$(hook_input "[$(p5_task b1 'check CI')]" '[{"id":"c1","schedule":"*/5 * * * *","recurring":true,"prompt":"check CI"}]')"
   assert_exit 2
   assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
   assert_err_has '予約 c1'
-}
-
-test_p5_chained_wait_is_covered_by_one_line() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input "$p5_chained_wait")"
-  assert_exit 0
-  assert_out_has 'P5: 待ち受け 1 件は張り直し方が書いてあるので通した(claude-x)'
-}
-
-test_p5_name_in_description_counts_when_the_command_is_empty() {
-  local task
-  for task in '{"id":"b1","status":"running","description":"herdr agent wait claude-x","command":""}' \
-    '{"id":"b1","status":"running","description":"herdr agent wait claude-x"}'; do
-    new_case
-    write_workers "$p5_worker"
-    run_gate "$(hook_input "[$task]")"
-    assert_exit 0
-    assert_out_has '通した(claude-x)'
-  done
-}
-
-test_p5_description_is_not_read_when_the_command_has_text() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","type":"shell","status":"running","description":"herdr agent wait claude-x","command":"sh /s/wait.sh"}]')"
-  assert_exit 2
-  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
   assert_err_lacks '通した'
 }
 
-test_p5_assignment_only_in_the_description_blocks() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","description":"wait worker (AGENT_NAME=claude-x)","command":"herdr agent wait \"$AGENT_NAME\""}]')"
-  assert_exit 2
-  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-  assert_err_lacks '通した'
-}
-
-test_p5_description_never_resolves_a_variable() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","description":"AGENT_NAME=claude-x; herdr agent wait \"$AGENT_NAME\"","command":""}]')"
-  assert_exit 2
-  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-}
-
-test_p5_other_monitor_mixed_with_a_wait_blocks() {
-  local cmd head
-  while IFS='|' read -r head cmd; do
-    new_case
-    write_workers "$p5_worker"
-    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"'"$cmd"'"}]')"
-    assert_exit 2
-    assert_err_has "[P5] wait 以外の監視(${head})が混ざっている"
-    assert_err_has '止めてから、wait だけの形に分けて張り直す'
-    assert_err_lacks '通した'
-  done <<'EOF'
-gh|herdr agent wait claude-x && gh pr checks 700 --watch
-sleep|sleep 60; herdr agent wait claude-x
-sh|herdr agent wait claude-x\nsh /s/wait.sh
-gh|herdr agent wait claude-x & gh pr checks 700 --watch
-AGENT_NAME=claude-x|AGENT_NAME=claude-x sleep 60; herdr agent wait claude-x
-true|herdr agent wait claude-x || true
-EOF
-}
-
-test_p5_allowed_parts_of_a_command_pass() {
-  local cmd
-  while IFS= read -r cmd; do
-    new_case
-    write_workers "$p5_worker"
-    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"'"$cmd"'"}]')"
-    assert_exit 0
-    assert_out_has '通した(claude-x)'
-  done <<'EOF'
-AGENT_NAME=claude-x\nherdr agent get \"$AGENT_NAME\"\nherdr agent wait \"$AGENT_NAME\" > /s/a.json
-herdr agent wait claude-x > /s/a.json 2>&1 </dev/null
-herdr agent wait claude-x &> /s/a.json
-herdr agent wait claude-x --until working > /s/a.json \\\n  && herdr agent wait claude-x > /s/b.json
-{ herdr agent wait claude-x; }
-EOF
-}
-
-test_p5_wt_step_5_block_with_its_comment_passes() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","description":"wait worker","command":"# gotcha: 対象が既に指定ステータスだと即座に解決してしまうため、working に遷移済みか確認してから仕掛ける\nAGENT_NAME=claude-x\nherdr agent get \"$AGENT_NAME\"\n\nherdr agent wait \"$AGENT_NAME\" --until working > \"/s/wait-working-${AGENT_NAME}.json\" \\\n  && herdr agent wait \"$AGENT_NAME\" > \"/s/wait-${AGENT_NAME}.json\""}]')"
-  assert_exit 0
-  assert_out_has 'P5: 待ち受け 1 件は張り直し方が書いてあるので通した(claude-x)'
-}
-
-test_p5_comments_are_ignored() {
-  local cmd
-  while IFS= read -r cmd; do
-    new_case
-    write_workers "$p5_worker"
-    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"'"$cmd"'"}]')"
-    assert_exit 0
-    assert_out_has '通した(claude-x)'
-  done <<'EOF'
-herdr agent wait claude-x # gh pr checks 700 --watch
-# herdr agent wait claude-y\nherdr agent wait claude-x
-# do not use $(gh pr checks 700 --watch)\nherdr agent wait claude-x
-# it's a note\nherdr agent wait claude-x
-EOF
-}
-
-test_p5_assignment_in_a_comment_blocks() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"# AGENT_NAME=claude-x\nherdr agent wait \"$AGENT_NAME\""}]')"
-  assert_exit 2
-  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-}
-
-test_p5_comment_does_not_hide_a_command() {
-  local cmd
-  while IFS= read -r cmd; do
-    new_case
-    write_workers "$p5_worker"
-    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"'"$cmd"'"}]')"
-    assert_exit 2
-    assert_err_has '[P5] wait 以外の監視(gh)が混ざっている'
-    assert_err_lacks '通した'
-  done <<'EOF'
-# note \\\ngh pr checks 700 --watch\nherdr agent wait claude-x
-herdr agent wait claude-x \"# x\" && gh pr checks 700 --watch
-herdr agent wait claude-x '# x' && gh pr checks 700 --watch
-EOF
-}
-
-test_p5_hash_inside_a_word_is_not_a_comment() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait claude-x#y"}]')"
-  assert_exit 2
-  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-}
-
-test_p5_command_substitution_blocks() {
-  local cmd
-  while IFS= read -r cmd; do
-    new_case
-    write_workers "$p5_worker"
-    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"'"$cmd"'"}]')"
-    assert_exit 2
-    assert_err_has '[P5] コマンド置換(`$()` など)が混ざっている'
-    assert_err_has '止めてから、wait だけの形に分けて張り直す'
-    assert_err_lacks '通した'
-  done <<'EOF'
-herdr agent wait claude-x > \"$(gh pr checks 700 --watch)\"
-herdr agent wait claude-x > `gh pr checks 700 --watch`
-herdr agent wait claude-x < <(gh pr checks 700 --watch)
-herdr agent wait claude-x > >(cat)
-AGENT_NAME=\"$(pick)\"; herdr agent wait \"$AGENT_NAME\"
-EOF
-}
-
-test_p5_description_fallback_goes_through_the_allowlist() {
-  local task
-  for task in '{"id":"b1","status":"running","description":"herdr agent wait claude-x && gh pr checks 700 --watch"}' \
-    '{"id":"b1","status":"running","description":"herdr agent wait claude-x && gh pr checks 700 --watch","command":""}'; do
-    new_case
-    write_workers "$p5_worker"
-    run_gate "$(hook_input "[$task]")"
-    assert_exit 2
-    assert_err_has '[P5] wait 以外の監視(gh)が混ざっている'
-    assert_err_lacks '通した'
-  done
-}
-
-test_p5_description_fallback_blocks_a_substitution() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","description":"herdr agent wait claude-x > \"$(gh pr checks 700 --watch)\""}]')"
-  assert_exit 2
-  assert_err_has '[P5] コマンド置換(`$()` など)が混ざっている'
-}
-
-test_p5_wait_without_a_target_before_a_separator_blocks() {
-  local cmd
-  for cmd in 'herdr agent wait claude-x && herdr agent wait;' 'herdr agent wait claude-x && herdr agent wait' \
-    'herdr agent wait && herdr agent wait claude-x'; do
-    new_case
-    write_workers "$p5_worker"
-    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"'"$cmd"'"}]')"
-    assert_exit 2
-    assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-    assert_err_lacks '通した'
-  done
-}
-
-test_p5_empty_rearm_blocks() {
-  local line
-  for line in '- claude-x(pane w1:p2、張り直し: )' '- claude-x(pane w1:p2、張り直し:)' '- claude-x 張り直し:   ' '- claude-x(張り直し: ）'; do
-    new_case
-    write_workers "$line"
-    run_gate "$(hook_input "$p5_wait")"
-    assert_exit 2
-    assert_err_has '[P5] herdr agent wait の張り直し方が'
-  done
-}
-
-test_p5_one_uncovered_wait_blocks_and_names_only_it() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait claude-x"},{"id":"b2","status":"running","command":"herdr agent wait claude-y"}]')"
-  assert_exit 2
-  assert_err_has '裏タスク b2'
-  assert_err_lacks '裏タスク b1'
-  assert_err_has '- claude-y(pane <pane_id>'
-  assert_err_lacks '通した'
-}
-
-test_p5_covered_wait_with_other_task_blocks_without_pass_note() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait claude-x"},{"id":"b2","status":"running","command":"sleep 60"}]')"
-  assert_exit 2
-  assert_err_has '裏タスク b2'
-  assert_err_lacks '張り直し方が書いてあるので通した'
-}
-
-test_p5_agent_name_variable_is_resolved_from_the_assignment() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","type":"shell","status":"running","description":"wait worker","command":"AGENT_NAME=claude-x\nherdr agent wait \"$AGENT_NAME\" --until working > /s/a.json && herdr agent wait \"${AGENT_NAME}\" > /s/b.json"}]')"
-  assert_exit 0
-  assert_out_has 'P5: 待ち受け 1 件は張り直し方が書いてあるので通した(claude-x)'
-}
-
-test_p5_agent_name_variable_needs_a_covering_line() {
-  new_case
-  write_workers '- claude-y(張り直し: herdr agent wait claude-y)'
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"AGENT_NAME=\"claude-x\"; herdr agent wait \"$AGENT_NAME\""}]')"
-  assert_exit 2
-  assert_err_has "$p5_form"
-}
-
-test_p5_agent_name_variable_without_assignment_blocks() {
-  local var
-  for var in '$AGENT_NAME' '${AGENT_NAME}'; do
-    new_case
-    write_workers "$p5_worker"
-    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait \"'"$var"'\""}]')"
-    assert_exit 2
-    assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-    assert_err_has 'AGENT_NAME=<名前> と代入する'
-  done
-}
-
-test_p5_assignment_of_another_variable_does_not_count() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"MY_AGENT_NAME=claude-x; herdr agent wait \"$AGENT_NAME\""}]')"
-  assert_exit 2
-  assert_err_has '[P5] wait 以外の監視(MY_AGENT_NAME=claude-x)が混ざっている'
-}
-
-test_p5_option_before_the_name_blocks_with_the_fix() {
-  new_case
-  # The covering line has "--until" too: the option must not be read as a name.
-  # 覆う行にも「--until」がある。オプションを名前として読んではいけない。
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait --until working claude-x"}]')"
-  assert_exit 2
-  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-  assert_err_has '名前を先に書く形 herdr agent wait <名前> --until … に直して張り直す'
-}
-
-test_p5_unreadable_target_next_to_a_covered_name_blocks() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait claude-x && herdr agent wait --until working claude-y"}]')"
-  assert_exit 2
-  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-  assert_err_lacks '通した'
-}
-
-test_p5_pane_id_target_blocks() {
-  new_case
-  write_workers '- claude-x(pane w1:p2、張り直し: herdr agent wait w1:p2)'
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait w1:p2"}]')"
-  assert_exit 2
-  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-}
-
-test_p5_extra_spaces_between_words_are_still_read() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait claude-x && herdr  agent  wait  claude-y"}]')"
-  assert_exit 2
-  assert_err_has '[P5] herdr agent wait の張り直し方が'
-  assert_err_has '- claude-y(pane <pane_id>'
-}
-
-test_p5_target_with_a_suffix_after_the_quote_blocks() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait \"claude-x\"-2"}]')"
-  assert_exit 2
-  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-  assert_err_lacks '通した'
-}
-
-test_p5_target_with_an_expansion_inside_the_quotes_blocks() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait \"claude-x${SUFFIX}\""}]')"
-  assert_exit 2
-  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-  assert_err_lacks '通した'
-}
-
-test_p5_assignment_with_an_expansion_blocks() {
-  local value
-  for value in '\"claude-x${SUFFIX}\"' 'claude-x$SUFFIX' '\"claude-x\"-2'; do
-    new_case
-    write_workers "$p5_worker"
-    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"AGENT_NAME='"$value"'; herdr agent wait \"$AGENT_NAME\""}]')"
-    assert_exit 2
-    assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-    assert_err_lacks '通した'
-  done
-}
-
-test_p5_wait_without_a_target_next_to_a_covered_name_blocks() {
-  new_case
-  write_workers "$p5_worker"
-  run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait claude-x && herdr agent wait ;"}]')"
-  assert_exit 2
-  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
-}
-
-test_p5_quoted_names_and_separators_are_read() {
-  local cmd
-  for cmd in 'herdr agent wait \"claude-x\" --until working' "herdr agent wait 'claude-x'" \
-    'herdr agent wait claude-x>/s/a.json' 'herdr agent wait claude-x;herdr agent get claude-x' '(herdr agent wait claude-x)' \
-    'herdr agent wait claude-x|herdr agent get claude-x' 'herdr agent wait claude-x&&herdr agent get claude-x'; do
-    new_case
-    write_workers "$p5_worker"
-    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"'"$cmd"'"}]')"
-    assert_exit 0
-    assert_out_has '通した(claude-x)'
-  done
-}
-
-test_p5_name_is_compared_as_a_whole_word() {
-  local wait_name line
-  for wait_name in claude-x claude-x-2; do
-    if [ "$wait_name" = claude-x ]; then line='claude-x-2'; else line='claude-x'; fi
-    new_case
-    write_workers "- ${line}(pane w1:p2、張り直し: herdr agent wait ${line})"
-    run_gate "$(hook_input '[{"id":"b1","status":"running","command":"herdr agent wait '"$wait_name"'"}]')"
-    assert_exit 2
-    assert_err_has "- ${wait_name}(pane <pane_id>"
-  done
-}
-
-test_p5_finished_wait_needs_no_rearm() {
+test_p5_finished_task_needs_no_rearm() {
   new_case
   write_state </dev/null
   run_gate "$(hook_input '[{"id":"b1","status":"completed","command":"herdr agent wait claude-x"}]')"
   assert_exit 0
 }
 
-test_p5_check_notes_worker_line_without_rearm() {
-  new_case
-  write_workers '- claude-x(pane w1:p2、待っているもの: CI)'
-  run_check
-  assert_exit 0
-  assert_out_has '稼働中の worker に張り直し方が無い行がある。待ち受けを残して締めるなら書く'
+test_p5_check_notes_a_worker_line_without_a_rearm_value() {
+  local line
+  for line in '- claude-x(pane w1:p2、待っているもの: CI)' '- claude-x(pane w1:p2、張り直し: herdr agent wait claude-x)'; do
+    new_case
+    write_workers "$line"
+    run_check
+    assert_exit 0
+    assert_out_has '稼働中の worker に張り直し方が無い行がある。待ち受けを残して締めるなら書く'
+  done
 }
 
-test_p5_check_stays_quiet_when_every_worker_line_has_rearm() {
+test_p5_check_stays_quiet_when_every_worker_line_has_a_rearm_value() {
   new_case
-  write_workers "$p5_worker"
+  write_workers "$(p5_line "$p5_cmd")"
   run_check
   assert_exit 0
   ! grep -qF '張り直し方が無い行' <<<"$out" || flunk 'unexpected note about rearm'

@@ -30,7 +30,7 @@ hooks:
 | P2 状態ファイルの大きさ | 200 行を超えていない |
 | P3 次の入口 | 「## 次の入口」の節があり、空でない |
 | P4 open の PR と残っている worktree | `gh pr list` と `git worktree list` の実物が、全部「## 残っているもの」に理由の種類つきで書いてある |
-| P5 裏の待ち受け | `session_crons` が空で、`background_tasks` の `herdr agent wait` は全部、状態ファイルの「稼働中の worker」に `張り直し:` 付きで書いてある(それ以外の裏タスクは空である) |
+| P5 裏の待ち受け | `session_crons` が空で、`background_tasks` に残っている裏タスクの `command` は全部、状態ファイルの「稼働中の worker」の `張り直し:` の値と完全一致する |
 | P6 忘れる候補の一覧 | 検問が一覧を出せた |
 | P7 作業物の仕分け | 検問が「最後に辿れた日」の一覧を今回書けた |
 | P8 `gh` の失敗 | `gh` が失敗したときは、「PR の状態は未確認」と今日の時刻が書いてある |
@@ -55,7 +55,7 @@ bash ${CLAUDE_SKILL_DIR}/close_gate.sh --where
 **Constraints:**
 - **MUST**: open の PR は `gh pr list --state open` で、残っている worktree は `git worktree list` で、実物を確かめる。会話の記憶で埋めない
 - **MUST**: 司令塔が作っていない PR と worktree(別のセッションの司令塔が作ったもの、依存を更新する CI が作った PR など)も一覧に出る。司令塔はそれらを消さず、状態ファイルに「別のセッションの管轄」として書く
-- **MUST**: 司令塔は、裏の待ち受け(`run_in_background` で仕掛けた `herdr agent wait`、Monitor、ScheduleWakeup や /loop の予約)を、締める前に止めるか、張り直し方を状態ファイルの「稼働中の worker」に書く。`herdr agent wait` 以外の待ち受け(Monitor、ScheduleWakeup、/loop の予約、`gh pr checks --watch`)は止める。待ち受けは新しいセッションに引き継がれないので、次のセッションの司令塔は、worker の状態を確かめてから「張り直し:」のコマンドを打つ(Troubleshooting「待ち受けを残して締めたい」)。
+- **MUST**: 司令塔は、裏の待ち受け(`run_in_background` で仕掛けた `herdr agent wait`、Monitor、ScheduleWakeup や /loop の予約)を、締める前に止めるか、裏タスクの `command` を字面のまま状態ファイルの「稼働中の worker」の `張り直し:` に書く。予約(ScheduleWakeup、/loop の予約)と、`command` の無い裏タスクは止める。待ち受けは新しいセッションに引き継がれないので、次のセッションの司令塔は、worker の状態を確かめてから「張り直し:」のコマンドを打つ(Troubleshooting「待ち受けを残して締めたい」)。
 - **MUST**: 次の入口(次のセッションの司令塔が最初にすること)を決める
 
 ### 2. 作業物を仕分ける
@@ -122,7 +122,7 @@ bash ${CLAUDE_SKILL_DIR}/close_gate.sh --check --session ${CLAUDE_SESSION_ID}
 ```
 
 **Constraints:**
-- **SHOULD**: ターンを終える前に `--check` で試し、そろっていない条件を先に直す。`--check` は P5(裏の待ち受け)を確かめないので、P5 は手順 1 で自分で確かめる。`--check` は、「稼働中の worker」に `張り直し:` の無い行があれば注意を出す(止めない)。
+- **SHOULD**: ターンを終える前に `--check` で試し、そろっていない条件を先に直す。`--check` は P5(裏の待ち受け)を確かめないので、P5 は手順 1 で自分で確かめる。`--check` は、「稼働中の worker」にバッククォート付きの `張り直し:` が無い行があれば注意を出す(止めない)。
 - **MUST**: 検問が止めた場合、stderr には、そろっていない条件の全部が「何がそろっていないか」と「何を書けば通るか」の組で並ぶ。司令塔は 1 件ずつではなく、全部を直してからターンを終える
 - **MUST**: Claude Code は Stop hook が 8 回続けてターンを続行させると、次のブロックを無視してターンを終える。同じ状態のまま終了を繰り返さない。直せない条件があれば、ユーザーに状況を報告して判断を仰ぐ
 - **MUST**: 検問を通過したら、司令塔はユーザーに、/compact で続けずに新しいセッションで続けることを勧める
@@ -155,7 +155,7 @@ as_of: 2026-10-04 18:30
 
 ## 稼働中の worker
 
-- claude-feat-x(pane w1:p2、worktree /home/user/.herdr/worktrees/example/feat-x、指示書 ~/Documents/Obsidian/AgentMemory/workbench/example/20261004-brief-feat-x.md、待っているもの: CI、張り直し: herdr agent wait claude-feat-x --until working && herdr agent wait claude-feat-x)
+- claude-feat-x(pane w1:p2、worktree /home/user/.herdr/worktrees/example/feat-x、指示書 ~/Documents/Obsidian/AgentMemory/workbench/example/20261004-brief-feat-x.md、待っているもの: CI、張り直し: `herdr agent wait claude-feat-x --until working && herdr agent wait claude-feat-x`)
 
 ## 判定の途中
 
@@ -181,7 +181,7 @@ as_of: 2026-10-04 18:30
 - **MUST**: `session_id` には、このセッションの ID(`${CLAUDE_SESSION_ID}`)をそのまま書く
 - **MUST**: `as_of` は `YYYY-MM-DD HH:MM` の形のローカル時刻で書く。P1 は日付の部分が今日であることを求める
 - **MUST**: 節の見出しは `## 稼働中の worker`・`## 判定の途中`・`## ユーザー待ち`・`## 残っているもの`・`## 次の入口` の 5 つにする。検問が中身を調べるのは「稼働中の worker」(P5)と「残っているもの」(P4・P8)と「次の入口」(P3)で、見出しは完全一致で探す。
-- **MUST**: 稼働中の worker の行は、待ち受けを残して締めるときは `張り直し:` の後ろにコマンドを書く(P5 が見る)。
+- **MUST**: 稼働中の worker の行は、待ち受けを残して締めるときは `張り直し:` の後ろに、裏タスクの `command` をバッククォートで囲んで書く(P5 が字面を比べる)。
 - **MUST**: 「残っているもの」は 1 件を 1 行に書き、行頭の角括弧に理由の種類を書く。PR は `- [種類] PR #番号 補足`、worktree は `- [種類] worktree <絶対パス> 補足` の形にする。空白を含むパスは、`` - [種類] worktree `/path/with space/wt` 補足 `` のようにバッククォートで囲む(囲まないパスは最初の空白で切れる)
 - **MUST**: `gh` が失敗して PR の状態を確かめられないときは、「残っているもの」に `- [PR の状態は未確認] YYYY-MM-DD HH:MM 補足` の形で今日の時刻を書く(P8)
 - **SHOULD**: 1 つの記憶に複数のリポジトリを束ねている場合は、PR の行にリポジトリの修飾子を付ける(`- [マージ待ち] PR owner/repo#663`)。修飾子を省いた行は、検問が走っているリポジトリの PR として読まれる。他のリポジトリを名指しした行は、検問が実物と照合せず、記録して通す
@@ -210,27 +210,24 @@ Claude Code は、Stop hook が 8 回続けてターンを続行させると、�
 検問は、状態ファイルの `session_id` をこのセッションの ID と照合する。前のセッションの状態ファイルを上書きしたときは、`session_id` を今のセッションの ID に書き換える。
 
 ### 待ち受けを残して締めたい
-司令塔は、worker の稼働中でも、`herdr agent wait` の待ち受けを残したまま締められる(#784)。待ち受けは新しいセッションに引き継がれないので、検問(P5)は、張り直し方が状態ファイルに書いてあることを確かめる。
+司令塔は、worker の稼働中でも、裏タスクを残したまま締められる(#784)。待ち受けは新しいセッションに引き継がれないので、検問(P5)は、司令塔が裏タスクの `command` の控えを状態ファイルに書いたことを確かめる。検問は `command` のシェルの構文を読まない。
 
-司令塔は、締める前に、待ち受けている worker の行へ `張り直し:` とコマンドを足す。
+司令塔は締める前に、待ち受けている worker の行へ `張り直し:` を足す。値は `command` をバッククォートで囲んで書く。
 
 ```markdown
-- claude-feat-x(pane w1:p2、worktree /path/feat-x、指示書 ~/path/brief.md、待っているもの: CI、張り直し: herdr agent wait claude-feat-x --until working && herdr agent wait claude-feat-x)
+- claude-feat-x(pane w1:p2、worktree /path/feat-x、指示書 ~/path/brief.md、待っているもの: CI、張り直し: `herdr agent wait claude-feat-x --until working && herdr agent wait claude-feat-x`)
 ```
 
-検問は、裏タスクの `command` から `herdr agent wait` の対象を読み、次のように判定する。`description` を読むのは `command` が空のときだけで、その場合は名前の直書きだけを受ける。検問は、シェルのコメントを除いてから読む。
+検問は、裏タスクの種類ごとに次のように判定する。
 
-| 裏タスクの形 | 検問の判定 |
+| 裏タスクの種類 | 検問の判定 |
 |---|---|
-| `herdr agent wait <名前>` | `<名前>` を語として含み、`張り直し:` の後ろにコマンドがある行があれば通す |
-| `herdr agent wait "$AGENT_NAME"`(`${AGENT_NAME}` も同じ) | 同じコマンドの中の `AGENT_NAME=<名前>` から名前を読み、上と同じように判定する。代入が無ければ止める |
-| `herdr agent wait --until working <名前>` | オプションが名前より前にあるので、名前を読めずに止める。司令塔は、待ち受けを止めてから、名前を先に書く形 `herdr agent wait <名前> --until …` に直して張り直す |
-| 対象の語全体が名前の形でないもの(pane ID、`"claude-x"-2`、`"claude-x${SUFFIX}"`) | 展開や連結を解決できないので止める。`AGENT_NAME=` の代入の値も同じように読む |
-| wait 以外の監視が混ざったコマンド(例: `herdr agent wait <名前> && gh pr checks 700 --watch`) | 止める。`&&`・`\|\|`・`;`・`\|`・`&`・改行で分けた各部分の先頭が、`herdr agent wait`・`herdr agent get`・`AGENT_NAME=` の代入だけ・空のどれかでなければならない。司令塔は、待ち受けを止めてから、wait だけの形に分けて張り直す |
-| コマンド置換が混ざったコマンド(`$(`・バッククォート・`<(`・`>(`) | 部分の先頭に現れないコマンドを実行するので止める。司令塔は、待ち受けを止めてから、wait だけの形に分けて張り直す |
-| `herdr agent wait` 以外の裏タスク、`session_crons` の予約 | 張り直しの形が無いので止める |
+| `command` が `張り直し:` の値と完全一致する裏タスク | 通す。`herdr agent wait` に別の監視が混ざった `command` も、同じ文字列を書けば通す |
+| `command` が一致しない裏タスク | 止める。検問は、正規化した `command` を入れた行を fail の文言に出す。司令塔はその行を状態ファイルに写す |
+| `command` が無いか空の裏タスク | 止める。`description` は読まない |
+| `session_crons` の予約 | 全部止める |
 
-1 つのコマンドの中に読めない対象が 1 つでもあれば、検問はそのコマンド全体を止める。
+検問は、比べる前に両方の文字列を同じ規則で正規化する。行継続と改行とタブと連続する空白は 1 つの空白になり、前後の空白は消える。引用符・`$`・`#`・`&&` などは解釈しない。`張り直し:` の値は、印の直後のバッククォートから行の最後のバッククォートまでである。バッククォートで囲んでいない行は、張り直し方が無いものとして扱う。
 
 次のセッションの司令塔は、次の順で待ち受けを張り直す。状態ファイルの「張り直し:」に連結の形(`--until working` と既定の wait の連結)が書いてあっても、司令塔は worker の状態に応じて前半を省く。
 
@@ -238,6 +235,8 @@ Claude Code は、Stop hook が 8 回続けてターンを続行させると、�
 2. worker が `working` なら、司令塔は既定の `herdr agent wait <名前>` だけを `run_in_background` で張る。連結しない理由は、`herdr agent get` の直後に worker が完了すると、前半の `--until working` が次の再開まで解決しないためである。
 3. worker が `idle` か `done` なら、司令塔は `~/.claude/skills/wt/SKILL.md` の「相談 idle の判別」の 4 通り(相談待ち・完了・作業続行中のフラップ・裏の処理の待ち)で判定する。司令塔が張り直しを省いてよいのは、完了報告があるときだけである。
 4. worker が裏の処理(CI の watch など)を待っていて最終報告が無いなら、司令塔は連結の形を `run_in_background` で張る。前半が worker の再開で解決し、後半が最終報告の後に解決する。
+
+「張り直し:」の値が `herdr agent wait` 以外のコマンドを含むときは、司令塔は値のとおりに張り直す。
 
 ### `rm` が auto mode の分類器に止められる
 司令塔は、忘れる候補と古い状態ファイルを `rm` で消さず、`forget.sh` で消す(手順 4)。この決まりは、2026-11-03 に次の順で起きたことから作った。
