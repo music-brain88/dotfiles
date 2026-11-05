@@ -133,6 +133,15 @@ write_state_nested() {
   } >"$mem/$file"
 }
 
+# write_workers <lines>: a state file with the lines in the "workers" section.
+# 「稼働中の worker」の節に行を入れた状態ファイルを書く。
+write_workers() {
+  local f="$mem/state_commander-proj.md"
+  write_state </dev/null
+  BODY="$1" awk '$0 == "なし" { print ENVIRON["BODY"]; next } { print }' "$f" >"$case_dir/state.tmp"
+  mv "$case_dir/state.tmp" "$f"
+}
+
 # wb_file <rel> <kind> <unit> <created> [body]: a work product / 作業物を作る
 wb_file() {
   mkdir -p "$(dirname "$wb/$1")"
@@ -612,6 +621,213 @@ test_p5_without_jq_is_recorded_not_blocked() {
   assert_exit 0
   assert_err_lacks 'command not found'
   assert_out_has 'jq が無い'
+}
+
+# p5_task <id> <command>: a running background task as JSON / 走っている裏タスクの JSON
+p5_task() {
+  jq -cn --arg id "$1" --arg command "$2" '{id: $id, type: "shell", status: "running", description: "wait", command: $command}'
+}
+
+# p5_line <rearm value>: a worker line / worker の行
+p5_line() {
+  printf -- '- claude-x(pane w1:p2、待っているもの: CI、張り直し: `%s`)' "$1"
+}
+
+p5_cmd='herdr agent wait claude-x --until working && herdr agent wait claude-x'
+p5_multiline=$'# gotcha: 確かめてから仕掛ける\nAGENT_NAME=claude-x\nherdr agent get "$AGENT_NAME"\n\nherdr agent wait "$AGENT_NAME"'
+p5_multiline_value='# gotcha: 確かめてから仕掛ける⏎AGENT_NAME=claude-x⏎herdr agent get "$AGENT_NAME"⏎⏎herdr agent wait "$AGENT_NAME"'
+
+test_p5_exact_command_passes() {
+  new_case
+  write_workers "$(p5_line "$p5_cmd")"
+  run_gate "$(hook_input "[$(p5_task b1 "$p5_cmd")]")"
+  assert_exit 0
+  assert_out_has 'P5: 待ち受け 1 件は張り直し方が書いてあるので通した'
+}
+
+test_p5_spaces_and_line_continuations_are_normalized() {
+  local command
+  for command in "herdr  agent   wait claude-x --until working && herdr agent wait claude-x" \
+    $'  herdr agent wait claude-x --until working \\\n  && herdr agent wait claude-x  ' \
+    $'herdr agent wait claude-x --until working\n&&\therdr agent wait claude-x'; do
+    new_case
+    write_workers "$(p5_line "$p5_cmd")"
+    run_gate "$(hook_input "[$(p5_task b1 "$command")]")"
+    assert_exit 0
+    assert_out_has '待ち受け 1 件は張り直し方が書いてあるので通した'
+  done
+}
+
+test_p5_rearm_value_is_normalized_too() {
+  new_case
+  write_workers "$(p5_line "  herdr  agent wait claude-x --until working  &&  herdr agent wait claude-x ")"
+  run_gate "$(hook_input "[$(p5_task b1 "$p5_cmd")]")"
+  assert_exit 0
+}
+
+test_p5_other_monitor_passes_when_the_same_text_is_written() {
+  local command='herdr agent wait claude-x && gh pr checks 700 --watch'
+  new_case
+  write_workers "$(p5_line "$command")"
+  run_gate "$(hook_input "[$(p5_task b1 "$command")]")"
+  assert_exit 0
+  assert_out_has '待ち受け 1 件は張り直し方が書いてあるので通した'
+}
+
+test_p5_one_different_character_blocks_with_the_original_form() {
+  new_case
+  write_workers "$(p5_line 'herdr agent wait claude-y')"
+  run_gate "$(hook_input "[$(p5_task b1 $'herdr  agent wait \\\n  claude-x')]")"
+  assert_exit 2
+  assert_err_has '[P5] 裏タスクの command が「## 稼働中の worker」の 張り直し: の値と一致しない'
+  assert_err_has '裏タスク b1'
+  assert_err_has '- <worker の名前>(pane <pane_id>、worktree <path>、指示書 <path>、待っているもの: <何>、張り直し: `herdr  agent wait \⏎  claude-x`)'
+}
+
+test_p5_multiline_command_passes_with_newline_marks() {
+  new_case
+  write_workers "$(p5_line "$p5_multiline_value")"
+  run_gate "$(hook_input "[$(p5_task b1 "$p5_multiline")]")"
+  assert_exit 0
+  assert_out_has '待ち受け 1 件は張り直し方が書いてあるので通した'
+}
+
+test_p5_multiline_command_is_shown_with_newline_marks() {
+  new_case
+  write_workers '- claude-y(pane w1:p3)'
+  run_gate "$(hook_input "[$(p5_task b1 "$p5_multiline")]")"
+  assert_exit 2
+  assert_err_has "張り直し: \`$p5_multiline_value\`)"
+}
+
+test_p5_newline_marks_in_the_fail_message_restore_the_command() {
+  local value
+  new_case
+  write_workers '- claude-y(pane w1:p3)'
+  run_gate "$(hook_input "[$(p5_task b1 "$p5_multiline")]")"
+  assert_exit 2
+  value="$(grep -F '<worker の名前>' <<<"$err" | sed -e 's/^.*張り直し: `//' -e 's/`)$//')"
+  [ "${value//⏎/$'\n'}" = "$p5_multiline" ] || flunk "not restored: $value"
+}
+
+test_p5_line_continuation_passes_when_copied_from_the_fail_message() {
+  local command=$'herdr agent wait claude-x --until working \\\n  && herdr agent wait claude-x' line
+  new_case
+  write_workers '- claude-y(pane w1:p3)'
+  run_gate "$(hook_input "[$(p5_task b1 "$command")]")"
+  assert_exit 2
+  assert_err_has 'working \⏎  && herdr'
+  line="$(grep -F '<worker の名前>' <<<"$err" | sed 's/^ *//')"
+  write_workers "$line"
+  run_gate "$(hook_input "[$(p5_task b1 "$command")]")"
+  assert_exit 0
+}
+
+test_p5_the_line_in_the_fail_message_passes_when_copied() {
+  local command='herdr agent wait "$(pick)" > `date`.json && echo '"'"'# x'"'"' \ y' line
+  new_case
+  write_workers '- claude-y(pane w1:p3)'
+  run_gate "$(hook_input "[$(p5_task b1 "$command")]")"
+  assert_exit 2
+  line="$(grep -F '<worker の名前>' <<<"$err" | sed 's/^ *//')"
+  [ -n "$line" ] || flunk 'no line to copy'
+  write_workers "$line"
+  run_gate "$(hook_input "[$(p5_task b1 "$command")]")"
+  assert_exit 0
+}
+
+test_p5_task_without_a_command_blocks() {
+  local task
+  for task in '{"id":"b1","status":"running","description":"herdr agent wait claude-x"}' \
+    '{"id":"b1","status":"running","description":"herdr agent wait claude-x","command":""}' \
+    '{"id":"b1","status":"running","description":"herdr agent wait claude-x","command":"  "}'; do
+    new_case
+    write_workers "$(p5_line 'herdr agent wait claude-x')"
+    run_gate "$(hook_input "[$task]")"
+    assert_exit 2
+    assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
+    assert_err_has '裏タスク b1'
+    assert_err_lacks '通した'
+  done
+}
+
+test_p5_rearm_value_needs_backticks() {
+  local line
+  for line in '- claude-x(pane w1:p2、張り直し: herdr agent wait claude-x)' \
+    '- claude-x(pane w1:p2、張り直し: `herdr agent wait claude-x)' \
+    '- claude-x(pane w1:p2、張り直し: ``)' \
+    '- claude-x(pane w1:p2、張り直し: `⏎`)' \
+    '- claude-x(pane w1:p2、`herdr agent wait claude-x`)'; do
+    new_case
+    write_workers "$line"
+    run_gate "$(hook_input "[$(p5_task b1 'herdr agent wait claude-x')]")"
+    assert_exit 2
+    assert_err_has '[P5] 裏タスクの command が'
+    assert_err_lacks '通した'
+  done
+}
+
+test_p5_one_of_two_tasks_uncovered_blocks() {
+  new_case
+  write_workers "$(p5_line 'herdr agent wait claude-x')"
+  run_gate "$(hook_input "[$(p5_task b1 'herdr agent wait claude-x'),$(p5_task b2 'herdr agent wait claude-y')]")"
+  assert_exit 2
+  assert_err_has '裏タスク b2'
+  assert_err_lacks '裏タスク b1'
+  assert_err_has '張り直し: `herdr agent wait claude-y`)'
+  assert_err_lacks '通した'
+}
+
+test_p5_two_covered_tasks_pass_and_are_counted() {
+  new_case
+  write_workers "$(p5_line 'herdr agent wait claude-x')"$'\n'"$(p5_line 'gh pr checks 700 --watch')"
+  run_gate "$(hook_input "[$(p5_task b1 'herdr agent wait claude-x'),$(p5_task b2 'gh pr checks 700 --watch')]")"
+  assert_exit 0
+  assert_out_has '待ち受け 2 件は張り直し方が書いてあるので通した'
+}
+
+test_p5_cron_blocks_even_with_a_rearm_line() {
+  new_case
+  write_workers "$(p5_line 'check CI')"
+  run_gate "$(hook_input "[$(p5_task b1 'check CI')]" '[{"id":"c1","schedule":"*/5 * * * *","recurring":true,"prompt":"check CI"}]')"
+  assert_exit 2
+  assert_err_has '[P5] 張り直しの形が無い裏の待ち受けが残っている'
+  assert_err_has '予約 c1'
+  assert_err_lacks '通した'
+}
+
+test_p5_finished_task_needs_no_rearm() {
+  new_case
+  write_state </dev/null
+  run_gate "$(hook_input '[{"id":"b1","status":"completed","command":"herdr agent wait claude-x"}]')"
+  assert_exit 0
+}
+
+test_p5_check_notes_a_worker_line_without_a_rearm_value() {
+  local line
+  for line in '- claude-x(pane w1:p2、待っているもの: CI)' '- claude-x(pane w1:p2、張り直し: herdr agent wait claude-x)'; do
+    new_case
+    write_workers "$line"
+    run_check
+    assert_exit 0
+    assert_out_has '稼働中の worker に張り直し方が無い行がある。待ち受けを残して締めるなら書く'
+  done
+}
+
+test_p5_check_stays_quiet_when_every_worker_line_has_a_rearm_value() {
+  new_case
+  write_workers "$(p5_line "$p5_cmd")"
+  run_check
+  assert_exit 0
+  ! grep -qF '張り直し方が無い行' <<<"$out" || flunk 'unexpected note about rearm'
+}
+
+test_p5_check_ignores_non_list_lines_of_workers() {
+  new_case
+  write_state </dev/null
+  run_check
+  assert_exit 0
+  ! grep -qF '張り直し方が無い行' <<<"$out" || flunk 'unexpected note about rearm'
 }
 
 # ---------------------------------------------------------------------------
