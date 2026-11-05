@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 {
   # herdr - agent multiplexer (tmux の後継 / successor to tmux)
@@ -6,7 +6,31 @@
   # pkgs.herdr comes from a newer nixpkgs pin via the overlay in flake.nix
   home.packages = with pkgs; [
     herdr
+    # herdr-ctx: 各 agent の context 使用率を読む (tools/herdr-ctx、Rust、flake overlay で定義)。
+    # herdr に依存する道具なので dev-tools.nix ではなくここで配る (Issue #784)
+    # In-repo Rust tool that reads each agent's context usage. It depends on herdr, so it
+    # ships here rather than in dev-tools.nix (Issue #784)
+    herdr-ctx
   ];
+
+  # herdr-ctx watch の常駐。~/.herdr/ctx/agents.json を書き、閾値を跨いだ agent を知らせる (Issue #784)。
+  # home-manager の service にするのは、systemd.user.startServices の既定で switch のときに起動され、
+  # native と wsl の両方に届くから。生の unit ファイルは機械ごとの enable が要り、mount も native だけ。
+  # herdr CLI は既定のソケットを見るので、ソケットの env は要らない。
+  # Resident herdr-ctx watch: writes ~/.herdr/ctx/agents.json and notifies on crossings (Issue #784).
+  # A home-manager service starts on switch through the systemd.user.startServices default and
+  # reaches both native and wsl; a raw unit file needs a per-machine enable and mounts on native only.
+  # The herdr CLI finds its default socket by itself, so no socket env is needed.
+  systemd.user.services.herdr-ctx-watch = {
+    Unit.Description = "herdr-ctx watch: 各 agent の context 使用率を記録して知らせる";
+    Service = {
+      ExecStart = "${pkgs.herdr-ctx}/bin/herdr-ctx watch";
+      Environment = [ "PATH=${lib.makeBinPath [ pkgs.herdr ]}" ];
+      Restart = "on-failure";
+      RestartSec = 10;
+    };
+    Install.WantedBy = [ "default.target" ];
+  };
 
   # herdr config symlink (keybind は旧 tmux 設定互換 / tmux-compatible keybindings)
   home.file.".config/herdr/config.toml".source = ../../.config/herdr/config.toml;

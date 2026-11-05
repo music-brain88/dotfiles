@@ -48,11 +48,13 @@
 
 ### herdr.nix
 
-`herdr.nix` は、herdr (agent multiplexer、tmuxの後継) に関する次の 4 つを管理します。
+`herdr.nix` は、herdr (agent multiplexer、tmuxの後継) に関する次の 6 つを管理します。
 - herdr パッケージ (flake.nix の overlay 経由で新しい nixpkgs から供給)
 - `.config/herdr/config.toml` のシンボリックリンク (keybindは旧tmux設定互換)
 - device-auth の承認 URL を、herdr の中では terminal-browser の pane に開く `$BROWSER` ラッパー (Issue #523, #701)。terminal-browser 本体は `terminal-browser.nix` が native 機だけに入れる。
 - herdr 公式の Claude Code 用フックを、`~/.claude/hooks/herdr-agent-state.sh` に置きます (Issue #755)。仕組みと制約は、次の「Claude Code の pane の復元」に書きます。
+- herdr-ctx パッケージ。各 agent の context 使用率を、pane の幅に依存せず読む自作の CLI です (Issue #784)。詳細は [tools/herdr-ctx/README.md](../../tools/herdr-ctx/README.md) に書きます。
+- systemd の user service `herdr-ctx-watch`。`herdr-ctx watch` を常駐させます。`systemd.user.startServices` の既定値が `true` なので、`mise run nix:switch` のときに起動します。
 
 #### Claude Code の pane の復元
 
