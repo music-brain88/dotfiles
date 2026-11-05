@@ -12,7 +12,7 @@ use std::process::{Command, Output, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
-const LIST_JSON: &str = r#"{"id":"cli:agent:list","result":{"agents":[{"agent":"claude","agent_status":"working","cwd":"/home/archie/dotfiles","name":"commander-dotfiles","pane_id":"w3C:p1W"},{"agent":"claude","agent_status":"idle","cwd":"/home/archie/notes","pane_id":"w3T:p2"},{"agent":"copilot","agent_status":"idle","cwd":"/home/archie/tools","pane_id":"w3U:p1"}]}}"#;
+const LIST_JSON: &str = r#"{"id":"cli:agent:list","result":{"agents":[{"agent":"claude","agent_session":{"value":"session-a"},"agent_status":"working","cwd":"/home/archie/dotfiles","name":"commander-dotfiles","pane_id":"w3C:p1W"},{"agent":"claude","agent_status":"idle","cwd":"/home/archie/notes","pane_id":"w3T:p2"},{"agent":"copilot","agent_status":"idle","cwd":"/home/archie/tools","pane_id":"w3U:p1"}]}}"#;
 const GET_COMMANDER_JSON: &str = r#"{"id":"cli:agent:get","result":{"agent":{"name":"commander-dotfiles","pane_id":"w3C:p1W"},"type":"agent_info"}}"#;
 const SHOWN_JSON: &str = r#"{"id":"cli:notification:show","result":{"reason":"shown","shown":true,"type":"notification_show"}}"#;
 const NOT_SHOWN_JSON: &str = r#"{"id":"cli:notification:show","result":{"reason":"rate_limited","shown":false,"type":"notification_show"}}"#;
@@ -47,6 +47,31 @@ impl Sandbox {
   /// Installs a fake herdr that logs its arguments and answers each subcommand with fixed JSON.
   fn fake_herdr(&self, list: &str, get: &str, exit_code: i32) {
     self.fake_herdr_notifying(list, get, SHOWN_JSON, exit_code);
+  }
+
+  /// 応答せずに眠るだけの偽の herdr を置く。
+  /// Installs a fake herdr that only sleeps and never answers.
+  fn hanging_herdr(&self) {
+    let path = self.bin().join("herdr");
+    fs::write(&path, "#!/bin/sh\nsleep 5\n").unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+  }
+
+  /// 偽の herdr が sleep を見つけられるように PATH の先頭に足し、期限を 1 秒にして実行する。
+  /// Prepends to PATH so the fake herdr can find sleep, and shortens the deadline to one second.
+  fn command_with_short_deadline(&self, args: &[&str]) -> Command {
+    let mut command = self.command(args);
+    command
+      .env(
+        "PATH",
+        format!(
+          "{}:{}",
+          self.bin().display(),
+          std::env::var("PATH").unwrap_or_default()
+        ),
+      )
+      .env("HERDR_CTX_TIMEOUT_SECS", "1");
+    command
   }
 
   fn fake_herdr_notifying(&self, list: &str, get: &str, notify: &str, exit_code: i32) {
@@ -145,11 +170,27 @@ fn list_prints_json_lines() {
   assert_eq!(first["pct"], 62);
   assert_eq!(first["model"], "Fable 5.1");
   assert_eq!(first["stale"], true);
+  assert_eq!(first["session_match"], true);
   let second: serde_json::Value = serde_json::from_str(lines[1]).unwrap();
   assert_eq!(second["note"], "no sidecar");
   let third: serde_json::Value = serde_json::from_str(lines[2]).unwrap();
   assert!(third["pct"].is_null());
   assert_eq!(third["note"], "not a claude agent");
+}
+
+#[test]
+fn list_keeps_the_value_and_marks_a_sidecar_of_another_session() {
+  let sandbox = Sandbox::new("list-mismatch");
+  sandbox.fake_herdr(&LIST_JSON.replace("session-a", "session-z"), "", 0);
+  sandbox.sidecar("w3C_p1W.json", 62);
+
+  let json = stdout(&sandbox.run(&["list"]));
+  let first: serde_json::Value = serde_json::from_str(json.lines().next().unwrap()).unwrap();
+  assert_eq!(first["session_match"], false);
+  assert_eq!(first["pct"], 62);
+
+  let table = stdout(&sandbox.run(&["list", "--table"]));
+  assert!(table.contains("62% (session?)"), "{table}");
 }
 
 #[test]
@@ -184,6 +225,26 @@ fn list_reports_the_reason_when_the_server_is_down() {
   assert_eq!(output.status.code(), Some(1));
   assert_eq!(stdout(&output), "");
   assert!(stderr(&output).contains("no herdr server is running"));
+}
+
+#[test]
+fn list_gives_up_on_a_hanging_herdr_at_the_deadline() {
+  let sandbox = Sandbox::new("list-hang");
+  sandbox.hanging_herdr();
+
+  let started = Instant::now();
+  let output = sandbox
+    .command_with_short_deadline(&["list"])
+    .output()
+    .expect("binary runs");
+
+  assert!(started.elapsed() < Duration::from_secs(2));
+  assert_eq!(output.status.code(), Some(1));
+  assert_eq!(stdout(&output), "");
+  assert_eq!(
+    stderr(&output).trim_end(),
+    "herdr-ctx: herdr が 1 秒以内に応答しない"
+  );
 }
 
 #[test]
@@ -318,6 +379,27 @@ fn self_keeps_the_usage_line_when_herdr_is_missing_above_the_limit() {
   assert_eq!(text.lines().count(), 1);
   assert!(text.starts_with("context 62% (pane w3C:p1W"), "{text}");
   assert_eq!(stderr(&output).lines().count(), 1);
+}
+
+#[test]
+fn self_keeps_the_usage_line_when_herdr_hangs_above_the_limit() {
+  let sandbox = Sandbox::new("self-hang");
+  sandbox.hanging_herdr();
+  sandbox.sidecar("w3C_p1W.json", 62);
+
+  let started = Instant::now();
+  let output = sandbox
+    .command_with_short_deadline(&["self"])
+    .env("HERDR_PANE_ID", "w3C:p1W")
+    .output()
+    .expect("binary runs");
+
+  assert!(started.elapsed() < Duration::from_secs(2));
+  assert_eq!(output.status.code(), Some(0));
+  let text = stdout(&output);
+  assert_eq!(text.lines().count(), 1);
+  assert!(text.starts_with("context 62% (pane w3C:p1W"), "{text}");
+  assert!(stderr(&output).contains("herdr が 1 秒以内に応答しない"));
 }
 
 #[test]

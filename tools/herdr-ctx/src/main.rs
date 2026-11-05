@@ -24,6 +24,15 @@ use std::process::ExitCode;
 use std::time::Duration;
 use watch::WatchOptions;
 
+/// herdr の応答を待つ上限。self は hook の timeout(5 秒)より短くして、1 行目を出す時間を残す。
+/// How long to wait for herdr. self stays under the 5 second hook timeout to still print its line.
+const QUERY_TIMEOUT_SECS: u64 = 3;
+const WATCH_TIMEOUT_SECS: u64 = 10;
+
+/// 上の期限を上書きする環境変数。統合テストが期限を短くするために使う。
+/// Overrides the deadlines above; integration tests use it to shorten them.
+const TIMEOUT_ENV: &str = "HERDR_CTX_TIMEOUT_SECS";
+
 const USAGE: &str = "\
 使い方 / Usage:
   herdr-ctx list [--table]
@@ -88,6 +97,15 @@ fn parse_args(args: &[String]) -> Result<Cmd, String> {
   }
 }
 
+fn herdr_cli(default_secs: u64) -> HerdrCli {
+  let secs = env::var(TIMEOUT_ENV)
+    .ok()
+    .and_then(|value| value.parse().ok())
+    .filter(|secs| *secs > 0)
+    .unwrap_or(default_secs);
+  HerdrCli::new(Duration::from_secs(secs))
+}
+
 fn ctx_dir() -> Option<PathBuf> {
   let home = env::var_os("HOME").filter(|home| !home.is_empty())?;
   Some(PathBuf::from(home).join(".herdr/ctx"))
@@ -108,7 +126,8 @@ fn run_list(table: bool) -> ExitCode {
   let Some(dir) = ctx_dir() else {
     return fail("HOME が無い");
   };
-  let rows = match report::collect_rows(&HerdrCli, &dir.join("panes"), Utc::now()) {
+  let herdr = herdr_cli(QUERY_TIMEOUT_SECS);
+  let rows = match report::collect_rows(&herdr, &dir.join("panes"), Utc::now()) {
     Ok(rows) => rows,
     Err(reason) => return fail(&reason),
   };
@@ -146,7 +165,7 @@ fn run_self() -> ExitCode {
   let pane_id = env::var("HERDR_PANE_ID").ok().filter(|id| !id.is_empty());
   let hook = read_hook_input();
   let text = report::self_report(
-    &HerdrCli,
+    &herdr_cli(QUERY_TIMEOUT_SECS),
     &dir.join("panes"),
     pane_id.as_deref(),
     hook.as_ref(),
@@ -172,7 +191,7 @@ fn main() -> ExitCode {
     Cmd::List { table } => run_list(table),
     Cmd::SelfReport => run_self(),
     Cmd::Watch(options) => match ctx_dir() {
-      Some(dir) => watch::run(&HerdrCli, &dir, &options),
+      Some(dir) => watch::run(&herdr_cli(WATCH_TIMEOUT_SECS), &dir, &options),
       None => fail("HOME が無い"),
     },
     Cmd::Help => {
@@ -245,7 +264,7 @@ pub mod testutil {
   use std::path::PathBuf;
 
   pub const AGENT_LIST_JSON: &str = r#"{"id":"cli:agent:list","result":{"agents":[
-    {"agent":"claude","agent_status":"working","cwd":"/home/archie/dotfiles","name":"commander-dotfiles","pane_id":"w3C:p1W","workspace_id":"w3C"},
+    {"agent":"claude","agent_session":{"agent":"claude","kind":"id","source":"herdr:claude","value":"session-a"},"agent_status":"working","cwd":"/home/archie/dotfiles","name":"commander-dotfiles","pane_id":"w3C:p1W","workspace_id":"w3C"},
     {"agent":"claude","agent_status":"idle","cwd":"/home/archie/notes","pane_id":"w3T:p2","workspace_id":"w3T"},
     {"agent":"copilot","agent_status":"idle","cwd":"/home/archie/tools","pane_id":"w3U:p1","workspace_id":"w3U"}
   ]}}"#;

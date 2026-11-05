@@ -26,7 +26,7 @@ statusline のスクリプトは Claude Code の子プロセスなので、herdr
 `herdr-ctx list` は、全 agent の使用率を 1 行 1 agent の JSON(JSON Lines)で出す。司令塔はこの 1 回の実行で worker 全員の残量を読める。`--table` を付けると、人が読む表(名前・状態・pct・最終更新)を出す。
 
 ```json
-{"name":"commander-dotfiles","pane_id":"w3C:p1W","agent_status":"working","cwd":"/home/archie/dotfiles","pct":62,"ctx_tokens":620000,"context_window_size":1000000,"model":"Fable 5.1","last_turn_at":"2026-11-05T12:34:56Z","stale":false,"note":null}
+{"name":"commander-dotfiles","pane_id":"w3C:p1W","agent_status":"working","cwd":"/home/archie/dotfiles","pct":62,"ctx_tokens":620000,"context_window_size":1000000,"model":"Fable 5.1","last_turn_at":"2026-11-05T12:34:56Z","stale":false,"note":null,"session_match":true}
 ```
 
 次の表は、値が欠けるときの出力を示す。どの場合も agent は一覧から落とさない。
@@ -35,11 +35,16 @@ statusline のスクリプトは Claude Code の子プロセスなので、herdr
 |---|---|
 | sidecar が無い | `pct` が null で、`note` が `"no sidecar"` になる |
 | sidecar を読めない | `pct` が null で、`note` が `"unreadable sidecar"` になる |
+| sidecar が agent の session のものでない | `session_match` が false になり、値はそのまま出る。`--table` は PCT に `(session?)` を添える |
 | agent が Claude Code ではない(`herdr agent list` の `agent` が `claude` 以外) | context の欄が null で、`note` が `"not a claude agent"` になる。前の Claude Code の sidecar が pane に残っていても結合しない |
 | `used_percentage` が null である(最初の API 呼び出しの前と `/compact` の直後) | `pct` が null で、`note` も null になる |
 | `updated_at` が 10 分より古い | `stale` が true になり、値はそのまま出る |
 
 statusline はイベントでしか走らないので、待機中の agent も 10 分で `stale` になる。`stale` は値が古い可能性を示す印であり、値の誤りを意味しない。
+
+`session_match` は、sidecar が agent の session のものかを示す。同じ pane で新しいセッションが最初の statusline の更新より前に始まると、前のセッションの sidecar が残っているからである。herdr-ctx は、sidecar の `session_id` と `herdr agent list` の `agent_session.value` を比べる。両方あって一致すれば true になる。違うときは、sidecar の `transcript_path` のファイル名(拡張子を除く)が `agent_session.value` と一致すれば true になり、それでも違えば false になる。どちらかが無ければ null になる。
+
+裏の job に乗ったセッションでは、TUI 側と backend 側で id が違うことがある。そのため、値が正しくても false が付く可能性がある。司令塔が配備後に実機で確かめて、次の PR で判定を詰める。
 
 ### self
 
@@ -71,11 +76,14 @@ hook から呼ばれたときは、stdin の JSON の `session_id` と `transcri
 - pct が下がると、記録を今の pct 以下の閾値まで下げる。このとき通知は出さない。同じ閾値をもう一度上に跨ぐと、再び知らせる。
 - agent が一覧から消えると、その agent の記録を消す。
 - 同じ pane で sidecar の `session_id` が変わると、前の session の記録を消してから判定する。前の session が 80% で知らせた pane で別の session が 62% から始まると、新しい session の閾値として 1 回知らせる。
+- `session_match` が false の行は、通知を出さず、記録も変えない。別のセッションの値かもしれないからである。
 - pct が null の周期は、同じ session の記録を変えない。`/compact` の直後の null で同じ閾値を知らせ直さないためである。
 - 通知に失敗したときは、知らせた記録を残さず、次の周期でもう一度試す。herdr は通知を表示しなかったときも成功の応答を返すので、応答の `shown` が `true` でないときも失敗として扱う。
 - `notify_state.json` の保存に失敗したときは、メモリ上の記録を保ったまま、次の周期で保存をもう一度試す。
 
 herdr のソケットに繋がらないときは、stderr に 1 行書いて次の周期まで待つ。このとき `agents.json` は更新しない。SIGTERM を受けると、`watch` はそのまま終了する。
+
+`herdr` の呼び出しには期限がある。`list` と `self` は 3 秒で、`watch` は 10 秒である。期限を過ぎると、herdr-ctx は `herdr` のプロセスを止めて、失敗として扱う。`self` の期限を hook の 5 秒より短くしているのは、1 行目の使用率を出す時間を残すためである。環境変数 `HERDR_CTX_TIMEOUT_SECS` はこの期限を上書きする。統合テストが期限を短くするために使う。
 
 ## ファイルの形
 
@@ -104,7 +112,7 @@ WSL 機で systemd の user session が動いていないときは、home-manage
 1. `herdr-ctx list --table` の pct が、各 pane の statusline の `💭` の値と一致する。一致を見るには、対象の agent が switch の後に 1 ターン以上動いて、sidecar が書かれている必要がある。
 2. `systemctl --user status herdr-ctx-watch` が `active (running)` を示す。
 3. 新しい Claude Code のセッションの最初のターンで、文脈に `context n%` の行が入る。
-4. 裏の job に乗ったセッション(`/remote-control` など)でも、文脈に `context n%` の行が入る。statusline が TUI 側と backend 側のどちらの session id を受け取るかが未確認なので、司令塔が配備後に確かめる。
+4. 裏の job に乗ったセッション(`/remote-control` など)でも、文脈に `context n%` の行が入り、`herdr-ctx list` の `session_match` が false にならない。statusline が TUI 側と backend 側のどちらの session id を受け取るかが未確認なので、司令塔が配備後に確かめる。false が付くと、`watch` はその agent を知らせない。
 
 ## 開発
 

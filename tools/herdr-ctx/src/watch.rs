@@ -122,6 +122,14 @@ pub fn plan(prev: &NotifyState, rows: &[Row], thresholds: &[u32]) -> (NotifyStat
   let mut next = NotifyState::new();
   let mut notices = Vec::new();
   for row in rows {
+    // 別の session の値かもしれない行では判断しない。通知を出さず、記録も動かさない
+    // A row that may hold another session's value decides nothing: no notice, no record change
+    if row.session_match == Some(false) {
+      if let Some(record) = prev.get(&row.pane_id) {
+        next.insert(row.pane_id.clone(), record.clone());
+      }
+      continue;
+    }
     let last = prev
       .get(&row.pane_id)
       .filter(|record| record.session_id == row.session_id);
@@ -289,6 +297,7 @@ mod tests {
       last_turn_at: None,
       stale: false,
       note: None,
+      session_match: None,
       session_id: Some(session_id.to_string()),
     }
   }
@@ -397,6 +406,22 @@ mod tests {
   }
 
   #[test]
+  fn a_mismatched_row_leaves_the_record_alone_and_stays_silent() {
+    let (state, _) = plan(
+      &NotifyState::new(),
+      &[row_in("session-a", Some(62))],
+      &THRESHOLDS,
+    );
+    let mut mismatched = row_in("session-b", Some(85));
+    mismatched.session_match = Some(false);
+
+    let (next, notices) = plan(&state, &[mismatched], &THRESHOLDS);
+
+    assert_eq!(next, state);
+    assert!(notices.is_empty());
+  }
+
+  #[test]
   fn the_notice_uses_the_name_and_the_cwd_basename() {
     let (_, notices) = plan(&NotifyState::new(), &[row(Some(62))], &THRESHOLDS);
     assert_eq!(notices[0].title, "worker-a context 62%");
@@ -429,6 +454,15 @@ mod tests {
     write_sidecar_file(ctx_dir, "w3C_p1W.json", pct);
   }
 
+  fn write_owned_pane(ctx_dir: &Path, session_id: &str, transcript_path: &str, pct: u32) {
+    let panes = ctx_dir.join("panes");
+    fs::create_dir_all(&panes).unwrap();
+    let text = format!(
+      r#"{{"session_id":"{session_id}","transcript_path":"{transcript_path}","used_percentage":{pct},"updated_at":"2026-11-05T12:34:56Z"}}"#
+    );
+    fs::write(panes.join("w3C_p1W.json"), text).unwrap();
+  }
+
   fn level(state: &WatchState) -> Option<u32> {
     state.current.get("w3C:p1W").map(|record| record.threshold)
   }
@@ -459,6 +493,50 @@ mod tests {
     assert_eq!(file["generated_at"], "2026-11-05T12:35:00Z");
     assert_eq!(file["agents"].as_array().unwrap().len(), 3);
     assert_eq!(file["agents"][0]["pct"], 62);
+  }
+
+  #[test]
+  fn a_sidecar_of_another_session_is_not_announced() {
+    let dir = temp_dir("other-session");
+    write_owned_pane(&dir, "session-old", "/t/session-old.jsonl", 62);
+    let herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
+    let mut state = WatchState::default();
+
+    tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
+
+    assert!(herdr.notified.borrow().is_empty());
+    assert!(state.current.is_empty());
+    let text = fs::read_to_string(dir.join(AGENTS_FILE)).unwrap();
+    let file: serde_json::Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(file["agents"][0]["session_match"], false);
+    assert_eq!(file["agents"][0]["pct"], 62);
+  }
+
+  #[test]
+  fn a_transcript_file_name_matching_the_agent_session_is_announced() {
+    let dir = temp_dir("same-transcript");
+    write_owned_pane(&dir, "session-job", "/t/session-a.jsonl", 62);
+    let herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
+    let mut state = WatchState::default();
+
+    tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
+
+    assert_eq!(herdr.notified.borrow().len(), 1);
+  }
+
+  #[test]
+  fn a_sidecar_without_a_session_id_is_announced() {
+    let dir = temp_dir("no-session-id");
+    write_pane(&dir, 62);
+    let herdr = FakeHerdr::with_list(AGENT_LIST_JSON);
+    let mut state = WatchState::default();
+
+    tick(&herdr, &dir, &THRESHOLDS, &mut state, now());
+
+    assert_eq!(herdr.notified.borrow().len(), 1);
+    let text = fs::read_to_string(dir.join(AGENTS_FILE)).unwrap();
+    let file: serde_json::Value = serde_json::from_str(&text).unwrap();
+    assert!(file["agents"][0]["session_match"].is_null());
   }
 
   #[test]

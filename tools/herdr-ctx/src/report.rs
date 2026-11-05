@@ -36,6 +36,9 @@ pub struct Row {
   pub last_turn_at: Option<String>,
   pub stale: bool,
   pub note: Option<String>,
+  /// sidecar が agent の session のものか。判定の材料が無いときは null。
+  /// Whether the sidecar belongs to the agent's session; null when there is nothing to compare.
+  pub session_match: Option<bool>,
   /// 通知の記録の持ち主を見分けるために watch が使う。list の出力の鍵には含めない。
   /// Used by watch to tell whose notification record this is; not part of the list output.
   #[serde(skip)]
@@ -53,6 +56,26 @@ fn is_stale(updated_at: Option<&str>, now: DateTime<Utc>) -> bool {
   }
 }
 
+/// sidecar が agent の session のものかを判定する。同じ pane で新しい session が最初の statusline の
+/// 更新より前に始まると、前の session の sidecar が残っている。session id は裏の job に乗ると TUI 側と
+/// backend 側で違うことがあるので、transcript_path のファイル名も見る。それでも誤って false になりうる。
+/// Tells whether a sidecar belongs to the agent's session. A new session starting before its first
+/// statusline update finds the previous sidecar. Session ids can differ between the TUI and backend
+/// sides on a background job, so the transcript file name counts too; a false can still be wrong.
+fn session_match(agent_session: Option<&str>, sidecar: &Sidecar) -> Option<bool> {
+  let agent_session = agent_session?;
+  let session_id = sidecar.session_id.as_deref()?;
+  if session_id == agent_session {
+    return Some(true);
+  }
+  let transcript = sidecar
+    .transcript_path
+    .as_deref()
+    .map(Path::new)
+    .and_then(Path::file_stem);
+  Some(transcript.is_some_and(|stem| stem == agent_session))
+}
+
 pub fn join(agent: &Agent, sidecar: &SidecarRead, now: DateTime<Utc>) -> Row {
   let mut row = Row {
     name: agent.name.clone(),
@@ -66,6 +89,7 @@ pub fn join(agent: &Agent, sidecar: &SidecarRead, now: DateTime<Utc>) -> Row {
     last_turn_at: None,
     stale: false,
     note: None,
+    session_match: None,
     session_id: None,
   };
   // pane には前の Claude の sidecar が残っていることがある。stale は古さしか示さないので、
@@ -78,6 +102,7 @@ pub fn join(agent: &Agent, sidecar: &SidecarRead, now: DateTime<Utc>) -> Row {
   }
   match sidecar {
     SidecarRead::Found(sidecar) => {
+      row.session_match = session_match(agent.session_value(), sidecar);
       row.session_id = sidecar.session_id.clone();
       row.pct = sidecar.pct();
       row.ctx_tokens = sidecar.total_input_tokens;
@@ -140,9 +165,17 @@ where
     lines.push([
       row.name.clone().unwrap_or_else(|| row.pane_id.clone()),
       row.agent_status.clone().unwrap_or_else(|| "-".to_string()),
-      row
-        .pct
-        .map_or_else(|| "-".to_string(), |pct| format!("{pct}%")),
+      row.pct.map_or_else(
+        || "-".to_string(),
+        |pct| {
+          let mark = if row.session_match == Some(false) {
+            " (session?)"
+          } else {
+            ""
+          };
+          format!("{pct}%{mark}")
+        },
+      ),
       if row.stale {
         format!("{updated} (stale)")
       } else {
@@ -268,6 +301,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::herdr::AgentSession;
   use crate::sidecar::sidecar_path;
   use crate::testutil::{temp_dir, FakeHerdr, AGENT_GET_JSON, AGENT_LIST_JSON};
   use std::fs;
@@ -282,6 +316,9 @@ mod tests {
     Agent {
       pane_id: "w3C:p1W".to_string(),
       agent: Some("claude".to_string()),
+      agent_session: Some(AgentSession {
+        value: Some("session-a".to_string()),
+      }),
       name: Some("commander-dotfiles".to_string()),
       agent_status: Some("working".to_string()),
       cwd: Some("/home/archie/dotfiles".to_string()),
@@ -351,6 +388,7 @@ mod tests {
     assert_eq!(row.model.as_deref(), Some("Fable 5.1"));
     assert_eq!(row.last_turn_at.as_deref(), Some("2026-11-05T12:34:56Z"));
     assert_eq!(row.session_id.as_deref(), Some("session-a"));
+    assert_eq!(row.session_match, Some(true));
     assert!(!row.stale);
     assert_eq!(row.note, None);
   }
@@ -412,6 +450,7 @@ mod tests {
       "last_turn_at",
       "stale",
       "note",
+      "session_match",
     ];
     let object = second.as_object().unwrap();
     assert_eq!(object.len(), keys.len());
@@ -434,6 +473,17 @@ mod tests {
     assert_eq!(lines[0], "NAME                STATUS   PCT  UPDATED");
     assert_eq!(lines[1], "commander-dotfiles  working  62%  12:34");
     assert_eq!(lines[2], "w3C:p1W             working  -    -");
+  }
+
+  #[test]
+  fn table_marks_a_sidecar_of_another_session_and_keeps_the_value() {
+    let mut other = sidecar("2026-11-05T12:34:56Z");
+    other.session_id = Some("session-old".to_string());
+    other.transcript_path = Some("/t/session-old.jsonl".to_string());
+    let row = join(&agent(), &SidecarRead::Found(other), now());
+    assert_eq!(row.session_match, Some(false));
+    assert_eq!(row.pct, Some(62));
+    assert!(table(&[row], &Utc).contains("62% (session?)"));
   }
 
   #[test]
@@ -510,6 +560,42 @@ mod tests {
       session_id: session_id.map(str::to_string),
       transcript_path: transcript_path.map(str::to_string),
     }
+  }
+
+  fn matched(
+    agent_session: Option<&str>,
+    session_id: Option<&str>,
+    transcript_path: Option<&str>,
+  ) -> Option<bool> {
+    session_match(agent_session, &identified(session_id, transcript_path))
+  }
+
+  #[test]
+  fn the_same_session_id_is_a_match() {
+    assert_eq!(matched(Some("a"), Some("a"), None), Some(true));
+  }
+
+  #[test]
+  fn a_different_session_id_and_transcript_is_a_mismatch() {
+    assert_eq!(
+      matched(Some("a"), Some("b"), Some("/t/b.jsonl")),
+      Some(false)
+    );
+    assert_eq!(matched(Some("a"), Some("b"), None), Some(false));
+  }
+
+  #[test]
+  fn a_transcript_file_name_can_match_the_agent_session() {
+    assert_eq!(
+      matched(Some("a"), Some("b"), Some("/t/a.jsonl")),
+      Some(true)
+    );
+  }
+
+  #[test]
+  fn a_missing_id_gives_no_verdict() {
+    assert_eq!(matched(Some("a"), None, Some("/t/a.jsonl")), None);
+    assert_eq!(matched(None, Some("a"), Some("/t/a.jsonl")), None);
   }
 
   #[test]
