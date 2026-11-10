@@ -75,7 +75,16 @@ config.enable_kitty_graphics = true
 -- WezTerm saw at startup, if any. With the proxy off, WezTerm no longer injects a value: an
 -- SSH_AUTH_SOCK inherited from the parent process is kept as is, and config.fish picks
 -- gpg-agent's SSH socket only when it is unset or not a live socket (#440).
-config.mux_enable_ssh_agent = false
+--
+-- stable 版の 20240203(Windows 機で動いている版)はこのキーを知らず、代入した時点で
+-- 設定全体の読み込みが失敗する。キーを知らない版には proxy 自体が無く、切るものが無いので、
+-- 代入に失敗したら何もせずに先へ進む。
+-- The 20240203 stable build (the one on the Windows machine) does not know this key, and
+-- assigning it makes the whole config fail to load. A build without the key has no proxy
+-- to turn off, so a failed assignment is skipped.
+if not pcall(function() config.mux_enable_ssh_agent = false end) then
+  wezterm.log_info('mux_enable_ssh_agent is unknown to this build; no ssh-agent proxy to disable')
+end
 
 -- ---------------------------------------------------------------------------
 -- シェル / Shell (herdr は既存セッションへ自動アタッチするため分岐不要)
