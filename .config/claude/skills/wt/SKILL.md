@@ -343,8 +343,12 @@ herdr agent prompt <agent-name> "<追加指示のテキスト>"
 - **MUST**: pending テキストが placeholder か実入力かは次の基準で判別する。placeholder の特徴は、(a) worker のターン終了直後に出現し、内容が worker の最終出力の続きとして自然である(例: 最終報告で PR を作った直後の「CI 終わったら報告して」「PRのマージをお願い」)、(b) 【相談】【報告】プレフィックスが無い、(c) 時間を置いて `herdr pane read <pane-id> --source visible` を取り直すと内容が変わるか消える、の 3 点である。実入力の特徴は、ターンをまたいでも同じ文言が残ること、ユーザーが在席していることの 2 点である。placeholder と判別できたテキストは置換してよく、そのまま `agent prompt` を送る。ユーザーへの確認は判別に迷う場合に限る。ユーザーが不在で判別できない場合は placeholder とみなして送ってよいが、送る前に置換で消える文言を司令塔のログ(会話内の出力)にそのまま書き残し、実入力だった場合にユーザーが復元できるようにする
 - **SHOULD**: placeholder と実入力の判別は、まず `herdr pane read <pane-id> --source visible --format ansi | grep -a '❯' | tail -1 | cat -v` で ANSI 属性を見て機械的に行う(pane-id は `herdr agent get <agent-name>` で引く)。Claude Code は placeholder を dim(SGR 2)で描画し、herdr の ANSI 出力はそれを `\e[2m` のまま返すため、`❯` の後ろに続く SGR 0 のリセット(`^[[0m`)を読み飛ばし、その次が `^[[2m` で始まる薄字だけなら placeholder であり(実測では `❯ ^[[0m^[[2m<文言>` の形)、SGR の付かない文字が続けば実入力である(Claude Code 2.1.289 + herdr 0.9.1 で実測。詳細: Troubleshooting「agent prompt がユーザー由来の pending テキストを置換で消しうる」参照)。ターン終了後のプロンプト候補のほか、起動直後の例文(`Try "..."`)や、キューに入ったメッセージの案内(`Press up to edit queued messages`)も同じ dim の placeholder である。ANSI 属性で判別できた場合は、上記 (c) の時間を置いた取り直しを省いてよい。Claude Code や herdr の版上げで描画が変わり、ANSI 出力に `\e[2m` が見当たらなくなった場合は、上記 (a)〜(c) の基準に戻る
 - **MUST**: `agent prompt` 送信後は `herdr agent get <agent-name>` で `working` へ遷移したことを確認する。コマンドは `agent_prompted` を正常に返すが、それだけでは submit の成否を判定できない(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)。遷移せずテキストが入力欄に残っている場合は、`herdr agent read` で pane の状態(メニュー非表示であること。上記 Constraint 参照)を確認したうえで `herdr pane send-keys <pane-id> Enter` で submit する(pane-id は `herdr agent get <agent-name>` で引く)
-- **MUST**: レビュー差し戻し等、委任後に追加の作業ラウンドを送る前に、`herdr agent get <agent-name>` で pane-id を引いたうえで `herdr pane read <pane-id> --source visible` を実行し、末尾行の pane 下部ステータスラインで context 使用率(💭 n%)を確認する。50% を超えている場合は追加ラウンドを送らず、(a) 司令塔が直接対応する、(b) 新 worker へ引き継ぐ(引き継ぎブリーフ = 元ブリーフ + ここまでの成果物参照(PR URL / コミット)+ 残作業のみ。引き継ぎ指示・HANDOFF.md・後任ブリーフの具体手順は手順8「引き継ぎモード」参照)、のいずれかを選ぶ。ユーザーより先に司令塔が検知すべきシグナルであり、閾値超過を検知したら対応方針とあわせてユーザーに報告する(詳細: Troubleshooting「レビュー差し戻しラウンドによる worker context の逼迫」参照)
-- **MUST**: pane 幅が狭くステータスラインが `…` で切り詰められ 💭 の値が読めない場合、herdr CLI に幅非依存で context 使用率を取得できる経路は無い(実機調査済み。詳細: Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)。読めない場合は使用率を推測で埋めず、保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す
+- **MUST**: レビュー差し戻し等、委任後に追加の作業ラウンドを送る前に、司令塔は `herdr-ctx list` の出力から対象の worker の行を `name` で選び、context 使用率の `pct` が 50 未満であることを確かめる。境界の 50 は、`herdr-ctx self` が worker に引き継ぎの助言を出す条件(50% 以上)と同じ側に置いている。コマンドは `herdr-ctx list | jq -c 'select(.name == "<agent-name>") | {pct, stale, session_match, note}'` で、出力は `{"pct":20,"stale":false,"session_match":true,"note":null}` の形の 1 行になる。行を `name` で選ぶのは、herdr が同じ名前の agent を `agent_name_taken` で拒むので名前で 1 行に決まり、非永続の `pane_id` と違って `herdr agent get` で引き直さずに済むからである(`herdr-ctx list` の鍵と値が欠けるときの出力は `tools/herdr-ctx/README.md` の「### list」参照)。50% 以上の場合は追加ラウンドを送らず、(a) 司令塔が直接対応する、(b) 新 worker へ引き継ぐ(引き継ぎブリーフ = 元ブリーフ + ここまでの成果物参照(PR URL / コミット)+ 残作業のみ。引き継ぎ指示・HANDOFF.md・後任ブリーフの具体手順は手順8「引き継ぎモード」参照)、のいずれかを選ぶ。ユーザーより先に司令塔が検知すべきシグナルであり、使用率が閾値に達したことを検知したら対応方針とあわせてユーザーに報告する(詳細: Troubleshooting「レビュー差し戻しラウンドによる worker context の逼迫」参照)
+- **MUST**: `herdr-ctx list` の値が次のどれかに当たる場合、司令塔はその値を信用せず、従来どおり `herdr agent get <agent-name>` で pane-id を引いて `herdr pane read <pane-id> --source visible` を実行し、末尾行の pane 下部ステータスラインで context 使用率(💭 n%)を読む。`herdr-ctx` が入っていない機械(`command -v herdr-ctx` が失敗する機械)と、対象の worker の行が出力に無い場合も、司令塔は同じ手順に戻る。ステータスラインが pane 幅で `…` に切り詰められて 💭 の値が読めない場合、司令塔は使用率を推測で埋めず、保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す(詳細: Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)
+  - `pct` が null である。`note` も null なら、worker は最初の API 呼び出しの前か `/compact` の直後にいる
+  - `note` が付いている(`"no sidecar"`、`"unreadable sidecar"`、`"not a claude agent"` のどれか)
+  - `session_match` が false である。sidecar が同じ pane の前のセッションのものかもしれない
+- **MUST**: `stale` が true であることだけでは、司令塔は値を疑わない。`stale` は sidecar が 10 分より長く更新されていないことを示す印である。statusline はイベントでしか走らないので、レビューの結果を待って止まっている worker はたいてい `stale` になる。pane のステータスラインも同じ statusline の実行で描かれるので、ステータスラインを読み直しても新しい値は得られない。司令塔は `stale` が true の行の `pct` をそのまま 50% の判定に使う
 - **MAY**: `--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すると、送信と応答待ちを1コマンドに畳められる(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)
 
 #### (2) 上り=イベント
@@ -529,18 +533,32 @@ worktree ルートに以下の5点セットで書く:
 
 ### 9. 司令塔の context 使用率の自己確認(途中の書き出し)
 
-司令塔は、作業の途中で自分の context 使用率を確かめ、閾値を超えたら途中の状態を状態ファイルに書き出す(#658)。自動の要約(compaction)が走ると、冒頭で読んだ SOP や判定の途中の結論が会話から落ちうるため、要約の前に状態を会話の外へ逃がしておく。
+司令塔は、作業の途中で自分の context 使用率を確かめ、閾値に達したら途中の状態を状態ファイルに書き出す(#658)。自動の要約(compaction)が走ると、冒頭で読んだ SOP や判定の途中の結論が会話から落ちうるため、要約の前に状態を会話の外へ逃がしておく。
+
+司令塔は、ターンの最初の使用率を、UserPromptSubmit の hook が毎ターン文脈に足す次の形の行で知る。hook は `.config/claude/settings.json` に定義してあり、`herdr-ctx self` を呼ぶ。
+
+```text
+context 26% (pane w3C:p1W, model Fable 5.2, as of 22:29)
+```
+
+hook の行は、プロンプトが送られた時点の値である。司令塔が 1 つのターンの中で報告の回収・レビュー・マージを続けると、その間に使用率が上がっても hook の行は変わらない。一方、statusline はターンの途中でも API の応答のたびに sidecar を書き直す。そのため、司令塔はターンの途中の節目で、次のコマンドを自分で実行して今の値を読み直す。出力は hook の行と同じ形で、閾値に達していれば 2 行目に助言が付く。stdin を待たずに終わるように、`/dev/null` をつなぐ。
+
+```bash
+herdr-ctx self </dev/null
+```
+
+hook の行も `herdr-ctx self` の出力も出ていないときは、司令塔は次のコマンドで自分の pane を読み、末尾のステータスラインで context 使用率(💭 n%)を確かめる。
 
 ```bash
 herdr pane read "$HERDR_PANE_ID" --source visible
 ```
 
 **Constraints:**
-- **MUST**: 司令塔は、worker の完了報告を処理するたびと PR をマージするたびに、上記のコマンドで自分の pane の末尾のステータスラインを読み、context 使用率(💭 n%)を確かめる
-- **MUST**: 使用率が 70% を超えたら、司令塔は途中の状態を状態ファイルに書き出し、新しいセッションで続けるか締めるかをユーザーに相談する。70% は暫定の閾値で、運用して見直す
+- **MUST**: 司令塔は、ターンの最初には hook が足した `context n%` の行で自分の使用率を確かめる。ターンの途中の節目(worker の完了報告を処理したときと PR をマージしたとき)では、司令塔は上記の `herdr-ctx self </dev/null` を実行して今の値を読み直す。どちらも出ないときは、司令塔は上記の `herdr pane read` で自分の pane の末尾のステータスラインを読む。`herdr-ctx self` は、`herdr-ctx` が入っていない機械、セッションの最初の API 応答の前、`/compact` の直後に何も出さない。hook の行は、sidecar が別のセッションのものであるときにも出ない(`tools/herdr-ctx/README.md` の「### self」参照)
+- **MUST**: 使用率が 60% 以上になったら、司令塔は途中の状態を状態ファイルに書き出し、新しいセッションで続けるか締めるかをユーザーに相談する。閾値を 60% にしたのは、`herdr-ctx self` が、名前が `commander-` で始まる agent の使用率が 60% 以上のときに 2 行目の助言を出すからである。手順書と hook の助言が違う数字を言うと、司令塔がどちらに従うかで迷う(#808)
 - **MUST**: 状態ファイルの置き場と書式は、`~/.claude/skills/wtclose/SKILL.md` の「状態ファイルの書式」節に従う。司令塔はこの節を Read ツールで読む
 - **MUST NOT**: 途中の書き出しのために `wtclose` を Skill ツールや `/wtclose` で呼ばない。呼んだ時点で締めの検問(Stop hook)が登録され、締めの条件がそろうまでターンを終えられなくなる
-- **MUST**: ステータスラインが切り詰められて 💭 の値が読めない場合、司令塔は使用率を推測で埋めず、閾値を超えたものとして書き出す(Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)
+- **MUST**: hook の行も `herdr-ctx self` の出力も出ておらず、ステータスラインも切り詰められて 💭 の値が読めない場合、司令塔は使用率を推測で埋めず、閾値に達したものとして書き出す(Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)
 - **MUST**: 締めるときは `wtclose` を呼ぶ。途中の書き出しは締めの代わりにならない
 
 ## Examples
@@ -704,7 +722,7 @@ herdr が使えない環境(worktree だけで完結させたい等)では、作
 2026-07-12 の copilot-quorum 運用(PR #321 の作業者)で、作業者が headless TUI の実機検証で `sleep 3`〜`sleep 20` を挟むポーリングをしていた間、`idle` 発火 → `herdr agent read` で確認すると spinner 稼働中(作業継続中)、というフラップが 2 回続き、都度 wait を仕掛け直した(#428)。ステータスは idle→done→working を行き来した。上記「相談待ち idle と完了 idle の判別」の二分岐だけだと、この作業途中の一時 `idle` を完了と誤認するリスクがある。`idle` 発火時の recent ログ確認では、【相談】の有無・完了報告の有無に加えて spinner の稼働と最終報告の有無も見て「作業続行中のフラップ」を判別し、`working` 遷移を待ってから wait を仕掛け直す(手順5「(2) 上り=イベント」の「相談 idle の判別」参照)。
 
 ### レビュー差し戻しラウンドによる worker context の逼迫
-本業リポジトリの PR(2026-07-27)で、差し戻し2ラウンド後に worker が context 60% に到達し、ユーザーが先に検知した。差し戻しは元実装の全文脈を保持した worker に送るのが品質上望ましい一方、ラウンドごとに context は単調に増える。50% を目安に「直接対応 or 引き継ぎ」へ切り替える(上記手順5(1) の Constraint)。ステータスラインの使用率は `herdr agent get <agent-name>` で pane-id を引いてから `herdr pane read <pane-id> --source visible` を実行し、その末尾行で機械的に読める(ただし pane 幅が狭いと切り詰められて読めないケースがある。詳細と代替手段は次項「ステータスライン切り詰めで 💭 が読めない」参照)。
+本業リポジトリの PR(2026-07-27)で、差し戻し2ラウンド後に worker が context 60% に到達し、ユーザーが先に検知した。差し戻しは元実装の全文脈を保持した worker に送るのが品質上望ましい一方、ラウンドごとに context は単調に増える。50% を目安に「直接対応 or 引き継ぎ」へ切り替える(上記手順5(1) の Constraint)。司令塔は worker の使用率を、`herdr-ctx list` の対象の worker の行の `pct` で、pane の幅に依存せず読める。値が信用できない場合と `herdr-ctx` が入っていない機械では、司令塔は `herdr agent get <agent-name>` で pane-id を引いてから `herdr pane read <pane-id> --source visible` を実行し、その末尾行のステータスラインで読む(手順5(1) の Constraint 参照)。ステータスラインは pane 幅が狭いと切り詰められて読めないことがある(詳細は次項「ステータスライン切り詰めで 💭 が読めない」参照)。
 
 ### ステータスライン切り詰めで 💭 が読めない
 2026-07-31、上記の運用で `herdr pane read <pane-id> --source visible` の末尾ステータスラインが pane 幅で切り詰められ(`⚡ Sonnet 5  xhigh …` までで省略)、💭 の値が読めないケースが発生した(#529)。ステータスラインの表示順で 💭 が右寄りにあるため、pane が狭いと機械的に読めない。
@@ -715,7 +733,9 @@ herdr が使えない環境(worktree だけで完結させたい等)では、作
 - `herdr api snapshot` にはペイン分割レイアウトの `ratio`(split の分割比率であり context 使用率とは無関係)はあるが、context/token/usage 相当のフィールドは無い
 - `herdr agent explain` は working/idle 等の検知根拠のみ、`herdr pane process-info` は前面プロセスの argv/cwd のみで、いずれも context 情報は含まない
 
-そのため、切り詰められて読めない場合は保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す(上記手順5(1) の Constraint)。pane を広げれば読める可能性はあるが、他 worker の pane レイアウトを都合で変更するのは対話プロトコル上望ましくないため、標準手順としては採用しない。根本解決には statusline の表示順変更(💭 を左寄りにする等、`.config/claude/statusline` 系の変更)が必要だが、この skill のスコープを超えるため別途 Issue 化を検討する。
+herdr の CLI に経路が無いことは、今も変わらない。ただし、2026-11-05 にマージした PR #788 で足した計器 `herdr-ctx` を使えば、司令塔は使用率を pane の幅に依存せず読める。`herdr-ctx` は、Claude Code の statusline が pane ごとに書く sidecar(`~/.herdr/ctx/panes/` の JSON)を `herdr agent list` の出力と pane id で結合する。司令塔は worker の使用率を `herdr-ctx list` で読み(手順5(1) の Constraint)、自分の使用率をターンの最初は hook が足す `context n%` の行で読み、ターンの途中は `herdr-ctx self` を自分で実行して読む(手順9)。司令塔がステータスラインを読むのは、`herdr-ctx` が入っていない機械と `herdr-ctx list` の値が信用できない場合に限る。そこでも切り詰められて読めない場合、司令塔は従来どおり保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す。pane を広げれば読める可能性はあるが、他 worker の pane レイアウトを都合で変更するのは対話プロトコル上望ましくないため、標準手順としては採用しない。
+
+2026-11-14 の PR #806 の運用で、司令塔が差し戻しを送る前に worker の pane を読むと、pane の幅が狭く、ステータスラインは使用率の手前で切れていた。古い手順書どおりなら、司令塔は使用率を読めないものとして扱い、差し戻しをやめて直接対応か引き継ぎに倒す場面だった。司令塔は代わりに `herdr-ctx list` で worker の行を読み、`pct` が 20、`stale` が false、`session_match` が true であることを確かめてから差し戻しを送った。worker は使用率 22% で作業を終えた(#808)。
 
 ### commander-<repo名> の名前衝突
 同リポジトリの過去セッション pane が名前を保持していると `herdr agent rename` が
