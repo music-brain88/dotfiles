@@ -50,7 +50,7 @@ changes ─┬─→ build-image ─┬─→ verify-docker
 
 コンテナは `archie` ユーザーで実行され、Home Manager設定との整合性を保つ。
 
-コンテナの中で走る `bash -c` のスクリプトは、先頭で `set -euo pipefail` を指定している。`bash -c` は既定では、途中のコマンドが失敗しても次の行に進み、最後の `echo` が 0 を返すとジョブが成功になる。`set -euo pipefail` があるので、`activationPackage` のビルド、`herdr-claude-hook-entries` と `herdr-ctx` の検査、WSL のプロファイルのビルド、`./result/activate` のどれかが失敗すると、スクリプトはそこで止まり、`verify-docker` ジョブが失敗する（[#813](https://github.com/music-brain88/dotfiles/pull/813) のレビューで見つかった）。
+コンテナの中で走る `bash -c` のスクリプトは、既定では途中のコマンドが失敗しても次の行に進み、最後の `echo` が 0 を返すとジョブが成功になる。そのため、検査の 2 行(`herdr-claude-hook-entries` と `herdr-ctx` の `nix build .#checks...`)にだけ `|| exit 1` を付けて、検査が落ちたら `verify-docker` ジョブが失敗するようにしている。ほかの行(`activationPackage` のビルド、WSL のプロファイルのビルド、`./result/activate`)は、失敗しても止まらないままである（[#813](https://github.com/music-brain88/dotfiles/pull/813) のレビューで見つかった）。
 
 ```dockerfile
 USER archie
