@@ -28,7 +28,7 @@ nix build .#homeConfigurations.$profile.activationPackage
 """
 
 [tasks."nix:check"]
-description = "Run flake checks (format, lint)"
+description = "Run flake checks (builds them too: hook entries, tools/ unit tests in the Nix sandbox)"
 run = "nix flake check"
 
 [tasks."nix:update"]
