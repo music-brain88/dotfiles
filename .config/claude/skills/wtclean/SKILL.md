@@ -25,11 +25,11 @@ description: "マージ済み PR に対応する worktree / workspace / ロー�
 ### 2. マージ済み PR の head ブランチ一覧を取得
 
 ```bash
-gh pr list --state merged --limit 50 --json number,headRefName,title
+gh pr list --state merged --limit 50 --json number,headRefName,headRefOid,title
 ```
 
 **Constraints:**
-- **MUST**: 上記コマンドでマージ済み PR の head ブランチ一覧を取得する
+- **MUST**: 上記コマンドでマージ済み PR の head ブランチ一覧を取得する。`headRefOid`(マージ済み PR の head のコミット)は、手順 3b が worktree を持たないブランチの先頭コミットと照合するために使う
 
 ### 3. worktree との突き合わせ
 
@@ -37,11 +37,43 @@ gh pr list --state merged --limit 50 --json number,headRefName,title
 
 **Constraints:**
 - **MUST**: `herdr worktree list --cwd <repo-root>` と `git worktree list` の結果を突き合わせて、マージ済みブランチに対応する worktree を特定する(`--cwd` を省略するとフォーカス中 workspace のリポジトリが返り、複数リポジトリ並行時に別リポジトリの一覧と突き合わせてしまう — 2026-07-12 copilot-quorum セッションで実機確認)
-- **MUST**: マージ済みブランチに対応する worktree が1つもなければ「掃除対象なし」と報告して終了する
+- **MUST**: マージ済みブランチに対応する worktree が1つもなく、手順 3b の対象も無ければ「掃除対象なし」と報告して終了する(手順 3b の対象がある場合は、worktree が1つも無くても終了せず、手順 3b に進む)
+
+### 3b. worktree を持たないマージ済みローカルブランチ
+
+`/wt` を使わず本体の作業ツリーで直接切ったブランチは、worktree も workspace も持たない。手順 3 は worktree から対象を探すので、これらのブランチは手順 3 の対象にならず、PR がマージされてもローカルに残り続ける(Issue #809)。このため、worktree を持たないマージ済みローカルブランチも掃除の対象にする。
+
+対象候補は、次のコマンドで探す(手順 2 の出力を `merged_json` に入れておく)。
+
+```bash
+merged_json=$(gh pr list --state merged --limit 50 --json number,headRefName,headRefOid,title)
+current=$(git branch --show-current)
+wt_branches=$(git worktree list --porcelain | sed -n 's|^branch refs/heads/||p')
+git for-each-ref --format='%(refname:short) %(objectname)' refs/heads | while read -r br oid; do
+  grep -qxF -- "$br" <<<"$wt_branches" && continue          # worktree を持つブランチは手順 3 と手順 4 が扱う
+  pr=$(jq -r --arg b "$br" --arg o "$oid" '[.[] | select(.headRefName == $b)] | ((map(select(.headRefOid == $o))[0]) // .[0]) | if . then "\(.number) \(.headRefOid)" else empty end' <<<"$merged_json")
+  [ -z "$pr" ] && continue                                   # マージ済み PR の head ブランチではない
+  read -r pr_number pr_oid <<<"$pr"
+  [ "$br" = "$current" ] && { echo "skip: $br (現在のブランチ)"; continue; }
+  [ "$(gh pr list --state open --head "$br" --json number --jq length)" != 0 ] && { echo "skip: $br (open PR あり)"; continue; }
+  [ "$oid" = "$pr_oid" ] || { echo "skip: $br (ローカルにしか無いコミットあり)"; continue; }
+  echo "candidate: $br (PR #$pr_number)"
+done
+```
+
+出力の `candidate:` の行が手順 3b の対象であり、`skip:` の行は理由付きで手順 5 のスキップ対象に回す。worktree を持つブランチは、このコマンドが何も出力せずに飛ばす。それらは手順 3 の対象であり、手順 4 の安全チェックを通れば削除対象になるので、手順 3b の `skip:` として扱ってはならない。同じ名前のマージ済み PR が複数あるとき(ブランチ名の使い回しなど)、コマンドは、ローカルの先頭コミットと `headRefOid` が一致する PR を選んで `candidate:` に出し、どの PR とも一致しないときだけ `skip:` に出す。
+
+**Constraints:**
+- **MUST**: `git for-each-ref refs/heads` で得たローカルブランチのうち、手順 2 のマージ済み PR の head ブランチと名前が一致し、worktree を持たない(`git worktree list --porcelain` の `branch` 行に現れない)ものを対象候補にする
+- **MUST**: 各候補について、ローカルブランチの先頭コミットがマージ済み PR の `headRefOid` と一致することを確認する。同じ名前のマージ済み PR が複数あるときは、そのうち 1 本でも `headRefOid` が先頭コミットと一致すれば一致とみなし、どの PR とも一致しないときだけ「ローカルにしか無いコミットがある」としてスキップする(一致は、ブランチの全コミットがマージ済み PR に含まれていたことを示す。名前の一致だけでは、PR のマージ後にローカルで積んだコミットを見逃す)
+- **MUST**: 現在チェックアウト中のブランチと、open PR が紐づくブランチ(`gh pr list --state open --head <branch>` が空でないもの)はスキップする
+- **MUST**: 手順 7 では、これらのブランチに `git branch -d` だけを実行する(worktree と workspace の削除は無い)
+- **MUST**: `git fetch --prune` を実行する場合は、手順 7 の `git branch -d` をすべて終えた後にする。先に実行すると追跡参照が消え、squash マージ済みのブランチを `git branch -d` が拒否する(詳細: Troubleshooting「worktree を持たないブランチと git fetch --prune の順序」参照)
+- **SHOULD**: 手順 2 の `--limit 50` より古い PR のブランチは、マージ済み PR の一覧に出ないので対象候補にならない。ローカルに残っているのに候補に出ないブランチがあれば、一覧の件数の上限が原因でありうると、手順 5 の提示に添える
 
 ### 4. 各対象の安全チェック
 
-各 worktree について以下をすべて確認する。1つでも引っかかったらその worktree はスキップし、理由付きで報告リストに回す(削除はしない)。
+各 worktree について以下をすべて確認する。1つでも引っかかったらその worktree はスキップし、理由付きで報告リストに回す(削除はしない)。手順 3b の対象は worktree も workspace も持たないので、未コミット変更とエージェント稼働中の確認は当てはまらない。手順 3b の対象に行う安全チェックは、手順 3b で済ませた先頭コミットの一致と、open PR が紐づいていないことの確認である。
 
 **Constraints:**
 - **MUST**: 未コミット変更がないこと(worktree 内で `git status --short` が空であること)を確認する
@@ -56,12 +88,13 @@ gh pr list --state merged --limit 50 --json number,headRefName,title
 
 **Constraints:**
 - **MUST**: 削除対象・スキップ対象(理由付き)の一覧をユーザーに提示する
+- **MUST**: 手順 3b の対象は、worktree を持つ対象とは別の枠に「worktree を持たないブランチ(先頭コミットがマージ済み PR の head と一致を確認済み。削除は `git branch -d` のみ)」と明示して提示する。ユーザーが、worktree の削除を伴わない対象であることを読み取れるようにする
 - **MUST**: dry-run(デフォルト)ではここで終了し、「実行するには確認してね」と伝える
 - **MUST**: ユーザーが削除を承認した場合のみ、次の手順に進む
 
 ### 6. 知見の回収(供養)
 
-削除が承認されたら、実際に `herdr worktree remove` を実行する**前**に、各対象 worktree の pane ログから摩擦・回避策を抽出する。対話プロトコル(`/wt` 手順5、#332)の4本柱のうち「供養」にあたる工程で、worktree を消す前に知見を回収する。
+削除が承認されたら、実際に `herdr worktree remove` を実行する**前**に、各対象 worktree の pane ログから摩擦・回避策を抽出する。対話プロトコル(`/wt` 手順5、#332)の4本柱のうち「供養」にあたる工程で、worktree を消す前に知見を回収する。手順 3b の対象は workspace も作業者の pane も持たないので、供養の対象に含めない(読む pane が無い)。報告には「worktree を持たないため供養の対象外」と書く。
 
 対象 worktree の pane を特定する(`herdr worktree list --cwd <repo-root>` で得た `open_workspace_id` を使う):
 
@@ -102,13 +135,27 @@ git branch -d <branch>
 git worktree prune
 ```
 
+手順 3b の対象(worktree を持たないブランチ)には、`herdr worktree remove` を実行せず、`git branch -d` だけを実行する。削除の直前に、ブランチが存在することと、先頭コミットが手順 3b で確かめた `headRefOid` のままであることを再検証する(手順 3b の確認から削除までの間に、ローカルで積まれたコミットを巻き込まないためである)。
+
+```bash
+git branch -d <branch>
+```
+
+`git branch -d` が `is not fully merged` で拒否した手順 3b のブランチは、司令塔が `-D` で消さない。squash マージのブランチは main の祖先にならず、`git branch -d` は追跡参照(`origin/<branch>`)へのマージを根拠に通るので、追跡参照がすでに消えている(`git fetch --prune` の後など)と拒否される。拒否されたブランチは削除せずに残し、すべての削除を終えた後に、先頭コミットが `headRefOid` と一致することを確かめたブランチだけを並べた次の 1 行を、ユーザーが自分で実行するものとして提示して終える(一致を確かめていないブランチは、この 1 行に含めない)。
+
+```bash
+git branch -D <branch1> <branch2> ...
+```
+
 **Constraints:**
 - **MUST**: 承認された各対象について `herdr worktree remove --workspace <workspace-id>` と `git branch -d <branch>` を実行する
 - **MUST**: 各対象の削除直前に worktree パスとブランチの存在を個別に再検証する。他セッションが `herdr worktree remove` を済ませ `git branch -d` を未実行の窓ではパスのみ消失してブランチが残ることがあるため、パスが消えていてもブランチが存在する限り `git branch -d` は試みる。両方消えている場合のみ「他セッションが掃除済み」としてスキップし、結果報告にその旨を含める(エラーとして扱わない)
 - **MUST**: `herdr worktree remove --workspace <workspace-id>`(内部で実行される `git worktree remove` 由来のエラーを含む)/ `git branch -d` の「対象なし」系エラー(`not a working tree` / `branch not found`)は、並行掃除の痕跡として握りつぶさず報告に記録する
 - **MUST**: 最後にまとめて `git worktree prune` を実行する
 - **MUST**: `git branch -d` を使う(merged 確認済みのため)
-- **MUST NOT**: `-D` は使わない
+- **MUST NOT**: `-D` は使わない。手順 3b のブランチを `git branch -d` が拒否した場合も同じで、司令塔は実行せず、上のとおりユーザーが打つ `git branch -D <branch>...` の 1 行を提示して終える
+- **MUST**: 手順 3b の対象には `herdr worktree remove` と `git worktree prune` を適用せず、`git branch -d` だけを実行する。実行の直前に、先頭コミットが `headRefOid` のままであることを再検証する
+- **MUST**: `git fetch --prune` は、手順 3b の対象を含むすべての `git branch -d` を終えた後にだけ実行する
 - **MUST**: `git branch -d` が「not yet merged to HEAD」警告を出した場合はローカル main を更新してから再実行する(それでも `-D` にはエスカレートしない。詳細: Troubleshooting「git branch -d の not yet merged to HEAD 警告」参照)
 
 ### 8. 結果の報告
@@ -116,8 +163,9 @@ git worktree prune
 以下を一覧で報告する:
 
 **Constraints:**
-- **MUST**: 削除したもの(ブランチ名 / worktree パス / workspace ID)を報告する
-- **MUST**: スキップしたもの(理由付き: 未コミット変更あり、エージェント稼働中、open PR あり、など)を報告する
+- **MUST**: 削除したもの(ブランチ名 / worktree パス / workspace ID)を報告する。手順 3b の対象は、worktree パスと workspace ID が無いので、ブランチ名だけを「worktree を持たないブランチ」として別に挙げる
+- **MUST**: スキップしたもの(理由付き: 未コミット変更あり、エージェント稼働中、open PR あり、先頭コミットが `headRefOid` と不一致、現在のブランチ、など)を報告する
+- **MUST**: 手順 3b のブランチを `git branch -d` が拒否した場合は、残したブランチ名と、ユーザーが自分で実行する `git branch -D <branch>...` の 1 行を報告する(先頭コミットの一致を確かめたブランチだけを並べる)
 - **MUST**: 回収した知見 / Issue 候補を報告する(worktree ごとに要約。該当なしなら「知見なし」)
 
 ### 9. 収穫ステップ(蒸留パイプライン Hot lane)
@@ -175,6 +223,11 @@ PR の番号だけではリポジトリが決まらない。そこでスクリ�
 
 ### git branch -d の not yet merged to HEAD 警告
 squash マージ運用ではマージされたブランチのコミットが main の履歴に直接は含まれないため、ローカル main が最新であってもこの警告は出る(ローカル main の遅延が原因とは限らない)。手順2で origin(の同名ブランチ)へのマージは確認できているので、`git branch -d` が upstream 追跡ブランチへのマージ済みと判定すれば、警告付きで削除は成功する。この場合は警告を無視してよい。`-d` が実際に拒否された(削除されなかった)場合のみ、ローカル main を更新してから再実行する(それでも `-D` にはエスカレートしない)。更新方法: main をチェックアウト中のリポジトリでは `git fetch origin main:main` は拒否されるため、`git fetch origin` してから `git merge --ff-only origin/main`(または `git pull --ff-only`)で更新する。それでも拒否される場合は削除を中止してユーザーに報告する。
+
+### worktree を持たないブランチと git fetch --prune の順序
+手順 3b のブランチ(worktree を持たないマージ済みローカルブランチ)は、`git fetch --prune` が先に走ると `git branch -d` で消せなくなる。このリポジトリは squash マージなので、ブランチのコミットは main の祖先にならない(`git merge-base --is-ancestor <branch> main` が偽になる)。それでも `git branch -d` が通るのは、ブランチの upstream の追跡参照(`origin/<branch>`)へのマージ済みと判定できるからである。GitHub はマージ時に head ブランチを自動で削除するので、その後に `git fetch --prune` を実行すると追跡参照も消え、`git branch -d` は `is not fully merged` で拒否する。直接原因は追跡参照の消失であり、根本原因は、squash マージが「マージ済み」の根拠をブランチの履歴ではなく追跡参照に預けていることである。
+
+2026-11-14 の実測では、別のリポジトリでその日にマージした 4 本のブランチは追跡参照が残っていたので `git branch -d` で削除できた。同じリポジトリに 7 月から残っていた 10 本は追跡参照が無く、`git merge-base --is-ancestor` が 10 本とも偽で、`git branch -d` が拒否する状態だった(Issue #809)。14 本とも、ローカルブランチの先頭コミットはマージ済み PR の `headRefOid` と一致していた。手順 3b が `git branch -d` を `git fetch --prune` より先に実行させるのは、追跡参照が消える前に掃除するためである。すでに追跡参照が消えたブランチは、先頭コミットが `headRefOid` と一致することを確かめたうえで、ユーザーが自分で `git branch -D` を実行する(司令塔は `-D` を使わない)。
 
 ### 並行 /wtclean のレース(複数司令塔)
 同一リポジトリで複数の司令塔セッションが /wtclean を並行実行すると、dry-run で提示した
