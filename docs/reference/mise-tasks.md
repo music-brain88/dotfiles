@@ -17,11 +17,16 @@ mise tasks
 |------|-------------|---------------------|
 | `mise run nix:build` | Home Manager 設定をビルド (profile 自動判別) | `nix build .#homeConfigurations.<profile>.activationPackage` |
 | `mise run nix:switch` | ビルド＆アクティベート (profile 自動判別) | build + `./result/activate` |
-| `mise run nix:check` | Flake チェック実行 | `nix flake check` |
+| `mise run nix:check` | Flake チェック実行 (ビルドが要る検査と、道具のテストを含む) | `nix flake check` |
 | `mise run nix:update` | Flake inputs を更新 | `nix flake update` |
 | `mise run nix:gc` | 古い世代をガベージコレクト | `nix-collect-garbage -d` |
 
-`nix:check` は、flake の `checks` 出力もビルドして実行する。いまの検査は、herdr の Claude Code 用フックを呼ぶ hooks のエントリが、herdr のインストーラの生成物とずれていないかを見る `checks.herdr-claude-hook-entries` である。CI の `check` ジョブは `nix flake check --no-build` なのでこの検査を実行しないが、`verify-docker` ジョブが同じ検査をビルドして実行する。手元でこのタスクを実行すると、PR を出す前にずれに気づける（[nix-modules.md の「Claude Code の pane の復元」](./nix-modules.md#claude-code-の-pane-の復元)、[#755](https://github.com/music-brain88/dotfiles/issues/755)）。
+`nix:check` は、flake の `checks` 出力もビルドして実行する。いまの検査は次の 2 つである。
+
+- `checks.herdr-claude-hook-entries`: herdr の Claude Code 用フックを呼ぶ hooks のエントリが、herdr のインストーラの生成物とずれていないかを見る（[nix-modules.md の「Claude Code の pane の復元」](./nix-modules.md#claude-code-の-pane-の復元)、[#755](https://github.com/music-brain88/dotfiles/issues/755)）。
+- `checks.herdr-ctx`: `tools/herdr-ctx` をビルドし、`package.nix` の `doCheck = true` で動く `cargo test` を Nix のサンドボックスの中で走らせる。`packages` に置いただけでは `nix flake check` が評価しかしないので、手元ではテストが走らなかった（[#807](https://github.com/music-brain88/dotfiles/issues/807)）。`herdr-ctx` のソースを変えた後の最初の 1 回だけ、Rust のビルドの分だけ遅くなる。
+
+CI の `check` ジョブは `nix flake check --no-build` なのでこれらの検査を実行しないが、`verify-docker` ジョブが同じ検査をビルドして実行する。手元でこのタスクを実行すると、PR を出す前にずれやテストの失敗に気づける。
 
 `nix:build` と `nix:switch` は、profile を `uname -r` から自動判別する。WSL カーネル (`microsoft` を含む) なら `archie-wsl` を使い、それ以外なら `archie` を使う。そのため、両マシンで実行するコマンドは同一である。
 

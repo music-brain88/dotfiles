@@ -38,17 +38,19 @@ changes ─┬─→ build-image ─┬─→ verify-docker
 | **changes** | — | 変更ファイルを判定し、下流ジョブの実行要否を `code` 出力で返す。`*.md` / `docs/` / `llm/` / `LICENSE` / `.gitignore` 以外に変更があれば `code=true`。base SHA が取れない場合（force push・ブランチ新規作成等）は安全側に倒して `code=true` |
 | **build-image** | `changes` | Docker イメージをビルドしてGHCRにプッシュ（レイヤーキャッシュ。`build-docker-image.yml` を `workflow_call` で呼び出し） |
 | **check** | `changes` | 軽量チェック（Nix を入れた後に shellcheck、`nix flake check --no-build`、フォーマット検証） |
-| **verify-docker** | `changes`, `build-image`, `check` | Arch Linux コンテナ内でビルド＆アクティベーション実行。ビルドが要る flake の `checks`(`herdr-claude-hook-entries`)もここで実行する |
+| **verify-docker** | `changes`, `build-image`, `check` | Arch Linux コンテナ内でビルド＆アクティベーション実行。ビルドが要る flake の `checks`(`herdr-claude-hook-entries` と `herdr-ctx`)もここで実行する |
 
 - `build-image` と `check` はどちらも `needs: changes` のみなので**並列実行**される。`verify-docker` は両方の完了を待つ。
 - `changes` 以外の3ジョブは `if: needs.changes.outputs.code == 'true'` を持ち、docs 等のみの変更では skip される。skip されたジョブは required status checks 上は成功扱いになる。
 - トリガーに `paths-ignore` を使わずこの構成にしているのは、トリガー段階で workflow を止めるとチェックが一切報告されず、PR が「Expected — waiting for status」のままマージ不能になるためである（[#312](https://github.com/music-brain88/dotfiles/issues/312)）。
-- `check` ジョブの `nix flake check --no-build` は、flake の `checks` 出力を評価するだけで、ビルドも実行もしない。そのため、herdr の Claude Code 用フックのエントリの検査 `checks.herdr-claude-hook-entries` は、`verify-docker` ジョブがコンテナの中で `nix build .#checks.x86_64-linux.herdr-claude-hook-entries` として実行する。フックは直前の `archie` のビルドで出来ているので、この検査で増える依存は jq だけである。docs だけの変更では `verify-docker` が skip されるので、検査も走らない。`flake.lock` の更新 PR は docs だけの変更ではないので、検査が走る（[nix-modules.md の「Claude Code の pane の復元」](./nix-modules.md#claude-code-の-pane-の復元)、[#755](https://github.com/music-brain88/dotfiles/issues/755)）。
+- `check` ジョブの `nix flake check --no-build` は、flake の `checks` 出力を評価するだけで、ビルドも実行もしない。そのため、herdr の Claude Code 用フックのエントリの検査 `checks.herdr-claude-hook-entries` は、`verify-docker` ジョブがコンテナの中で `nix build .#checks.x86_64-linux.herdr-claude-hook-entries` として実行する。フックは直前の `archie` のビルドで出来ているので、この検査で増える依存は jq だけである。同じ理由で、`tools/herdr-ctx` のビルドと `doCheck` のテストを実行する `checks.herdr-ctx` も、`verify-docker` ジョブが `nix build .#checks.x86_64-linux.herdr-ctx` として実行する。`herdr-ctx` は直前の `archie` のビルドで出来ているので、この行で時間はほぼ増えない（[#807](https://github.com/music-brain88/dotfiles/issues/807)）。docs だけの変更では `verify-docker` が skip されるので、検査も走らない。`flake.lock` の更新 PR は docs だけの変更ではないので、検査が走る（[nix-modules.md の「Claude Code の pane の復元」](./nix-modules.md#claude-code-の-pane-の復元)、[#755](https://github.com/music-brain88/dotfiles/issues/755)）。
 - `check` ジョブの shellcheck は、runner にプリインストールされた版ではなく、`flake.lock` が固定する nixpkgs の版で走る。ジョブは flake の app を `nix run .#shellcheck` で呼び、app は版を表示してから `git ls-files '*.sh' | xargs --no-run-if-empty shellcheck` を実行する。手元では `mise run lint:shellcheck` が同じ app を呼ぶので、手元と CI で版と対象が一致する。mise が無い環境では `nix run .#shellcheck` を直接実行すればよい（[#665](https://github.com/music-brain88/dotfiles/issues/665)）。
 
 ### Container Configuration
 
 コンテナは `archie` ユーザーで実行され、Home Manager設定との整合性を保つ。
+
+コンテナの中で走る `bash -c` のスクリプトは、既定では途中のコマンドが失敗しても次の行に進み、最後の `echo` が 0 を返すとジョブが成功になる。そのため、検査の 2 行(`herdr-claude-hook-entries` と `herdr-ctx` の `nix build .#checks...`)にだけ `|| exit 1` を付けて、検査が落ちたら `verify-docker` ジョブが失敗するようにしている。ほかの行(`activationPackage` のビルド、WSL のプロファイルのビルド、`./result/activate`)は、失敗しても止まらないままである（[#813](https://github.com/music-brain88/dotfiles/pull/813) のレビューで見つかった）。
 
 ```dockerfile
 USER archie

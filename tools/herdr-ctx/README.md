@@ -181,6 +181,8 @@ WSL 機で systemd の user session が動いていないときは、home-manage
 
 ## 確かめ方
 
+`herdr-ctx` のテストは、`mise run nix:check` でも走る。`flake.nix` の `checks.herdr-ctx` が `herdr-ctx` をビルドし、`package.nix` の `doCheck = true` の `cargo test` を Nix のサンドボックスの中で走らせるからである。サンドボックスの中でだけ落ちるテスト（PATH に頼る偽のコマンドなど）は、`cargo test` だけでは見つからない。`herdr-ctx` のソースを変えた後の最初の 1 回だけ、Rust のビルドの分だけ遅くなる。
+
 `mise run nix:switch` の後に、次の 5 つを確かめる。
 
 1. `herdr-ctx list --table` の pct が、各 pane の statusline の `💭` の値と一致する。一致を見るには、対象の agent が switch の後に 1 ターン以上動いて、sidecar が書かれている必要がある。
@@ -196,6 +198,7 @@ cd tools/herdr-ctx
 cargo test                       # 単体テスト + tests/cli.rs(偽の herdr と偽の gh で終了コードと出力を確かめる)
 cargo run -- list --table
 nix build .#herdr-ctx            # dotfiles のルートで実行する
+mise run nix:check               # dotfiles のルートで実行する。checks.herdr-ctx が、Nix のサンドボックスの中で cargo test を走らせる
 bash .config/claude/scripts/tests/statusline_sidecar_test.sh   # dotfiles のルートで実行する。sidecar の中身を確かめる
 ```
 

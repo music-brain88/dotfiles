@@ -310,17 +310,27 @@
       # `nix flake check --no-build` なので、評価だけして中身は実行しない。
       # Checks run by `nix flake check` (`mise run nix:check`). The CI check job uses
       # `nix flake check --no-build`, which evaluates them without running them.
-      checks.${system}.herdr-claude-hook-entries = pkgs.runCommand "herdr-claude-hook-entries"
-        {
-          nativeBuildInputs = [ pkgs.jq ];
-        } ''
-        # 手書きのエントリが、herdr のインストーラが生成したエントリとずれていないかを見る (Issue #755)
-        # Fail when the hand-written entry drifts from the one herdr's installer generates (Issue #755)
-        bash ${./nix/checks/herdr_claude_hook_entries.sh} \
-          ${pkgs.herdr-claude-hook}/settings.json \
-          ${./.config/claude/settings.json}
-        touch "$out"
-      '';
+      checks.${system} = {
+        herdr-claude-hook-entries = pkgs.runCommand "herdr-claude-hook-entries"
+          {
+            nativeBuildInputs = [ pkgs.jq ];
+          } ''
+          # 手書きのエントリが、herdr のインストーラが生成したエントリとずれていないかを見る (Issue #755)
+          # Fail when the hand-written entry drifts from the one herdr's installer generates (Issue #755)
+          bash ${./nix/checks/herdr_claude_hook_entries.sh} \
+            ${pkgs.herdr-claude-hook}/settings.json \
+            ${./.config/claude/settings.json}
+          touch "$out"
+        '';
+
+        # herdr-ctx をビルドして、package.nix の doCheck = true の cargo test を Nix のサンドボックスの中で走らせる。
+        # `packages` だけでは `nix flake check` が評価しかしないので、手元の `mise run nix:check` ではテストが走らない (Issue #807)。
+        # tools/ の下に道具を足すときは、同じ形でここにも足す。
+        # Build herdr-ctx so `cargo test` (doCheck = true in package.nix) runs inside the Nix sandbox.
+        # `nix flake check` only evaluates `packages`, so `mise run nix:check` never ran the tests locally (Issue #807).
+        # When adding a tool under tools/, add it here in the same shape.
+        herdr-ctx = pkgs.herdr-ctx;
+      };
 
       # shellcheck の入口: CI と mise の lint:shellcheck の両方がこれを呼ぶ (#665)。
       # 版の正は flake.lock の nixpkgs。runner や手元の PATH の shellcheck は使わない。
