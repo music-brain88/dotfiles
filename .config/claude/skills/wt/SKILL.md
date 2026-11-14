@@ -88,7 +88,7 @@ worktree 作成直後に以下を行う:
 
 #### GPG パスフレーズキャッシュの事前チェック
 
-worker はコミット時に GPG 署名で詰まりやすい(worker pane は tty を持たず pinentry を表示できない構造的制約。詳細: Troubleshooting「GPG 署名コミットは worker pane から pinentry を出せない」参照)。委任前にキャッシュの有無を確認し、冷えていれば温めておく。
+worker はコミット時に GPG 署名で詰まりやすい(worker pane は tty を持たず pinentry を表示できない構造的制約。詳細: Troubleshooting「GPG 署名コミットは worker pane から pinentry を出せない」参照)。委任前に、pinentry なしで署名できるかを確認し、できなければキャッシュを温めておく。
 
 ```bash
 bash ~/.claude/skills/wt/gpg_cache_check.sh
@@ -98,14 +98,15 @@ bash ~/.claude/skills/wt/gpg_cache_check.sh
 
 | stdout | 終了コード | 意味 |
 |--------|-----------|------|
-| `cached=1` | 0 | 署名鍵のパスフレーズがキャッシュされている |
-| `cached=0` | 1 | キャッシュされていない(冷えている) |
-| (なし) | 2 | 署名鍵を特定できない、または gpg-agent に問い合わせられない。理由は stderr に出る |
+| `cached=1` | 0 | pinentry を出さない設定の試しの署名が通った(worker の署名コミットも通る) |
+| `cached=0` | 1 | 試しの署名が失敗した(パスフレーズが要る、鍵が無いなど)。gpg の理由は stderr に出る |
+| (なし) | 2 | `user.signingkey` が設定されていない、gpg を実行できない、または試しの署名が時間切れになった。理由は stderr に出る |
 
 **Constraints:**
-- **MUST**: キャッシュの確認は同梱スクリプト `gpg_cache_check.sh` で行い、keygrip の特定や KEYINFO の読み取りを SKILL.md の本文や司令塔の手書きのワンライナーで行わない。Claude Code は skill を引数つきで呼ぶと、本文にある位置引数の形(ドル記号と数字)を引数の語に置き換えるため、本文に書いた awk は呼び方次第で壊れる(#666)。スクリプトのファイルは置き換えの対象にならない
-- **MUST**: スクリプトは署名鍵を次の手順で特定する: `git config user.signingkey` で鍵 ID を取得し、`gpg --list-secret-keys --with-keygrip` の出力から同じ鍵に属する `[S]` フラグ付きサブキー(ssb)行の直後にある `Keygrip` を読む(`user.signingkey` は primary 鍵の ID を指すが、実際の署名には `[S]` サブキーの keygrip が使われるため。実機確認済み)。次に `gpg-connect-agent 'keyinfo --list' /bye` の出力(`S KEYINFO <keygrip> D - - <cached> P - - -` 形式)から keygrip が一致する行を選び、cached の列(7 列目)が `1` かどうかでキャッシュの有無を判定する(実機確認済み)。手順を変えるときはスクリプトとこの説明を一緒に直す
-- **MUST**: 終了コード 2 を受けたら、キャッシュの有無を推測せず、stderr の理由(`user.signingkey` 未設定・[S] サブキーが無い鍵構成など)を添えて「署名鍵を特定できない」とユーザーに報告する。スクリプトは鍵 ID や keygrip が空のとき、agent に問い合わせる前に終了コード 2 で止まる。空の keygrip で照会すると全 KEYINFO 行にマッチし、無関係な鍵の cached フラグを署名鍵のものと誤読しうるため(PR #625 のレビュー指摘)
+- **MUST**: 確認は同梱スクリプト `gpg_cache_check.sh` で行い、司令塔が手書きのワンライナーで判定しない。判定の手順をスクリプトに閉じ込めておけば、手順を直すときに直す場所が 1 か所で済む。以前は SKILL.md の本文に awk を書いていたが、Claude Code は skill を引数つきで呼ぶと、本文にある位置引数の形(ドル記号と数字)を引数の語に置き換えるため、本文の awk は呼び方次第で壊れた(#666)。スクリプトのファイルは置き換えの対象にならない
+- **MUST**: スクリプトは次の手順で判定する: `git config user.signingkey` で署名鍵を取得し、`gpg --batch --pinentry-mode error --clearsign -u <署名鍵> -o /dev/null` を 1 回実行する(標準入力には短い固定の文字列を渡す)。`--pinentry-mode error` は、パスフレーズが要るときに尋ねずに失敗させるので、成否が「pinentry を出せない worker pane で署名が通るか」と一致する。試しの署名は `timeout` で区切り(既定 10 秒。環境変数 `GPG_CACHE_CHECK_TIMEOUT` で変えられる)、出力は `/dev/null` に捨てるので、ファイルは残らず、鍵束と gpg-agent の設定も変わらない。手順を変えるときはスクリプトとこの説明を一緒に直す
+- **MUST**: 以前の判定(gpg-agent の KEYINFO 行のうち `[S]` サブキーの cached の列を読む方式)には戻さない。2026-11-14 の実測で、その列が `-` のまま試しの署名が通り、判定が署名の可否とずれた(#814。経緯は Troubleshooting「keygrip 特定の awk が [E] サブキーを拾ってキャッシュを誤判定する」)
+- **MUST**: 終了コード 2 を受けたら、キャッシュの有無を推測せず、stderr の理由(`user.signingkey` 未設定・gpg が PATH に無い・時間切れなど)を添えて、署名できるかを確かめられなかったとユーザーに報告する。時間切れは gpg-agent が応答していないことを表しうるので、`cached=0` とは別に扱う
 - **SHOULD**: 冷えている(`cached=0`)場合、ユーザーに1回署名(`echo test | gpg --clearsign -o /dev/null`)によるキャッシュ温めを依頼する
 - **MAY**: 温めは委任と並行に進めてよいが、worker がコミットに到達する前に温まっているのが望ましい
 
@@ -655,16 +656,18 @@ herdr pane read <pane-id> --source visible --format ansi | grep -a '❯' | tail 
 再起動などで herdr の agent 名が外れたときの立て直し(自己命名のやり直し・`herdr agent list` での確かめ・pane ID 宛て)は、この節では扱わない(#698 で扱う)。
 
 ### GPG 署名コミットは worker pane から pinentry を出せない
-worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
+worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は、手順4の `gpg_cache_check.sh` で、pinentry を出さない設定の試しの署名が通るか(`cached=1`)を確認できる。gpg-agent の KEYINFO の cached フラグは、署名の可否と一致しないことがあるので、確認には使わない(#814)。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
 
 この詰まりは委任前の事前チェックで予防できる。詳細は手順4「GPG パスフレーズキャッシュの事前チェック」参照。
 
 ### keygrip 特定の awk が [E] サブキーを拾ってキャッシュを誤判定する
 2026-08-31、業務リポジトリ A の /wt 運用で、司令塔が GPG パスフレーズキャッシュの事前チェック(手順4)を実装した際、keygrip 特定の awk が「最初の ssb 行」の Keygrip を拾う形になっていた(#583)。鍵構成が `ssb [E]`(暗号化)→ `ssb [S]`(署名)の順だったため [E] サブキーの keygrip でキャッシュを照会してしまい、実際には温まっていた署名キャッシュを「冷えている(`-`)」と誤判定して、ユーザーに不要なキャッシュ温めを依頼した。SOP の散文(「[S] フラグ付き ssb 行の直後の Keygrip を読む」)は正しく、司令塔が都度書いた awk が仕様を満たしていなかった。[E] が先に並ぶのは gpg の既定出力順で、ssb が複数ある鍵構成では誰でも踏みうる。
 
-誤っていた awk は、[S] フラグを見ずに、最初の ssb 行の後に現れた Keygrip 行の 3 列目を出していた。正しい awk は、`[S]` フラグ付きの ssb 行を見つけてから、その直後の Keygrip 行を読む。どちらの awk も、今は同梱スクリプト `gpg_cache_check.sh` のコメントにだけ載せている(正しい方はスクリプトの本体)。SKILL.md に awk を載せないのは、本文にある位置引数の形が skill の引数で置き換えられて壊れるため(#666。2026-10-04 と 2026-10-05 に観測。2026-10-05 の観測では、置き換えは 0 始まりの語番号で行われ、該当する語が無い番号はそのまま残り、`$HERDR_PANE_ID` のような名前つきの変数は置き換えられなかった)。
+誤っていた awk は、[S] フラグを見ずに、最初の ssb 行の後に現れた Keygrip 行の 3 列目を出していた。正しい awk は、`[S]` フラグ付きの ssb 行を見つけてから、その直後の Keygrip 行を読む。今のスクリプトは試しの署名で判定するので、この awk はどちらも使っていない。どちらの awk も、#814 より前の版の `gpg_cache_check.sh`(git の履歴)にだけ残っている。SKILL.md に awk を載せなかったのは、本文にある位置引数の形が skill の引数で置き換えられて壊れるため(#666。2026-10-04 と 2026-10-05 に観測。2026-10-05 の観測では、置き換えは 0 始まりの語番号で行われ、該当する語が無い番号はそのまま残り、`$HERDR_PANE_ID` のような名前つきの変数は置き換えられなかった)。
 
-正しい手順は、2026-08-31 に WSL2 + ed25519 primary [SC] / cv25519 ssb [E] / ed25519 ssb [S] 構成で、[S] サブキーの keygrip を正しく選択し cached=`1` を返すことを確認済み(2026-09-28 に Arch Linux の同構成でも再確認。2026-10-05 にスクリプト化した版でも同じ構成で `cached=1` を確認)。awk を都度手書きせず、手順4の `bash ~/.claude/skills/wt/gpg_cache_check.sh` を使う。スクリプトは、`user.signingkey` 未設定や [S] サブキーの無い鍵構成で keygrip が空になると、agent に問い合わせる前に終了コード 2 で止まる(空の keygrip で照会すると全 KEYINFO 行にマッチしてしまうため)。[E] が先に並ぶ鍵構成での誤判定は、同梱テスト `tests/gpg_cache_check_test.sh` が回帰として確かめる。
+keygrip で判定していた時期の手順は、2026-08-31 に WSL2 + ed25519 primary [SC] / cv25519 ssb [E] / ed25519 ssb [S] 構成で、[S] サブキーの keygrip を正しく選択し cached=`1` を返すことを確認していた(2026-09-28 に Arch Linux の同構成でも再確認。2026-10-05 にスクリプト化した版でも同じ構成で `cached=1` を確認)。当時のスクリプトは、keygrip が空になると agent に問い合わせる前に終了コード 2 で止まり(空の keygrip で照会すると全 KEYINFO 行にマッチしてしまうため。PR #625 のレビュー指摘)、[E] が先に並ぶ鍵構成での誤判定は同梱テストが回帰として確かめていた。今のテスト `tests/gpg_cache_check_test.sh` は、keygrip と KEYINFO のケースを持たず、試しの署名の成否と終了コードの契約を確かめる。
+
+2026-11-14 には、keygrip を正しく選んでいても判定がずれる事例が起きた(#814)。機械の再起動の後、ユーザーが SSH の認証でパスフレーズを入れた状態で、スクリプトは `cached=0` を返し続けたが、`gpg --batch --pinentry-mode error --clearsign` による試しの署名は終了コード 0 で通った。gpg-agent の KEYINFO 行では、cached の列が `1` だったのは `[A]`(認証用)サブキーだけで、`[S]` サブキーの列は `-` のままだった。`[S]` の列が `-` のまま署名が通る理由は確かめていない(同じパスフレーズを持つ別の鍵のキャッシュを gpg-agent が試している、という推測は未検証である)。この事例で、司令塔はユーザーに不要なキャッシュの温めを 1 回頼んだ。KEYINFO の列は署名の可否を表す保証が無いので、スクリプトは判定を、pinentry を出さない設定の試しの署名に変えた(手順4)。awk を都度手書きせず、手順4の `bash ~/.claude/skills/wt/gpg_cache_check.sh` を使う。
 
 ### pane-id は非永続
 pane-id はセッション中に compact されうる非永続 ID(詳細は `.config/claude/skills/herdr/SKILL.md` 参照)。
