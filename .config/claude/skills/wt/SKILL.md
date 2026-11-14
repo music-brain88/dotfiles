@@ -88,7 +88,7 @@ worktree 作成直後に以下を行う:
 
 #### GPG パスフレーズキャッシュの事前チェック
 
-worker はコミット時に GPG 署名で詰まりやすい(worker pane は tty を持たず pinentry を表示できない構造的制約。詳細: Troubleshooting「GPG 署名コミットは worker pane から pinentry を出せない」参照)。委任前にキャッシュの有無を確認し、冷えていれば温めておく。
+worker はコミット時に GPG 署名で詰まりやすい(worker pane は tty を持たず pinentry を表示できない構造的制約。詳細: Troubleshooting「GPG 署名コミットは worker pane から pinentry を出せない」参照)。委任前に、pinentry なしで署名できるかを確認し、できなければキャッシュを温めておく。
 
 ```bash
 bash ~/.claude/skills/wt/gpg_cache_check.sh
@@ -98,14 +98,15 @@ bash ~/.claude/skills/wt/gpg_cache_check.sh
 
 | stdout | 終了コード | 意味 |
 |--------|-----------|------|
-| `cached=1` | 0 | 署名鍵のパスフレーズがキャッシュされている |
-| `cached=0` | 1 | キャッシュされていない(冷えている) |
-| (なし) | 2 | 署名鍵を特定できない、または gpg-agent に問い合わせられない。理由は stderr に出る |
+| `cached=1` | 0 | pinentry を出さない設定の試しの署名が通った(worker の署名コミットも通る) |
+| `cached=0` | 1 | 試しの署名が失敗した(パスフレーズが要る、鍵が無いなど)。gpg の理由は stderr に出る |
+| (なし) | 2 | `user.signingkey` が設定されていない、gpg を実行できない、`GPG_CACHE_CHECK_TIMEOUT` が正の秒数でない、または試しの署名が時間切れになった。理由は stderr に出る |
 
 **Constraints:**
-- **MUST**: キャッシュの確認は同梱スクリプト `gpg_cache_check.sh` で行い、keygrip の特定や KEYINFO の読み取りを SKILL.md の本文や司令塔の手書きのワンライナーで行わない。Claude Code は skill を引数つきで呼ぶと、本文にある位置引数の形(ドル記号と数字)を引数の語に置き換えるため、本文に書いた awk は呼び方次第で壊れる(#666)。スクリプトのファイルは置き換えの対象にならない
-- **MUST**: スクリプトは署名鍵を次の手順で特定する: `git config user.signingkey` で鍵 ID を取得し、`gpg --list-secret-keys --with-keygrip` の出力から同じ鍵に属する `[S]` フラグ付きサブキー(ssb)行の直後にある `Keygrip` を読む(`user.signingkey` は primary 鍵の ID を指すが、実際の署名には `[S]` サブキーの keygrip が使われるため。実機確認済み)。次に `gpg-connect-agent 'keyinfo --list' /bye` の出力(`S KEYINFO <keygrip> D - - <cached> P - - -` 形式)から keygrip が一致する行を選び、cached の列(7 列目)が `1` かどうかでキャッシュの有無を判定する(実機確認済み)。手順を変えるときはスクリプトとこの説明を一緒に直す
-- **MUST**: 終了コード 2 を受けたら、キャッシュの有無を推測せず、stderr の理由(`user.signingkey` 未設定・[S] サブキーが無い鍵構成など)を添えて「署名鍵を特定できない」とユーザーに報告する。スクリプトは鍵 ID や keygrip が空のとき、agent に問い合わせる前に終了コード 2 で止まる。空の keygrip で照会すると全 KEYINFO 行にマッチし、無関係な鍵の cached フラグを署名鍵のものと誤読しうるため(PR #625 のレビュー指摘)
+- **MUST**: 確認は同梱スクリプト `gpg_cache_check.sh` で行い、司令塔が手書きのワンライナーで判定しない。判定の手順をスクリプトに閉じ込めておけば、手順を直すときに直す場所が 1 か所で済む。以前は SKILL.md の本文に awk を書いていたが、Claude Code は skill を引数つきで呼ぶと、本文にある位置引数の形(ドル記号と数字)を引数の語に置き換えるため、本文の awk は呼び方次第で壊れた(#666)。スクリプトのファイルは置き換えの対象にならない
+- **MUST**: スクリプトは次の手順で判定する: `git config user.signingkey` で署名鍵を取得し、`gpg --batch --pinentry-mode error --clearsign -u <署名鍵> -o /dev/null` を 1 回実行する(標準入力には短い固定の文字列を渡す)。`--pinentry-mode error` は、パスフレーズが要るときに尋ねずに失敗させるので、成否が「pinentry を出せない worker pane で署名が通るか」と一致する。試しの署名は `timeout` で区切り(既定 10 秒。環境変数 `GPG_CACHE_CHECK_TIMEOUT` で、0 より大きい整数か小数の秒数に変えられる。`0` や `--help` のような値を渡すと、`timeout` が期限なしになったり gpg を実行せずに成功したりするので、スクリプトはそれ以外の値を終了コード 2 で拒む)、出力は `/dev/null` に捨てるので、ファイルは残らず、鍵束と gpg-agent の設定も変わらない。手順を変えるときはスクリプトとこの説明を一緒に直す
+- **MUST**: 以前の判定(gpg-agent の KEYINFO 行のうち `[S]` サブキーの cached の列を読む方式)には戻さない。2026-11-14 の実測で、その列が `-` のまま試しの署名が通り、判定が署名の可否とずれた(#814。経緯は Troubleshooting「keygrip 特定の awk が [E] サブキーを拾ってキャッシュを誤判定する」)
+- **MUST**: 終了コード 2 を受けたら、キャッシュの有無を推測せず、stderr の理由(`user.signingkey` 未設定・gpg が PATH に無い・時間切れなど)を添えて、署名できるかを確かめられなかったとユーザーに報告する。時間切れは gpg-agent が応答していないことを表しうるので、`cached=0` とは別に扱う
 - **SHOULD**: 冷えている(`cached=0`)場合、ユーザーに1回署名(`echo test | gpg --clearsign -o /dev/null`)によるキャッシュ温めを依頼する
 - **MAY**: 温めは委任と並行に進めてよいが、worker がコミットに到達する前に温まっているのが望ましい
 
@@ -342,8 +343,12 @@ herdr agent prompt <agent-name> "<追加指示のテキスト>"
 - **MUST**: pending テキストが placeholder か実入力かは次の基準で判別する。placeholder の特徴は、(a) worker のターン終了直後に出現し、内容が worker の最終出力の続きとして自然である(例: 最終報告で PR を作った直後の「CI 終わったら報告して」「PRのマージをお願い」)、(b) 【相談】【報告】プレフィックスが無い、(c) 時間を置いて `herdr pane read <pane-id> --source visible` を取り直すと内容が変わるか消える、の 3 点である。実入力の特徴は、ターンをまたいでも同じ文言が残ること、ユーザーが在席していることの 2 点である。placeholder と判別できたテキストは置換してよく、そのまま `agent prompt` を送る。ユーザーへの確認は判別に迷う場合に限る。ユーザーが不在で判別できない場合は placeholder とみなして送ってよいが、送る前に置換で消える文言を司令塔のログ(会話内の出力)にそのまま書き残し、実入力だった場合にユーザーが復元できるようにする
 - **SHOULD**: placeholder と実入力の判別は、まず `herdr pane read <pane-id> --source visible --format ansi | grep -a '❯' | tail -1 | cat -v` で ANSI 属性を見て機械的に行う(pane-id は `herdr agent get <agent-name>` で引く)。Claude Code は placeholder を dim(SGR 2)で描画し、herdr の ANSI 出力はそれを `\e[2m` のまま返すため、`❯` の後ろに続く SGR 0 のリセット(`^[[0m`)を読み飛ばし、その次が `^[[2m` で始まる薄字だけなら placeholder であり(実測では `❯ ^[[0m^[[2m<文言>` の形)、SGR の付かない文字が続けば実入力である(Claude Code 2.1.289 + herdr 0.9.1 で実測。詳細: Troubleshooting「agent prompt がユーザー由来の pending テキストを置換で消しうる」参照)。ターン終了後のプロンプト候補のほか、起動直後の例文(`Try "..."`)や、キューに入ったメッセージの案内(`Press up to edit queued messages`)も同じ dim の placeholder である。ANSI 属性で判別できた場合は、上記 (c) の時間を置いた取り直しを省いてよい。Claude Code や herdr の版上げで描画が変わり、ANSI 出力に `\e[2m` が見当たらなくなった場合は、上記 (a)〜(c) の基準に戻る
 - **MUST**: `agent prompt` 送信後は `herdr agent get <agent-name>` で `working` へ遷移したことを確認する。コマンドは `agent_prompted` を正常に返すが、それだけでは submit の成否を判定できない(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)。遷移せずテキストが入力欄に残っている場合は、`herdr agent read` で pane の状態(メニュー非表示であること。上記 Constraint 参照)を確認したうえで `herdr pane send-keys <pane-id> Enter` で submit する(pane-id は `herdr agent get <agent-name>` で引く)
-- **MUST**: レビュー差し戻し等、委任後に追加の作業ラウンドを送る前に、`herdr agent get <agent-name>` で pane-id を引いたうえで `herdr pane read <pane-id> --source visible` を実行し、末尾行の pane 下部ステータスラインで context 使用率(💭 n%)を確認する。50% を超えている場合は追加ラウンドを送らず、(a) 司令塔が直接対応する、(b) 新 worker へ引き継ぐ(引き継ぎブリーフ = 元ブリーフ + ここまでの成果物参照(PR URL / コミット)+ 残作業のみ。引き継ぎ指示・HANDOFF.md・後任ブリーフの具体手順は手順8「引き継ぎモード」参照)、のいずれかを選ぶ。ユーザーより先に司令塔が検知すべきシグナルであり、閾値超過を検知したら対応方針とあわせてユーザーに報告する(詳細: Troubleshooting「レビュー差し戻しラウンドによる worker context の逼迫」参照)
-- **MUST**: pane 幅が狭くステータスラインが `…` で切り詰められ 💭 の値が読めない場合、herdr CLI に幅非依存で context 使用率を取得できる経路は無い(実機調査済み。詳細: Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)。読めない場合は使用率を推測で埋めず、保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す
+- **MUST**: レビュー差し戻し等、委任後に追加の作業ラウンドを送る前に、司令塔は `herdr-ctx list` の出力から対象の worker の行を `name` で選び、context 使用率の `pct` が 50 未満であることを確かめる。境界の 50 は、`herdr-ctx self` が worker に引き継ぎの助言を出す条件(50% 以上)と同じ側に置いている。コマンドは `herdr-ctx list | jq -c 'select(.name == "<agent-name>") | {pct, stale, session_match, note}'` で、出力は `{"pct":20,"stale":false,"session_match":true,"note":null}` の形の 1 行になる。行を `name` で選ぶのは、herdr が同じ名前の agent を `agent_name_taken` で拒むので名前で 1 行に決まり、非永続の `pane_id` と違って `herdr agent get` で引き直さずに済むからである(`herdr-ctx list` の鍵と値が欠けるときの出力は `tools/herdr-ctx/README.md` の「### list」参照)。50% 以上の場合は追加ラウンドを送らず、(a) 司令塔が直接対応する、(b) 新 worker へ引き継ぐ(引き継ぎブリーフ = 元ブリーフ + ここまでの成果物参照(PR URL / コミット)+ 残作業のみ。引き継ぎ指示・HANDOFF.md・後任ブリーフの具体手順は手順8「引き継ぎモード」参照)、のいずれかを選ぶ。ユーザーより先に司令塔が検知すべきシグナルであり、使用率が閾値に達したことを検知したら対応方針とあわせてユーザーに報告する(詳細: Troubleshooting「レビュー差し戻しラウンドによる worker context の逼迫」参照)
+- **MUST**: `herdr-ctx list` の値が次のどれかに当たる場合、司令塔はその値を信用せず、従来どおり `herdr agent get <agent-name>` で pane-id を引いて `herdr pane read <pane-id> --source visible` を実行し、末尾行の pane 下部ステータスラインで context 使用率(💭 n%)を読む。`herdr-ctx` が入っていない機械(`command -v herdr-ctx` が失敗する機械)と、対象の worker の行が出力に無い場合も、司令塔は同じ手順に戻る。ステータスラインが pane 幅で `…` に切り詰められて 💭 の値が読めない場合、司令塔は使用率を推測で埋めず、保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す(詳細: Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)
+  - `pct` が null である。`note` も null なら、worker は最初の API 呼び出しの前か `/compact` の直後にいる
+  - `note` が付いている(`"no sidecar"`、`"unreadable sidecar"`、`"not a claude agent"` のどれか)
+  - `session_match` が false である。sidecar が同じ pane の前のセッションのものかもしれない
+- **MUST**: `stale` が true であることだけでは、司令塔は値を疑わない。`stale` は sidecar が 10 分より長く更新されていないことを示す印である。statusline はイベントでしか走らないので、レビューの結果を待って止まっている worker はたいてい `stale` になる。pane のステータスラインも同じ statusline の実行で描かれるので、ステータスラインを読み直しても新しい値は得られない。司令塔は `stale` が true の行の `pct` をそのまま 50% の判定に使う
 - **MAY**: `--wait` / `--until <STATUS>`(繰り返し指定可)/ `--timeout <MS>` を併用すると、送信と応答待ちを1コマンドに畳められる(詳細: Troubleshooting「send-keys Enter が chat 入力を submit できないことがある」参照)
 
 #### (2) 上り=イベント
@@ -528,18 +533,32 @@ worktree ルートに以下の5点セットで書く:
 
 ### 9. 司令塔の context 使用率の自己確認(途中の書き出し)
 
-司令塔は、作業の途中で自分の context 使用率を確かめ、閾値を超えたら途中の状態を状態ファイルに書き出す(#658)。自動の要約(compaction)が走ると、冒頭で読んだ SOP や判定の途中の結論が会話から落ちうるため、要約の前に状態を会話の外へ逃がしておく。
+司令塔は、作業の途中で自分の context 使用率を確かめ、閾値に達したら途中の状態を状態ファイルに書き出す(#658)。自動の要約(compaction)が走ると、冒頭で読んだ SOP や判定の途中の結論が会話から落ちうるため、要約の前に状態を会話の外へ逃がしておく。
+
+司令塔は、ターンの最初の使用率を、UserPromptSubmit の hook が毎ターン文脈に足す次の形の行で知る。hook は `.config/claude/settings.json` に定義してあり、`herdr-ctx self` を呼ぶ。
+
+```text
+context 26% (pane w3C:p1W, model Fable 5.2, as of 22:29)
+```
+
+hook の行は、プロンプトが送られた時点の値である。司令塔が 1 つのターンの中で報告の回収・レビュー・マージを続けると、その間に使用率が上がっても hook の行は変わらない。一方、statusline はターンの途中でも API の応答のたびに sidecar を書き直す。そのため、司令塔はターンの途中の節目で、次のコマンドを自分で実行して今の値を読み直す。出力は hook の行と同じ形で、閾値に達していれば 2 行目に助言が付く。stdin を待たずに終わるように、`/dev/null` をつなぐ。
+
+```bash
+herdr-ctx self </dev/null
+```
+
+hook の行も `herdr-ctx self` の出力も出ていないときは、司令塔は次のコマンドで自分の pane を読み、末尾のステータスラインで context 使用率(💭 n%)を確かめる。
 
 ```bash
 herdr pane read "$HERDR_PANE_ID" --source visible
 ```
 
 **Constraints:**
-- **MUST**: 司令塔は、worker の完了報告を処理するたびと PR をマージするたびに、上記のコマンドで自分の pane の末尾のステータスラインを読み、context 使用率(💭 n%)を確かめる
-- **MUST**: 使用率が 70% を超えたら、司令塔は途中の状態を状態ファイルに書き出し、新しいセッションで続けるか締めるかをユーザーに相談する。70% は暫定の閾値で、運用して見直す
+- **MUST**: 司令塔は、ターンの最初には hook が足した `context n%` の行で自分の使用率を確かめる。ターンの途中の節目(worker の完了報告を処理したときと PR をマージしたとき)では、司令塔は上記の `herdr-ctx self </dev/null` を実行して今の値を読み直す。どちらも出ないときは、司令塔は上記の `herdr pane read` で自分の pane の末尾のステータスラインを読む。`herdr-ctx self` は、`herdr-ctx` が入っていない機械、セッションの最初の API 応答の前、`/compact` の直後に何も出さない。hook の行は、sidecar が別のセッションのものであるときにも出ない(`tools/herdr-ctx/README.md` の「### self」参照)
+- **MUST**: 使用率が 60% 以上になったら、司令塔は途中の状態を状態ファイルに書き出し、新しいセッションで続けるか締めるかをユーザーに相談する。閾値を 60% にしたのは、`herdr-ctx self` が、名前が `commander-` で始まる agent の使用率が 60% 以上のときに 2 行目の助言を出すからである。手順書と hook の助言が違う数字を言うと、司令塔がどちらに従うかで迷う(#808)
 - **MUST**: 状態ファイルの置き場と書式は、`~/.claude/skills/wtclose/SKILL.md` の「状態ファイルの書式」節に従う。司令塔はこの節を Read ツールで読む
 - **MUST NOT**: 途中の書き出しのために `wtclose` を Skill ツールや `/wtclose` で呼ばない。呼んだ時点で締めの検問(Stop hook)が登録され、締めの条件がそろうまでターンを終えられなくなる
-- **MUST**: ステータスラインが切り詰められて 💭 の値が読めない場合、司令塔は使用率を推測で埋めず、閾値を超えたものとして書き出す(Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)
+- **MUST**: hook の行も `herdr-ctx self` の出力も出ておらず、ステータスラインも切り詰められて 💭 の値が読めない場合、司令塔は使用率を推測で埋めず、閾値に達したものとして書き出す(Troubleshooting「ステータスライン切り詰めで 💭 が読めない」参照)
 - **MUST**: 締めるときは `wtclose` を呼ぶ。途中の書き出しは締めの代わりにならない
 
 ## Examples
@@ -655,16 +674,18 @@ herdr pane read <pane-id> --source visible --format ansi | grep -a '❯' | tail 
 再起動などで herdr の agent 名が外れたときの立て直し(自己命名のやり直し・`herdr agent list` での確かめ・pane ID 宛て)は、この節では扱わない(#698 で扱う)。
 
 ### GPG 署名コミットは worker pane から pinentry を出せない
-worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は `gpg-connect-agent 'keyinfo --list' /bye` の出力の cached フラグ(`1`)でキャッシュの有無を確認できる。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
+worker pane は tty を持たず(`GPG_TTY` も stale)、pinentry を表示できない構造がある。gpg-agent のパスフレーズキャッシュ(このリポジトリは TTL 8h)は agent プロセスのメモリ内にあり、`gpgconf --kill gpg-agent` や agent の再起動を行うと TTL に関係なく消える。運用(実機確認済み、2026-07-26、#494/#466、#498): ユーザーが自分の生きている端末で1回署名(例: `echo test | gpg --clearsign -o /dev/null`)してキャッシュを温めれば、同一セッションの全 worker のコミットが通るようになる。司令塔は、手順4の `gpg_cache_check.sh` で、pinentry を出さない設定の試しの署名が通るか(`cached=1`)を確認できる。gpg-agent の KEYINFO の cached フラグは、署名の可否と一致しないことがあるので、確認には使わない(#814)。署名コミットで詰まった場合、worker に `gpgconf --kill gpg-agent` 等でエージェントを殺させず、ユーザーに1回解除(署名)を依頼する。
 
 この詰まりは委任前の事前チェックで予防できる。詳細は手順4「GPG パスフレーズキャッシュの事前チェック」参照。
 
 ### keygrip 特定の awk が [E] サブキーを拾ってキャッシュを誤判定する
 2026-08-31、業務リポジトリ A の /wt 運用で、司令塔が GPG パスフレーズキャッシュの事前チェック(手順4)を実装した際、keygrip 特定の awk が「最初の ssb 行」の Keygrip を拾う形になっていた(#583)。鍵構成が `ssb [E]`(暗号化)→ `ssb [S]`(署名)の順だったため [E] サブキーの keygrip でキャッシュを照会してしまい、実際には温まっていた署名キャッシュを「冷えている(`-`)」と誤判定して、ユーザーに不要なキャッシュ温めを依頼した。SOP の散文(「[S] フラグ付き ssb 行の直後の Keygrip を読む」)は正しく、司令塔が都度書いた awk が仕様を満たしていなかった。[E] が先に並ぶのは gpg の既定出力順で、ssb が複数ある鍵構成では誰でも踏みうる。
 
-誤っていた awk は、[S] フラグを見ずに、最初の ssb 行の後に現れた Keygrip 行の 3 列目を出していた。正しい awk は、`[S]` フラグ付きの ssb 行を見つけてから、その直後の Keygrip 行を読む。どちらの awk も、今は同梱スクリプト `gpg_cache_check.sh` のコメントにだけ載せている(正しい方はスクリプトの本体)。SKILL.md に awk を載せないのは、本文にある位置引数の形が skill の引数で置き換えられて壊れるため(#666。2026-10-04 と 2026-10-05 に観測。2026-10-05 の観測では、置き換えは 0 始まりの語番号で行われ、該当する語が無い番号はそのまま残り、`$HERDR_PANE_ID` のような名前つきの変数は置き換えられなかった)。
+誤っていた awk は、[S] フラグを見ずに、最初の ssb 行の後に現れた Keygrip 行の 3 列目を出していた。正しい awk は、`[S]` フラグ付きの ssb 行を見つけてから、その直後の Keygrip 行を読む。今のスクリプトは試しの署名で判定するので、この awk はどちらも使っていない。どちらの awk も、#814 より前の版の `gpg_cache_check.sh`(git の履歴)にだけ残っている。SKILL.md に awk を載せなかったのは、本文にある位置引数の形が skill の引数で置き換えられて壊れるため(#666。2026-10-04 と 2026-10-05 に観測。2026-10-05 の観測では、置き換えは 0 始まりの語番号で行われ、該当する語が無い番号はそのまま残り、`$HERDR_PANE_ID` のような名前つきの変数は置き換えられなかった)。
 
-正しい手順は、2026-08-31 に WSL2 + ed25519 primary [SC] / cv25519 ssb [E] / ed25519 ssb [S] 構成で、[S] サブキーの keygrip を正しく選択し cached=`1` を返すことを確認済み(2026-09-28 に Arch Linux の同構成でも再確認。2026-10-05 にスクリプト化した版でも同じ構成で `cached=1` を確認)。awk を都度手書きせず、手順4の `bash ~/.claude/skills/wt/gpg_cache_check.sh` を使う。スクリプトは、`user.signingkey` 未設定や [S] サブキーの無い鍵構成で keygrip が空になると、agent に問い合わせる前に終了コード 2 で止まる(空の keygrip で照会すると全 KEYINFO 行にマッチしてしまうため)。[E] が先に並ぶ鍵構成での誤判定は、同梱テスト `tests/gpg_cache_check_test.sh` が回帰として確かめる。
+keygrip で判定していた時期の手順は、2026-08-31 に WSL2 + ed25519 primary [SC] / cv25519 ssb [E] / ed25519 ssb [S] 構成で、[S] サブキーの keygrip を正しく選択し cached=`1` を返すことを確認していた(2026-09-28 に Arch Linux の同構成でも再確認。2026-10-05 にスクリプト化した版でも同じ構成で `cached=1` を確認)。当時のスクリプトは、keygrip が空になると agent に問い合わせる前に終了コード 2 で止まり(空の keygrip で照会すると全 KEYINFO 行にマッチしてしまうため。PR #625 のレビュー指摘)、[E] が先に並ぶ鍵構成での誤判定は同梱テストが回帰として確かめていた。今のテスト `tests/gpg_cache_check_test.sh` は、keygrip と KEYINFO のケースを持たず、試しの署名の成否と終了コードの契約を確かめる。
+
+2026-11-14 には、keygrip を正しく選んでいても判定がずれる事例が起きた(#814)。機械の再起動の後、ユーザーが SSH の認証でパスフレーズを入れた状態で、スクリプトは `cached=0` を返し続けたが、`gpg --batch --pinentry-mode error --clearsign` による試しの署名は終了コード 0 で通った。gpg-agent の KEYINFO 行では、cached の列が `1` だったのは `[A]`(認証用)サブキーだけで、`[S]` サブキーの列は `-` のままだった。`[S]` の列が `-` のまま署名が通る理由は確かめていない(同じパスフレーズを持つ別の鍵のキャッシュを gpg-agent が試している、という推測は未検証である)。この事例で、司令塔はユーザーに不要なキャッシュの温めを 1 回頼んだ。KEYINFO の列は署名の可否を表す保証が無いので、スクリプトは判定を、pinentry を出さない設定の試しの署名に変えた(手順4)。awk を都度手書きせず、手順4の `bash ~/.claude/skills/wt/gpg_cache_check.sh` を使う。
 
 ### pane-id は非永続
 pane-id はセッション中に compact されうる非永続 ID(詳細は `.config/claude/skills/herdr/SKILL.md` 参照)。
@@ -701,7 +722,7 @@ herdr が使えない環境(worktree だけで完結させたい等)では、作
 2026-07-12 の copilot-quorum 運用(PR #321 の作業者)で、作業者が headless TUI の実機検証で `sleep 3`〜`sleep 20` を挟むポーリングをしていた間、`idle` 発火 → `herdr agent read` で確認すると spinner 稼働中(作業継続中)、というフラップが 2 回続き、都度 wait を仕掛け直した(#428)。ステータスは idle→done→working を行き来した。上記「相談待ち idle と完了 idle の判別」の二分岐だけだと、この作業途中の一時 `idle` を完了と誤認するリスクがある。`idle` 発火時の recent ログ確認では、【相談】の有無・完了報告の有無に加えて spinner の稼働と最終報告の有無も見て「作業続行中のフラップ」を判別し、`working` 遷移を待ってから wait を仕掛け直す(手順5「(2) 上り=イベント」の「相談 idle の判別」参照)。
 
 ### レビュー差し戻しラウンドによる worker context の逼迫
-本業リポジトリの PR(2026-07-27)で、差し戻し2ラウンド後に worker が context 60% に到達し、ユーザーが先に検知した。差し戻しは元実装の全文脈を保持した worker に送るのが品質上望ましい一方、ラウンドごとに context は単調に増える。50% を目安に「直接対応 or 引き継ぎ」へ切り替える(上記手順5(1) の Constraint)。ステータスラインの使用率は `herdr agent get <agent-name>` で pane-id を引いてから `herdr pane read <pane-id> --source visible` を実行し、その末尾行で機械的に読める(ただし pane 幅が狭いと切り詰められて読めないケースがある。詳細と代替手段は次項「ステータスライン切り詰めで 💭 が読めない」参照)。
+本業リポジトリの PR(2026-07-27)で、差し戻し2ラウンド後に worker が context 60% に到達し、ユーザーが先に検知した。差し戻しは元実装の全文脈を保持した worker に送るのが品質上望ましい一方、ラウンドごとに context は単調に増える。50% を目安に「直接対応 or 引き継ぎ」へ切り替える(上記手順5(1) の Constraint)。司令塔は worker の使用率を、`herdr-ctx list` の対象の worker の行の `pct` で、pane の幅に依存せず読める。値が信用できない場合と `herdr-ctx` が入っていない機械では、司令塔は `herdr agent get <agent-name>` で pane-id を引いてから `herdr pane read <pane-id> --source visible` を実行し、その末尾行のステータスラインで読む(手順5(1) の Constraint 参照)。ステータスラインは pane 幅が狭いと切り詰められて読めないことがある(詳細は次項「ステータスライン切り詰めで 💭 が読めない」参照)。
 
 ### ステータスライン切り詰めで 💭 が読めない
 2026-07-31、上記の運用で `herdr pane read <pane-id> --source visible` の末尾ステータスラインが pane 幅で切り詰められ(`⚡ Sonnet 5  xhigh …` までで省略)、💭 の値が読めないケースが発生した(#529)。ステータスラインの表示順で 💭 が右寄りにあるため、pane が狭いと機械的に読めない。
@@ -712,7 +733,9 @@ herdr が使えない環境(worktree だけで完結させたい等)では、作
 - `herdr api snapshot` にはペイン分割レイアウトの `ratio`(split の分割比率であり context 使用率とは無関係)はあるが、context/token/usage 相当のフィールドは無い
 - `herdr agent explain` は working/idle 等の検知根拠のみ、`herdr pane process-info` は前面プロセスの argv/cwd のみで、いずれも context 情報は含まない
 
-そのため、切り詰められて読めない場合は保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す(上記手順5(1) の Constraint)。pane を広げれば読める可能性はあるが、他 worker の pane レイアウトを都合で変更するのは対話プロトコル上望ましくないため、標準手順としては採用しない。根本解決には statusline の表示順変更(💭 を左寄りにする等、`.config/claude/statusline` 系の変更)が必要だが、この skill のスコープを超えるため別途 Issue 化を検討する。
+herdr の CLI に経路が無いことは、今も変わらない。ただし、2026-11-05 にマージした PR #788 で足した計器 `herdr-ctx` を使えば、司令塔は使用率を pane の幅に依存せず読める。`herdr-ctx` は、Claude Code の statusline が pane ごとに書く sidecar(`~/.herdr/ctx/panes/` の JSON)を `herdr agent list` の出力と pane id で結合する。司令塔は worker の使用率を `herdr-ctx list` で読み(手順5(1) の Constraint)、自分の使用率をターンの最初は hook が足す `context n%` の行で読み、ターンの途中は `herdr-ctx self` を自分で実行して読む(手順9)。司令塔がステータスラインを読むのは、`herdr-ctx` が入っていない機械と `herdr-ctx list` の値が信用できない場合に限る。そこでも切り詰められて読めない場合、司令塔は従来どおり保守的に (a) 直接対応 または (b) 引き継ぎ 側へ倒す。pane を広げれば読める可能性はあるが、他 worker の pane レイアウトを都合で変更するのは対話プロトコル上望ましくないため、標準手順としては採用しない。
+
+2026-11-14 の PR #806 の運用で、司令塔が差し戻しを送る前に worker の pane を読むと、pane の幅が狭く、ステータスラインは使用率の手前で切れていた。古い手順書どおりなら、司令塔は使用率を読めないものとして扱い、差し戻しをやめて直接対応か引き継ぎに倒す場面だった。司令塔は代わりに `herdr-ctx list` で worker の行を読み、`pct` が 20、`stale` が false、`session_match` が true であることを確かめてから差し戻しを送った。worker は使用率 22% で作業を終えた(#808)。
 
 ### commander-<repo名> の名前衝突
 同リポジトリの過去セッション pane が名前を保持していると `herdr agent rename` が
