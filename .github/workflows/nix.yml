@@ -319,8 +319,6 @@ jobs:
               nix build .#homeConfigurations.archie-wsl.activationPackage --no-link
               echo "=== Verifying build output ==="
               ls -la /tmp/result/
-              echo "=== TEMP (#817): the next line is a deliberate failure and must fail this job ==="
-              false
               echo "=== Running Home Manager activation ==="
               HOME_MANAGER_BACKUP_EXT=ci-backup /tmp/result/activate
               echo "=== Home Manager activation completed successfully ==="
