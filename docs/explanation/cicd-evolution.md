@@ -148,6 +148,10 @@ Docker: nix build 実行
 
 **対応2（仮説ベース）**: ビルド後・保存前に `sqlite3 /nix/var/nix/db/db.sqlite 'PRAGMA wal_checkpoint(TRUNCATE);'` を明示実行し、WAL の内容を本体ファイルへ確実に反映させてから保存させるステップを追加。ただし nix-installer 側のソース調査（`ProvisionNix` / `MoveUnpackedNix`）では DB を明示的に破棄する処理は見当たらず、この checkpoint 忘れ説は状況証拠からの仮説にとどまる。マージ後のダミーPRでの2回目計測で「26 derivations will be built」の内訳が縮むかどうかを見て検証する（詳細は #368 の PR 本文）。
 
+### Phase 7: activation が実際には走っていなかった (#817)
+
+`verify-docker` の step は、[#211](https://github.com/music-brain88/dotfiles/pull/211)（2026-01-02 にマージ）から `./result/activate` を呼ぶ形だったが、2026-11-14 まで Home Manager の activation は実際には走っていなかった。コンテナの中の `archie` は、runner のユーザーが持ち主の `/workspace` に `result` の symlink を作れず、`nix build` が `Permission denied` で失敗していたので、`./result/activate` は存在しなかった。それでもジョブが成功していたのは、`run:` の既定の `bash -e` が `docker run` で起こした `bash -c` の中には届かず、スクリプトが失敗した行を通り過ぎて、最後の `echo "=== Home Manager activation completed successfully ==="` が 0 を返していたからである。この穴は [#813](https://github.com/music-brain88/dotfiles/pull/813) のレビューで見つかった。ログで確かめられた最も古い例は 2026-10-29 の main の run で、それより前のログでは確かめられていない。[#817](https://github.com/music-brain88/dotfiles/issues/817)（PR [#818](https://github.com/music-brain88/dotfiles/pull/818)）で、スクリプトの先頭に `set -euo pipefail` を足し、出力先をコンテナの中の `/tmp/result` に変えた。activation が初めて走ると、コンテナに `USER` が無いことと、イメージと step が置いた `.bashrc`・`.bash_profile`・`.gitconfig` との衝突で止まったので、どちらも CI の環境の側で直した（[ci-cd-pipeline.md の Container Configuration](../reference/ci-cd-pipeline.md#container-configuration)）。
+
 ---
 
 ## 📝 Lessons Learned
@@ -161,6 +165,7 @@ Docker: nix build 実行
 | **ユーザー一致** | コンテナのユーザーとHome Manager設定のユーザーを一致させる |
 | **同一keyでも凍結に注意** | primary-key HIT時は保存がスキップされる。設計上「毎回更新」したいなら purge-primary-key: always が要る |
 | **オーバーレイはバイナリキャッシュを無効化する** | `overrideAttrs` で派生物を変えると、そのパッケージは本家の binary cache から二度と取得できなくなる |
+| **`bash -c` には `-e` が届かない** | `docker run … bash -c '…'` の中のスクリプトは、`run:` の既定の `bash -e` を引き継がない。成功を言う `echo` で終わるスクリプトは、先頭で `set -euo pipefail` を宣言しないと、途中の失敗を成功に見せる |
 
 ---
 
@@ -182,6 +187,7 @@ Docker: nix build 実行
 - [#228](https://github.com/music-brain88/dotfiles/issues/228) - GCによるキャッシュ破損
 - [#233](https://github.com/music-brain88/dotfiles/issues/233) - ステップ順序問題
 - [#368](https://github.com/music-brain88/dotfiles/issues/368) - キャッシュ凍結問題・rustup再ビルド調査
+- [#817](https://github.com/music-brain88/dotfiles/issues/817) - activation が実際には走っていなかった問題
 
 ---
 

@@ -253,14 +253,52 @@ jobs:
       # herdr の Claude Code 用フックと herdr-ctx は直前の archie のビルドで出来ているので、増える依存は jq だけ (#755, #807)。
       # The check job's `nix flake check --no-build` never runs checks, so checks that need a build run here.
       # The herdr Claude Code hook and herdr-ctx are already built by the archie build just before, so this only adds jq (#755, #807).
-      # `bash -c` の中は既定で失敗しても次の行に進み、最後の echo が 0 を返すとジョブが成功になる。
-      # そのため、検査の 2 行(herdr-claude-hook-entries と herdr-ctx)にだけ `|| exit 1` を付けて、落ちたらコンテナのスクリプトを失敗で終える。
-      # ほかの行は止まらないままである。`result` の symlink を /workspace に作れず Permission denied になる行が前から黙って失敗していて、
-      # ここで ./result/activate が動いていないことも分かっている。全体を止める set -e は、その穴を直す別の Issue で扱う。
-      # By default `bash -c` keeps going after a failure and the final echo's 0 makes the job pass.
-      # So only the two check lines (herdr-claude-hook-entries and herdr-ctx) get `|| exit 1`, which fails the container script when they fail.
-      # The other lines still do not stop it. The `result` symlink cannot be created in /workspace (Permission denied) and has been failing silently,
-      # so ./result/activate does not actually run here either. A script-wide set -e belongs to a separate Issue that fixes that hole.
+      # 失敗で止める: `run:` の既定の `bash -e` は、docker run で起こした `bash -c` の中には届かない。
+      # 以前は失敗した行を通り過ぎ、最後の echo が 0 を返して、activation が一度も走らないままジョブが成功していた (#817)。
+      # スクリプトの先頭の `set -euo pipefail` で、どの行が落ちてもコンテナが失敗で終わり、ジョブも失敗する。
+      # 検査の 2 行に付けていた `|| exit 1` (#813) は、この set -e と役割が重なるので外し、止める仕組みを 1 つにそろえた。
+      # 成功を言う echo は activate の直後に置き、activate が成功したときにだけ届く。
+      # 出力先を /tmp にする: /workspace は runner のユーザーが持ち主の checkout で、コンテナの archie は
+      # そこに `result` の symlink を作れず Permission denied になっていた。mount と所有者は、後の step
+      # (キャッシュの保存や checkout の後始末) に響くので変えず、archie が書けるコンテナの中の /tmp に出す。
+      # WSL のプロファイルは、activation に実物の WSL が要るのでビルドだけにする。出力は後の行が読まないので --no-link にする。
+      # USER を入れる: docker run はログインを通らないので、login が passwd から入れる USER が無い。
+      # activate は `set -u` の下で $USER を読むので、無いと `USER: unbound variable` で止まる。
+      # コンテナの実際のユーザーを id -un で入れ、HM の USER の検査 (archie と一致するか) はそのまま効かせる。
+      # 既存のファイルを退避する: イメージの /etc/skel から来た .bashrc と .bash_profile、それに先頭の
+      # `git config --global` が作る .gitconfig は、HM が管理する同じ名前のファイルと衝突し、checkLinkTargets が
+      # activation を止める。HM の衝突の検査が守るのは HM の外で作られたファイルで、
+      # 使い捨てのコンテナにあるのはイメージと step が置いたファイルだけなので、activate にだけ
+      # HOME_MANAGER_BACKUP_EXT=ci-backup を渡し、HM 公式の退避 (home-manager switch -b と同じ) で脇に移す。
+      # これで CI は既存のファイルとの衝突では落ちなくなるが、activate そのものの失敗 (HM のビルトインや
+      # home.activation のスクリプトの失敗) では落ち続ける。退避したファイルは、activate の後に一覧をログに出す。
+      # safe.directory は ~/.gitconfig に書く: /workspace の持ち主は archie ではないので、Nix が flake の git ツリーを
+      # 開くのに safe.directory が要る。Nix は libgit2 で開き、libgit2 は GIT_CONFIG_COUNT などの環境変数を読まないので、
+      # ファイルに書くしかない (手元の Nix 2.33 で確かめた)。activate が .gitconfig を退避すると safe.directory は消えるので、
+      # activate より後に git や nix で /workspace を読む行を足さない。
+      # Fail fast: the default `bash -e` of `run:` does not reach the `bash -c` started by docker run.
+      # The script used to step over failed lines, and the final echo's 0 passed the job although activation never ran (#817).
+      # `set -euo pipefail` at the top makes any failing line fail the container, and therefore the job.
+      # The `|| exit 1` on the two check lines (#813) overlapped with set -e, so it was dropped to keep a single mechanism.
+      # The echo that reports success sits right after activate and is only reached when activate succeeds.
+      # Output to /tmp: /workspace is the checkout owned by the runner user, and the container's archie could not
+      # create the `result` symlink there (Permission denied). The mount and ownership stay as they are, because later
+      # steps (cache save, checkout cleanup) depend on them; the link goes to /tmp inside the container, which archie can write.
+      # The WSL profile is only built, since activation needs a real WSL host. Nothing reads its output, so it uses --no-link.
+      # Set USER: docker run does not go through a login, so the USER that login takes from passwd is missing.
+      # activate reads $USER under `set -u` and stops with `USER: unbound variable` without it.
+      # USER is taken from the container's real user via id -un, so HM's own USER check (must be archie) still applies.
+      # Move existing files aside: .bashrc and .bash_profile from the image's /etc/skel, and the .gitconfig that the
+      # `git config --global` at the top creates, collide with the files of the same name that HM manages, and
+      # checkLinkTargets stops the activation. HM's collision check protects files made
+      # outside HM, and a throwaway container only holds files placed by the image and this step, so only activate gets
+      # HOME_MANAGER_BACKUP_EXT=ci-backup, and HM's own backup (the same as home-manager switch -b) moves them aside.
+      # CI therefore no longer fails on collisions with existing files, but it still fails when activate itself fails
+      # (an HM built-in or a home.activation script). The moved files are listed in the log after activate.
+      # safe.directory goes into ~/.gitconfig: /workspace is not owned by archie, so Nix needs safe.directory to open
+      # the flake's git tree. Nix opens it through libgit2, which ignores GIT_CONFIG_COUNT and friends, so a file is
+      # the only way (checked locally with Nix 2.33). activate moves .gitconfig aside and safe.directory goes with it,
+      # so do not add lines that read /workspace with git or nix after activate.
       - name: Build and verify Home Manager configuration in container
         run: |
           docker run --rm \
@@ -269,18 +307,23 @@ jobs:
             -w /workspace \
             ghcr.io/${{ github.repository }}/dotfiles-env:latest \
             bash -c '
+              set -euo pipefail
+              USER="$(id -un)"
+              export USER
               git config --global --add safe.directory /workspace
-              nix build .#homeConfigurations.archie.activationPackage
+              nix build .#homeConfigurations.archie.activationPackage -o /tmp/result
               echo "=== Running flake checks that need a build (herdr hook entries #755, herdr-ctx tests #807) ==="
-              nix build .#checks.x86_64-linux.herdr-claude-hook-entries --no-link --print-build-logs || exit 1
-              nix build .#checks.x86_64-linux.herdr-ctx --no-link --print-build-logs || exit 1
+              nix build .#checks.x86_64-linux.herdr-claude-hook-entries --no-link --print-build-logs
+              nix build .#checks.x86_64-linux.herdr-ctx --no-link --print-build-logs
               echo "=== Building WSL profile (build only; activation needs a real WSL host) ==="
-              nix build .#homeConfigurations.archie-wsl.activationPackage -o result-wsl
+              nix build .#homeConfigurations.archie-wsl.activationPackage --no-link
               echo "=== Verifying build output ==="
-              ls -la ./result/
+              ls -la /tmp/result/
               echo "=== Running Home Manager activation ==="
-              ./result/activate
+              HOME_MANAGER_BACKUP_EXT=ci-backup /tmp/result/activate
               echo "=== Home Manager activation completed successfully ==="
+              echo "=== Files Home Manager moved aside (*.ci-backup) ==="
+              find "$HOME" -name "*.ci-backup" -exec ls -la {} +
             '
 
       # コンテナ内の nix build はホストの nix-daemon を経由しない
