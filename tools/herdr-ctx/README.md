@@ -171,7 +171,7 @@ sidecar のファイル名は、pane id の `:` を `_` に置き換えたもの
 | `review_requests[].draft` | draft の PR なら true。応答に `draft` が無いときは false |
 | `review_requests[].updated_at`、`created_at` | 検索 API の時刻をそのまま写した値 |
 
-`reviews.json` は、非公開のリポジトリの名前と PR の題を含みうる。そのため、このファイルを `~/.herdr/ctx/` の外に写さない。
+`reviews.json` は、非公開のリポジトリの名前と PR の題を含みうる。そのため、このファイルを `~/.herdr/ctx/` の外に写さない。`watch` は、同じ機械の他のユーザーに読ませないように、`reviews.json` を所有者だけが読み書きできる権限(0600)で書く。`watch` は一時ファイルを作る時点で 0600 にするので、書いてから権限を変えるまでの間に中身を読まれることは無い。置き換える前のファイルが 0644 でも、置き換えた後のファイルは 0600 になる。`agents.json` と `notify_state.json` は、umask に従う今までの権限のまま書く。
 
 ## 常駐の起動のしかた
 

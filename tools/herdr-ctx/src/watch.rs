@@ -16,8 +16,9 @@ use crate::report::{collect_rows, Row};
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::fs;
-use std::io;
+use std::fs::{self, OpenOptions};
+use std::io::{self, Write};
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::process;
@@ -31,6 +32,12 @@ pub const DEFAULT_REVIEWS_INTERVAL_SECS: u64 = 300;
 const AGENTS_FILE: &str = "agents.json";
 const STATE_FILE: &str = "notify_state.json";
 const REVIEWS_FILE: &str = "reviews.json";
+
+/// 所有者だけが読み書きできる権限。reviews.json は非公開のリポジトリの名前と PR の題を含みうるので、
+/// 同じ機械の他のユーザーに読ませない。
+/// Owner-only read and write. reviews.json may hold private repository names and PR titles, so
+/// other users on the same machine must not read it.
+const PRIVATE_MODE: u32 = 0o600;
 
 /// pane の「今いる段」と、その段を知らせた session。段は、知らせ済みの閾値のうち今の pct 以下で最大のもの。
 /// pane id は場所しか示さないので、session_id で記録の持ち主を見分ける。
@@ -174,11 +181,55 @@ pub fn plan(prev: &NotifyState, rows: &[Row], thresholds: &[u32]) -> (NotifyStat
 /// Writes to a temp file in the same directory, then replaces, so readers never see a partial file.
 /// The temp name includes the target's name, so the two threads writing different files never clash.
 fn write_atomic(path: &Path, content: &str) -> io::Result<()> {
+  let tmp = temp_path(path);
+  fs::write(&tmp, content)?;
+  replace(&tmp, path)
+}
+
+/// write_atomic と同じく置き換えるが、一時ファイルを作る時点で所有者だけが読み書きできる権限にする。
+/// 書いてから chmod すると、その間に他のユーザーが中身を読める。rename は一時ファイルの権限を持ち込むので、
+/// 置き換える前のファイルが 0644 でも、置き換えた後は 0600 になる。
+/// Replaces like write_atomic, but the temp file is owner-only from the moment it is created:
+/// writing first and chmod-ing later would leave a window for other users to read it. rename
+/// carries the temp file's mode over, so a 0644 destination becomes 0600 once replaced.
+fn write_atomic_private(path: &Path, content: &str) -> io::Result<()> {
+  let tmp = temp_path(path);
+  // 前の周期が途中で落ちて残した一時ファイルは、別の権限を持つかもしれないので先に消す
+  // A temp file left by a cycle that died mid-way may carry another mode, so remove it first
+  match fs::remove_file(&tmp) {
+    Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
+    _ => {}
+  }
+  if let Err(e) = create_private(&tmp, content) {
+    let _ = fs::remove_file(&tmp);
+    return Err(e);
+  }
+  replace(&tmp, path)
+}
+
+/// create_new は既にあるパスを開かないので、権限は必ずここで作ったときの値になる。umask は作るときの権限を
+/// 狭めることがあるので、開いた後にもう一度 0600 に揃える。
+/// create_new never opens an existing path, so the mode is always the one set here. A umask can
+/// narrow the mode at creation, so it is set to 0600 again once open.
+fn create_private(tmp: &Path, content: &str) -> io::Result<()> {
+  let mut file = OpenOptions::new()
+    .write(true)
+    .create_new(true)
+    .mode(PRIVATE_MODE)
+    .open(tmp)?;
+  file.set_permissions(fs::Permissions::from_mode(PRIVATE_MODE))?;
+  file.write_all(content.as_bytes())
+}
+
+fn temp_path(path: &Path) -> PathBuf {
   let mut tmp = path.as_os_str().to_owned();
   tmp.push(format!(".tmp.{}", process::id()));
-  fs::write(&tmp, content)?;
-  fs::rename(&tmp, path).inspect_err(|_| {
-    let _ = fs::remove_file(&tmp);
+  PathBuf::from(tmp)
+}
+
+fn replace(tmp: &Path, path: &Path) -> io::Result<()> {
+  fs::rename(tmp, path).inspect_err(|_| {
+    let _ = fs::remove_file(tmp);
   })
 }
 
@@ -275,9 +326,10 @@ pub fn tick(
   persist(ctx_dir, state);
 }
 
-/// レビュー依頼の 1 周期。取得して reviews.json を書く。取得・解釈・書き込みのどこかで失敗した周期は、
+/// レビュー依頼の 1 周期。取得して reviews.json を所有者だけが読み書きできる権限で書く。
+/// 取得・解釈・書き込みのどこかで失敗した周期は、
 /// 前の reviews.json を残して理由を返す。空の一覧で上書きすると、読む側には「依頼が 0 件」に見えるため。
-/// One review cycle: fetch and write reviews.json. A cycle that fails anywhere (fetching, parsing,
+/// One review cycle: fetch and write reviews.json as owner-only. A cycle that fails anywhere (fetching, parsing,
 /// writing) keeps the previous reviews.json and returns the reason, since an empty list would read
 /// as "no requests".
 pub fn refresh_reviews(
@@ -287,7 +339,7 @@ pub fn refresh_reviews(
 ) -> Result<(), String> {
   let text = fetch_reviews(github, now)?.to_json()?;
   fs::create_dir_all(ctx_dir).map_err(|e| format!("{} を作れない: {e}", ctx_dir.display()))?;
-  write_atomic(&ctx_dir.join(REVIEWS_FILE), &text)
+  write_atomic_private(&ctx_dir.join(REVIEWS_FILE), &text)
     .map_err(|e| format!("{REVIEWS_FILE} を書けない: {e}"))
 }
 
@@ -822,5 +874,46 @@ mod tests {
     assert!(refresh_reviews(&FakeGitHub::failing("gh: boom"), &dir, now()).is_err());
 
     assert!(!dir.join(REVIEWS_FILE).exists());
+  }
+
+  fn mode_of(path: &Path) -> u32 {
+    fs::metadata(path).unwrap().permissions().mode() & 0o777
+  }
+
+  #[test]
+  fn a_new_reviews_json_is_owner_only() {
+    let dir = temp_dir("reviews-mode-new");
+
+    refresh_reviews(&FakeGitHub::answering(SEARCH_JSON), &dir, now()).unwrap();
+
+    assert_eq!(mode_of(&dir.join(REVIEWS_FILE)), 0o600);
+  }
+
+  #[test]
+  fn a_world_readable_reviews_json_becomes_owner_only_once_replaced() {
+    let dir = temp_dir("reviews-mode-replace");
+    let path = dir.join(REVIEWS_FILE);
+    fs::write(&path, PREVIOUS_REVIEWS).unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).unwrap();
+
+    refresh_reviews(&FakeGitHub::answering(SEARCH_JSON), &dir, now()).unwrap();
+
+    assert_eq!(mode_of(&path), 0o600);
+    assert_eq!(read_reviews(&dir)["total_count"], 152);
+  }
+
+  #[test]
+  fn a_leftover_temp_file_with_another_mode_still_yields_owner_only() {
+    let dir = temp_dir("reviews-mode-leftover");
+    let path = dir.join(REVIEWS_FILE);
+    let leftover = temp_path(&path);
+    fs::write(&leftover, "{half").unwrap();
+    fs::set_permissions(&leftover, fs::Permissions::from_mode(0o666)).unwrap();
+
+    refresh_reviews(&FakeGitHub::answering(SEARCH_JSON), &dir, now()).unwrap();
+
+    assert_eq!(mode_of(&path), 0o600);
+    assert_eq!(read_reviews(&dir)["total_count"], 152);
+    assert!(!leftover.exists());
   }
 }

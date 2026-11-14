@@ -685,6 +685,11 @@ fn watch_writes_reviews_json() {
   assert!(reviews["generated_at"].is_string());
   assert_eq!(reviews["total_count"], 2);
   assert_eq!(reviews["review_requests"][0]["repo"], "owner/zeta");
+  let mode = fs::metadata(sandbox.reviews_file())
+    .unwrap()
+    .permissions()
+    .mode();
+  assert_eq!(mode & 0o777, 0o600);
 }
 
 #[test]
