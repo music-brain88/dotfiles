@@ -35,6 +35,8 @@ lint の異常終了は、JSON を出力していても失敗として扱う。�
 
 `--with-yomiyasu` は `~/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py`(次に `~/.copilot/skills/...`)を探し、`python3` で実行する。環境変数 `STANDALONE_CHECK_YOMIYASU` でも場所を指定できる。yomiyasu は dotfiles にコピーせず、`flake.nix` の flake input でタグを固定して参照している(上げ方は `docs/how-to/update-yomiyasu.md`)。
 
+本ツールは、文書をパスの引数ではなく lint の標準入力で渡す(`<lint> - --json < FILE` の形)。yomiyasu 3.0.0 からの lint は、作業フォルダの外のファイルと、作業フォルダからの道筋に名前が点で始まる部分(`.config/` など)があるファイルを引数で渡されると、読まずに終了コード 2 で止まる。標準入力で渡せば、`.config/skills/` 配下の SKILL.md とリポジトリの外の文書を、どのフォルダで実行しても検査できる。v3.1.0 の lint では、引数で渡したときと標準入力で渡したときで、`--json` の出力と指摘の行番号は同じである。指摘の `file` には、lint の出力ではなく、本ツールに渡されたパスを入れる。`--yomiyasu-script` に渡す代役のスクリプトも、`-` と `--json` の 2 つの引数を受け、文書を標準入力から読む形にする(`tests/fixtures/fake_yomiyasu_stdin.sh`)。
+
 ### yomiyasu の指摘のうち除外するもの
 
 本ツールは、yomiyasu の指摘のうち本環境の表記と衝突するものを、指摘の `rule`(規則の ID)で見分けて除外する。除外の理由は `.config/skills/standalone-report-writing/SKILL.md` の「yomiyasu の指摘の読み方」にある。次の表は、除外する指摘と見分け方を示す。
@@ -46,7 +48,7 @@ lint の異常終了は、JSON を出力していても失敗として扱う。�
 | 用語「正本」 | `rule` が `slop_vocabulary` で、`message` が `「正本」`(鉤括弧つき)を含む |
 
 - `rule` を持たない指摘と、`rule` が文字列でない指摘は除外しない。上流が出力の形式を変えたときに、指摘を消さずに表示するためである。`message` の文言だけを見て除外することはしない。
-- 「正本」の判定は、上流 v2.5.0 の `slop_vocabulary` の message の形「AI頻出語彙「<語>」が含まれています…」に依存する。v2.5.0 の `snippet` は当たった語ではなく行全体で、当たった語は JSON に出ない。`snippet` で判定すると、同じ行にある別のスロップ語(「土台」など)の指摘まで消えるので、`message` の鉤括弧の部分で見分ける。上流がこの形を変えると、「正本」の指摘は除外されずに表示される。yomiyasu を上げるたびに、この形が変わっていないかを確かめる(`docs/how-to/update-yomiyasu.md` の更新手順)。
+- 「正本」の判定は、上流 v3.1.0 の `slop_vocabulary` の message の形「AI頻出語彙「<語>」が含まれています…」に依存する。この形は v2.5.0 から変わっていない。v3.1.0 の `snippet` は当たった語ではなく行全体で、当たった語は JSON に出ない。`snippet` で判定すると、同じ行にある別のスロップ語(「土台」など)の指摘まで消えるので、`message` の鉤括弧の部分で見分ける。上流がこの形を変えると、「正本」の指摘は除外されずに表示される。yomiyasu を上げるたびに、この形が変わっていないかを確かめる(`docs/how-to/update-yomiyasu.md` の更新手順)。
 - 和欧文間の半角空白の指摘は、上流が v2 系から出さなくなったので、除外の対象から外した。
 - 上流の `--doc-type`(文書の種類ごとに規則を外す)と `.yomiyasu-words/allow.txt`(語の一覧)は使わない。本ツールは点検する文書の種類を知らない。また、上流は `.yomiyasu-words/` を作業中のリポジトリの git の最上位から探すので、ほかのリポジトリで書く文書には dotfiles の一覧が適用されない。
 

@@ -20,7 +20,7 @@
     # Upstream of the yomiyasu skill, referenced by tag instead of a vendored copy.
     # Pinned to a tag, so `nix flake update` does not move it; see docs/how-to/update-yomiyasu.md.
     yomiyasu = {
-      url = "github:nanaism/yomiyasu/v2.5.0";
+      url = "github:nanaism/yomiyasu/v3.1.0";
       flake = false;
     };
   };

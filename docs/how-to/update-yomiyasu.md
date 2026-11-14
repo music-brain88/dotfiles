@@ -11,8 +11,8 @@ dotfiles が参照している yomiyasu スキルのバージョンを上げる�
 | 項目 | 値 |
 |---|---|
 | 取り込み元 | [nanaism/yomiyasu](https://github.com/nanaism/yomiyasu) の `skills/yomiyasu/` を丸ごと使います |
-| 固定しているバージョン | タグ `v2.5.0`(コミット `29d67ccb05e370b5958d72920a9cd1aa829dee80`)に固定しています |
-| 固定の仕方 | `flake.nix` の `inputs.yomiyasu` に `url = "github:nanaism/yomiyasu/v2.5.0"; flake = false;` と書き、`flake.lock` がコミットと narHash を記録します |
+| 固定しているバージョン | タグ `v3.1.0`(コミット `db78b9bc5e868549b517a037df7a4d1c93edac23`)に固定しています |
+| 固定の仕方 | `flake.nix` の `inputs.yomiyasu` に `url = "github:nanaism/yomiyasu/v3.1.0"; flake = false;` と書き、`flake.lock` がコミットと narHash を記録します |
 | マウント先 | `home.nix` が `"${inputs.yomiyasu}/skills/yomiyasu"` を `~/.claude/skills/yomiyasu` と `~/.copilot/skills/yomiyasu` に `recursive = true` でマウントします |
 
 - `flake.nix` にタグを書いているので、`nix flake update`(`mise run nix:update`)を実行しても yomiyasu のバージョンは変わりません。`nix flake update` はタグを解決し直すだけなので、上流がタグを付け直さない限り同じコミットになります。
@@ -48,6 +48,8 @@ dotfiles は上流のファイルを書き換えません。本環境の表記�
    - `slop_vocabulary` の語の一覧(`SLOP_WORDS`)に「正本」が入っているかを確かめます。
    - `slop_vocabulary` の message が「AI頻出語彙「<語>」が含まれています…」の形のままかを確かめます。standalone-check は、この形の鉤括弧の部分で「正本」を見分けます。上流がこの形を変えると、「正本」の指摘は除外されずに表示されます。
    - lint が、`--strict` も `--fail-on` も付けないときに、指摘があっても終了コード 0 で終わるかを確かめます。standalone-check は 0 以外を失敗として扱います。
+   - lint が、ファイルの名前の代わりに `-` を渡したときに標準入力から読むかを確かめます。standalone-check は文書を `<lint> - --json < FILE` の形で標準入力から渡します(v3.1.0 に上げたときに、パスの引数から切り替えました)。v3.0.0 からの lint は、作業フォルダの外のファイルと、道筋に名前が点で始まる部分(`.config/` など)があるファイルを引数で渡されると、終了コード 2 で止まるためです。あわせて、`docs/` 配下のファイルを引数で渡したときと標準入力で渡したときで、`--json` の出力が同じかを確かめます。
+   - `.config/skills/standalone-report-writing/SKILL.md` の「yomiyasu の指摘の読み方」の表が上流の `SKILL.md` の節(今は「文長と読点の調整」)を名前で引いているので、その節が残っているかと、表に書いた中身が上流の節と合っているかを確かめます。
    - 新しく足された規則のうち、本環境の表記と衝突するものがないかを確かめます。
 5. 手順 4 で変わっていた項目に合わせて、「本環境での読み替え」の節の 2 か所を直します。standalone-check を直したときは、`cd tools/standalone-check && cargo test` を実行します。
 6. 動作を確かめます。`mise run nix:build` は Home Manager の設定をビルドするだけで、反映はしません。そのため、PATH にある `standalone-check` は前に反映したバージョンのままです。手順 5 で除外判定を直した場合も確かめられるように、新しくビルドした `result/home-path/bin/standalone-check` を使います。
@@ -55,11 +57,11 @@ dotfiles は上流のファイルを書き換えません。本環境の表記�
    ```bash
    mise run nix:build
    grep -m1 'version:' result/home-files/.claude/skills/yomiyasu/SKILL.md
-   result/home-path/bin/standalone-check <日本語の Markdown> --with-yomiyasu \
+   result/home-path/bin/standalone-check .config/skills/standalone-report-writing/SKILL.md --with-yomiyasu \
      --yomiyasu-script result/home-files/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py
    ```
 
-   `SKILL.md` の `version` が新しいバージョンになっていて、standalone-check の出力が `[SKIP] yomiyasu` にならなければ、動作の確認は済みです。
+   `SKILL.md` の `version` が新しいバージョンになっていて、standalone-check の出力が `[SKIP] yomiyasu` にならなければ、動作の確認は済みです。検査する文書には、道筋に名前が点で始まる部分がある `.config/` 配下のファイルを使います。lint がこうしたファイルを引数で断るバージョンでも、standalone-check が標準入力で渡せていることを確かめるためです。
 7. PR のマージ後に、main で `mise run nix:switch` を実行します。
 
 ## ライセンス / License

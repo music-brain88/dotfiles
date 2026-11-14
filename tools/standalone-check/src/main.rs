@@ -23,7 +23,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitCode};
+use std::process::{Command, ExitCode, Stdio};
 use std::sync::OnceLock;
 
 const USAGE: &str = "\
@@ -118,10 +118,10 @@ fn default_yomiyasu_severity() -> String {
 // Findings without a rule are never dropped, so an upstream format change shows up instead of hiding findings.
 /// 指摘ごと読まない規則 / Rules whose findings are always dropped.
 const YOMIYASU_IGNORED_RULES: &[&str] = &["excess_bold", "excess_list"];
-/// slop_vocabulary のうち読まない語の印。上流 v2.5.0 の snippet は行全体で、当たった語は JSON に出ないため、
+/// slop_vocabulary のうち読まない語の印。上流 v2.5.0 から v3.1.0 までの snippet は行全体で、当たった語は JSON に出ないため、
 /// message「AI頻出語彙「<語>」が含まれています…」の鉤括弧の部分で見分ける。上流がこの形を変えたら、
 /// 「正本」の指摘は除外されずに表示される。
-/// Marker of the slop word we do not read. Upstream v2.5.0 puts the whole line in `snippet` and omits the
+/// Marker of the slop word we do not read. Upstream v2.5.0 through v3.1.0 put the whole line in `snippet` and omit the
 /// matched word, so we look for it in the message; if upstream changes that shape, the finding is shown.
 const YOMIYASU_IGNORED_SLOP_MARK: &str = "「正本」";
 
@@ -723,17 +723,31 @@ fn find_yomiyasu(explicit: Option<&Path>) -> Option<PathBuf> {
 
 /// yomiyasu の lint を実行する。戻り値は (status, findings, detail)。
 /// status は "ok" か "failed"。失敗の理由は detail に入れ、呼び出し側が stderr に出す。
+///
+/// 文書はパスの引数ではなく標準入力で渡す(`<lint> - --json < FILE`)。yomiyasu 3.0.0 から、
+/// lint は作業フォルダの外のファイルと、道筋に名前が点で始まる部分(`.config/` など)がある
+/// ファイルを引数で渡されると、読まずに終了コード 2 で止まる。標準入力からは場所を問わず読める。
+/// Pass the document on stdin instead of as a path: since yomiyasu 3.0.0 the lint refuses
+/// (exit 2) path arguments outside the working directory or under a dot-prefixed component
+/// such as `.config/`, while stdin is read regardless of where the file lives.
 fn run_yomiyasu(script: &Path, file: &Path) -> (&'static str, Vec<serde_json::Value>, String) {
-    let is_py = script.extension().is_some_and(|e| e == "py");
-    let output = if is_py {
-        Command::new("python3")
-            .arg(script)
-            .arg(file)
-            .arg("--json")
-            .output()
-    } else {
-        Command::new(script).arg(file).arg("--json").output()
+    let input = match std::fs::File::open(file) {
+        Ok(f) => f,
+        Err(e) => return ("failed", Vec::new(), format!("文書を開けない: {e}")),
     };
+    let is_py = script.extension().is_some_and(|e| e == "py");
+    let mut cmd = if is_py {
+        let mut c = Command::new("python3");
+        c.arg(script);
+        c
+    } else {
+        Command::new(script)
+    };
+    let output = cmd
+        .arg("-")
+        .arg("--json")
+        .stdin(Stdio::from(input))
+        .output();
     let output = match output {
         Ok(o) => o,
         Err(e) => return ("failed", Vec::new(), format!("起動できない: {e}")),
