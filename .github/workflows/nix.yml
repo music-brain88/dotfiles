@@ -253,6 +253,10 @@ jobs:
       # herdr の Claude Code 用フックと herdr-ctx は直前の archie のビルドで出来ているので、増える依存は jq だけ (#755, #807)。
       # The check job's `nix flake check --no-build` never runs checks, so checks that need a build run here.
       # The herdr Claude Code hook and herdr-ctx are already built by the archie build just before, so this only adds jq (#755, #807).
+      # `bash -c` の中は既定で失敗しても次の行に進み、最後の echo が 0 を返すとジョブが成功になる。
+      # 途中の nix build や検査が失敗したらコンテナのスクリプトを止めるため、先頭で set -euo pipefail を指定する。
+      # By default `bash -c` keeps going after a failure and the final echo's 0 makes the job pass.
+      # `set -euo pipefail` stops the container script at the first failing nix build or check.
       - name: Build and verify Home Manager configuration in container
         run: |
           docker run --rm \
@@ -261,6 +265,7 @@ jobs:
             -w /workspace \
             ghcr.io/${{ github.repository }}/dotfiles-env:latest \
             bash -c '
+              set -euo pipefail
               git config --global --add safe.directory /workspace
               nix build .#homeConfigurations.archie.activationPackage
               echo "=== Running flake checks that need a build (herdr hook entries #755, herdr-ctx tests #807) ==="
