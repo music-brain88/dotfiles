@@ -50,14 +50,24 @@ changes ─┬─→ build-image ─┬─→ verify-docker
 
 コンテナは `archie` ユーザーで実行され、Home Manager設定との整合性を保つ。
 
-コンテナの中で走る `bash -c` のスクリプトは、既定では途中のコマンドが失敗しても次の行に進み、最後の `echo` が 0 を返すとジョブが成功になる。そのため、検査の 2 行(`herdr-claude-hook-entries` と `herdr-ctx` の `nix build .#checks...`)にだけ `|| exit 1` を付けて、検査が落ちたら `verify-docker` ジョブが失敗するようにしている。ほかの行(`activationPackage` のビルド、WSL のプロファイルのビルド、`./result/activate`)は、失敗しても止まらないままである（[#813](https://github.com/music-brain88/dotfiles/pull/813) のレビューで見つかった）。
+コンテナの中で走る `bash -c` のスクリプトは、先頭で `set -euo pipefail` を宣言する。`run:` の既定の `bash -e` は、`docker run` で起こした `bash -c` の中には届かない。スクリプトの側で宣言しないと、途中の行が失敗しても次の行に進み、最後の `echo` が 0 を返してジョブが成功になる。`set -euo pipefail` により、ビルド、flake の `checks`、activation のどの行が失敗しても、`verify-docker` ジョブが失敗する（[#817](https://github.com/music-brain88/dotfiles/issues/817)）。
 
 ```dockerfile
 USER archie
 WORKDIR /home/archie
 ```
 
-CI はビルド後に `./result/activate` を実行し、アクティベーションもテストする。
+CI は、ビルドした `activationPackage` の `/tmp/result/activate` を実行し、Home Manager の activation が最後まで通ることを確かめる。最後の `=== Home Manager activation completed successfully ===` は、activation が成功したときにだけ出る。次の表は、CI の環境に合わせて変えている点と、その理由を並べたものである。
+
+| 点 | やり方 | 理由 |
+|----|--------|------|
+| `result` の出力先 | `nix build … -o /tmp/result` | `/workspace` は runner のユーザーが持ち主の checkout なので、コンテナの `archie` は `result` の symlink を作れない。mount と所有者は、後の step（キャッシュの保存、checkout の後始末）に響くので変えない |
+| WSL のプロファイル | `nix build … --no-link` でビルドだけ | activation には実物の WSL が要る。出力は後の行が読まないので、symlink を作らない |
+| `USER` | `USER="$(id -un)"` を export する | `docker run` はログインを通らないので、コンテナに `USER` が無い。activate は `set -u` の下で `$USER` を読むので、無いと止まる |
+| 既存のファイルとの衝突 | activate にだけ `HOME_MANAGER_BACKUP_EXT=ci-backup` を渡す | イメージの `/etc/skel` から来た `.bashrc`・`.bash_profile` と、step が作る `.gitconfig` は、HM が管理するファイルと衝突する。HM の衝突の検査が守るのは HM の外で作られたファイルで、使い捨てのコンテナにはイメージと step が置いたファイルしか無いので、HM 公式の退避（`home-manager switch -b` と同じ）で脇に移す。退避したファイルは、activate の後にログに一覧を出す |
+| `safe.directory` | `git config --global --add safe.directory /workspace` | `/workspace` の持ち主は `archie` ではないので、Nix が flake の git ツリーを開くのに要る。Nix は libgit2 で開き、libgit2 は `GIT_CONFIG_COUNT` などの環境変数を読まないので、`~/.gitconfig` に書く。activate がこのファイルを退避するので、activate より後に git や nix で `/workspace` を読む行を足さない |
+
+退避を使うので、CI は既存のファイルとの衝突では落ちない。CI が検出し続けるのは、activate そのものの失敗（HM の組み込みの手順や `home.activation` のスクリプトの失敗）と、それより前のビルドと `checks` の失敗である。HM の設定の誤り（同じファイルを 2 つのモジュールが管理するなど）は、activate の衝突の検査ではなく、その前の評価やビルドで落ちる。
 
 **Note**: CI は `container:` セクションではなく、手動で `docker run` を使う。
 理由は、`container:` がステップ実行前にイメージをプルするため、先にディスククリーンアップができないことである。
