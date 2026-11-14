@@ -150,6 +150,27 @@ reset_env
 export FAKE_SIGN=hang GPG_CACHE_CHECK_TIMEOUT=1
 run_case "trial signature times out" 2 "" "did not finish within 1s"
 
+# Invalid limits end with exit 2 before gpg runs. The fake gpg would succeed,
+# so a missing check shows up as cached=1 (0 means no limit to timeout, and
+# --help makes timeout exit 0 without running gpg).
+# 不正な秒数は、gpg を呼ぶ前に終了コード 2 で終わる。偽の gpg は成功する設定に
+# してあるので、検査が抜けると cached=1 として現れる(timeout は 0 を期限なしと
+# 解釈し、--help では gpg を実行せずに終了コード 0 で終わる)。
+for bad in 0 0.0 --help abc; do
+  reset_env
+  export FAKE_SIGN=ok GPG_CACHE_CHECK_TIMEOUT="$bad"
+  run_case "invalid timeout '$bad'" 2 "" "GPG_CACHE_CHECK_TIMEOUT must be a positive number"
+  report "invalid timeout '$bad' does not run gpg" "$([ ! -e "$FAKE_GPG_ARGS" ] && echo 1 || echo 0)" \
+    "gpg was run with GPG_CACHE_CHECK_TIMEOUT='$bad'"
+done
+
+# Valid limits: an integer and a decimal / 正しい秒数: 整数と小数
+for good in 5 0.5; do
+  reset_env
+  export FAKE_SIGN=ok GPG_CACHE_CHECK_TIMEOUT="$good"
+  run_case "valid timeout '$good'" 0 "cached=1" ""
+done
+
 reset_env
 CHECK_PATH="$root/nogpg"
 run_case "gpg is not on PATH" 2 "" "gpg is not found on PATH"

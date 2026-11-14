@@ -100,11 +100,11 @@ bash ~/.claude/skills/wt/gpg_cache_check.sh
 |--------|-----------|------|
 | `cached=1` | 0 | pinentry を出さない設定の試しの署名が通った(worker の署名コミットも通る) |
 | `cached=0` | 1 | 試しの署名が失敗した(パスフレーズが要る、鍵が無いなど)。gpg の理由は stderr に出る |
-| (なし) | 2 | `user.signingkey` が設定されていない、gpg を実行できない、または試しの署名が時間切れになった。理由は stderr に出る |
+| (なし) | 2 | `user.signingkey` が設定されていない、gpg を実行できない、`GPG_CACHE_CHECK_TIMEOUT` が正の秒数でない、または試しの署名が時間切れになった。理由は stderr に出る |
 
 **Constraints:**
 - **MUST**: 確認は同梱スクリプト `gpg_cache_check.sh` で行い、司令塔が手書きのワンライナーで判定しない。判定の手順をスクリプトに閉じ込めておけば、手順を直すときに直す場所が 1 か所で済む。以前は SKILL.md の本文に awk を書いていたが、Claude Code は skill を引数つきで呼ぶと、本文にある位置引数の形(ドル記号と数字)を引数の語に置き換えるため、本文の awk は呼び方次第で壊れた(#666)。スクリプトのファイルは置き換えの対象にならない
-- **MUST**: スクリプトは次の手順で判定する: `git config user.signingkey` で署名鍵を取得し、`gpg --batch --pinentry-mode error --clearsign -u <署名鍵> -o /dev/null` を 1 回実行する(標準入力には短い固定の文字列を渡す)。`--pinentry-mode error` は、パスフレーズが要るときに尋ねずに失敗させるので、成否が「pinentry を出せない worker pane で署名が通るか」と一致する。試しの署名は `timeout` で区切り(既定 10 秒。環境変数 `GPG_CACHE_CHECK_TIMEOUT` で変えられる)、出力は `/dev/null` に捨てるので、ファイルは残らず、鍵束と gpg-agent の設定も変わらない。手順を変えるときはスクリプトとこの説明を一緒に直す
+- **MUST**: スクリプトは次の手順で判定する: `git config user.signingkey` で署名鍵を取得し、`gpg --batch --pinentry-mode error --clearsign -u <署名鍵> -o /dev/null` を 1 回実行する(標準入力には短い固定の文字列を渡す)。`--pinentry-mode error` は、パスフレーズが要るときに尋ねずに失敗させるので、成否が「pinentry を出せない worker pane で署名が通るか」と一致する。試しの署名は `timeout` で区切り(既定 10 秒。環境変数 `GPG_CACHE_CHECK_TIMEOUT` で、0 より大きい整数か小数の秒数に変えられる。`0` や `--help` のような値を渡すと、`timeout` が期限なしになったり gpg を実行せずに成功したりするので、スクリプトはそれ以外の値を終了コード 2 で拒む)、出力は `/dev/null` に捨てるので、ファイルは残らず、鍵束と gpg-agent の設定も変わらない。手順を変えるときはスクリプトとこの説明を一緒に直す
 - **MUST**: 以前の判定(gpg-agent の KEYINFO 行のうち `[S]` サブキーの cached の列を読む方式)には戻さない。2026-11-14 の実測で、その列が `-` のまま試しの署名が通り、判定が署名の可否とずれた(#814。経緯は Troubleshooting「keygrip 特定の awk が [E] サブキーを拾ってキャッシュを誤判定する」)
 - **MUST**: 終了コード 2 を受けたら、キャッシュの有無を推測せず、stderr の理由(`user.signingkey` 未設定・gpg が PATH に無い・時間切れなど)を添えて、署名できるかを確かめられなかったとユーザーに報告する。時間切れは gpg-agent が応答していないことを表しうるので、`cached=0` とは別に扱う
 - **SHOULD**: 冷えている(`cached=0`)場合、ユーザーに1回署名(`echo test | gpg --clearsign -o /dev/null`)によるキャッシュ温めを依頼する

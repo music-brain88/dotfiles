@@ -32,8 +32,11 @@
 #   bash ~/.claude/skills/wt/gpg_cache_check.sh
 #
 # Environment / 環境変数:
-#   GPG_CACHE_CHECK_TIMEOUT  seconds before the trial signature is given up
-#                            (default 10) / 試しの署名を打ち切るまでの秒数(既定 10)
+#   GPG_CACHE_CHECK_TIMEOUT  seconds before the trial signature is given up;
+#                            a positive integer or decimal (default 10).
+#                            Any other value ends with exit 2
+#                            試しの署名を打ち切るまでの秒数。0 より大きい整数か
+#                            小数(既定 10)。それ以外の値は終了コード 2 で終わる
 #
 # Output / 出力 (stdout, one line / 1 行):
 #   cached=1   the key signs without pinentry / pinentry なしで署名できる
@@ -45,10 +48,12 @@
 # Exit codes / 終了コード:
 #   0 cached=1
 #   1 cached=0
-#   2 user.signingkey is not set, gpg cannot be run, or the trial signature
-#     timed out; the reason goes to stderr and nothing goes to stdout
-#     user.signingkey が設定されていない、gpg を実行できない、または試しの
-#     署名が時間切れになった。理由は stderr に書き、stdout には何も書かない
+#   2 user.signingkey is not set, gpg cannot be run, GPG_CACHE_CHECK_TIMEOUT
+#     is not a positive number, or the trial signature timed out; the reason
+#     goes to stderr and nothing goes to stdout
+#     user.signingkey が設定されていない、gpg を実行できない、
+#     GPG_CACHE_CHECK_TIMEOUT が正の数でない、または試しの署名が時間切れに
+#     なった。理由は stderr に書き、stdout には何も書かない
 set -euo pipefail
 
 if [ "$#" -gt 0 ]; then
@@ -81,6 +86,15 @@ key_id="$(git config user.signingkey 2>/dev/null)" || key_id=''
 command -v gpg >/dev/null 2>&1 || fail "gpg is not found on PATH — cannot try a signature"
 command -v timeout >/dev/null 2>&1 || fail "timeout is not found on PATH — cannot bound the trial signature"
 limit="${GPG_CACHE_CHECK_TIMEOUT:-10}"
+# The limit must be a positive number of seconds made of digits and at most
+# one decimal point. timeout takes 0 as "no limit", and an option such as
+# --help makes timeout exit 0 without running gpg, which would read as cached=1.
+# 秒数は、数字と高々 1 つの小数点だけでできた、0 より大きい値に限る。
+# timeout は 0 を「期限なし」と解釈し、--help のようなオプションを渡すと
+# gpg を実行せずに終了コード 0 で終わるので、cached=1 と誤読してしまう。
+if ! [[ "$limit" =~ ^[0-9]+(\.[0-9]+)?$ && "$limit" =~ [1-9] ]]; then
+  fail "GPG_CACHE_CHECK_TIMEOUT must be a positive number of seconds, got '$limit'"
+fi
 
 # 3. One trial signature without pinentry / pinentry を出さない試しの署名を 1 回
 # --pinentry-mode error makes gpg fail instead of asking for a passphrase,
