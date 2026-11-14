@@ -262,6 +262,9 @@ jobs:
       # そこに `result` の symlink を作れず Permission denied になっていた。mount と所有者は、後の step
       # (キャッシュの保存や checkout の後始末) に響くので変えず、archie が書けるコンテナの中の /tmp に出す。
       # WSL のプロファイルは、activation に実物の WSL が要るのでビルドだけにする。出力は後の行が読まないので --no-link にする。
+      # USER を入れる: docker run はログインを通らないので、login が passwd から入れる USER が無い。
+      # activate は `set -u` の下で $USER を読むので、無いと `USER: unbound variable` で止まる。
+      # コンテナの実際のユーザーを id -un で入れ、HM の USER の検査 (archie と一致するか) はそのまま効かせる。
       # Fail fast: the default `bash -e` of `run:` does not reach the `bash -c` started by docker run.
       # The script used to step over failed lines, and the final echo's 0 passed the job although activation never ran (#817).
       # `set -euo pipefail` at the top makes any failing line fail the container, and therefore the job.
@@ -271,6 +274,9 @@ jobs:
       # create the `result` symlink there (Permission denied). The mount and ownership stay as they are, because later
       # steps (cache save, checkout cleanup) depend on them; the link goes to /tmp inside the container, which archie can write.
       # The WSL profile is only built, since activation needs a real WSL host. Nothing reads its output, so it uses --no-link.
+      # Set USER: docker run does not go through a login, so the USER that login takes from passwd is missing.
+      # activate reads $USER under `set -u` and stops with `USER: unbound variable` without it.
+      # USER is taken from the container's real user via id -un, so HM's own USER check (must be archie) still applies.
       - name: Build and verify Home Manager configuration in container
         run: |
           docker run --rm \
@@ -280,6 +286,8 @@ jobs:
             ghcr.io/${{ github.repository }}/dotfiles-env:latest \
             bash -c '
               set -euo pipefail
+              USER="$(id -un)"
+              export USER
               git config --global --add safe.directory /workspace
               nix build .#homeConfigurations.archie.activationPackage -o /tmp/result
               echo "=== Running flake checks that need a build (herdr hook entries #755, herdr-ctx tests #807) ==="
