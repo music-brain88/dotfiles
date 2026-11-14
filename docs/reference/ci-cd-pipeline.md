@@ -50,7 +50,7 @@ changes ─┬─→ build-image ─┬─→ verify-docker
 
 コンテナは `archie` ユーザーで実行され、Home Manager設定との整合性を保つ。
 
-コンテナの中で走る `bash -c` のスクリプトは、先頭で `set -euo pipefail` を宣言する。`run:` の既定の `bash -e` は、`docker run` で起こした `bash -c` の中には届かない。スクリプトの側で宣言しないと、途中の行が失敗しても次の行に進み、最後の `echo` が 0 を返してジョブが成功になる。`set -euo pipefail` により、ビルド、flake の `checks`、activation のどの行が失敗しても、`verify-docker` ジョブが失敗する（[#817](https://github.com/music-brain88/dotfiles/issues/817)）。
+コンテナの中で走る `bash -c` のスクリプトは、先頭で `set -euo pipefail` を宣言する。`run:` の既定の `bash -e` は、`docker run` で起こした `bash -c` の中には届かない。スクリプトの側で宣言しないと、途中の行が失敗しても次の行に進み、最後の `echo` が 0 を返してジョブが成功になる。`set -euo pipefail` により、ビルドと flake の `checks` と activation のどの行が失敗しても `verify-docker` ジョブが失敗する（[#817](https://github.com/music-brain88/dotfiles/issues/817)）。
 
 ```dockerfile
 USER archie
