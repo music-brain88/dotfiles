@@ -253,14 +253,24 @@ jobs:
       # herdr の Claude Code 用フックと herdr-ctx は直前の archie のビルドで出来ているので、増える依存は jq だけ (#755, #807)。
       # The check job's `nix flake check --no-build` never runs checks, so checks that need a build run here.
       # The herdr Claude Code hook and herdr-ctx are already built by the archie build just before, so this only adds jq (#755, #807).
-      # `bash -c` の中は既定で失敗しても次の行に進み、最後の echo が 0 を返すとジョブが成功になる。
-      # そのため、検査の 2 行(herdr-claude-hook-entries と herdr-ctx)にだけ `|| exit 1` を付けて、落ちたらコンテナのスクリプトを失敗で終える。
-      # ほかの行は止まらないままである。`result` の symlink を /workspace に作れず Permission denied になる行が前から黙って失敗していて、
-      # ここで ./result/activate が動いていないことも分かっている。全体を止める set -e は、その穴を直す別の Issue で扱う。
-      # By default `bash -c` keeps going after a failure and the final echo's 0 makes the job pass.
-      # So only the two check lines (herdr-claude-hook-entries and herdr-ctx) get `|| exit 1`, which fails the container script when they fail.
-      # The other lines still do not stop it. The `result` symlink cannot be created in /workspace (Permission denied) and has been failing silently,
-      # so ./result/activate does not actually run here either. A script-wide set -e belongs to a separate Issue that fixes that hole.
+      # 失敗で止める: `run:` の既定の `bash -e` は、docker run で起こした `bash -c` の中には届かない。
+      # 以前は失敗した行を通り過ぎ、最後の echo が 0 を返して、activation が一度も走らないままジョブが成功していた (#817)。
+      # スクリプトの先頭の `set -euo pipefail` で、どの行が落ちてもコンテナが失敗で終わり、ジョブも失敗する。
+      # 検査の 2 行に付けていた `|| exit 1` (#813) は、この set -e と役割が重なるので外し、止める仕組みを 1 つにそろえた。
+      # 最後の echo は activate が成功したときにだけ届く。
+      # 出力先を /tmp にする: /workspace は runner のユーザーが持ち主の checkout で、コンテナの archie は
+      # そこに `result` の symlink を作れず Permission denied になっていた。mount と所有者は、後の step
+      # (キャッシュの保存や checkout の後始末) に響くので変えず、archie が書けるコンテナの中の /tmp に出す。
+      # WSL のプロファイルは、activation に実物の WSL が要るのでビルドだけにする。出力は後の行が読まないので --no-link にする。
+      # Fail fast: the default `bash -e` of `run:` does not reach the `bash -c` started by docker run.
+      # The script used to step over failed lines, and the final echo's 0 passed the job although activation never ran (#817).
+      # `set -euo pipefail` at the top makes any failing line fail the container, and therefore the job.
+      # The `|| exit 1` on the two check lines (#813) overlapped with set -e, so it was dropped to keep a single mechanism.
+      # The final echo is only reached when activate succeeds.
+      # Output to /tmp: /workspace is the checkout owned by the runner user, and the container's archie could not
+      # create the `result` symlink there (Permission denied). The mount and ownership stay as they are, because later
+      # steps (cache save, checkout cleanup) depend on them; the link goes to /tmp inside the container, which archie can write.
+      # The WSL profile is only built, since activation needs a real WSL host. Nothing reads its output, so it uses --no-link.
       - name: Build and verify Home Manager configuration in container
         run: |
           docker run --rm \
@@ -269,17 +279,18 @@ jobs:
             -w /workspace \
             ghcr.io/${{ github.repository }}/dotfiles-env:latest \
             bash -c '
+              set -euo pipefail
               git config --global --add safe.directory /workspace
-              nix build .#homeConfigurations.archie.activationPackage
+              nix build .#homeConfigurations.archie.activationPackage -o /tmp/result
               echo "=== Running flake checks that need a build (herdr hook entries #755, herdr-ctx tests #807) ==="
-              nix build .#checks.x86_64-linux.herdr-claude-hook-entries --no-link --print-build-logs || exit 1
-              nix build .#checks.x86_64-linux.herdr-ctx --no-link --print-build-logs || exit 1
+              nix build .#checks.x86_64-linux.herdr-claude-hook-entries --no-link --print-build-logs
+              nix build .#checks.x86_64-linux.herdr-ctx --no-link --print-build-logs
               echo "=== Building WSL profile (build only; activation needs a real WSL host) ==="
-              nix build .#homeConfigurations.archie-wsl.activationPackage -o result-wsl
+              nix build .#homeConfigurations.archie-wsl.activationPackage --no-link
               echo "=== Verifying build output ==="
-              ls -la ./result/
+              ls -la /tmp/result/
               echo "=== Running Home Manager activation ==="
-              ./result/activate
+              /tmp/result/activate
               echo "=== Home Manager activation completed successfully ==="
             '
 
