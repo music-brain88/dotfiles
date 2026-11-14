@@ -44,6 +44,9 @@
 # とき(gh が無い、呼び出しが失敗する、出力が空である、番号がこのリポジトリの
 # PR ではない、date が解釈できない)は、この絞り込みを省き、結果は絞り込みが
 # 無いときと同じになる。
+# For a symlinked note, the mtime is that of the file it points to, whose
+# contents the rules above read.
+# symlink のノートでは、上の規則が中身を読む先のファイルの mtime を使う。
 #
 # Known limit: a note updated after the PR was created can still wrongly hit
 # when it cites another repository's same number as a bare #N.
@@ -223,9 +226,16 @@ created_epoch="$(pr_created_epoch)" || created_epoch=''
 found=1
 for note in "${candidates[@]}"; do
   if [ -n "$created_epoch" ]; then
-    mtime="$(stat -c %Y -- "$note" 2>/dev/null)" || mtime=''
-    # An unknown mtime keeps the note; note_hits reports an unreadable note
-    # mtime が分からないノートは残す。読めないノートは note_hits が報告する
+    # -L: a symlinked note is judged by the file it points to, the same file
+    # that grep reads
+    # -L: symlink のノートは、grep が中身を読む先のファイルの mtime で判定する
+    mtime="$(stat -L -c %Y -- "$note" 2>/dev/null)" || mtime=''
+    # An unknown mtime keeps the note; note_hits reports an unreadable note.
+    # A broken symlink already stops the grep above with exit 2, so this
+    # guards only a note removed between that grep and stat.
+    # mtime が分からないノートは残す。読めないノートは note_hits が報告する。
+    # 壊れた symlink は上の grep が終了コード 2 で止めるので、この分岐は
+    # その grep と stat の間にノートが消えた場合の守りである。
     if [[ "$mtime" =~ ^[0-9]+$ ]] && [ "$mtime" -lt "$created_epoch" ]; then
       continue
     fi

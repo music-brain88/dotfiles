@@ -321,6 +321,38 @@ test_note_at_pr_creation_hits() {
   assert_hits same
 }
 
+# A symlinked note is judged by the file it points to: the link itself is
+# older than the PR, the target was updated after it (review of PR #815)
+# symlink のノートは先のファイルで判定する。symlink 自体は PR より古く、先の
+# ファイルは PR の後に更新された(PR #815 のレビュー指摘)
+test_symlinked_note_uses_target_mtime() {
+  new_case
+  export FAKE_GH_PR_CREATED='2026-11-14T03:12:45Z'
+  local target="$case_dir/elsewhere.md"
+  printf 'PR #331 の締め\n' >"$target"
+  touch -d '2026-11-15 00:00:00 UTC' -- "$target"
+  ln -s "$target" "$notes/ClaudeCodeSession-link.md"
+  touch -h -d '2020-01-01 00:00:00 UTC' -- "$notes/ClaudeCodeSession-link.md"
+  run_search 331 "$notes"
+  assert_exit 0
+  assert_hits link
+}
+
+# A broken symlink stops the candidate grep with exit 2, as before the filter;
+# it never reaches stat -L (review of PR #815)
+# 壊れた symlink は、絞り込みを足す前と同じく、候補の grep で終了コード 2 で
+# 止まる。stat -L までは届かない(PR #815 のレビュー指摘)
+test_broken_symlinked_note_exits_2() {
+  new_case
+  export FAKE_GH_PR_CREATED='2026-11-14T03:12:45Z'
+  note own '#331'
+  ln -s "$case_dir/nowhere.md" "$notes/ClaudeCodeSession-broken.md"
+  run_search 331 "$notes"
+  assert_exit 2
+  assert_hits
+  assert_err_has 'grep failed in'
+}
+
 # The filter only drops notes; the rule still decides the rest
 # 絞り込みはノートを除くだけで、残りは従来の規則が決める
 test_newer_note_of_other_repo_does_not_hit() {
