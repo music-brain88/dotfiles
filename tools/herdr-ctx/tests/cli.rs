@@ -1,8 +1,11 @@
-//! CLI の統合テスト。PATH の先に偽の herdr を置き、終了コードと stdout / stderr の約束を確かめる。
-//! CLI integration tests. A fake herdr on PATH pins the contract on exit codes and output streams.
+//! CLI の統合テスト。PATH の先に偽の herdr と偽の gh を置き、終了コードと stdout / stderr の約束を確かめる。
+//! CLI integration tests. A fake herdr and a fake gh on PATH pin the contract on exit codes and
+//! output streams.
 //!
-//! 偽の herdr はシェルの組み込みコマンドだけを使う。ビルドサンドボックスの PATH に頼らないため。
-//! The fake herdr uses shell builtins only, so it does not depend on the build sandbox's PATH.
+//! 偽の herdr と gh はシェルの組み込みコマンドだけを使う。ビルドサンドボックスの PATH に頼らないため。
+//! リポジトリ・題・作者は架空の値で、本物の GitHub は呼ばない。
+//! The fakes use shell builtins only, so they do not depend on the build sandbox's PATH. Every
+//! repository, title and author is made up, and the real GitHub is never called.
 
 use std::fs;
 use std::io::Write;
@@ -17,6 +20,10 @@ const GET_COMMANDER_JSON: &str = r#"{"id":"cli:agent:get","result":{"agent":{"na
 const SHOWN_JSON: &str = r#"{"id":"cli:notification:show","result":{"reason":"shown","shown":true,"type":"notification_show"}}"#;
 const NOT_SHOWN_JSON: &str = r#"{"id":"cli:notification:show","result":{"reason":"rate_limited","shown":false,"type":"notification_show"}}"#;
 const SERVER_DOWN_JSON: &str = r#"{"id":"cli:agent:list","error":{"code":"server_not_running","message":"no herdr server is running"}}"#;
+const SEARCH_JSON: &str = r#"{"total_count":2,"incomplete_results":false,"items":[{"repository_url":"https://api.github.com/repos/owner/zeta","html_url":"https://github.com/owner/zeta/pull/12","number":12,"title":"Add the widget","user":{"login":"author-a"},"draft":false,"updated_at":"2026-11-13T09:00:00Z","created_at":"2026-11-10T01:00:00Z"},{"repository_url":"https://api.github.com/repos/example-org/alpha","html_url":"https://github.com/example-org/alpha/pull/7","number":7,"title":"Fix the gadget","user":{"login":"author-b"},"draft":true,"updated_at":"2026-11-12T08:00:00Z","created_at":"2026-11-01T00:00:00Z"}]}"#;
+const SEARCH_EMPTY_JSON: &str = r#"{"total_count":0,"incomplete_results":false,"items":[]}"#;
+const BAD_CREDENTIALS_JSON: &str = r#"{"message":"Bad credentials","documentation_url":"https://docs.github.com/rest","status":"401"}"#;
+const PREVIOUS_REVIEWS: &str = "{\"previous\":true}\n";
 
 struct Sandbox {
   root: PathBuf,
@@ -41,6 +48,39 @@ impl Sandbox {
 
   fn log(&self) -> PathBuf {
     self.root.join("herdr.log")
+  }
+
+  fn gh_log(&self) -> PathBuf {
+    self.root.join("gh.log")
+  }
+
+  fn reviews_file(&self) -> PathBuf {
+    self.home().join(".herdr/ctx/reviews.json")
+  }
+
+  /// 呼ばれた引数を記録し、固定の stdout と stderr を返して exit_code で終わる偽の gh を置く。
+  /// Installs a fake gh that logs its arguments, prints fixed stdout and stderr, and exits with
+  /// exit_code.
+  fn fake_gh(&self, stdout: &str, stderr: &str, exit_code: i32) {
+    let script = format!(
+      "#!/bin/sh\necho \"$*\" >> '{log}'\nprintf '%s' '{stdout}'\nprintf '%s' '{stderr}' >&2\nexit {exit_code}\n",
+      log = self.gh_log().display(),
+    );
+    let path = self.bin().join("gh");
+    fs::write(&path, script).unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+  }
+
+  /// 応答せずに眠るだけの偽の gh を置く。
+  /// Installs a fake gh that only sleeps and never answers.
+  fn hanging_gh(&self) {
+    let path = self.bin().join("gh");
+    fs::write(&path, "#!/bin/sh\nsleep 5\n").unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+  }
+
+  fn gh_calls(&self) -> usize {
+    fs::read_to_string(self.gh_log()).map_or(0, |log| log.lines().count())
   }
 
   /// 呼ばれた引数を記録し、サブコマンドごとに固定の JSON を返す偽の herdr を置く。
@@ -142,15 +182,19 @@ fn stderr(output: &Output) -> String {
   String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
-fn wait_for(path: &Path) -> bool {
+fn wait_until(condition: impl Fn() -> bool) -> bool {
   let deadline = Instant::now() + Duration::from_secs(10);
   while Instant::now() < deadline {
-    if path.exists() {
+    if condition() {
       return true;
     }
     thread::sleep(Duration::from_millis(50));
   }
   false
+}
+
+fn wait_for(path: &Path) -> bool {
+  wait_until(|| path.exists())
 }
 
 #[test]
@@ -438,6 +482,8 @@ fn watch_writes_agents_json_and_notifies_once_across_cycles() {
     serde_json::from_str(&fs::read_to_string(ctx.join("agents.json")).unwrap()).unwrap();
   assert_eq!(agents["agents"].as_array().unwrap().len(), 3);
   assert!(agents["generated_at"].is_string());
+  // PATH に gh が無いので、reviews.json は作られない / No gh on PATH, so no reviews.json
+  assert!(!ctx.join("reviews.json").exists());
 
   let log = fs::read_to_string(sandbox.log()).unwrap();
   let notifications: Vec<&str> = log
@@ -502,4 +548,231 @@ fn watch_keeps_running_while_the_server_is_down() {
 
   assert!(still_running);
   assert!(!sandbox.home().join(".herdr/ctx/agents.json").exists());
+}
+
+#[test]
+fn reviews_prints_the_requests_as_json() {
+  let sandbox = Sandbox::new("reviews");
+  sandbox.fake_gh(SEARCH_JSON, "", 0);
+
+  let output = sandbox.run(&["reviews"]);
+
+  assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+  assert_eq!(stderr(&output), "");
+  let reviews: serde_json::Value = serde_json::from_str(&stdout(&output)).unwrap();
+  assert!(reviews["generated_at"].is_string());
+  assert_eq!(reviews["total_count"], 2);
+  let requests = reviews["review_requests"].as_array().unwrap();
+  assert_eq!(requests.len(), 2);
+  assert_eq!(requests[0]["repo"], "owner/zeta");
+  assert_eq!(requests[0]["number"], 12);
+  assert_eq!(requests[0]["url"], "https://github.com/owner/zeta/pull/12");
+  assert_eq!(requests[0]["author"], "author-a");
+  assert_eq!(requests[1]["repo"], "example-org/alpha");
+  assert_eq!(requests[1]["draft"], true);
+
+  let log = fs::read_to_string(sandbox.gh_log()).unwrap();
+  assert_eq!(
+    log.trim_end(),
+    "api -X GET search/issues -f q=is:pr is:open user-review-requested:@me -f per_page=100 -f sort=updated -f order=desc"
+  );
+  // reviews は stdout に出すだけで、ファイルは書かない / reviews only prints; it writes no file
+  assert!(!sandbox.reviews_file().exists());
+}
+
+#[test]
+fn reviews_prints_an_empty_list_when_nothing_is_requested() {
+  let sandbox = Sandbox::new("reviews-empty");
+  sandbox.fake_gh(SEARCH_EMPTY_JSON, "", 0);
+
+  let output = sandbox.run(&["reviews"]);
+
+  assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+  let reviews: serde_json::Value = serde_json::from_str(&stdout(&output)).unwrap();
+  assert_eq!(reviews["total_count"], 0);
+  assert!(reviews["review_requests"].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn reviews_reports_the_reason_when_gh_fails() {
+  let sandbox = Sandbox::new("reviews-fail");
+  sandbox.fake_gh(BAD_CREDENTIALS_JSON, "gh: Bad credentials (HTTP 401)\n", 1);
+
+  let output = sandbox.run(&["reviews"]);
+
+  assert_eq!(output.status.code(), Some(1));
+  assert_eq!(stdout(&output), "");
+  assert_eq!(
+    stderr(&output),
+    "herdr-ctx: gh: Bad credentials (HTTP 401)\n"
+  );
+}
+
+#[test]
+fn reviews_fails_on_broken_json() {
+  let sandbox = Sandbox::new("reviews-broken");
+  sandbox.fake_gh("not json", "", 0);
+
+  let output = sandbox.run(&["reviews"]);
+
+  assert_eq!(output.status.code(), Some(1));
+  assert_eq!(stdout(&output), "");
+  assert_eq!(stderr(&output).lines().count(), 1, "{}", stderr(&output));
+  assert!(stderr(&output).contains("GitHub の JSON を読めない"));
+}
+
+#[test]
+fn reviews_without_gh_fails_with_one_stderr_line() {
+  let sandbox = Sandbox::new("reviews-no-gh");
+
+  let output = sandbox.run(&["reviews"]);
+
+  assert_eq!(output.status.code(), Some(1));
+  assert_eq!(stdout(&output), "");
+  assert_eq!(stderr(&output).lines().count(), 1, "{}", stderr(&output));
+  assert!(stderr(&output).starts_with("herdr-ctx: gh を実行できない"));
+}
+
+#[test]
+fn reviews_gives_up_on_a_hanging_gh_at_the_deadline() {
+  let sandbox = Sandbox::new("reviews-hang");
+  sandbox.hanging_gh();
+
+  let started = Instant::now();
+  let output = sandbox
+    .command_with_short_deadline(&["reviews"])
+    .output()
+    .expect("binary runs");
+
+  assert!(started.elapsed() < Duration::from_secs(2));
+  assert_eq!(output.status.code(), Some(1));
+  assert_eq!(stdout(&output), "");
+  assert_eq!(
+    stderr(&output).trim_end(),
+    "herdr-ctx: gh が 1 秒以内に応答しない"
+  );
+}
+
+fn spawn_watch(sandbox: &Sandbox) -> std::process::Child {
+  sandbox
+    .command(&["watch", "--interval", "1", "--reviews-interval", "1"])
+    .stdout(Stdio::null())
+    .stderr(Stdio::piped())
+    .spawn()
+    .expect("binary runs")
+}
+
+fn stop(mut child: std::process::Child) -> String {
+  child.kill().unwrap();
+  let output = child.wait_with_output().unwrap();
+  stderr(&output)
+}
+
+#[test]
+fn watch_writes_reviews_json() {
+  let sandbox = Sandbox::new("watch-reviews");
+  sandbox.fake_herdr(LIST_JSON, "", 0);
+  sandbox.fake_gh(SEARCH_JSON, "", 0);
+  let ctx = sandbox.home().join(".herdr/ctx");
+
+  let child = spawn_watch(&sandbox);
+  let written = wait_for(&sandbox.reviews_file()) && wait_for(&ctx.join("agents.json"));
+  let log = stop(child);
+
+  assert!(written, "{log}");
+  let reviews: serde_json::Value =
+    serde_json::from_str(&fs::read_to_string(sandbox.reviews_file()).unwrap()).unwrap();
+  assert!(reviews["generated_at"].is_string());
+  assert_eq!(reviews["total_count"], 2);
+  assert_eq!(reviews["review_requests"][0]["repo"], "owner/zeta");
+}
+
+#[test]
+fn watch_overwrites_reviews_json_with_an_empty_list_when_nothing_is_requested() {
+  let sandbox = Sandbox::new("watch-reviews-empty");
+  sandbox.fake_herdr(LIST_JSON, "", 0);
+  sandbox.fake_gh(SEARCH_EMPTY_JSON, "", 0);
+  fs::write(sandbox.reviews_file(), PREVIOUS_REVIEWS).unwrap();
+
+  let child = spawn_watch(&sandbox);
+  let replaced = wait_until(|| {
+    fs::read_to_string(sandbox.reviews_file()).is_ok_and(|text| text != PREVIOUS_REVIEWS)
+  });
+  let log = stop(child);
+
+  assert!(replaced, "{log}");
+  let reviews: serde_json::Value =
+    serde_json::from_str(&fs::read_to_string(sandbox.reviews_file()).unwrap()).unwrap();
+  assert_eq!(reviews["total_count"], 0);
+  assert!(reviews["review_requests"].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn watch_keeps_reviews_json_and_the_agent_cycle_when_gh_fails() {
+  let sandbox = Sandbox::new("watch-reviews-fail");
+  sandbox.fake_herdr(LIST_JSON, "", 0);
+  sandbox.fake_gh(BAD_CREDENTIALS_JSON, "gh: Bad credentials (HTTP 401)\n", 1);
+  sandbox.sidecar("w3C_p1W.json", 62);
+  fs::write(sandbox.reviews_file(), PREVIOUS_REVIEWS).unwrap();
+  let ctx = sandbox.home().join(".herdr/ctx");
+
+  let child = spawn_watch(&sandbox);
+  // 失敗した周期を 2 回見てから止める / Stop after two failed cycles
+  let retried = wait_until(|| sandbox.gh_calls() >= 2);
+  let agents_written = wait_for(&ctx.join("notify_state.json"));
+  let log = stop(child);
+
+  assert!(retried && agents_written, "{log}");
+  assert_eq!(
+    fs::read_to_string(sandbox.reviews_file()).unwrap(),
+    PREVIOUS_REVIEWS
+  );
+  assert!(ctx.join("agents.json").exists());
+  let herdr_log = fs::read_to_string(sandbox.log()).unwrap();
+  assert!(
+    herdr_log
+      .lines()
+      .any(|line| line.starts_with("notification show")),
+    "{herdr_log}"
+  );
+  assert!(
+    log
+      .lines()
+      .any(|line| line == "herdr-ctx: レビュー依頼を更新できない: gh: Bad credentials (HTTP 401)"),
+    "{log}"
+  );
+}
+
+#[test]
+fn watch_keeps_the_agent_cycle_while_gh_hangs() {
+  let sandbox = Sandbox::new("watch-gh-hang");
+  sandbox.fake_herdr(LIST_JSON, "", 0);
+  sandbox.hanging_gh();
+
+  // gh の期限は既定の 15 秒のまま。agent の周期がそれを待たないことを見る
+  // gh keeps its default 15 second deadline; the agent cycle must not wait for it
+  let mut child = sandbox
+    .command(&["watch", "--interval", "1"])
+    .env(
+      "PATH",
+      format!(
+        "{}:{}",
+        sandbox.bin().display(),
+        std::env::var("PATH").unwrap_or_default()
+      ),
+    )
+    .stdout(Stdio::null())
+    .stderr(Stdio::null())
+    .spawn()
+    .expect("binary runs");
+
+  let cycled = wait_until(|| {
+    fs::read_to_string(sandbox.log())
+      .is_ok_and(|log| log.lines().filter(|line| *line == "agent list").count() >= 3)
+  });
+  child.kill().unwrap();
+  child.wait().unwrap();
+
+  assert!(cycled);
+  assert!(!sandbox.reviews_file().exists());
 }

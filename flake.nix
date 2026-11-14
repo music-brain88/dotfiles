@@ -38,7 +38,7 @@
           # shipped via home.packages in nix/modules/dev-tools.nix.
           (final: prev: {
             standalone-check = final.callPackage ./tools/standalone-check/package.nix { };
-            # 自作ツール: herdr-ctx (herdr の各 agent の context 使用率を読む、Rust)。
+            # 自作ツール: herdr-ctx (各 agent の context 使用率とレビュー依頼を集める、Rust)。
             # ソースは tools/herdr-ctx/、配布は nix/modules/herdr.nix の home.packages。
             # In-repo tool: herdr-ctx (Rust). Source in tools/herdr-ctx/,
             # shipped via home.packages in nix/modules/herdr.nix.

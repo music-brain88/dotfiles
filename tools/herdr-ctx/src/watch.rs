@@ -1,10 +1,16 @@
-//! 常駐のループ。agents.json を書き、閾値を下から上に跨いだ agent を 1 回だけ知らせる。
+//! 常駐のループ。スレッドを 2 本持つ。主スレッドは agents.json を書き、閾値を下から上に跨いだ agent を
+//! 1 回だけ知らせる。もう 1 本は別の周期でレビュー依頼を集めて reviews.json を書く。2 本は状態を共有せず、
+//! 書くファイルも別なので、gh の遅さと失敗は agent の周期に届かない。
 //! SIGTERM は既定の動作のままにする。書き込みは一時ファイル + rename なので、途中で落ちても
 //! 読む側に書きかけのファイルは見えず、systemd は SIGTERM での終了を正常終了として扱う。
-//! The resident loop: writes agents.json and notifies once per upward threshold crossing.
+//! The resident loop, on two threads. The main one writes agents.json and notifies once per upward
+//! threshold crossing; the other gathers review requests on its own period into reviews.json. They
+//! share no state and write different files, so gh's slowness and failures never reach the agent
+//! cycle.
 //! SIGTERM keeps its default action. Writes go through a temp file and rename, so dying mid-way
 //! never exposes a partial file, and systemd treats a SIGTERM exit as clean.
 
+use crate::github::{fetch_reviews, GitHub};
 use crate::herdr::{show_notification, Herdr};
 use crate::report::{collect_rows, Row};
 use chrono::{DateTime, SecondsFormat, Utc};
@@ -12,16 +18,19 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::panic::{self, AssertUnwindSafe};
+use std::path::{Path, PathBuf};
 use std::process;
 use std::thread;
 use std::time::Duration;
 
 pub const DEFAULT_INTERVAL_SECS: u64 = 30;
 pub const DEFAULT_THRESHOLDS: [u32; 3] = [50, 60, 80];
+pub const DEFAULT_REVIEWS_INTERVAL_SECS: u64 = 300;
 
 const AGENTS_FILE: &str = "agents.json";
 const STATE_FILE: &str = "notify_state.json";
+const REVIEWS_FILE: &str = "reviews.json";
 
 /// pane の「今いる段」と、その段を知らせた session。段は、知らせ済みの閾値のうち今の pct 以下で最大のもの。
 /// pane id は場所しか示さないので、session_id で記録の持ち主を見分ける。
@@ -59,6 +68,7 @@ impl WatchState {
 pub struct WatchOptions {
   pub interval: Duration,
   pub thresholds: Vec<u32>,
+  pub reviews_interval: Duration,
 }
 
 #[derive(Debug, PartialEq)]
@@ -160,7 +170,9 @@ pub fn plan(prev: &NotifyState, rows: &[Row], thresholds: &[u32]) -> (NotifyStat
 }
 
 /// 同じディレクトリの一時ファイルに書いて置き換える。読む側に途中の状態を見せない。
+/// 一時ファイルの名前は置き換え先の名前を含むので、2 本のスレッドが別のファイルを同時に書いてもぶつからない。
 /// Writes to a temp file in the same directory, then replaces, so readers never see a partial file.
+/// The temp name includes the target's name, so the two threads writing different files never clash.
 fn write_atomic(path: &Path, content: &str) -> io::Result<()> {
   let mut tmp = path.as_os_str().to_owned();
   tmp.push(format!(".tmp.{}", process::id()));
@@ -263,7 +275,55 @@ pub fn tick(
   persist(ctx_dir, state);
 }
 
-pub fn run(herdr: &dyn Herdr, ctx_dir: &Path, options: &WatchOptions) -> ! {
+/// レビュー依頼の 1 周期。取得して reviews.json を書く。取得・解釈・書き込みのどこかで失敗した周期は、
+/// 前の reviews.json を残して理由を返す。空の一覧で上書きすると、読む側には「依頼が 0 件」に見えるため。
+/// One review cycle: fetch and write reviews.json. A cycle that fails anywhere (fetching, parsing,
+/// writing) keeps the previous reviews.json and returns the reason, since an empty list would read
+/// as "no requests".
+pub fn refresh_reviews(
+  github: &dyn GitHub,
+  ctx_dir: &Path,
+  now: DateTime<Utc>,
+) -> Result<(), String> {
+  let text = fetch_reviews(github, now)?.to_json()?;
+  fs::create_dir_all(ctx_dir).map_err(|e| format!("{} を作れない: {e}", ctx_dir.display()))?;
+  write_atomic(&ctx_dir.join(REVIEWS_FILE), &text)
+    .map_err(|e| format!("{REVIEWS_FILE} を書けない: {e}"))
+}
+
+/// レビュー依頼のスレッドを立てる。本体は refresh_reviews を呼んで眠るだけの殻である。失敗は stderr に
+/// 1 行書いて次の周期へ進み、万一の panic も周期の中で受け止める。スレッドが黙って死ぬと、reviews.json が
+/// 古いまま誰も気づけないため。起動できなくても、agent の一覧と通知は続ける。
+/// Starts the review thread, a thin shell that calls refresh_reviews and sleeps. Failures become
+/// one stderr line and the next cycle follows; even an unexpected panic is caught per cycle, since
+/// a silently dead thread would leave reviews.json stale with nobody noticing. If the thread cannot
+/// start, the agent list and notices carry on.
+fn spawn_reviews(github: impl GitHub + Send + 'static, ctx_dir: PathBuf, interval: Duration) {
+  let spawned = thread::Builder::new()
+    .name("reviews".to_string())
+    .spawn(move || loop {
+      let cycle = panic::catch_unwind(AssertUnwindSafe(|| {
+        refresh_reviews(&github, &ctx_dir, Utc::now())
+      }));
+      match cycle {
+        Ok(Ok(())) => {}
+        Ok(Err(reason)) => eprintln!("herdr-ctx: レビュー依頼を更新できない: {reason}"),
+        Err(_) => eprintln!("herdr-ctx: レビュー依頼の周期が panic した。次の周期で続ける"),
+      }
+      thread::sleep(interval);
+    });
+  if let Err(e) = spawned {
+    eprintln!("herdr-ctx: レビュー依頼のスレッドを起動できない: {e}");
+  }
+}
+
+pub fn run(
+  herdr: &dyn Herdr,
+  github: impl GitHub + Send + 'static,
+  ctx_dir: &Path,
+  options: &WatchOptions,
+) -> ! {
+  spawn_reviews(github, ctx_dir.to_path_buf(), options.reviews_interval);
   let mut state = WatchState::load(ctx_dir);
   loop {
     tick(herdr, ctx_dir, &options.thresholds, &mut state, Utc::now());
@@ -275,7 +335,8 @@ pub fn run(herdr: &dyn Herdr, ctx_dir: &Path, options: &WatchOptions) -> ! {
 mod tests {
   use super::*;
   use crate::testutil::{
-    temp_dir, FakeHerdr, AGENT_LIST_JSON, NOTIFY_NOT_SHOWN_JSON, NOTIFY_SHOWN_JSON,
+    temp_dir, FakeGitHub, FakeHerdr, AGENT_LIST_JSON, NOTIFY_NOT_SHOWN_JSON, NOTIFY_SHOWN_JSON,
+    SEARCH_EMPTY_JSON, SEARCH_JSON,
   };
 
   const THRESHOLDS: [u32; 3] = [50, 60, 80];
@@ -673,5 +734,93 @@ mod tests {
       .map(|e| e.unwrap().file_name())
       .collect();
     assert_eq!(names, ["a.json"]);
+  }
+
+  fn read_reviews(dir: &Path) -> serde_json::Value {
+    serde_json::from_str(&fs::read_to_string(dir.join(REVIEWS_FILE)).unwrap()).unwrap()
+  }
+
+  const PREVIOUS_REVIEWS: &str = "{\"previous\":true}\n";
+
+  #[test]
+  fn a_review_cycle_writes_reviews_json() {
+    let dir = temp_dir("reviews");
+
+    refresh_reviews(&FakeGitHub::answering(SEARCH_JSON), &dir, now()).unwrap();
+
+    let file = read_reviews(&dir);
+    assert_eq!(file["generated_at"], "2026-11-05T12:35:00Z");
+    assert_eq!(file["total_count"], 152);
+    assert_eq!(file["review_requests"].as_array().unwrap().len(), 3);
+    assert_eq!(file["review_requests"][0]["repo"], "owner/zeta");
+  }
+
+  #[test]
+  fn a_review_cycle_creates_the_ctx_dir() {
+    let dir = temp_dir("reviews-mkdir").join("ctx");
+
+    refresh_reviews(&FakeGitHub::answering(SEARCH_EMPTY_JSON), &dir, now()).unwrap();
+
+    assert_eq!(read_reviews(&dir)["total_count"], 0);
+  }
+
+  #[test]
+  fn no_requests_overwrite_the_previous_file_with_an_empty_list() {
+    let dir = temp_dir("reviews-empty");
+    fs::write(dir.join(REVIEWS_FILE), PREVIOUS_REVIEWS).unwrap();
+
+    refresh_reviews(&FakeGitHub::answering(SEARCH_EMPTY_JSON), &dir, now()).unwrap();
+
+    let file = read_reviews(&dir);
+    assert_eq!(file["total_count"], 0);
+    assert!(file["review_requests"].as_array().unwrap().is_empty());
+  }
+
+  #[test]
+  fn a_failed_fetch_keeps_the_previous_file() {
+    let dir = temp_dir("reviews-fail");
+    fs::write(dir.join(REVIEWS_FILE), PREVIOUS_REVIEWS).unwrap();
+
+    let error = refresh_reviews(&FakeGitHub::failing("gh: boom"), &dir, now()).unwrap_err();
+
+    assert_eq!(error, "gh: boom");
+    assert_eq!(
+      fs::read_to_string(dir.join(REVIEWS_FILE)).unwrap(),
+      PREVIOUS_REVIEWS
+    );
+  }
+
+  #[test]
+  fn a_broken_response_keeps_the_previous_file() {
+    let dir = temp_dir("reviews-broken");
+    fs::write(dir.join(REVIEWS_FILE), PREVIOUS_REVIEWS).unwrap();
+
+    let error = refresh_reviews(&FakeGitHub::answering("not json"), &dir, now()).unwrap_err();
+
+    assert!(error.starts_with("GitHub の JSON を読めない"), "{error}");
+    assert_eq!(
+      fs::read_to_string(dir.join(REVIEWS_FILE)).unwrap(),
+      PREVIOUS_REVIEWS
+    );
+  }
+
+  #[test]
+  fn a_failed_write_is_reported() {
+    let dir = temp_dir("reviews-write");
+    // 置き換え先がディレクトリだと rename が失敗する / rename fails onto a directory
+    fs::create_dir(dir.join(REVIEWS_FILE)).unwrap();
+
+    let error = refresh_reviews(&FakeGitHub::answering(SEARCH_JSON), &dir, now()).unwrap_err();
+
+    assert!(error.starts_with("reviews.json を書けない"), "{error}");
+  }
+
+  #[test]
+  fn a_failed_fetch_writes_no_file() {
+    let dir = temp_dir("reviews-none");
+
+    assert!(refresh_reviews(&FakeGitHub::failing("gh: boom"), &dir, now()).is_err());
+
+    assert!(!dir.join(REVIEWS_FILE).exists());
   }
 }
