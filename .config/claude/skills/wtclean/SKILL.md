@@ -50,10 +50,10 @@ merged_json=$(gh pr list --state merged --limit 50 --json number,headRefName,hea
 current=$(git branch --show-current)
 wt_branches=$(git worktree list --porcelain | sed -n 's|^branch refs/heads/||p')
 git for-each-ref --format='%(refname:short) %(objectname)' refs/heads | while read -r br oid; do
-  pr=$(jq -r --arg b "$br" '[.[] | select(.headRefName == $b)][0] | if . then "\(.number) \(.headRefOid)" else empty end' <<<"$merged_json")
+  grep -qxF -- "$br" <<<"$wt_branches" && continue          # worktree を持つブランチは手順 3 と手順 4 が扱う
+  pr=$(jq -r --arg b "$br" --arg o "$oid" '[.[] | select(.headRefName == $b)] | ((map(select(.headRefOid == $o))[0]) // .[0]) | if . then "\(.number) \(.headRefOid)" else empty end' <<<"$merged_json")
   [ -z "$pr" ] && continue                                   # マージ済み PR の head ブランチではない
   read -r pr_number pr_oid <<<"$pr"
-  grep -qxF -- "$br" <<<"$wt_branches" && { echo "skip: $br (worktree あり。手順 3 の対象)"; continue; }
   [ "$br" = "$current" ] && { echo "skip: $br (現在のブランチ)"; continue; }
   [ "$(gh pr list --state open --head "$br" --json number --jq length)" != 0 ] && { echo "skip: $br (open PR あり)"; continue; }
   [ "$oid" = "$pr_oid" ] || { echo "skip: $br (ローカルにしか無いコミットあり)"; continue; }
@@ -61,11 +61,11 @@ git for-each-ref --format='%(refname:short) %(objectname)' refs/heads | while re
 done
 ```
 
-出力の `candidate:` の行が手順 3b の対象であり、`skip:` の行は理由付きで手順 5 のスキップ対象に回す。
+出力の `candidate:` の行が手順 3b の対象であり、`skip:` の行は理由付きで手順 5 のスキップ対象に回す。worktree を持つブランチは、このコマンドが何も出力せずに飛ばす。それらは手順 3 の対象であり、手順 4 の安全チェックを通れば削除対象になるので、手順 3b の `skip:` として扱ってはならない。同じ名前のマージ済み PR が複数あるとき(ブランチ名の使い回しなど)、コマンドは、ローカルの先頭コミットと `headRefOid` が一致する PR を選んで `candidate:` に出し、どの PR とも一致しないときだけ `skip:` に出す。
 
 **Constraints:**
 - **MUST**: `git for-each-ref refs/heads` で得たローカルブランチのうち、手順 2 のマージ済み PR の head ブランチと名前が一致し、worktree を持たない(`git worktree list --porcelain` の `branch` 行に現れない)ものを対象候補にする
-- **MUST**: 各候補について、ローカルブランチの先頭コミットがマージ済み PR の `headRefOid` と一致することを確認する。一致しないブランチは「ローカルにしか無いコミットがある」としてスキップする(一致は、ブランチの全コミットがマージ済み PR に含まれていたことを示す。名前の一致だけでは、PR のマージ後にローカルで積んだコミットを見逃す)
+- **MUST**: 各候補について、ローカルブランチの先頭コミットがマージ済み PR の `headRefOid` と一致することを確認する。同じ名前のマージ済み PR が複数あるときは、そのうち 1 本でも `headRefOid` が先頭コミットと一致すれば一致とみなし、どの PR とも一致しないときだけ「ローカルにしか無いコミットがある」としてスキップする(一致は、ブランチの全コミットがマージ済み PR に含まれていたことを示す。名前の一致だけでは、PR のマージ後にローカルで積んだコミットを見逃す)
 - **MUST**: 現在チェックアウト中のブランチと、open PR が紐づくブランチ(`gh pr list --state open --head <branch>` が空でないもの)はスキップする
 - **MUST**: 手順 7 では、これらのブランチに `git branch -d` だけを実行する(worktree と workspace の削除は無い)
 - **MUST**: `git fetch --prune` を実行する場合は、手順 7 の `git branch -d` をすべて終えた後にする。先に実行すると追跡参照が消え、squash マージ済みのブランチを `git branch -d` が拒否する(詳細: Troubleshooting「worktree を持たないブランチと git fetch --prune の順序」参照)
