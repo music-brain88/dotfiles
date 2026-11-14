@@ -1,21 +1,10 @@
 //! herdr CLI との境界。テストでは Herdr トレイトを固定の JSON で差し替える。
 //! The boundary with the herdr CLI. Tests swap the Herdr trait for fixed JSON.
 
+use crate::process;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
-use std::io::Read;
-use std::process::{Child, Command, ExitStatus, Stdio};
-use std::sync::mpsc::{self, Receiver};
-use std::thread;
-use std::time::{Duration, Instant};
-
-/// 子プロセスの終了を確かめる間隔。
-/// How often the child's exit is checked.
-const POLL_INTERVAL: Duration = Duration::from_millis(50);
-
-/// 子プロセスが終わった後に、出力を読み切るまで待つ上限。
-/// How long to wait for the remaining output once the child has exited.
-const DRAIN_TIMEOUT: Duration = Duration::from_millis(200);
+use std::time::Duration;
 
 /// herdr の呼び出し。結果は生の JSON で返し、解釈は list_agents と get_agent が受け持つ。
 /// Calls into herdr. Results stay raw JSON; list_agents and get_agent interpret them.
@@ -34,66 +23,14 @@ impl HerdrCli {
     Self { timeout }
   }
 
-  /// herdr を期限つきで実行する。herdr が要求を受けたまま応答しないと、watch の周期が止まり、
-  /// self は hook の timeout に切られて使用率の行を出せなくなる。
-  /// Runs herdr with a deadline. If herdr accepts a request and never answers, watch would stall
-  /// and self would be cut off by the hook timeout before printing the usage line.
+  /// herdr を期限つきで実行する。期限の理由は process::run に書いてある。
+  /// Runs herdr with a deadline; process::run explains why.
   fn run(&self, args: &[&str]) -> Result<String, String> {
-    let mut child = Command::new("herdr")
-      .args(args)
-      .stdin(Stdio::null())
-      .stdout(Stdio::piped())
-      .stderr(Stdio::piped())
-      .spawn()
-      .map_err(|e| format!("herdr を実行できない: {e}"))?;
-    let stdout = read_in_background(child.stdout.take());
-    let stderr = read_in_background(child.stderr.take());
-    let status = wait_with_deadline(&mut child, self.timeout)?;
-
-    let stdout = drain(&stdout);
-    if status.success() {
-      return Ok(stdout);
+    let finished = process::run("herdr", args, self.timeout)?;
+    if finished.success {
+      return Ok(finished.stdout);
     }
-    Err(failure_reason(&stdout, &drain(&stderr)))
-  }
-}
-
-/// 待つ間も別のスレッドで読み続ける。パイプが満杯になると herdr が書けずに止まるため。
-/// Keeps reading on another thread while waiting, since a full pipe would block herdr.
-fn read_in_background<R: Read + Send + 'static>(pipe: Option<R>) -> Receiver<Vec<u8>> {
-  let (sender, receiver) = mpsc::channel();
-  thread::spawn(move || {
-    let mut bytes = Vec::new();
-    if let Some(mut pipe) = pipe {
-      let _ = pipe.read_to_end(&mut bytes);
-    }
-    let _ = sender.send(bytes);
-  });
-  receiver
-}
-
-fn drain(receiver: &Receiver<Vec<u8>>) -> String {
-  let bytes = receiver.recv_timeout(DRAIN_TIMEOUT).unwrap_or_default();
-  String::from_utf8_lossy(&bytes).into_owned()
-}
-
-/// 期限を過ぎたら子プロセスを止めて回収する。読み手のスレッドは待たない。子プロセスの子孫がパイプを
-/// 握っていると、読み手はその子孫が終わるまで終わらないので、待つと期限の意味が無くなる。
-/// Past the deadline the child is killed and reaped without waiting for the reader threads: a
-/// descendant holding the pipe would keep them alive and defeat the deadline.
-fn wait_with_deadline(child: &mut Child, timeout: Duration) -> Result<ExitStatus, String> {
-  let deadline = Instant::now() + timeout;
-  loop {
-    match child.try_wait() {
-      Ok(Some(status)) => return Ok(status),
-      Ok(None) if Instant::now() >= deadline => {
-        let _ = child.kill();
-        let _ = child.wait();
-        return Err(format!("herdr が {} 秒以内に応答しない", timeout.as_secs()));
-      }
-      Ok(None) => thread::sleep(POLL_INTERVAL),
-      Err(e) => return Err(format!("herdr の終了を待てない: {e}")),
-    }
+    Err(failure_reason(&finished.stdout, &finished.stderr))
   }
 }
 

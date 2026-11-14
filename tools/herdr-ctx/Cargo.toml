@@ -2,7 +2,7 @@
 name = "herdr-ctx"
 version = "0.1.0"
 edition = "2021"
-description = "herdr の各 agent の context 使用率を pane の幅に依存せず読む CLI / Reads each herdr agent's context usage regardless of pane width"
+description = "herdr の各 agent の context 使用率と、決定者宛ての open のレビュー依頼を集める CLI / Gathers each herdr agent's context usage and the decision maker's open review requests"
 license = "MIT"
 publish = false
 

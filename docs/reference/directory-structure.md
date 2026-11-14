@@ -44,7 +44,7 @@ dotfiles/
 | ディレクトリ | 説明 |
 |---|---|
 | `tools/standalone-check/` | 配布文書の自立可読性チェッカー(Rust)。`standalone-report-writing` skill の点検手順から呼ぶ。`flake.nix` の overlay で `pkgs.standalone-check` として定義し、`nix/modules/dev-tools.nix` の `home.packages` で配る。単体ビルドは `nix build .#standalone-check`、開発は `cargo test`(Issue #639) |
-| `tools/herdr-ctx/` | herdr の各 agent の context 使用率を pane の幅に依存せず読む CLI(Rust)。Claude Code の statusline が書く sidecar を `herdr agent list` と結合する。`flake.nix` の overlay で `pkgs.herdr-ctx` として定義し、`nix/modules/herdr.nix` の `home.packages` で配る。`watch` は同じモジュールの systemd の user service で常駐する。単体ビルドは `nix build .#herdr-ctx`、開発は `cargo test`(Issue #784) |
+| `tools/herdr-ctx/` | 司令塔と決定者が見る盤面の値を集める CLI(Rust)。herdr の各 agent の context 使用率を pane の幅に依存せず読むために、Claude Code の statusline が書く sidecar を `herdr agent list` と結合する。決定者に割り当てられた open のレビュー依頼も `gh api` で集める(Issue #805)。`flake.nix` の overlay で `pkgs.herdr-ctx` として定義し、`nix/modules/herdr.nix` の `home.packages` で配る。`watch` は同じモジュールの systemd の user service で常駐する。単体ビルドは `nix build .#herdr-ctx`、開発は `cargo test`(Issue #784) |
 
 ### Task Runner
 

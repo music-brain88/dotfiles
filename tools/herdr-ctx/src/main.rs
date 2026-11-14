@@ -1,21 +1,32 @@
-//! herdr-ctx — herdr の各 agent の context 使用率を、pane の幅に依存せず読む (Issue #784)。
-//! Reads each herdr agent's context usage regardless of pane width (Issue #784).
+//! herdr-ctx — 司令塔と決定者が見る盤面のために、機械が取れる値を集める計器。
+//! The instrument that gathers machine-readable values for the board the commander and the
+//! decision maker share.
 //!
-//! 数値の出所は Claude Code の statusline が書く sidecar で、transcript の JSONL は読まない。
-//! The numbers come from the sidecar the Claude Code statusline writes, never from the
-//! transcript JSONL.
+//! 集める値は 2 つある。herdr の各 agent の context 使用率を pane の幅に依存せず読み (Issue #784)、
+//! 決定者に割り当てられた open のレビュー依頼を GitHub から集める (Issue #805)。
+//! It gathers two values: each herdr agent's context usage regardless of pane width (Issue #784),
+//! and the open review requests assigned to the decision maker on GitHub (Issue #805).
+//!
+//! 使用率の出所は Claude Code の statusline が書く sidecar で、transcript の JSONL は読まない。
+//! レビュー依頼は `gh api` で取り、認証は gh に任せる。
+//! Usage comes from the sidecar the Claude Code statusline writes, never from the transcript
+//! JSONL. Review requests come from `gh api`, which handles authentication.
 //!
 //! 終了コード / Exit code:
 //!   0  成功。self は hook から呼ぶので常に 0 で、値が無いときは何も出さない
-//!   1  herdr が無い、JSON を読めない、herdr に繋がらない(list)
+//!   1  herdr が無い、JSON を読めない、herdr に繋がらない(list)。gh が無い、gh が失敗した、
+//!      応答を読めない(reviews)
 //!   2  引数が正しくない
 
+mod github;
 mod herdr;
+mod process;
 mod report;
 mod sidecar;
 mod watch;
 
 use chrono::{Local, Utc};
+use github::GhCli;
 use herdr::HerdrCli;
 use std::env;
 use std::io::{IsTerminal, Read, Write};
@@ -29,48 +40,61 @@ use watch::WatchOptions;
 const QUERY_TIMEOUT_SECS: u64 = 3;
 const WATCH_TIMEOUT_SECS: u64 = 10;
 
-/// 上の期限を上書きする環境変数。統合テストが期限を短くするために使う。
-/// Overrides the deadlines above; integration tests use it to shorten them.
+/// gh の応答を待つ上限。検索 API はふだん数秒で返る。watch では専用のスレッドが待つので、
+/// この期限が agent の一覧の周期を遅らせることはない。
+/// How long to wait for gh. The search API usually answers within seconds. In watch a dedicated
+/// thread does the waiting, so this deadline never delays the agent cycle.
+const GH_TIMEOUT_SECS: u64 = 15;
+
+/// 上の期限(herdr と gh の両方)を上書きする環境変数。統合テストが期限を短くするために使う。
+/// Overrides the deadlines above, for both herdr and gh; integration tests use it to shorten them.
 const TIMEOUT_ENV: &str = "HERDR_CTX_TIMEOUT_SECS";
 
 const USAGE: &str = "\
 使い方 / Usage:
   herdr-ctx list [--table]
   herdr-ctx self
-  herdr-ctx watch [--interval <秒>] [--thresholds <カンマ区切り>]
+  herdr-ctx reviews
+  herdr-ctx watch [--interval <秒>] [--thresholds <カンマ区切り>] [--reviews-interval <秒>]
 ";
 
 #[derive(Debug, PartialEq)]
 enum Cmd {
   List { table: bool },
   SelfReport,
+  Reviews,
   Watch(WatchOptions),
   Help,
 }
 
+fn parse_secs(flag: &str, value: Option<&str>) -> Result<Duration, String> {
+  let value = value.ok_or_else(|| format!("{flag} に値が無い"))?;
+  value
+    .parse()
+    .ok()
+    .filter(|secs| *secs > 0)
+    .map(Duration::from_secs)
+    .ok_or_else(|| format!("{flag} は 1 以上の整数で指定する: {value}"))
+}
+
 fn parse_watch<'a>(mut args: impl Iterator<Item = &'a str>) -> Result<WatchOptions, String> {
-  let mut interval = watch::DEFAULT_INTERVAL_SECS;
-  let mut thresholds = watch::DEFAULT_THRESHOLDS.to_vec();
+  let mut options = WatchOptions {
+    interval: Duration::from_secs(watch::DEFAULT_INTERVAL_SECS),
+    thresholds: watch::DEFAULT_THRESHOLDS.to_vec(),
+    reviews_interval: Duration::from_secs(watch::DEFAULT_REVIEWS_INTERVAL_SECS),
+  };
   while let Some(arg) = args.next() {
     match arg {
-      "--interval" => {
-        let value = args.next().ok_or("--interval に値が無い")?;
-        interval = value
-          .parse()
-          .ok()
-          .filter(|secs| *secs > 0)
-          .ok_or_else(|| format!("--interval は 1 以上の整数で指定する: {value}"))?;
-      }
+      "--interval" => options.interval = parse_secs(arg, args.next())?,
+      "--reviews-interval" => options.reviews_interval = parse_secs(arg, args.next())?,
       "--thresholds" => {
-        thresholds = watch::parse_thresholds(args.next().ok_or("--thresholds に値が無い")?)?;
+        options.thresholds =
+          watch::parse_thresholds(args.next().ok_or("--thresholds に値が無い")?)?;
       }
       other => return Err(format!("不明な引数: {other}")),
     }
   }
-  Ok(WatchOptions {
-    interval: Duration::from_secs(interval),
-    thresholds,
-  })
+  Ok(options)
 }
 
 fn parse_args(args: &[String]) -> Result<Cmd, String> {
@@ -91,19 +115,31 @@ fn parse_args(args: &[String]) -> Result<Cmd, String> {
       Some(other) => Err(format!("不明な引数: {other}")),
       None => Ok(Cmd::SelfReport),
     },
+    "reviews" => match args.next() {
+      Some(other) => Err(format!("不明な引数: {other}")),
+      None => Ok(Cmd::Reviews),
+    },
     "watch" => parse_watch(args).map(Cmd::Watch),
     "-h" | "--help" | "help" => Ok(Cmd::Help),
     other => Err(format!("不明なサブコマンド: {other}")),
   }
 }
 
-fn herdr_cli(default_secs: u64) -> HerdrCli {
+fn deadline(default_secs: u64) -> Duration {
   let secs = env::var(TIMEOUT_ENV)
     .ok()
     .and_then(|value| value.parse().ok())
     .filter(|secs| *secs > 0)
     .unwrap_or(default_secs);
-  HerdrCli::new(Duration::from_secs(secs))
+  Duration::from_secs(secs)
+}
+
+fn herdr_cli(default_secs: u64) -> HerdrCli {
+  HerdrCli::new(deadline(default_secs))
+}
+
+fn gh_cli() -> GhCli {
+  GhCli::new(deadline(GH_TIMEOUT_SECS))
 }
 
 fn ctx_dir() -> Option<PathBuf> {
@@ -177,6 +213,16 @@ fn run_self() -> ExitCode {
   ExitCode::SUCCESS
 }
 
+fn run_reviews() -> ExitCode {
+  match github::fetch_reviews(&gh_cli(), Utc::now()).and_then(|reviews| reviews.to_json()) {
+    Ok(text) => {
+      emit(&text);
+      ExitCode::SUCCESS
+    }
+    Err(reason) => fail(&reason),
+  }
+}
+
 fn main() -> ExitCode {
   let args: Vec<String> = env::args().skip(1).collect();
   let cmd = match parse_args(&args) {
@@ -190,8 +236,9 @@ fn main() -> ExitCode {
   match cmd {
     Cmd::List { table } => run_list(table),
     Cmd::SelfReport => run_self(),
+    Cmd::Reviews => run_reviews(),
     Cmd::Watch(options) => match ctx_dir() {
-      Some(dir) => watch::run(&herdr_cli(WATCH_TIMEOUT_SECS), &dir, &options),
+      Some(dir) => watch::run(&herdr_cli(WATCH_TIMEOUT_SECS), gh_cli(), &dir, &options),
       None => fail("HOME が無い"),
     },
     Cmd::Help => {
@@ -218,32 +265,50 @@ mod tests {
   }
 
   #[test]
-  fn watch_defaults_to_thirty_seconds_and_fifty_sixty_eighty() {
+  fn watch_defaults_to_thirty_seconds_fifty_sixty_eighty_and_five_minutes() {
     assert_eq!(
       parse(&["watch"]),
       Ok(Cmd::Watch(WatchOptions {
         interval: Duration::from_secs(30),
         thresholds: vec![50, 60, 80],
+        reviews_interval: Duration::from_secs(300),
       }))
     );
   }
 
   #[test]
-  fn watch_accepts_both_options() {
+  fn watch_accepts_every_option() {
     assert_eq!(
-      parse(&["watch", "--interval", "5", "--thresholds", "1,2,3"]),
+      parse(&[
+        "watch",
+        "--interval",
+        "5",
+        "--thresholds",
+        "1,2,3",
+        "--reviews-interval",
+        "60",
+      ]),
       Ok(Cmd::Watch(WatchOptions {
         interval: Duration::from_secs(5),
         thresholds: vec![1, 2, 3],
+        reviews_interval: Duration::from_secs(60),
       }))
     );
   }
 
   #[test]
   fn watch_rejects_a_bad_interval() {
-    assert!(parse(&["watch", "--interval", "0"]).is_err());
-    assert!(parse(&["watch", "--interval", "x"]).is_err());
-    assert!(parse(&["watch", "--interval"]).is_err());
+    for flag in ["--interval", "--reviews-interval"] {
+      assert!(parse(&["watch", flag, "0"]).is_err(), "{flag}");
+      assert!(parse(&["watch", flag, "x"]).is_err(), "{flag}");
+      assert!(parse(&["watch", flag]).is_err(), "{flag}");
+    }
+  }
+
+  #[test]
+  fn reviews_takes_no_arguments() {
+    assert_eq!(parse(&["reviews"]), Ok(Cmd::Reviews));
+    assert!(parse(&["reviews", "--all"]).is_err());
   }
 
   #[test]
@@ -258,6 +323,7 @@ mod tests {
 /// A shared fake herdr and fixed JSON, shaped like real herdr 0.9.5 responses.
 #[cfg(test)]
 pub mod testutil {
+  use crate::github::GitHub;
   use crate::herdr::Herdr;
   use std::cell::RefCell;
   use std::fs;
@@ -309,6 +375,42 @@ pub mod testutil {
         .borrow_mut()
         .push((title.to_string(), body.to_string()));
       Ok(response)
+    }
+  }
+
+  /// 検索 API の応答の形。リポジトリ・題・作者はすべて架空の値である。total_count が items より多いのは、
+  /// 先頭の 100 件だけを受け取る場合を表す。
+  /// Shaped like a search API response, with made-up repositories, titles and authors. total_count
+  /// above the item count stands for receiving only the first 100.
+  pub const SEARCH_JSON: &str = r#"{"total_count":152,"incomplete_results":false,"items":[
+    {"url":"https://api.github.com/repos/owner/zeta/issues/123","repository_url":"https://api.github.com/repos/owner/zeta","html_url":"https://github.com/owner/zeta/pull/123","number":123,"title":"Add the widget","user":{"login":"author-a","id":1},"state":"open","draft":false,"pull_request":{"url":"https://api.github.com/repos/owner/zeta/pulls/123"},"updated_at":"2026-11-13T09:00:00Z","created_at":"2026-11-10T01:00:00Z"},
+    {"repository_url":"https://api.github.com/repos/example-org/alpha","html_url":"https://github.com/example-org/alpha/pull/7","number":7,"title":"Fix the gadget","user":{"login":"author-b"},"draft":true,"updated_at":"2026-11-12T08:00:00Z","created_at":"2026-11-01T00:00:00Z"},
+    {"repository_url":"https://api.github.com/repos/owner/zeta","html_url":"https://github.com/owner/zeta/pull/98","number":98,"title":"Tidy the docs","user":null,"updated_at":"2026-11-02T00:00:00Z","created_at":"2026-10-30T00:00:00Z"}
+  ]}"#;
+
+  pub const SEARCH_EMPTY_JSON: &str = r#"{"total_count":0,"incomplete_results":false,"items":[]}"#;
+
+  pub struct FakeGitHub {
+    pub search: Result<String, String>,
+  }
+
+  impl FakeGitHub {
+    pub fn answering(raw: &str) -> Self {
+      Self {
+        search: Ok(raw.to_string()),
+      }
+    }
+
+    pub fn failing(reason: &str) -> Self {
+      Self {
+        search: Err(reason.to_string()),
+      }
+    }
+  }
+
+  impl GitHub for FakeGitHub {
+    fn search_review_requests(&self) -> Result<String, String> {
+      self.search.clone()
     }
   }
 
