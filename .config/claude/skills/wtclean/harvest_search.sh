@@ -30,6 +30,29 @@
 # (3) はわざと残す。修飾なしの #N はリポジトリを決められないが、ノートは
 # このリポジトリの PR をその形で引用することが多く、除くと取りこぼしの方が増える。
 #
+# A note last modified before the PR was created cannot cite that PR, so such
+# a note does not hit even when it matches a rule above (#810). The script asks
+# "gh pr view" for the PR's createdAt and compares it with the note's mtime; a
+# note whose mtime equals createdAt still hits. When gh cannot tell createdAt
+# (gh is missing, the call fails, it prints nothing, the number is not a PR of
+# this repository, or date cannot parse it), this filter is skipped and the
+# result is the same as without it.
+# PR の作成より前に最後に更新されたノートは、その PR を引用できない。そこで、
+# 上の規則に当てはまっても、そのようなノートはヒットしない(#810)。スクリプトは
+# "gh pr view" で PR の createdAt を求め、ノートの mtime と比べる。mtime が
+# createdAt とちょうど同じノートはヒットする。gh で createdAt を求められない
+# とき(gh が無い、呼び出しが失敗する、出力が空である、番号がこのリポジトリの
+# PR ではない、date が解釈できない)は、この絞り込みを省き、結果は絞り込みが
+# 無いときと同じになる。
+#
+# Known limit: a note updated after the PR was created can still wrongly hit
+# when it cites another repository's same number as a bare #N.
+# 既知の制限: PR の作成後に更新されたノートが、別のリポジトリの同じ番号を
+# 修飾なしの #N で引用している場合は、除けずに誤ってヒットする。
+#
+# "date -d" and "stat -c %Y" are GNU forms; this tool runs only on Linux.
+# "date -d" と "stat -c %Y" は GNU の書き方で、この道具は Linux でだけ動かす。
+#
 # This logic lives in a script instead of SKILL.md for two reasons: Claude
 # Code replaces positional forms (a dollar sign followed by a digit) in a skill
 # body with the words of the skill arguments (#666), and the rule above does
@@ -173,9 +196,40 @@ listing="$(grep -lE -e "$pat_candidate" -- "${notes[@]}")" || rc=$?
 [ "$rc" -le 1 ] || fail "grep failed in $notes_dir"
 candidates=()
 [ -z "$listing" ] || mapfile -t candidates <<<"$listing"
+[ "${#candidates[@]}" -gt 0 ] || exit 1
+
+# ---------------------------------------------------------------------------
+# The PR's creation time / PR の作成日時
+# Prints createdAt as epoch seconds, or returns 1 when gh cannot tell it.
+# --repo pins the PR to this repository even when owner/repo came from origin.
+# createdAt を epoch 秒で出す。gh で求められないときは 1 を返す。owner/repo を
+# origin から求めた場合も、--repo でこのリポジトリの PR に限る。
+# ---------------------------------------------------------------------------
+pr_created_epoch() {
+  local created='' epoch=''
+  command -v gh >/dev/null 2>&1 || return 1
+  local -a run=(gh pr view "$pr" --repo "$repo" --json createdAt --jq .createdAt)
+  # Do not hang on the network / 通信で止まり続けない
+  if command -v timeout >/dev/null 2>&1; then run=(timeout 30 "${run[@]}"); fi
+  created="$("${run[@]}" 2>/dev/null)" || return 1
+  [ -n "$created" ] || return 1
+  epoch="$(date -d "$created" +%s 2>/dev/null)" || return 1
+  [[ "$epoch" =~ ^[0-9]+$ ]] || return 1
+  echo "$epoch"
+}
+
+created_epoch="$(pr_created_epoch)" || created_epoch=''
 
 found=1
 for note in "${candidates[@]}"; do
+  if [ -n "$created_epoch" ]; then
+    mtime="$(stat -c %Y -- "$note" 2>/dev/null)" || mtime=''
+    # An unknown mtime keeps the note; note_hits reports an unreadable note
+    # mtime が分からないノートは残す。読めないノートは note_hits が報告する
+    if [[ "$mtime" =~ ^[0-9]+$ ]] && [ "$mtime" -lt "$created_epoch" ]; then
+      continue
+    fi
+  fi
   if note_hits "$note"; then
     printf '%s\n' "$note"
     found=0

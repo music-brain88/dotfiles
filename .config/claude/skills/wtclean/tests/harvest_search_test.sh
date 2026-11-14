@@ -26,15 +26,33 @@ mkdir -p "$HOME"
 
 # ---------------------------------------------------------------------------
 # Fake gh / 偽の gh
-# FAKE_GH_REPO set   : "gh repo view" prints it / それを出す
-# FAKE_GH_REPO empty : exit 1 like a network error / 通信の失敗を真似る
+# "gh repo view":
+#   FAKE_GH_REPO set   : prints it / それを出す
+#   FAKE_GH_REPO empty : exit 1 like a network error / 通信の失敗を真似る
+# "gh pr view" (its arguments are appended to FAKE_GH_LOG / 引数を FAKE_GH_LOG に追記する):
+#   FAKE_GH_PR_CREATED unset : exit 1 like "no pull requests found"
+#                              「PR が見つからない」失敗を真似る
+#   FAKE_GH_PR_CREATED set   : prints it, even when empty / 空でもそのまま出す
 # ---------------------------------------------------------------------------
 mkdir -p "$root/bin"
 cat >"$root/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-[ -n "${FAKE_GH_REPO:-}" ] || { echo "error connecting to api.github.com" >&2; exit 1; }
-echo "$FAKE_GH_REPO"
+case "${1:-} ${2:-}" in
+  'repo view')
+    [ -n "${FAKE_GH_REPO:-}" ] || { echo "error connecting to api.github.com" >&2; exit 1; }
+    echo "$FAKE_GH_REPO"
+    ;;
+  'pr view')
+    printf '%s\n' "$*" >>"${FAKE_GH_LOG:-/dev/null}"
+    [ -n "${FAKE_GH_PR_CREATED+set}" ] || { echo "no pull requests found" >&2; exit 1; }
+    printf '%s\n' "$FAKE_GH_PR_CREATED"
+    ;;
+  *)
+    echo "fake gh: unknown command: $*" >&2
+    exit 1
+    ;;
+esac
 EOF
 chmod +x "$root/bin/gh"
 export PATH="$root/bin:$PATH"
@@ -44,9 +62,11 @@ repo=''
 notes=''
 
 # new_case [origin URL]: a repository (origin as given, none when empty) and an
-# empty notes directory; gh answers music-brain88/dotfiles.
+# empty notes directory; gh answers music-brain88/dotfiles, and "gh pr view"
+# fails, so the creation-time filter is skipped unless a case sets it.
 # new_case [origin の URL]: リポジトリ(origin は引数どおり。空なら無し)と、
-# 空のノートのディレクトリ。gh は music-brain88/dotfiles と答える。
+# 空のノートのディレクトリ。gh は music-brain88/dotfiles と答え、"gh pr view" は
+# 失敗する。ケースが設定しない限り、作成日時の絞り込みは省かれる。
 new_case() {
   case_dir="$(mktemp -d "$root/case.XXXXXX")"
   repo="$case_dir/repo"
@@ -55,11 +75,20 @@ new_case() {
   git -C "$repo" init -q -b main
   [ -z "${1:-}" ] || git -C "$repo" remote add origin "$1"
   export FAKE_GH_REPO='music-brain88/dotfiles'
+  unset FAKE_GH_PR_CREATED
+  export FAKE_GH_LOG="$case_dir/gh.log"
 }
 
 # note <name> <body>: ClaudeCodeSession-<name>.md
 note() {
   printf '%s\n' "$2" >"$notes/ClaudeCodeSession-$1.md"
+}
+
+# note_at <name> <date> <body>: a note whose mtime is <date> (touch -d)
+# note_at <name> <日時> <本文>: mtime が <日時> のノート(touch -d)
+note_at() {
+  note "$1" "$3"
+  touch -d "$2" -- "$notes/ClaudeCodeSession-$1.md"
 }
 
 rc=0
@@ -251,6 +280,124 @@ test_no_notes_exits_1() {
   run_search 663 "$notes"
   assert_exit 1
   assert_hits
+}
+
+# ---------------------------------------------------------------------------
+# The PR's creation time (#810) / PR の作成日時(#810)
+# ---------------------------------------------------------------------------
+
+# The 2026-11-14 case: notes last modified months before the PR was created
+# cite another repository's issues as a bare #N
+# 2026-11-14 の実例: PR の作成の数か月前に最後に更新されたノートが、別の
+# リポジトリの Issue を修飾なしの #N で引用していた
+test_note_older_than_pr_does_not_hit() {
+  new_case
+  export FAKE_GH_PR_CREATED='2026-11-14T03:12:45Z'
+  note_at table '2026-07-27 12:00:00 UTC' '| #331 | 対話プロトコル |'
+  note_at prose '2026-08-12 12:00:00 UTC' '対話プロトコル(#331)'
+  run_search 331 "$notes"
+  assert_exit 1
+  assert_hits
+}
+
+test_note_newer_than_pr_hits() {
+  new_case
+  export FAKE_GH_PR_CREATED='2026-11-14T03:12:45Z'
+  note_at old '2026-11-14 03:12:44 UTC' 'PR #331 の締め'
+  note_at new '2026-11-14 03:12:46 UTC' 'PR #331 の締め'
+  run_search 331 "$notes"
+  assert_exit 0
+  assert_hits new
+}
+
+# A note written in the same second as the PR is kept
+# PR と同じ秒に書かれたノートは残す
+test_note_at_pr_creation_hits() {
+  new_case
+  export FAKE_GH_PR_CREATED='2026-11-14T03:12:45Z'
+  note_at same '2026-11-14 03:12:45 UTC' 'PR #331 の締め'
+  run_search 331 "$notes"
+  assert_exit 0
+  assert_hits same
+}
+
+# The filter only drops notes; the rule still decides the rest
+# 絞り込みはノートを除くだけで、残りは従来の規則が決める
+test_newer_note_of_other_repo_does_not_hit() {
+  new_case
+  export FAKE_GH_PR_CREATED='2026-11-14T03:12:45Z'
+  note_at other '2026-11-15 00:00:00 UTC' 'hyprwm/hyprland-plugins#331'
+  run_search 331 "$notes"
+  assert_exit 1
+}
+
+# gh pr view is asked about this repository's PR / gh pr view には自分のリポジトリの PR を聞く
+test_pr_view_names_this_repo() {
+  new_case
+  export FAKE_GH_PR_CREATED='2026-11-14T03:12:45Z'
+  note own '#331'
+  run_search 331 "$notes"
+  grep -sqF -- 'pr view 331 --repo music-brain88/dotfiles --json createdAt' "$FAKE_GH_LOG" ||
+    flunk "gh pr view args: $(cat "$FAKE_GH_LOG" 2>/dev/null)"
+}
+
+# When gh cannot tell createdAt, an old note hits as before. An unset
+# FAKE_GH_PR_CREATED also stands for a number that is not a PR here (an issue).
+# gh で createdAt を求められないときは、古いノートも従来どおりヒットする。
+# FAKE_GH_PR_CREATED が未設定の場合は、番号がここの PR ではない場合(Issue)も兼ねる。
+test_old_note_hits_when_pr_view_fails() {
+  new_case
+  note_at old '2020-01-01 00:00:00 UTC' 'PR #331 の締め'
+  run_search 331 "$notes"
+  assert_exit 0
+  assert_hits old
+  [ -s "$FAKE_GH_LOG" ] || flunk 'gh pr view was not called'
+}
+
+test_old_note_hits_when_pr_view_prints_nothing() {
+  new_case
+  export FAKE_GH_PR_CREATED=''
+  note_at old '2020-01-01 00:00:00 UTC' 'PR #331 の締め'
+  run_search 331 "$notes"
+  assert_exit 0
+  assert_hits old
+}
+
+test_old_note_hits_when_date_cannot_parse() {
+  new_case
+  export FAKE_GH_PR_CREATED='not a date'
+  note_at old '2020-01-01 00:00:00 UTC' 'PR #331 の締め'
+  run_search 331 "$notes"
+  assert_exit 0
+  assert_hits old
+}
+
+# Without gh on PATH, owner/repo comes from origin and the filter is skipped
+# PATH に gh が無いときは、owner/repo を origin から求め、絞り込みを省く
+test_old_note_hits_without_gh() {
+  new_case git@github.com:music-brain88/dotfiles.git
+  export FAKE_GH_PR_CREATED='2026-11-14T03:12:45Z'
+  note_at old '2020-01-01 00:00:00 UTC' 'PR #331 の締め'
+  local nogh="$case_dir/nogh" cmd
+  mkdir -p "$nogh"
+  # What the script and run_search call, except gh / スクリプトと run_search が呼ぶもののうち gh 以外
+  for cmd in bash git grep sed stat date timeout cat; do
+    ln -s "$(command -v "$cmd")" "$nogh/$cmd"
+  done
+  PATH="$nogh" run_search 331 "$notes"
+  assert_exit 0
+  assert_hits old
+  [ ! -s "$FAKE_GH_LOG" ] || flunk 'the fake gh was called'
+}
+
+# No candidate, no gh call / 候補が無ければ gh を呼ばない
+test_no_candidate_skips_pr_view() {
+  new_case
+  export FAKE_GH_PR_CREATED='2026-11-14T03:12:45Z'
+  note none 'nothing to see'
+  run_search 331 "$notes"
+  assert_exit 1
+  [ ! -s "$FAKE_GH_LOG" ] || flunk 'gh pr view was called without a candidate'
 }
 
 # ---------------------------------------------------------------------------
