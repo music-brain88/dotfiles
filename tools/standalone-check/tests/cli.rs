@@ -192,8 +192,8 @@ fn yomiyasu_slop_vocabulary_drops_only_seihon() {
 
 #[test]
 fn yomiyasu_slop_vocabulary_on_same_line_keeps_other_word() {
-    // v2.5.0 の snippet は行全体なので、snippet ではなく message の「<語>」で見分ける
-    // Upstream v2.5.0 puts the whole line in snippet, so the word is matched in the message
+    // v2.5.0 から v3.1.0 までの snippet は行全体なので、snippet ではなく message の「<語>」で見分ける
+    // Upstream v2.5.0 through v3.1.0 put the whole line in snippet, so the word is matched in the message
     let (code, kept) = yomiyasu_kept(
         r#"{"findings":[
           {"rule":"slop_vocabulary","line":1,"severity":"warn","message":"AI頻出語彙「正本」が含まれています。","snippet":"正本の土台を作る。"},
@@ -232,6 +232,49 @@ fn yomiyasu_warn_exits_one() {
     ]);
     assert_eq!(o.status.code(), Some(1), "{}", stdout(&o));
     assert!(stdout(&o).contains("[warn]"));
+}
+
+/// 偽の lint を `document` に当て、(終了コード, 残った指摘) を返す。
+/// Runs `fake_yomiyasu_stdin.sh` on `document` and returns (exit code, kept findings).
+fn yomiyasu_stdin_probe(document: &std::path::Path) -> (Option<i32>, Vec<serde_json::Value>) {
+    let o = run(&[
+        document.to_str().unwrap(),
+        "--json",
+        "--yomiyasu-script",
+        fixture("fake_yomiyasu_stdin.sh").to_str().unwrap(),
+    ]);
+    let v: serde_json::Value = serde_json::from_str(&stdout(&o)).expect("stdout is valid JSON");
+    (o.status.code(), v["yomiyasu"].as_array().unwrap().clone())
+}
+
+#[test]
+fn yomiyasu_receives_document_on_stdin_not_as_path() {
+    // yomiyasu 3.0.0 の lint はパスの引数を断ることがあるので、文書は標準入力で渡す。
+    // The v3 lint may refuse path arguments, so the document must arrive on stdin.
+    let document = fixture("ok.md");
+    let (code, kept) = yomiyasu_stdin_probe(&document);
+    assert_eq!(code, Some(0), "{kept:?}");
+    let size = std::fs::metadata(&document).unwrap().len();
+    assert_eq!(kept.len(), 1, "{kept:?}");
+    assert_eq!(kept[0]["message"], format!("stdin_bytes={size}"));
+    assert_eq!(kept[0]["file"], document.to_str().unwrap());
+}
+
+#[test]
+fn yomiyasu_checks_document_under_dot_directory() {
+    // `.config/skills/` 配下の SKILL.md と同じく、道筋に点で始まる部分がある文書も検査できる。
+    // Documents under a dot-prefixed directory (like `.config/skills/`) are still checked.
+    let dir = std::env::temp_dir()
+        .join(format!("standalone-check-dotdir-{}", std::process::id()))
+        .join(".config");
+    std::fs::create_dir_all(&dir).unwrap();
+    let document = dir.join("doc.md");
+    std::fs::copy(fixture("ok.md"), &document).unwrap();
+    let (code, kept) = yomiyasu_stdin_probe(&document);
+    std::fs::remove_dir_all(dir.parent().unwrap()).unwrap();
+    assert_eq!(code, Some(0), "{kept:?}");
+    assert_eq!(kept.len(), 1, "{kept:?}");
+    assert_eq!(kept[0]["rule"], "stdin_probe");
 }
 
 #[test]

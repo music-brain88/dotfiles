@@ -84,14 +84,16 @@ description: 話者の説明なしで、後から文章だけを読んでも「�
 
 ## yomiyasu の指摘の読み方
 
-yomiyasu の lint(`../yomiyasu/scripts/yomiyasu_lint.py`)は文単位の機械検査として使う。ただし本環境の表記と衝突する指摘があるので、次の表に従って読む。上流のファイルは書き換えない。yomiyasu の取り込み元とバージョンの上げ方は、dotfiles リポジトリの `docs/how-to/update-yomiyasu.md` に書いてある。lint は各指摘に規則の ID(rule ID)を付けて出す。次の表は、指摘の種類ごとに、対応する yomiyasu v2.5.0 の rule ID と、従うか読まないかを示す。
+yomiyasu の lint(`../yomiyasu/scripts/yomiyasu_lint.py`)は文単位の機械検査として使う。ただし本環境の表記と衝突する指摘があるので、次の表に従って読む。上流のファイルは書き換えない。yomiyasu の取り込み元とバージョンの上げ方は、dotfiles リポジトリの `docs/how-to/update-yomiyasu.md` に書いてある。lint は各指摘に規則の ID(rule ID)を付けて出す。次の表は、指摘の種類ごとに、対応する yomiyasu v3.1.0 の rule ID と、従うか読まないかを示す。
 
-| yomiyasu の指摘 | rule ID(v2.5.0) | 扱い | 理由 |
+v3.0.0 からの lint は、作業フォルダの外のファイルと、作業フォルダからの道筋に名前が点で始まる部分(`.config/` など)があるファイルを引数で渡されると、読まずに終了コード 2 で止まる。lint を直接実行してそうしたファイルを検査するときは、`python3 ../yomiyasu/scripts/yomiyasu_lint.py - < <対象ファイル>` のように標準入力で渡す。`standalone-check --with-yomiyasu` は、はじめから標準入力で渡す。
+
+| yomiyasu の指摘 | rule ID(v3.1.0) | 扱い | 理由 |
 |---|---|---|---|
 | 比喩動詞(効く、壊れる、倒す、溶かす、潰す)、非生物主語 | `metaphor_verb` | 従う | 読み手に比喩の解釈を求める。本規範の 2 と同じ趣旨 |
 | 前置きフィラー(重要なのは、結論から言うと)、定型クロージング | `meta_filler` | 従う | 主文の前に置かれる前置きは、主文を遅らせる |
 | 否定対比(A ではなく B) | `negative_parallelism`、`negative_parallelism_density` | 従う。ただし対比が内容そのもののとき(設計案の比較)は残す | 修辞としての否定対比と、比較としての否定対比は別 |
-| 1 文の読点の多さと、間を作るだけの読点 | lint は読点の数を数えない。上流の SKILL.md の「文長と読点の調整」が 1 文の読点を 0〜2 個の目安にしている。間を作るだけの読点の `pause_comma` は、`--doc-type` を付けたときだけ出る | 従う | 本規範の 2 と同じ |
+| 1 文の読点の多さと、間を作るだけの読点 | lint は読点の数を数えない。上流の SKILL.md の「文長と読点の調整」は、v3.0.0 から読点の数の目安を外し、間を作るだけの読点を外す位置と残す位置を決めている。間を作るだけの読点の `pause_comma` は、`--doc-type` を付けたときだけ出る | 従う。1 文の読点の数は `standalone-check` の TOUTEN(1 文に読点が 3 つ以上)で見る | 本規範の 2 と同じ |
 | 同一文末の 3 連続 | `sentence_end_repetition` | 従う | 同じ文末が続いて読みにくいときは、語順や文のまとめ方を変える。文の働きは変えない |
 | 絵文字、文末コロン、ダッシュ記号 | `emoji_prohibited`、`trailing_colon`、`dash_decoration`、`dash_insertion`、`dash_list_ending` | 従う | 配布文書に装飾は要らない |
 | 英語の直訳語(version の意味の「版」、regression の意味の「回帰」) | `translated_term` | 従う。ソフトウェアの version は「バージョン」と書く | 「正本」と違い、本環境で意味を決めて使っている語ではない。「バージョン」と書いても意味を失わない |
@@ -112,7 +114,7 @@ yomiyasu の lint(`../yomiyasu/scripts/yomiyasu_lint.py`)は文単位の機械�
    standalone-check <対象ファイル> --with-yomiyasu
    ```
 
-   `--with-yomiyasu` を付けると、`~/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py` を `python3` で続けて実行し、上の表で「読まない」とした指摘を rule ID で見分けて除いて表示する。lint の場所は `--yomiyasu-script <パス>` か環境変数 `STANDALONE_CHECK_YOMIYASU` で指定できる。判定は物理行ではなく段落単位で行うので、Markdown の折り返し(読点の後で改行した 1 文)は体言止めに数えない。終了コードは、本スクリプトの WARN か yomiyasu の warn があれば 1、ファイルを読めないか lint を実行できなければ 2、それ以外は 0 になる。INFO と yomiyasu の info は表示だけで、終了コードに影響しない。lint を実行できなかったときは `[SKIP]` と表示し、検査済みとはみなさない。`standalone-check` が PATH に無いときは、dotfiles で `mise run nix:switch` を実行してから使う。
+   `--with-yomiyasu` を付けると、`~/.claude/skills/yomiyasu/scripts/yomiyasu_lint.py` を `python3` で続けて実行し、上の表で「読まない」とした指摘を rule ID で見分けて除いて表示する。`standalone-check` は文書を lint の標準入力で渡すので、`.config/` 配下の文書とリポジトリの外の文書も検査できる。lint の場所は `--yomiyasu-script <パス>` か環境変数 `STANDALONE_CHECK_YOMIYASU` で指定できる。判定は物理行ではなく段落単位で行うので、Markdown の折り返し(読点の後で改行した 1 文)は体言止めに数えない。終了コードは、本スクリプトの WARN か yomiyasu の warn があれば 1、ファイルを読めないか lint を実行できなければ 2、それ以外は 0 になる。INFO と yomiyasu の info は表示だけで、終了コードに影響しない。lint を実行できなかったときは `[SKIP]` と表示し、検査済みとはみなさない。`standalone-check` が PATH に無いときは、dotfiles で `mise run nix:switch` を実行してから使う。
 4. **修正は 2 回まで**。警告をゼロにすることを目的にしない。専門用語、固有名詞、意図した短い見出し語は残す。
 
 ## 修正指示への使い方
