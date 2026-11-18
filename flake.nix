@@ -43,6 +43,11 @@
             # In-repo tool: herdr-ctx (Rust). Source in tools/herdr-ctx/,
             # shipped via home.packages in nix/modules/herdr.nix.
             herdr-ctx = final.callPackage ./tools/herdr-ctx/package.nix { };
+            # 自作ツール: claudia-memory (AgentMemory を MCP で読ませる関所、Rust)。
+            # ソースは tools/claudia-memory/、配布は nix/modules/dev-tools.nix の home.packages。
+            # In-repo tool: claudia-memory (Rust). Source in tools/claudia-memory/,
+            # shipped via home.packages in nix/modules/dev-tools.nix.
+            claudia-memory = final.callPackage ./tools/claudia-memory/package.nix { };
           })
           # Bump github-copilot-cli to latest release (nixpkgs lags behind npm)
           (final: prev: {
@@ -301,6 +306,9 @@
         # 自作ツールを `nix build .#herdr-ctx` で単体ビルドできるように出す
         # Expose the in-repo tool so `nix build .#herdr-ctx` works on its own
         herdr-ctx = pkgs.herdr-ctx;
+        # 自作ツールを `nix build .#claudia-memory` で単体ビルドできるように出す
+        # Expose the in-repo tool so `nix build .#claudia-memory` works on its own
+        claudia-memory = pkgs.claudia-memory;
         # herdr の Claude Code 用フックを `nix build .#herdr-claude-hook` で単体ビルドして確かめられるように出す
         # Expose the generated herdr hook so `nix build .#herdr-claude-hook` can inspect it on its own
         herdr-claude-hook = pkgs.herdr-claude-hook;
@@ -330,6 +338,9 @@
         # `nix flake check` only evaluates `packages`, so `mise run nix:check` never ran the tests locally (Issue #807).
         # When adding a tool under tools/, add it here in the same shape.
         herdr-ctx = pkgs.herdr-ctx;
+        # claudia-memory も同じ形でビルドして、doCheck のテストをサンドボックスの中で走らせる。
+        # Build claudia-memory the same way so its doCheck tests run inside the sandbox.
+        claudia-memory = pkgs.claudia-memory;
       };
 
       # shellcheck の入口: CI と mise の lint:shellcheck の両方がこれを呼ぶ (#665)。

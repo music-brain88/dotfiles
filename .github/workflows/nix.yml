@@ -250,9 +250,9 @@ jobs:
       # Runs as archie user to match Home Manager configuration
       # Executes activation to fully test the deployment process
       # check ジョブの `nix flake check --no-build` は checks を実行しないので、ビルドが要る検査はここで走らせる。
-      # herdr の Claude Code 用フックと herdr-ctx は直前の archie のビルドで出来ているので、増える依存は jq だけ (#755, #807)。
+      # herdr の Claude Code 用フックと herdr-ctx と claudia-memory は直前の archie のビルドで出来ているので、増える依存は jq だけ (#755, #807)。
       # The check job's `nix flake check --no-build` never runs checks, so checks that need a build run here.
-      # The herdr Claude Code hook and herdr-ctx are already built by the archie build just before, so this only adds jq (#755, #807).
+      # The herdr Claude Code hook, herdr-ctx and claudia-memory are already built by the archie build just before, so this only adds jq (#755, #807).
       # 失敗で止める: `run:` の既定の `bash -e` は、docker run で起こした `bash -c` の中には届かない。
       # 以前は失敗した行を通り過ぎ、最後の echo が 0 を返して、activation が一度も走らないままジョブが成功していた (#817)。
       # スクリプトの先頭の `set -euo pipefail` で、どの行が落ちてもコンテナが失敗で終わり、ジョブも失敗する。
@@ -315,6 +315,7 @@ jobs:
               echo "=== Running flake checks that need a build (herdr hook entries #755, herdr-ctx tests #807) ==="
               nix build .#checks.x86_64-linux.herdr-claude-hook-entries --no-link --print-build-logs
               nix build .#checks.x86_64-linux.herdr-ctx --no-link --print-build-logs
+              nix build .#checks.x86_64-linux.claudia-memory --no-link --print-build-logs
               echo "=== Building WSL profile (build only; activation needs a real WSL host) ==="
               nix build .#homeConfigurations.archie-wsl.activationPackage --no-link
               echo "=== Verifying build output ==="

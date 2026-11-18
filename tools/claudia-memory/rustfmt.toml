@@ -1,0 +1,3 @@
+# リポジトリの規約 (CLAUDE.md の Code Style) に合わせて 2 スペースにする
+# Two-space indentation, per the repository's Code Style
+tab_spaces = 2
