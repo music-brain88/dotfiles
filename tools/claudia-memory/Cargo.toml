@@ -1,0 +1,16 @@
+[package]
+name = "claudia-memory"
+version = "0.1.0"
+edition = "2021"
+description = "AgentMemory を MCP で読ませる関所 (stdio) / An MCP gatekeeper (stdio) that serves the AgentMemory vault"
+license = "MIT"
+publish = false
+
+[dependencies]
+# JSON-RPC の読み書きに使う / JSON-RPC encoding and decoding
+serde_json = "1"
+# 記憶の版の印 (中身のハッシュ) に使う / Version stamp (content hash) of a memory file
+sha2 = "0.10"
+
+[profile.release]
+strip = true
