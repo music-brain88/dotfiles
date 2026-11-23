@@ -54,7 +54,7 @@
 - device-auth の承認 URL を、herdr の中では terminal-browser の pane に開く `$BROWSER` ラッパー (Issue #523, #701)。terminal-browser 本体は `terminal-browser.nix` が native 機だけに入れる。
 - herdr 公式の Claude Code 用フックを、`~/.claude/hooks/herdr-agent-state.sh` に置きます (Issue #755)。仕組みと制約は、次の「Claude Code の pane の復元」に書きます。
 - herdr-ctx パッケージ。司令塔と決定者が見る盤面の値を集める自作の CLI です。各 agent の context 使用率を pane の幅に依存せず読み (Issue #784)、決定者に割り当てられた open のレビュー依頼を集めます (Issue #805)。詳細は [tools/herdr-ctx/README.md](../../tools/herdr-ctx/README.md) に書きます。
-- systemd の user service `herdr-ctx-watch`。`herdr-ctx watch` を常駐させます。`systemd.user.startServices` の既定値が `true` なので、`mise run nix:switch` のときに起動します。unit の `PATH` には `herdr` と `gh` を入れます。`gh` はレビュー依頼の取得に使います。
+- systemd の user service `herdr-ctx-watch`。`herdr-ctx watch` を常駐させます。`systemd.user.startServices` の既定値が `true` なので、`mise run nix:switch` のときに起動します。unit の `PATH` には `herdr` と `gh` と `systemd` を入れます。`gh` はレビュー依頼の取得に使います。`systemd` の `busctl` は、ログイン鍵束がロックされているかを読むのに使います。ロックされている間は `gh` を呼びません (Issue #823)。
 
 #### Claude Code の pane の復元
 

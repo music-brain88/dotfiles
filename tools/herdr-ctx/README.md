@@ -20,6 +20,7 @@ herdr-ctx は、Claude Code の statusline が書く sidecar と `herdr agent li
 | `~/.herdr/ctx/agents.json` | `herdr-ctx watch` | 司令塔などの利用者 |
 | `~/.herdr/ctx/notify_state.json` | `herdr-ctx watch` | `herdr-ctx watch` |
 | `gh api search/issues`(GitHub の検索 API) | GitHub | `herdr-ctx reviews`、`watch` |
+| ログイン鍵束の `Locked` プロパティ(`busctl` で読む) | Secret Service(gnome-keyring-daemon など) | `herdr-ctx watch` |
 | `~/.herdr/ctx/reviews.json` | `herdr-ctx watch` | 盤面を映す窓(Herdr アプリの mod の試作。このリポジトリの外にある)、司令塔 |
 
 statusline のスクリプトは Claude Code の子プロセスなので、herdr が pane に設定した環境変数 `HERDR_PANE_ID` を継承している。この変数が結合のキーになる。herdr-ctx は transcript の JSONL を読まない。
@@ -74,7 +75,7 @@ hook から呼ばれたときは、stdin の JSON の `session_id` と `transcri
 
 ### reviews
 
-`herdr-ctx reviews` は、決定者個人に割り当てられた open のレビュー依頼の一覧を、JSON で stdout に出す。検索の条件は `is:pr is:open user-review-requested:@me` である。herdr-ctx は `gh api` を子プロセスとして呼び、GitHub の検索 API(`search/issues`)に `sort=updated`、`order=desc`、`per_page=100` で 1 回だけ問い合わせる。認証は `gh` に任せるので、herdr-ctx はトークンを持たない。出力の形は「ファイルの形」の節の `reviews.json` と同じである。`reviews` はファイルを書かない。
+`herdr-ctx reviews` は、決定者個人に割り当てられた open のレビュー依頼の一覧を、JSON で stdout に出す。検索の条件は `is:pr is:open user-review-requested:@me` である。herdr-ctx は `gh api` を子プロセスとして呼び、GitHub の検索 API(`search/issues`)に `sort=updated`、`order=desc`、`per_page=100` で 1 回だけ問い合わせる。認証は `gh` に任せるので、herdr-ctx はトークンを持たない。出力の形は「ファイルの形」の節の `reviews.json` と同じである。`reviews` はファイルを書かない。`reviews` は人が端末から打つコマンドなので、ログイン鍵束の状態を確かめずに `gh` を呼ぶ。鍵束の状態を確かめるのは `watch` だけである。
 
 `review_requests` は `updated_at` の新しい順に並ぶ。herdr-ctx は、検索 API が返した順を並べ替えずに保つ。
 
@@ -113,14 +114,25 @@ herdr のソケットに繋がらないときは、stderr に 1 行書いて次�
 
 `watch` はスレッドを 2 本持つ。主スレッドは、ここまでに書いた agent の一覧と通知を受け持つ。もう 1 本のスレッドは、`reviews` と同じ取得を起動の直後に 1 回行い、以後は 5 分おきに行って、結果を `~/.herdr/ctx/reviews.json` に書く。この周期は `--reviews-interval <秒>` で変えられる。2 本のスレッドは状態を共有せず、書くファイルも別なので、`reviews.json` の更新は agent の一覧の周期と独立している。`gh` が遅くても失敗しても、agent の一覧と通知の 30 秒の周期は遅れない。GitHub の検索 API の上限は 1 分あたり 30 回なので、5 分おきの取得は上限に届かない。
 
+スレッドは、`gh` を呼ぶ前に、ログイン鍵束(Secret Service の既定のコレクション)がロックされているかを読む。読むコマンドは `busctl --user get-property org.freedesktop.secrets /org/freedesktop/secrets/aliases/default org.freedesktop.Secret.Collection Locked` である。プロパティの読み取りは解錠を要求しない。次の表は、読んだ結果ごとの動きを示す。
+
+| 鍵束の状態 | 判定の条件 | その周期の動き |
+|---|---|---|
+| ロックされている | `busctl` が `b true` を返した | `gh` を呼ばずに取得を見送る。`reviews.json` は書き換えない |
+| 解錠されている | `busctl` が `b false` を返した | `gh` を呼ぶ |
+| 確かめられない | `busctl` が無い、Secret Service が無い、`busctl` が失敗した、期限を過ぎた、出力を解釈できない | `gh` を呼ぶ |
+
+ロックされている間に `gh` を呼ばないのは、呼び出しを繰り返すこと自体が鍵束を使えなくするからである。`gh` はトークンを読むために鍵束の解錠を要求する。画面が無い機械では、gnome-keyring-daemon は解錠のダイアログを起動できず、失敗のたびに記述子を 1 個失う。記述子が上限に達すると、利用者がログインしても鍵束を開けない(Issue #823)。linger が有効な機械では、`watch` が再起動の直後からログインの前まで動くので、この状況が起きる。
+
 レビュー依頼の取得は、次の規則に従う。
 
+- 鍵束の判定について stderr に書くのは、取得を見送り始めた周期と、取得を再開した周期だけである。状態が変わらない周期は書かない。5 分おきに同じ行を書くと journal が埋まるからである。見送り始めた周期は `herdr-ctx: 鍵束がロックされているので、レビュー依頼の取得を見送る` と書く。再開した周期は `herdr-ctx: 鍵束が解錠されたので、レビュー依頼の取得を再開する` と書く。ロックされた状態から確かめられない状態に変わって再開した周期は `herdr-ctx: 鍵束の状態を確かめられないので、レビュー依頼の取得を再開する` と書く。
 - 取得・解釈・書き込みのどこかで失敗した周期は、`reviews.json` を書き換えない。理由は `herdr-ctx: レビュー依頼を更新できない: <理由>` の 1 行で stderr に書く。空の一覧で上書きすると、読む側には「依頼が 0 件」に見えるからである。読む側は `generated_at` で古さを判断する。
 - 依頼が 0 件の周期は成功なので、`review_requests` が空の `reviews.json` を書く。
 - 失敗した周期の後も、スレッドは止まらずに次の周期でもう一度取得する。万一 panic しても、その周期だけを捨てて続ける。スレッドが黙って止まると、`reviews.json` が古いまま誰も気づけないからである。
 - `gh` が無い機械では、`reviews.json` は作られない。GitHub に繋がらない機械では、`reviews.json` は前の中身のまま残る。どちらの機械でも、agent の一覧と通知は今までどおり動く。
 
-子プロセスの呼び出しには期限がある。`herdr` の期限は、`list` と `self` が 3 秒で、`watch` が 10 秒である。`gh` の期限は、`reviews` と `watch` のどちらも 15 秒である。期限を過ぎると、herdr-ctx は子プロセスを止めて、失敗として扱う。`self` の期限を hook の 5 秒より短くしているのは、1 行目の使用率を出す時間を残すためである。環境変数 `HERDR_CTX_TIMEOUT_SECS` は、`herdr` と `gh` の両方の期限を上書きする。統合テストが期限を短くするために使う。
+子プロセスの呼び出しには期限がある。`herdr` の期限は、`list` と `self` が 3 秒で、`watch` が 10 秒である。`gh` の期限は、`reviews` と `watch` のどちらも 15 秒である。`busctl` の期限は 10 秒で、過ぎると鍵束の状態は「確かめられない」になる。期限を過ぎると、herdr-ctx は子プロセスを止めて、失敗として扱う。`self` の期限を hook の 5 秒より短くしているのは、1 行目の使用率を出す時間を残すためである。環境変数 `HERDR_CTX_TIMEOUT_SECS` は、`herdr` と `gh` と `busctl` のすべての期限を上書きする。統合テストが期限を短くするために使う。
 
 ## ファイルの形
 
@@ -189,13 +201,13 @@ WSL 機で systemd の user session が動いていないときは、home-manage
 2. `systemctl --user status herdr-ctx-watch` が `active (running)` を示す。
 3. 新しい Claude Code のセッションの 2 ターン目以降の prompt で、文脈に `context n%` の行が入る。最初のターンでは出ない。最初の API 応答の前は `used_percentage` が null で、`self` は何も出さないからである。
 4. 裏の job に乗ったセッション(`/remote-control` など)でも、文脈に `context n%` の行が入り、`herdr-ctx list` の `session_match` が false にならない。statusline が TUI 側と backend 側のどちらの session id を受け取るかが未確認なので、司令塔が配備後に確かめる。false が付くと、`watch` はその agent を知らせない。
-5. `~/.herdr/ctx/reviews.json` の `generated_at` が 5 分以内の時刻を示し、`journalctl --user -u herdr-ctx-watch` に「レビュー依頼を更新できない」の行が続いていない。この行が続くときは、service から `gh` の認証を読めていない可能性がある。
+5. `~/.herdr/ctx/reviews.json` の `generated_at` が 5 分以内の時刻を示し、`journalctl --user -u herdr-ctx-watch` に「レビュー依頼を更新できない」の行が続いていない。この行が続くときは、service から `gh` の認証を読めていない可能性がある。`generated_at` が古いまま「取得を見送る」の行があるときは、ログイン鍵束がロックされている。
 
 ## 開発
 
 ```sh
 cd tools/herdr-ctx
-cargo test                       # 単体テスト + tests/cli.rs(偽の herdr と偽の gh で終了コードと出力を確かめる)
+cargo test                       # 単体テスト + tests/cli.rs(偽の herdr と偽の gh と偽の busctl で終了コードと出力を確かめる)
 cargo run -- list --table
 nix build .#herdr-ctx            # dotfiles のルートで実行する
 mise run nix:check               # dotfiles のルートで実行する。checks.herdr-ctx が、Nix のサンドボックスの中で cargo test を走らせる
@@ -206,10 +218,11 @@ rustfmt の設定 `rustfmt.toml` は、リポジトリの規約に合わせて�
 
 ## やらないこと
 
-次の 5 つは、今の範囲に入れていない。
+次の 6 つは、今の範囲に入れていない。
 
 - `herdr pane rename` で pane のラベルに `[62%]` を付ける。agent の名前は `herdr agent prompt` の宛先なので触らない。
 - transcript の JSONL を読む。形式が Claude Code の内部形式で、context window の大きさも分からないので、フォールバックとしても作らない。
 - 常駐の HTTP サーバーを立てる。`watch` が書くファイルを読むだけで、司令塔も hook も足りる。
+- ログイン鍵束を解錠する。herdr-ctx は状態を読むだけで、解錠はログインと利用者に任せる。
 - レビュー依頼の 101 件目より先を、ページを辿って取る。理由は「reviews」の節に書いた。
 - 自分が出した PR について、マージできるか、未解決の review thread の数、CI の結果を集める。これは別の Issue で扱う。

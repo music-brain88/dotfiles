@@ -10,10 +10,10 @@ rustPlatform.buildRustPackage {
   src = lib.cleanSource ./.;
   cargoLock.lockFile = ./Cargo.lock;
 
-  # tests/cli.rs の偽 herdr と偽 gh は組み込みコマンドだけを使う /bin/sh スクリプトなので、
-  # ビルドサンドボックス内でも cargo test が通る。本物の GitHub は呼ばない
-  # The fake herdr and fake gh in tests/cli.rs are /bin/sh scripts using builtins only, so
-  # `cargo test` runs inside the build sandbox without calling the real GitHub.
+  # tests/cli.rs の偽 herdr と偽 gh と偽 busctl は組み込みコマンドだけを使う /bin/sh スクリプトなので、
+  # ビルドサンドボックス内でも cargo test が通る。本物の GitHub と鍵束は呼ばない
+  # The fake herdr, gh and busctl in tests/cli.rs are /bin/sh scripts using builtins only, so
+  # `cargo test` runs inside the build sandbox without calling the real GitHub or keyring.
   doCheck = true;
 
   meta = with lib; {
