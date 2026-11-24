@@ -205,6 +205,73 @@ fn symlinks_leading_outside_the_root_are_refused() {
   assert!(!text_of(&replies[0]).contains("SECRET-OUTSIDE"));
 }
 
+/// ルートの中のリンクでも、辿った先が隠しファイルや .md でないファイルなら読ませない。
+/// 規則は、渡されたパスの文字列ではなく、辿り着いた先に当てる。
+/// A symlink inside the root must not expose a hidden or non-Markdown file that also lives inside the root:
+/// the rules apply to where the path leads, not to the string that was passed.
+#[cfg(unix)]
+#[test]
+fn symlinks_to_forbidden_files_inside_the_root_are_refused() {
+  let fx = Fixture::new();
+  fx.write("AgentMemory/.secret.md", "SECRET-HIDDEN\n");
+  fx.write("AgentMemory/.vault/inner.md", "SECRET-HIDDEN-DIR\n");
+  fx.write("AgentMemory/notes.txt", "SECRET-TEXT\n");
+  let root = fx.root();
+  std::os::unix::fs::symlink(root.join(".secret.md"), root.join("core/alias-hidden.md")).unwrap();
+  std::os::unix::fs::symlink(
+    root.join(".vault/inner.md"),
+    root.join("core/alias-hidden-dir.md"),
+  )
+  .unwrap();
+  std::os::unix::fs::symlink(root.join("notes.txt"), root.join("core/alias-text.md")).unwrap();
+  let attempts = [
+    "core/alias-hidden.md",
+    "core/alias-hidden-dir.md",
+    "core/alias-text.md",
+  ];
+  let messages: Vec<Value> = attempts
+    .iter()
+    .enumerate()
+    .map(|(i, p)| call(i as u64, json!({ "path": p })))
+    .collect();
+  let replies = talk(&root, &messages);
+  for (reply, attempt) in replies.iter().zip(attempts) {
+    assert!(is_error(reply), "should refuse {attempt}");
+    assert!(
+      !text_of(reply).contains("SECRET-"),
+      "leaked through {attempt}"
+    );
+  }
+  // 禁じたファイルへのリンクは、索引の「辿れる記憶」にも出さない。
+  // Links to forbidden files are not listed as reachable either.
+  fx.write(
+    "AgentMemory/core/MEMORY.md",
+    "- [a](alias-hidden.md)\n- [b](alias-text.md)\n- [ok](self-model.md)\n",
+  );
+  let replies = talk(&root, &[call(1, json!({}))]);
+  let text = text_of(&replies[0]);
+  assert!(text.contains("- core/self-model.md\n"));
+  assert!(!text.contains("- core/alias-hidden.md\n"));
+  assert!(!text.contains("- core/alias-text.md\n"));
+}
+
+/// ルートの中の、読んでよい Markdown を指すリンクは、そのまま読める。
+/// A symlink to an allowed Markdown file inside the root still works.
+#[cfg(unix)]
+#[test]
+fn symlinks_to_allowed_files_inside_the_root_are_served() {
+  let fx = Fixture::new();
+  let root = fx.root();
+  std::os::unix::fs::symlink(
+    root.join("core/values.md"),
+    root.join("home/values-alias.md"),
+  )
+  .unwrap();
+  let replies = talk(&root, &[call(1, json!({ "path": "home/values-alias.md" }))]);
+  assert!(!is_error(&replies[0]));
+  assert!(text_of(&replies[0]).contains("誠実さ"));
+}
+
 #[test]
 fn protocol_errors_are_reported() {
   let fx = Fixture::new();

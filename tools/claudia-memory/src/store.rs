@@ -22,6 +22,9 @@ pub enum StoreError {
   NotFound(String),
   /// ルートの外を指している (シンボリックリンクを含む)。 / Resolves outside the root (symlinks included).
   OutsideRoot(String),
+  /// 辿った先が、読ませない場所にある (隠しファイル、Markdown でないファイル)。
+  /// The path leads to a place that is not served (a hidden file, a non-Markdown file).
+  Forbidden(String),
   /// 大きすぎる。 / Too large.
   TooLarge(String),
   /// 読めなかった。 / Could not be read.
@@ -34,6 +37,7 @@ impl fmt::Display for StoreError {
       StoreError::BadPath(m) => write!(f, "パスを受け付けられない: {m}"),
       StoreError::NotFound(p) => write!(f, "ファイルが無い: {p}"),
       StoreError::OutsideRoot(p) => write!(f, "AgentMemory の外を指している: {p}"),
+      StoreError::Forbidden(p) => write!(f, "辿った先が、読ませない場所にある: {p}"),
       StoreError::TooLarge(p) => write!(f, "ファイルが大きすぎる: {p}"),
       StoreError::Io(m) => write!(f, "読めなかった: {m}"),
     }
@@ -115,9 +119,11 @@ impl fmt::Display for RelPath {
 pub trait Store {
   fn read(&self, path: &RelPath) -> Result<String, StoreError>;
   fn exists(&self, path: &RelPath) -> bool;
-  /// ファイル名が一致する Markdown を、ルートの下から探す。結果は並びが安定している。
-  /// Finds Markdown files by file name under the root, in a stable order.
-  fn find_by_file_name(&self, file_name: &str) -> Vec<RelPath>;
+  /// 読ませてよい Markdown を、ルートの下からすべて挙げる。並びは安定していて、core/ が先頭に来る。
+  /// 保存先を歩くので、呼び出し側は 1 回の読み出しにつき 1 度だけ呼ぶ。
+  /// Lists every servable Markdown file under the root, in a stable order with core/ first.
+  /// This walks the storage, so callers invoke it at most once per recall.
+  fn markdown_files(&self) -> Vec<RelPath>;
 }
 
 /// 手元のフォルダを保存先にする。 / A store backed by a local folder.
@@ -139,18 +145,29 @@ impl FsStore {
     Ok(FsStore { root: canonical })
   }
 
-  /// 実体のパスに直し、シンボリックリンクを辿った先がルートの下にあることを確かめる。
-  /// Resolves to the real path and checks it still lies under the root after following symlinks.
+  /// 実体のパスに直し、シンボリックリンクを辿った先を検査する。
+  /// 規則は、渡されたパスの文字列ではなく、辿り着いた先に当てる。ルートの中のリンクが、
+  /// ルートの中の隠しファイルや .md でないファイルを指していても、読ませない。
+  /// Resolves to the real path and checks where it leads after following symlinks.
+  /// The rules apply to the destination, not to the string that was passed: a symlink inside the
+  /// root must not expose a hidden or non-Markdown file that also lives inside the root.
   fn real_path(&self, path: &RelPath) -> Result<PathBuf, StoreError> {
     let joined = self.root.join(path.as_str());
     let real = fs::canonicalize(&joined).map_err(|_| StoreError::NotFound(path.to_string()))?;
-    if !real.starts_with(&self.root) {
+    let Ok(target) = real.strip_prefix(&self.root) else {
       return Err(StoreError::OutsideRoot(path.to_string()));
+    };
+    let allowed = target
+      .to_str()
+      .map(|t| RelPath::parse(t).is_ok())
+      .unwrap_or(false);
+    if !allowed {
+      return Err(StoreError::Forbidden(path.to_string()));
     }
     Ok(real)
   }
 
-  fn walk(&self, dir: &Path, depth: usize, file_name: &str, found: &mut Vec<RelPath>) {
+  fn walk(&self, dir: &Path, depth: usize, found: &mut Vec<RelPath>) {
     if depth > MAX_WALK_DEPTH {
       return;
     }
@@ -171,8 +188,8 @@ impl FsStore {
         continue;
       };
       if kind.is_dir() {
-        self.walk(&entry.path(), depth + 1, file_name, found);
-      } else if kind.is_file() && name == file_name {
+        self.walk(&entry.path(), depth + 1, found);
+      } else if kind.is_file() && name.ends_with(".md") {
         if let Ok(rel) = entry.path().strip_prefix(&self.root) {
           if let Some(rel) = rel.to_str() {
             if let Ok(parsed) = RelPath::parse(rel) {
@@ -202,12 +219,9 @@ impl Store for FsStore {
     self.real_path(path).map(|p| p.is_file()).unwrap_or(false)
   }
 
-  fn find_by_file_name(&self, file_name: &str) -> Vec<RelPath> {
+  fn markdown_files(&self) -> Vec<RelPath> {
     let mut found = Vec::new();
-    if file_name.contains('/') || file_name.starts_with('.') || !file_name.ends_with(".md") {
-      return found;
-    }
-    self.walk(&self.root, 0, file_name, &mut found);
+    self.walk(&self.root, 0, &mut found);
     // 人格の憲法 (core/) を先頭にする。同じ名前が複数あるときに、core を優先して辿らせるため。
     // Put core/ first so that it wins when several files share a name.
     found.sort_by_key(|p| (!p.as_str().starts_with("core/"), p.as_str().to_string()));
