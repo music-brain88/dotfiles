@@ -100,6 +100,12 @@ run = [
   "bash .config/claude/skills/wtclose/tests/forget_test.sh",
 ]
 
+[tasks."claude:mail-test"]
+description = "Run the tests of claude_mail.sh, the bell for commanders on other machines (fixtures and a fake atuin only, never touches the real vault or the synced data)"
+# 一時ディレクトリの fixture と偽の atuin だけで、別の機械の司令塔への呼び鈴を試す。実物の vault と同期データには触らない。
+# Exercises claude_mail.sh with temporary fixtures and a fake atuin; the real vault and the synced data are never touched.
+run = "bash .config/claude/scripts/tests/claude_mail_test.sh"
+
 [tasks."claude:wtclean-test"]
 description = "Run the tests of the wtclean harvest search script (fixtures only, never reads the real vault)"
 # 一時ディレクトリのノートと偽の gh だけで収穫ステップの検索スクリプトを試す。実物の vault は読まない。

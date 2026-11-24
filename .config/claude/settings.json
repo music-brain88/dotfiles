@@ -37,6 +37,17 @@
         ]
       },
       {
+        "matcher": "^(startup|resume|clear)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/claude_mail.sh list 2>&1",
+            "timeout": 20,
+            "statusMessage": "呼び鈴を確かめてる…"
+          }
+        ]
+      },
+      {
         "matcher": "^(startup|resume|clear|compact|fork)$",
         "hooks": [
           {
