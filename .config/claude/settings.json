@@ -21,7 +21,8 @@
   },
   "permissions": {
     "allow": [
-      "Bash(bash ~/.claude/skills/wtclose/forget.sh *)"
+      "Bash(bash ~/.claude/skills/wtclose/forget.sh *)",
+      "Bash(bash ~/.claude/scripts/claude_mail.sh *)"
     ]
   },
   "hooks": {
