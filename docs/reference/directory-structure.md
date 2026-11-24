@@ -241,4 +241,4 @@ profile 分割の設計意図は [architecture.md の Per-Host Profiles](../expl
 - [getting-started.md](../tutorials/getting-started.md) - Nix/Home Manager 詳細ガイド
 - [keybindings.md](./keybindings.md) - キーバインド・ショートカット一覧
 - [neovim-config.md](./neovim-config.md) - Neovim 設定ガイド
-- [CLAUDE.md](../../CLAUDE.md) - Claude Code 向けコンテキスト
+- [AGENTS.md](../../AGENTS.md) - コーディングエージェント向けコンテキスト

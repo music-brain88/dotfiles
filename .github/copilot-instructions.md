@@ -66,4 +66,4 @@ The Home Manager username is hard-coded as `archie`; the activation target is `.
 | Shell boot flow (bash → fish) | `docs/explanation/shell-boot-flow.md` |
 | Neovim plugins & keymaps | `docs/reference/neovim-config.md` |
 | Directory layout details | `docs/reference/directory-structure.md` |
-| Claude Code context (overlaps heavily with this file) | `CLAUDE.md` |
+| Coding agent context (overlaps heavily with this file) | `AGENTS.md` |
