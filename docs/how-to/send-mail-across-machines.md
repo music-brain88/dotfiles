@@ -68,10 +68,10 @@ bash ~/.claude/scripts/claude_mail.sh list
 bash ~/.claude/scripts/claude_mail.sh list --to commander-dotfiles
 ```
 
-`list` は、先に `atuin sync` を実行してから、呼び鈴を 1 件 1 行で古い順に出します。
+`list` は、先に `atuin sync` を実行してから、呼び鈴を 1 件 1 行で古い順に出します。キーの先頭の時刻は UTC で、`時刻=` は差出人の機械の時刻です。
 
 ```text
-呼び鈴 20261124-090015-commander-example-1a2b3c4d 宛先=commander-dotfiles 差出人=commander-example 時刻=2026-11-24T09:00:15+0900 文書=/home/user/Documents/Obsidian/AgentMemory/workbench/dotfiles/20261124-handoff-example.md 用件=記憶を 1 件直した。読んで確かめてほしい | 読んで対応したら: bash ~/.claude/scripts/claude_mail.sh ack commander-dotfiles 20261124-090015-commander-example-1a2b3c4d
+呼び鈴 20261124-000015-commander-example-1a2b3c4d 宛先=commander-dotfiles 差出人=commander-example 時刻=2026-11-24T09:00:15+0900 文書=/home/user/Documents/Obsidian/AgentMemory/workbench/dotfiles/20261124-handoff-example.md 用件=記憶を 1 件直した。読んで確かめてほしい | 読んで対応したら: bash ~/.claude/scripts/claude_mail.sh ack commander-dotfiles 20261124-000015-commander-example-1a2b3c4d
 ```
 
 呼び鈴は、本文より先に届くことがあります。そのとき `list` は「本文がまだ届いていない」と出し、呼び鈴を残します。司令塔は、Obsidian Sync が本文を運ぶのを待ってから、もう一度 `list` を実行します。
@@ -85,7 +85,7 @@ bash ~/.claude/scripts/claude_mail.sh list --to commander-dotfiles
 司令塔は、文書を読んで対応した後に、`list` の行末に出ている `ack` のコマンドを実行します。
 
 ```bash
-bash ~/.claude/scripts/claude_mail.sh ack commander-dotfiles 20261124-090015-commander-example-1a2b3c4d
+bash ~/.claude/scripts/claude_mail.sh ack commander-dotfiles 20261124-000015-commander-example-1a2b3c4d
 ```
 
 `ack` は、呼び鈴を 1 件消して同期します。連絡の本文は vault に残ります。

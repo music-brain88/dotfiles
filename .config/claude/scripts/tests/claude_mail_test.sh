@@ -300,12 +300,36 @@ test_list_prints_oldest_first() {
   [[ "$(sed -n 2p <<<"$out")" == *'用件=後 '* ]] || flunk 'the newer bell must come second'
 }
 
+# fake_clock: a date in $case_dir/bin whose "now" is $FAKE_EPOCH.
+# 現在時刻が $FAKE_EPOCH になる date を $case_dir/bin に置く。
+fake_clock() {
+  mkdir -p "$case_dir/bin"
+  printf '#!/usr/bin/env bash\n[[ " $* " == *" -d "* ]] && exec %s "$@"\nexec %s -d "@$FAKE_EPOCH" "$@"\n' \
+    "$(command -v date)" "$(command -v date)" >"$case_dir/bin/date"
+  chmod +x "$case_dir/bin/date"
+}
+
+# Machines in different time zones: the order is the order of sending, and the
+# time shown keeps the sender's own offset.
+# タイムゾーンの違う機械から送っても、並びは送った順になり、表示する時刻は差出人の
+# 時差のまま残る。
+test_order_does_not_depend_on_the_time_zone() {
+  new_case
+  fake_clock
+  FAKE_EPOCH=1795478415 run_in "$alpha" env TZ=JST-9 "PATH=$case_dir/bin:$PATH" bash "$mail" send commander-beta "$doc" '先'
+  assert_exit 0
+  FAKE_EPOCH=1795478425 run_in "$alpha" env TZ=UTC0 "PATH=$case_dir/bin:$PATH" bash "$mail" send commander-beta "$doc" '後'
+  assert_exit 0
+  run "$beta" list
+  assert_exit 0
+  [[ "$(sed -n 1p <<<"$out")" == *'時刻=2026-11-24T09:00:15+0900 '*'用件=先 '* ]] || flunk 'the bell sent first must come first'
+  [[ "$(sed -n 2p <<<"$out")" == *'時刻=2026-11-24T00:00:25+0000 '*'用件=後 '* ]] || flunk 'the bell sent later must come second'
+}
+
 test_two_sends_in_the_same_second_do_not_collide() {
   new_case
-  mkdir -p "$case_dir/bin"
-  printf '#!/usr/bin/env bash\n[[ "$*" != *%%Y%%m%%d-%%H%%M%%S* ]] || { echo "20261124-090015 2026-11-24T09:00:15+0900"; exit 0; }\nexec %s "$@"\n' \
-    "$(command -v date)" >"$case_dir/bin/date"
-  chmod +x "$case_dir/bin/date"
+  fake_clock
+  export FAKE_EPOCH=1795478415 # 2026-11-24T00:00:15Z
   local k1 k2
   run_in "$alpha" env "PATH=$case_dir/bin:$PATH" bash "$mail" send commander-beta "$doc" '1 通目'
   assert_exit 0
@@ -313,7 +337,7 @@ test_two_sends_in_the_same_second_do_not_collide() {
   run_in "$alpha" env "PATH=$case_dir/bin:$PATH" bash "$mail" send commander-beta "$doc" '2 通目'
   assert_exit 0
   k2="$(sent_key "$out")"
-  [[ "$k1" == 20261124-090015-* && "$k2" == 20261124-090015-* ]] || flunk "the fake date did not take effect: $k1 $k2"
+  [[ "$k1" == 20261124-000015-* && "$k2" == 20261124-000015-* ]] || flunk "the fake date did not take effect: $k1 $k2"
   [ "$k1" != "$k2" ] || flunk 'the keys collide'
   run "$beta" list
   [ "$(lines "$out")" -eq 2 ] || flunk 'both bells must be there'

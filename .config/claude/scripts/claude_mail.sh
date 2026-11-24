@@ -70,11 +70,13 @@ LC_ALL=C
 
 # ---------------------------------------------------------------------------
 # Format contract / 書式の契約
-# Namespace: mail-<address>. Key: <YYYYMMDD-HHMMSS>-<sender>-<random>.
+# Namespace: mail-<address>. Key: <YYYYMMDD-HHMMSS>-<sender>-<random>, in UTC,
+# so that the keys of machines in different time zones sort by time.
 # Value: "v1", sender, time, vault-relative path and subject, joined by tabs.
 # The subject comes last and never contains a tab when written by send, and a
 # reader takes everything after the fourth tab as the subject.
-# 名前空間は mail-<宛先>、キーは <YYYYMMDD-HHMMSS>-<差出人>-<乱数>。
+# 名前空間は mail-<宛先>、キーは <YYYYMMDD-HHMMSS>-<差出人>-<乱数>。キーの時刻は
+# UTC で書く。タイムゾーンの違う機械のキーも、時刻の順に並ぶようにするためである。
 # 値は「v1」・差出人・時刻・vault の中の相対パス・用件を、タブでつないだ 1 行。
 # 用件は最後に置く。send が書く用件にタブは入らず、読む側は 4 つ目のタブより
 # 後ろの全部を用件として読む。
@@ -292,7 +294,7 @@ kv() {
 cmd_send() {
   [ "$#" -eq 3 ] || usage 'send の引数は 3 つ'
   local addr="$1" doc="$2" subject="$3"
-  local real wb_real from stamp key value rc=0
+  local real wb_real from epoch time key value rc=0
   set_limits 30 5 45
   check_addr "$addr"
   ! [[ "$subject" =~ ^[[:space:]]*$ ]] || stop 1 '用件を拒否した: 空である'
@@ -314,11 +316,12 @@ cmd_send() {
   from="$addr_prefix$project"
   [[ "$from" =~ $addr_re ]] || stop 2 "差出人の名前を作れない($(printable "$from"))"
   need_atuin
-  stamp="$(date '+%Y%m%d-%H%M%S %Y-%m-%dT%H:%M:%S%z')"
+  epoch="$(date +%s)"
+  time="$(date -d "@$epoch" '+%Y-%m-%dT%H:%M:%S%z')"
   # The random part keeps two bells rung in the same second apart.
   # 同じ秒に置いた 2 通は、乱数の部分で分かれる。
-  key="${stamp%% *}-$from-$(printf '%04x%04x' "$RANDOM" "$RANDOM")"
-  value="v1"$'\t'"$from"$'\t'"${stamp#* }"$'\t'"$wb_rel/${real#"$wb_real"/}"$'\t'"$subject"
+  key="$(date -u -d "@$epoch" '+%Y%m%d-%H%M%S')-$from-$(printf '%04x%04x' "$RANDOM" "$RANDOM")"
+  value="v1"$'\t'"$from"$'\t'"$time"$'\t'"$wb_rel/${real#"$wb_real"/}"$'\t'"$subject"
   kv set -n "$ns_prefix$addr" -k "$key" "$value" || rc=$?
   [ "$rc" -eq 0 ] || stop 3 "atuin kv set が$(why "$rc" "$(cat "$err_file")")。$(timed_out "$rc" && printf '呼び鈴を置けたかどうかは分からない' || printf '呼び鈴は置いていない')"
   printf 'sent %s %s\n' "$addr" "$key"
