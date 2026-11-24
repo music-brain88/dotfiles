@@ -49,6 +49,27 @@ EOF
 chmod +x "$root/bin/fake_gh"
 
 # ---------------------------------------------------------------------------
+# Fake claude_mail.sh / 偽の claude_mail.sh
+# Exported for every case, so that no case ever reaches the real atuin (which
+# would sync the user's own data). Silent by default.
+# FAKE_MAIL_OUT / FAKE_MAIL_ERR : printed on stdout / stderr
+# FAKE_MAIL_RC                  : exit code
+# FAKE_MAIL_LOG                 : one line per call: "<cwd> <arguments>"
+# すべてのケースに export し、実物の atuin(利用者のデータを同期してしまう)に
+# 届かないようにする。既定では何も出さない。
+# ---------------------------------------------------------------------------
+cat >"$root/bin/fake_mail" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+[ -z "${FAKE_MAIL_LOG:-}" ] || printf '%s %s\n' "$PWD" "$*" >>"$FAKE_MAIL_LOG"
+[ -z "${FAKE_MAIL_OUT:-}" ] || printf '%s\n' "$FAKE_MAIL_OUT"
+[ -z "${FAKE_MAIL_ERR:-}" ] || printf '%s\n' "$FAKE_MAIL_ERR" >&2
+exit "${FAKE_MAIL_RC:-0}"
+EOF
+chmod +x "$root/bin/fake_mail"
+export WTCLOSE_MAIL="$root/bin/fake_mail"
+
+# ---------------------------------------------------------------------------
 # PATH without jq / jq の無い PATH
 # Only the commands close_gate.sh needs are linked, so "jq is missing" can be
 # reproduced on a machine that has jq.
@@ -1304,6 +1325,77 @@ test_skip_outside_git_repository() {
   assert_exit 0
   assert_out_has 'systemMessage'
   assert_out_has 'git リポジトリの中ではない'
+}
+
+# ---------------------------------------------------------------------------
+# Unread bells from other machines / 別の機械からの未読の呼び鈴
+# ---------------------------------------------------------------------------
+readonly bell_1='呼び鈴 20261124-090015-commander-x-00000001 宛先=commander-proj 用件=「"引用"」と \ を含む用件'
+readonly bell_2='呼び鈴 20261124-090016-commander-x-00000002 宛先=commander-proj 用件=2 通目'
+
+test_mail_is_noted_and_does_not_block() {
+  new_case
+  write_state </dev/null
+  export FAKE_MAIL_LOG="$case_dir/mail_log"
+  FAKE_MAIL_OUT="$bell_1"$'\n'"$bell_2" run_gate "$(hook_input)"
+  assert_exit 0
+  jq -e . "$case_dir/out" >/dev/null || flunk 'stdout is not valid JSON'
+  out="$(jq -r '.systemMessage' "$case_dir/out")"
+  assert_out_has '検問を通過した'
+  assert_out_has "$bell_1"
+  assert_out_has "$bell_2"
+  [ "$(cat "$case_dir/mail_log")" = "$repo list --to commander-proj" ] \
+    || flunk "claude_mail.sh was called with: $(cat "$case_dir/mail_log")"
+  [ "$(jq -r '.result' "$wb/_gate_log.jsonl")" = 'pass' ] || flunk 'the log must say pass'
+  [ "$(jq -r '.notes | length' "$wb/_gate_log.jsonl")" -eq 2 ] || flunk 'one note per bell'
+}
+
+test_mail_is_shown_when_the_gate_blocks_for_another_reason() {
+  new_case
+  mkdir -p "$wb"
+  FAKE_MAIL_OUT="$bell_1" run_gate "$(hook_input)"
+  assert_exit 2
+  assert_err_has '[P1]'
+  assert_err_has "$bell_1"
+  ! jq -r '.reasons[]' "$wb/_gate_log.jsonl" | grep -qF '呼び鈴' || flunk 'a bell must not be a reason to block'
+}
+
+test_mail_is_shown_by_check() {
+  new_case
+  write_state </dev/null
+  FAKE_MAIL_OUT="$bell_1" run_check
+  assert_exit 0
+  assert_out_has "$bell_1"
+}
+
+test_mail_failure_is_noted_and_does_not_block() {
+  new_case
+  write_state </dev/null
+  FAKE_MAIL_ERR='claude_mail.sh: atuin が無いので、呼び鈴を扱えない' run_gate "$(hook_input)"
+  assert_exit 0
+  assert_out_has '呼び鈴を確かめられなかった: atuin が無いので、呼び鈴を扱えない'
+  FAKE_MAIL_RC=5 run_gate "$(hook_input)"
+  assert_exit 0
+  assert_out_has '呼び鈴を確かめられなかった: claude_mail.sh list が終了コード 5 で終わった'
+  WTCLOSE_MAIL="$case_dir/no_such_mail.sh" run_gate "$(hook_input)"
+  assert_exit 0
+  assert_out_has 'no_such_mail.sh が無い'
+}
+
+test_mail_silent_when_there_is_none() {
+  new_case
+  write_state </dev/null
+  run_gate "$(hook_input)"
+  assert_exit 0
+  ! grep -qF '呼び鈴' <<<"$out" || flunk 'stdout mentions a bell'
+}
+
+test_mail_is_not_read_by_where() {
+  new_case
+  export FAKE_MAIL_LOG="$case_dir/mail_log"
+  run_gate '' --where --cwd "$repo"
+  assert_exit 0
+  [ ! -e "$case_dir/mail_log" ] || flunk '--where must not call claude_mail.sh'
 }
 
 # ---------------------------------------------------------------------------

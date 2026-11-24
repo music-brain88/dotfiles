@@ -54,6 +54,7 @@ shellcheck の定義の正は `flake.nix` の `apps.${system}.shellcheck` であ
 |------|-------------|---------------------|
 | `mise run claude:effort <level>` | Claude Code の effort 設定(effortLevel/ultracode)を更新してNix経由で反映 (`low` / `medium` / `high` / `xhigh` / `ultracode`) | `.config/claude/settings.json` を jq で書き換え + `nix:switch` |
 | `mise run claude:wtclose-test` | 締め skill `wtclose` の検問スクリプトと `forget.sh` のテストを、一時ディレクトリの fixture と偽の `gh`・`gio` だけで実行する(実物の vault とゴミ箱には触らない) | `bash .config/claude/skills/wtclose/tests/close_gate_test.sh` と `bash .config/claude/skills/wtclose/tests/forget_test.sh` |
+| `mise run claude:mail-test` | 別の機械の司令塔への呼び鈴 `claude_mail.sh` のテストを、一時ディレクトリの fixture と偽の `atuin` だけで実行する(実物の vault と同期データには触らない)。使い方は [send-mail-across-machines.md](../how-to/send-mail-across-machines.md) | `bash .config/claude/scripts/tests/claude_mail_test.sh` |
 | `mise run claude:wtclean-test` | 掃除 skill `wtclean` の収穫ステップの検索スクリプトのテストを、一時ディレクトリのノートと偽の `gh` だけで実行する(実物の vault は読まない) | `bash .config/claude/skills/wtclean/tests/harvest_search_test.sh` |
 
 `ultracode` は effortLevel の値ではなく、独立した boolean 設定キーである。xhigh 相当の effort に加えて、常設の dynamic-workflow(マルチエージェント)オーケストレーションをセッション全体で有効にする。`mise run claude:effort ultracode` を実行すると `effortLevel = "xhigh"` と `ultracode = true` が書き込まれる。通常レベル(low/medium/high/xhigh)に戻すと `ultracode` キー自体を削除し、設定ファイルを最小に保つ。
