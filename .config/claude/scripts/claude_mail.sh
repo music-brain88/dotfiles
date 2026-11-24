@@ -263,6 +263,37 @@ has_project() {
 }
 
 # ---------------------------------------------------------------------------
+# Documents / 文書
+# The sender and the reader use the same check, on the real path: a link inside
+# the workbench of either machine may point anywhere.
+# 送る側も読む側も、同じ検査を実体のパスに対して行う。どちらの機械の作業記憶でも、
+# 中に置かれたリンクはどこでも指せるためである。
+# ---------------------------------------------------------------------------
+doc_rel=''   # the real path, relative to the vault / 実体のパス(vault からの相対)
+doc_error='' # never holds a path / パスを含まない
+
+# resolve_doc <path>: sets doc_rel and returns 0, or sets doc_error and returns
+# 1 (refused) or 2 (no workbench).
+# doc_rel を決めて 0 を返す。だめなら doc_error を決めて、1(拒否)か 2(作業記憶が
+# 無い)を返す。
+resolve_doc() {
+  local real wb_real
+  doc_rel=''
+  doc_error='実在しないファイルを指している'
+  real="$(realpath -e -- "$1" 2>/dev/null)" || return 1
+  doc_error="指す作業記憶($wb_rel/)が vault に無い"
+  wb_real="$(realpath -e -- "$vault/$wb_rel" 2>/dev/null)" || return 2
+  doc_error='制御文字を含むパスを指している'
+  ! has_cntrl "$real" || return 1
+  doc_error='作業記憶の外を指している'
+  [[ "$real" == "$wb_real"/* ]] || return 1
+  doc_error='通常の md ファイルではない'
+  [[ -f "$real" && "$real" == *.md ]] || return 1
+  doc_error=''
+  doc_rel="$wb_rel/${real#"$wb_real"/}"
+}
+
+# ---------------------------------------------------------------------------
 # atuin
 # ---------------------------------------------------------------------------
 sync_error=''
@@ -294,7 +325,7 @@ kv() {
 cmd_send() {
   [ "$#" -eq 3 ] || usage 'send の引数は 3 つ'
   local addr="$1" doc="$2" subject="$3"
-  local real wb_real from epoch time key value rc=0
+  local from epoch time key value rc=0
   set_limits 30 5 45
   check_addr "$addr"
   ! [[ "$subject" =~ ^[[:space:]]*$ ]] || stop 1 '用件を拒否した: 空である'
@@ -305,13 +336,7 @@ cmd_send() {
   has_project "${addr#"$addr_prefix"}" \
     || stop 1 "宛先を拒否した($addr): vault に AgentMemory/${addr#"$addr_prefix"} が無いので、誰も読まない。$addr_hint"
 
-  real="$(realpath -e -- "$doc" 2>/dev/null)" || stop 1 "文書を拒否した($(printable "$doc")): 実在しない"
-  wb_real="$(realpath -e -- "$vault/$wb_rel" 2>/dev/null)" || stop 2 "作業記憶($vault/$wb_rel)が無い"
-  ! has_cntrl "$real" || stop 1 '文書を拒否した: パスが制御文字を含む'
-  [[ "$real" == "$wb_real"/* ]] || stop 1 "文書を拒否した($real): vault の作業記憶($wb_rel/)の中に無い"
-  if [ ! -f "$real" ] || [[ "$real" != *.md ]]; then
-    stop 1 "文書を拒否した($real): md の通常のファイルではない"
-  fi
+  resolve_doc "$doc" || stop "$?" "文書を拒否した($(printable "$doc")): $doc_error"
 
   from="$addr_prefix$project"
   [[ "$from" =~ $addr_re ]] || stop 2 "差出人の名前を作れない($(printable "$from"))"
@@ -321,7 +346,7 @@ cmd_send() {
   # The random part keeps two bells rung in the same second apart.
   # 同じ秒に置いた 2 通は、乱数の部分で分かれる。
   key="$(date -u -d "@$epoch" '+%Y%m%d-%H%M%S')-$from-$(printf '%04x%04x' "$RANDOM" "$RANDOM")"
-  value="v1"$'\t'"$from"$'\t'"$time"$'\t'"$wb_rel/${real#"$wb_real"/}"$'\t'"$subject"
+  value="v1"$'\t'"$from"$'\t'"$time"$'\t'"$doc_rel"$'\t'"$subject"
   kv set -n "$ns_prefix$addr" -k "$key" "$value" || rc=$?
   [ "$rc" -eq 0 ] || stop 3 "atuin kv set が$(why "$rc" "$(cat "$err_file")")。$(timed_out "$rc" && printf '呼び鈴を置けたかどうかは分からない' || printf '呼び鈴は置いていない')"
   printf 'sent %s %s\n' "$addr" "$key"
@@ -358,11 +383,15 @@ show_bell() {
     printf '%s 値の形が合わない %s\n' "$head" "$hint"
     return 0
   fi
-  head+=" 差出人=$from 時刻=$time 文書=$vault/$rel"
-  if [ -f "$vault/$rel" ]; then
-    printf '%s 用件=%s %s\n' "$head" "$(printable "$rest")" "$hint"
+  head+=" 差出人=$from 時刻=$time"
+  if [ ! -e "$vault/$rel" ] && [ ! -L "$vault/$rel" ]; then
+    printf '%s 文書=%s (本文がまだ届いていない。届くまで ack しない) 用件=%s\n' "$head" "$vault/$rel" "$(printable "$rest")"
+  elif resolve_doc "$vault/$rel"; then
+    printf '%s 文書=%s 用件=%s %s\n' "$head" "$vault/$rel" "$(printable "$rest")" "$hint"
   else
-    printf '%s (本文がまだ届いていない。届くまで ack しない) 用件=%s\n' "$head" "$(printable "$rest")"
+    # Neither the path nor the ack: the reader must not open it, and the bell stays.
+    # パスも ack の案内も出さない。読ませず、呼び鈴は残す。
+    printf '%s 文書が%s。読まない 用件=%s\n' "$head" "$doc_error" "$(printable "$rest")"
   fi
 }
 

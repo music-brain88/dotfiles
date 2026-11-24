@@ -464,6 +464,72 @@ test_missing_body_is_shown_and_the_bell_stays() {
   assert_out_has "claude_mail.sh ack commander-beta $key"
 }
 
+# The receiver checks the real path too: a link in its own workbench may point
+# anywhere. The bell stays, but neither the path nor the ack is offered.
+# 受け取る側も実体のパスを確かめる。自分の作業記憶の中のリンクは、どこでも指せる
+# ためである。呼び鈴は残すが、パスも ack の案内も出さない。
+test_document_pointing_outside_is_not_offered_to_the_reader() {
+  new_case
+  run "$alpha" send commander-beta "$doc" '用件'
+  local key target
+  key="$(sent_key "$out")"
+  printf 'x\n' >"$case_dir/outside.md"
+  printf 'x\n' >"$vault/AgentMemory/alpha/memory.md"
+  on_machine B
+  for target in "$case_dir/outside.md" "$vault/AgentMemory/alpha/memory.md"; do
+    ln -sfn "$target" "$doc"
+    run "$beta" list
+    assert_exit 0
+    assert_no_err
+    [ "$(lines "$out")" -eq 1 ] || flunk 'one bell must be one line'
+    assert_out_has "呼び鈴 $key 宛先=commander-beta"
+    assert_out_has '文書が作業記憶の外を指している。読まない'
+    assert_out_lacks '文書='
+    assert_out_lacks "$target"
+    assert_out_lacks 'claude_mail.sh ack'
+    assert_out_lacks 'まだ届いていない'
+  done
+  # A folder that is a link out of the workbench / 作業記憶の外を指すフォルダ
+  mkdir -p "$case_dir/elsewhere"
+  printf 'x\n' >"$case_dir/elsewhere/${doc##*/}"
+  mv "${doc%/*}" "$case_dir/kept"
+  ln -s "$case_dir/elsewhere" "${doc%/*}"
+  run "$beta" list
+  assert_exit 0
+  assert_out_has '文書が作業記憶の外を指している。読まない'
+  assert_out_lacks '文書='
+  # The bell was kept all along / 呼び鈴は残っている
+  rm "${doc%/*}"
+  mv "$case_dir/kept" "${doc%/*}"
+  ln -sfn ../beta/real.md "$doc"
+  printf 'x\n' >"$vault/AgentMemory/workbench/beta/real.md"
+  run "$beta" list
+  assert_out_has "文書=$doc 用件=用件"
+  assert_out_has "claude_mail.sh ack commander-beta $key"
+}
+
+test_document_that_is_not_a_regular_md_is_not_offered_to_the_reader() {
+  new_case
+  run "$alpha" send commander-beta "$doc" '用件'
+  printf 'x\n' >"$vault/AgentMemory/workbench/alpha/note.txt"
+  ln -sfn note.txt "$doc"
+  run "$beta" list
+  assert_exit 0
+  assert_out_has '文書が通常の md ファイルではない。読まない'
+  assert_out_lacks '文書='
+  assert_out_lacks 'claude_mail.sh ack'
+  rm "$doc"
+  mkdir "$doc"
+  run "$beta" list
+  assert_out_has '文書が通常の md ファイルではない。読まない'
+  rmdir "$doc"
+  ln -s nowhere.md "$doc"
+  run "$beta" list
+  assert_out_has '文書が実在しないファイルを指している。読まない'
+  assert_out_lacks '文書='
+  assert_out_lacks 'まだ届いていない'
+}
+
 test_document_refusals() {
   new_case
   printf 'x\n' >"$case_dir/outside.md"
