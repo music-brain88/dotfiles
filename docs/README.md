@@ -129,4 +129,4 @@
 ## 🔗 Related
 
 - [../README.md](../README.md) - プロジェクト概要とクイックスタート
-- [../CLAUDE.md](../CLAUDE.md) - Claude Code 向けコンテキスト
+- [../AGENTS.md](../AGENTS.md) - コーディングエージェント向けコンテキスト
