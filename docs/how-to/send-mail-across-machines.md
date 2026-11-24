@@ -76,7 +76,7 @@ bash ~/.claude/scripts/claude_mail.sh list --to commander-dotfiles
 
 呼び鈴は、本文より先に届くことがあります。そのとき `list` は「本文がまだ届いていない」と出し、呼び鈴を残します。司令塔は、Obsidian Sync が本文を運ぶのを待ってから、もう一度 `list` を実行します。
 
-> **📝 worktree のセッションには出ません:** `--to` を省いた `list` は、linked worktree の中では何も出しません。`/wt` の作業者のセッションに、司令塔あての呼び鈴を見せないためです。vault が無い機械と、git リポジトリの外でも、何も出しません。
+> **📝 worktree のセッションには出ません:** `--to` を省いた `list` は、linked worktree の中では何も出しません。`/wt` の作業者のセッションに、司令塔あての呼び鈴を見せないためです。vault が無い機械と、git リポジトリの外でも、何も出しません。vault に `AgentMemory/<project>` が無いリポジトリでも同期せずに終わるので、記憶を持たないリポジトリのセッションの開始は待たされません。
 
 ---
 

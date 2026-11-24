@@ -770,6 +770,35 @@ test_list_is_silent_without_a_vault() {
   assert_silent
 }
 
+# The SessionStart hook runs in every session: no sync for a repository that has
+# no memory in the vault. An explicit --to (the gate) still reads.
+# SessionStart の hook は全部のセッションで走る。vault に記憶を持たないリポジトリでは
+# 同期しない。--to を明示した形(検問)は、今までどおり読む。
+test_list_is_silent_for_a_project_without_memory() {
+  new_case
+  run "$alpha" send commander-beta "$doc" '用件'
+  on_machine B
+  mkdir -p "$case_dir/gamma"
+  git -C "$case_dir/gamma" init -q -b main
+  git -C "$case_dir/gamma" commit -q --allow-empty -m init
+  run "$case_dir/gamma" list
+  assert_silent
+  [ -z "$(calls)" ] || flunk "atuin was called: $(calls)"
+  # A workbench alone is not a memory / 作業記憶だけでは、記憶があることにならない
+  mkdir -p "$vault/AgentMemory/workbench/gamma"
+  run "$case_dir/gamma" list
+  assert_silent
+  [ -z "$(calls)" ] || flunk "atuin was called: $(calls)"
+  run "$case_dir/gamma" list --to commander-beta
+  assert_exit 0
+  assert_out_has '用件=用件'
+  mkdir -p "$vault/AgentMemory/gamma"
+  : >"$FAKE_LOCAL/calls"
+  run "$case_dir/gamma" list
+  assert_exit 0
+  [ "$(calls | sed -n 1p)" = 'sync' ] || flunk 'a project with memory must sync'
+}
+
 test_list_is_silent_in_a_linked_worktree() {
   new_case
   run "$alpha" send commander-beta "$doc" '用件'

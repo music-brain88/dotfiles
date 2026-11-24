@@ -26,10 +26,12 @@
 #   claude_mail.sh list [--to <address>]
 #     Sync first, then print the bells. Without --to, the address is this
 #     place's own commander-<project>, and nothing happens in a linked worktree
-#     (workers must not see the commander's bells).
+#     (workers must not see the commander's bells) or for a project that has no
+#     AgentMemory/<project> in the vault (nobody can ring there).
 #     先に同期してから、呼び鈴を出す。--to が無いときの宛先は、この場所の
 #     commander-<project> である。linked worktree では何もしない(worker に
-#     司令塔あての呼び鈴を見せないため)。
+#     司令塔あての呼び鈴を見せないため)。vault に AgentMemory/<project> が無い
+#     プロジェクトでも何もしない(誰もそこへ呼び鈴を置けないため)。
 #   claude_mail.sh ack <address> <key>
 #     Delete one bell, then sync. The document stays in the vault.
 #     呼び鈴を 1 件消して同期する。文書は vault に残る。
@@ -415,6 +417,11 @@ cmd_list() {
     stop 2 "close_gate.sh --where が$(why "$places_rc" '')。呼び鈴を確かめていない"
   fi
   if [ -z "$addr" ]; then
+    # The hook runs in every session, so leave before the sync when nobody can
+    # have rung here: send refuses a project that has no folder in the vault.
+    # hook は全部のセッションで走る。send は vault にフォルダの無いプロジェクトを
+    # 拒否するので、ここあての呼び鈴はありえない。同期の前に終わる。
+    has_project "$project" || finish 0
     ! in_linked_worktree || finish 0
     addr="$addr_prefix$project"
   fi
