@@ -1,5 +1,5 @@
-//! 子プロセスを期限つきで実行する。herdr と gh の呼び出しが共有する。
-//! Runs a child process with a deadline. Shared by the herdr and gh calls.
+//! 子プロセスを期限つきで実行する。herdr と gh と busctl の呼び出しが共有する。
+//! Runs a child process with a deadline. Shared by the herdr, gh and busctl calls.
 
 use std::io::Read;
 use std::process::{Child, Command, ExitStatus, Stdio};

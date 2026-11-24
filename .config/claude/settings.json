@@ -21,7 +21,8 @@
   },
   "permissions": {
     "allow": [
-      "Bash(bash ~/.claude/skills/wtclose/forget.sh *)"
+      "Bash(bash ~/.claude/skills/wtclose/forget.sh *)",
+      "Bash(bash ~/.claude/scripts/claude_mail.sh *)"
     ]
   },
   "hooks": {
@@ -33,6 +34,17 @@
             "command": "bash $HOME/.claude/scripts/inject_core_memory.sh",
             "timeout": 10,
             "statusMessage": "枕元のノートを開いてる…"
+          }
+        ]
+      },
+      {
+        "matcher": "^(startup|resume|clear)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/claude_mail.sh list 2>&1",
+            "timeout": 20,
+            "statusMessage": "呼び鈴を確かめてる…"
           }
         ]
       },

@@ -69,6 +69,11 @@ readonly notes_rel='Zettelkasten/ResearchNotes'
 max_lines="${WTCLOSE_MAX_LINES:-200}"      # P2
 dormant_days="${WTCLOSE_DORMANT_DAYS:-14}" # P6 and stale state files / 古い状態ファイル
 gh_timeout="${WTCLOSE_GH_TIMEOUT:-20}"     # P8 (seconds / 秒)
+# Unread bells (seconds): a backstop above the 15 s that claude_mail.sh list
+# allows itself. With gh_timeout it must stay under the hook timeout (60 s).
+# 未読の呼び鈴(秒): claude_mail.sh list が自分に許す 15 秒の外側の歯止め。gh_timeout と
+# 合わせて、hook の timeout(60 秒)より短くしておく。
+readonly mail_timeout=20
 
 # ---------------------------------------------------------------------------
 # Overrides (mainly for tests) / 差し替え(主にテスト用)
@@ -77,6 +82,7 @@ gh_timeout="${WTCLOSE_GH_TIMEOUT:-20}"     # P8 (seconds / 秒)
 # WTCLOSE_NOW     : current local time "YYYY-MM-DD HH:MM" / 現在時刻
 # WTCLOSE_GH      : gh command / gh の代わりに呼ぶコマンド
 # WTCLOSE_GIT     : git command / git の代わりに呼ぶコマンド
+# WTCLOSE_MAIL    : claude_mail.sh / claude_mail.sh の代わりに呼ぶスクリプト
 # WTCLOSE_FAULT   : exit code of a forced failure, to test the safety net
 #                   安全網を試すために起こす失敗の終了コード
 # ---------------------------------------------------------------------------
@@ -84,6 +90,7 @@ vault_override="${WTCLOSE_VAULT:-}"
 default_vault="$HOME/Documents/Obsidian"
 gh_cmd="${WTCLOSE_GH:-gh}"
 git_cmd="${WTCLOSE_GIT:-git}"
+mail_cmd="${WTCLOSE_MAIL:-$(dirname "${BASH_SOURCE[0]}")/../../scripts/claude_mail.sh}"
 
 # ---------------------------------------------------------------------------
 # Safety net / 安全網
@@ -1224,6 +1231,32 @@ build_reachability() {
 }
 
 # ---------------------------------------------------------------------------
+# Unread bells from other machines (#826) / 別の機械からの未読の呼び鈴(#826)
+# Shown as notes only: a bell never blocks the close, and neither does a failure
+# to look for one. claude_mail.sh asks this script for the places (--where), and
+# --where leaves before this function, so the two never call each other in a loop.
+# 注意として見せるだけにする。呼び鈴も、呼び鈴を確かめられなかったことも、締めを
+# 止めない。claude_mail.sh は置き場をこのスクリプトの --where で求めるが、--where は
+# この関数より前で終わるので、互いを呼び続けることはない。
+# ---------------------------------------------------------------------------
+note_unread_mail() {
+  local rc=0 line
+  if [ ! -r "$mail_cmd" ]; then
+    note "呼び鈴を確かめられなかった: ${mail_cmd} が無い"
+    return 0
+  fi
+  (cd "$work_dir" && run_with_timeout "$mail_timeout" bash "$mail_cmd" list --to "commander-$project") \
+    >"$tmp_dir/mail" 2>"$tmp_dir/mail.err" </dev/null || rc=$?
+  while IFS= read -r line || [ -n "$line" ]; do
+    [ -z "$line" ] || note "$line"
+  done <"$tmp_dir/mail"
+  while IFS= read -r line || [ -n "$line" ]; do
+    [ -z "$line" ] || note "呼び鈴を確かめられなかった: ${line#claude_mail.sh: }"
+  done <"$tmp_dir/mail.err"
+  [ "$rc" -eq 0 ] || note "呼び鈴を確かめられなかった: claude_mail.sh list が終了コード ${rc} で終わった"
+}
+
+# ---------------------------------------------------------------------------
 # Record / 記録
 # ---------------------------------------------------------------------------
 elapsed_ms() {
@@ -1346,6 +1379,7 @@ collect_real_state
 check_p4_p8
 check_p5
 build_reachability
+note_unread_mail
 # Forced failure for the tests of the safety net / 安全網のテストのための失敗
 [ -z "${WTCLOSE_FAULT:-}" ] || (exit "$WTCLOSE_FAULT")
 write_log

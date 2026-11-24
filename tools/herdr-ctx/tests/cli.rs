@@ -1,11 +1,14 @@
-//! CLI の統合テスト。PATH の先に偽の herdr と偽の gh を置き、終了コードと stdout / stderr の約束を確かめる。
-//! CLI integration tests. A fake herdr and a fake gh on PATH pin the contract on exit codes and
-//! output streams.
+//! CLI の統合テスト。PATH の先に偽の herdr と偽の gh と偽の busctl を置き、終了コードと stdout / stderr の
+//! 約束を確かめる。
+//! CLI integration tests. A fake herdr, a fake gh and a fake busctl on PATH pin the contract on exit
+//! codes and output streams.
 //!
-//! 偽の herdr と gh はシェルの組み込みコマンドだけを使う。ビルドサンドボックスの PATH に頼らないため。
+//! 偽の herdr と gh と busctl はシェルの組み込みコマンドだけを使う。ビルドサンドボックスの PATH に頼らないため。
 //! リポジトリ・題・作者は架空の値で、本物の GitHub は呼ばない。
+//! 本物の鍵束も読まない。偽の busctl を置かないテストでは、鍵束の状態は「確かめられない」になる。
 //! The fakes use shell builtins only, so they do not depend on the build sandbox's PATH. Every
-//! repository, title and author is made up, and the real GitHub is never called.
+//! repository, title and author is made up, and the real GitHub is never called. Neither is the real
+//! keyring: without a fake busctl on PATH the keyring's state is simply unknown.
 
 use std::fs;
 use std::io::Write;
@@ -77,6 +80,48 @@ impl Sandbox {
     let path = self.bin().join("gh");
     fs::write(&path, "#!/bin/sh\nsleep 5\n").unwrap();
     fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+  }
+
+  /// 呼ばれた引数を記録し、set_keyring で書いた 1 行を返す偽の busctl を置く。
+  /// Installs a fake busctl that logs its arguments and answers with the line set_keyring wrote.
+  fn fake_busctl(&self, answer: &str) {
+    self.set_keyring(answer);
+    let script = format!(
+      "#!/bin/sh\necho \"$*\" >> '{log}'\nread -r answer < '{state}'\nprintf '%s\\n' \"$answer\"\n",
+      log = self.busctl_log().display(),
+      state = self.keyring_file().display(),
+    );
+    let path = self.bin().join("busctl");
+    fs::write(&path, script).unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+  }
+
+  /// 失敗する偽の busctl を置く。Secret Service の無い機械を表す。
+  /// Installs a failing fake busctl, standing for a machine without a Secret Service.
+  fn failing_busctl(&self) {
+    let path = self.bin().join("busctl");
+    fs::write(&path, "#!/bin/sh\nexit 1\n").unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+  }
+
+  /// 実行中の偽の busctl が書きかけを読まないように、rename で置き換える。
+  /// Replaced by rename, so a running fake busctl never reads a partial file.
+  fn set_keyring(&self, answer: &str) {
+    let tmp = self.root.join("keyring.tmp");
+    fs::write(&tmp, format!("{answer}\n")).unwrap();
+    fs::rename(&tmp, self.keyring_file()).unwrap();
+  }
+
+  fn keyring_file(&self) -> PathBuf {
+    self.root.join("keyring")
+  }
+
+  fn busctl_log(&self) -> PathBuf {
+    self.root.join("busctl.log")
+  }
+
+  fn busctl_calls(&self) -> usize {
+    fs::read_to_string(self.busctl_log()).map_or(0, |log| log.lines().count())
   }
 
   fn gh_calls(&self) -> usize {
@@ -749,10 +794,69 @@ fn watch_keeps_reviews_json_and_the_agent_cycle_when_gh_fails() {
 }
 
 #[test]
+fn watch_skips_gh_while_the_keyring_is_locked_and_resumes_once_unlocked() {
+  let sandbox = Sandbox::new("watch-keyring");
+  sandbox.fake_herdr(LIST_JSON, "", 0);
+  sandbox.fake_gh(SEARCH_JSON, "", 0);
+  sandbox.fake_busctl("b true");
+  fs::write(sandbox.reviews_file(), PREVIOUS_REVIEWS).unwrap();
+
+  let child = spawn_watch(&sandbox);
+  // ロックされた周期を 3 回始めさせる。3 回目の判定が始まれば、前の 2 回は gh を呼ばずに終わっている
+  // Let three locked cycles start: once the third check begins, the first two ended without gh
+  let cycled = wait_until(|| sandbox.busctl_calls() >= 3);
+  let calls_while_locked = sandbox.gh_calls();
+  let file_while_locked = fs::read_to_string(sandbox.reviews_file()).unwrap();
+  sandbox.set_keyring("b false");
+  let resumed = wait_until(|| sandbox.gh_calls() >= 2);
+  let log = stop(child);
+
+  assert!(cycled && resumed, "{log}");
+  assert_eq!(calls_while_locked, 0, "{log}");
+  assert_eq!(file_while_locked, PREVIOUS_REVIEWS);
+  let reviews: serde_json::Value =
+    serde_json::from_str(&fs::read_to_string(sandbox.reviews_file()).unwrap()).unwrap();
+  assert_eq!(reviews["total_count"], 2);
+  let keyring_lines: Vec<&str> = log.lines().filter(|line| line.contains("鍵束")).collect();
+  assert_eq!(
+    keyring_lines,
+    [
+      "herdr-ctx: 鍵束がロックされているので、レビュー依頼の取得を見送る",
+      "herdr-ctx: 鍵束が解錠されたので、レビュー依頼の取得を再開する",
+    ]
+  );
+  let busctl_log = fs::read_to_string(sandbox.busctl_log()).unwrap();
+  assert!(
+    busctl_log.lines().all(|line| line
+      == "--user get-property org.freedesktop.secrets /org/freedesktop/secrets/aliases/default org.freedesktop.Secret.Collection Locked"),
+    "{busctl_log}"
+  );
+}
+
+#[test]
+fn watch_calls_gh_when_the_keyring_cannot_be_checked() {
+  let sandbox = Sandbox::new("watch-keyring-unknown");
+  sandbox.fake_herdr(LIST_JSON, "", 0);
+  sandbox.fake_gh(SEARCH_JSON, "", 0);
+  sandbox.failing_busctl();
+
+  let child = spawn_watch(&sandbox);
+  let called = wait_until(|| sandbox.gh_calls() >= 2);
+  let written = wait_for(&sandbox.reviews_file());
+  let log = stop(child);
+
+  assert!(called && written, "{log}");
+  assert!(!log.contains("鍵束"), "{log}");
+}
+
+#[test]
 fn watch_keeps_the_agent_cycle_while_gh_hangs() {
   let sandbox = Sandbox::new("watch-gh-hang");
   sandbox.fake_herdr(LIST_JSON, "", 0);
   sandbox.hanging_gh();
+  // このテストは本物の PATH も足すので、本物の busctl が呼ばれないように偽物を先に置く
+  // This test also appends the real PATH, so a fake keeps the real busctl out
+  sandbox.fake_busctl("b false");
 
   // gh の期限は既定の 15 秒のまま。agent の周期がそれを待たないことを見る
   // gh keeps its default 15 second deadline; the agent cycle must not wait for it

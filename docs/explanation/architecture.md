@@ -433,7 +433,7 @@ GitHub Actionsのディスク容量制限（約14GB）を回避するため、Ni
 - [install-and-update-packages.md](../how-to/install-and-update-packages.md) - Nix/Home Manager 使い方ガイド
 - [directory-structure.md](../reference/directory-structure.md) - ディレクトリ構造
 - [daily-workflow-commands.md](../how-to/daily-workflow-commands.md) - 作業ワークフロー
-- [CLAUDE.md](../../CLAUDE.md) - Claude Code向けコンテキスト
+- [AGENTS.md](../../AGENTS.md) - コーディングエージェント向けコンテキスト
 
 ---
 

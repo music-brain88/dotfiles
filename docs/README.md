@@ -37,6 +37,7 @@
 - [how-to/manage-gpg-keys.md](./how-to/manage-gpg-keys.md) - GPG鍵の複数端末運用(SSH 認証の一元化を含む)
 - [how-to/install-unmanaged-tools.md](./how-to/install-unmanaged-tools.md) - Nix管理外ツールの導入(Claude Code・OS層・化石の掃除)
 - [how-to/sync-atuin-history-across-machines.md](./how-to/sync-atuin-history-across-machines.md) - atuin の履歴を複数端末で同期する(register・同じ鍵での login)
+- [how-to/send-mail-across-machines.md](./how-to/send-mail-across-machines.md) - 別の機械の司令塔に連絡する(本文は vault、呼び鈴は `atuin kv`)
 - [how-to/verify-ca-trust-stores.md](./how-to/verify-ca-trust-stores.md) - CA の事故のときに各 TLS クライアントが問題のチェーンを拒否するか確かめる
 - [how-to/build-aur-packages-in-chroot.md](./how-to/build-aur-packages-in-chroot.md) - paru が AUR のパッケージを devtools の chroot でビルドするように設定する
 - [how-to/update-yomiyasu.md](./how-to/update-yomiyasu.md) - flake input でタグを固定して参照している yomiyasu スキルのバージョンを上げ、読み替えを見直す
@@ -128,4 +129,4 @@
 ## 🔗 Related
 
 - [../README.md](../README.md) - プロジェクト概要とクイックスタート
-- [../CLAUDE.md](../CLAUDE.md) - Claude Code 向けコンテキスト
+- [../AGENTS.md](../AGENTS.md) - コーディングエージェント向けコンテキスト

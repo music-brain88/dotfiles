@@ -12,6 +12,7 @@
 
 use crate::github::{fetch_reviews, GitHub};
 use crate::herdr::{show_notification, Herdr};
+use crate::keyring::{Keyring, KeyringState};
 use crate::report::{collect_rows, Row};
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
@@ -343,26 +344,81 @@ pub fn refresh_reviews(
     .map_err(|e| format!("{REVIEWS_FILE} を書けない: {e}"))
 }
 
-/// レビュー依頼のスレッドを立てる。本体は refresh_reviews を呼んで眠るだけの殻である。失敗は stderr に
+/// 鍵束の状態が変わった周期に、stderr に書く 1 行を返す。取得を見送り始めた周期と再開した周期だけが行を持つ。
+/// 周期ごとに同じ行を書くと journal が埋まるため。
+/// The stderr line for a change in the keyring's state. Only the cycle that starts skipping and the
+/// one that resumes get a line; repeating it every cycle would flood the journal.
+fn keyring_notice(last: KeyringState, current: KeyringState) -> Option<&'static str> {
+  use KeyringState::{Locked, Unknown, Unlocked};
+  match (last, current) {
+    (Locked, Locked) => None,
+    (_, Locked) => Some("鍵束がロックされているので、レビュー依頼の取得を見送る"),
+    (Locked, Unlocked) => Some("鍵束が解錠されたので、レビュー依頼の取得を再開する"),
+    (Locked, Unknown) => Some("鍵束の状態を確かめられないので、レビュー依頼の取得を再開する"),
+    (Unlocked | Unknown, Unlocked | Unknown) => None,
+  }
+}
+
+/// レビュー依頼のスレッドの 1 周期。stderr に書く行を返す。鍵束がロックされている周期は、gh を呼ばず
+/// reviews.json も書き換えない。gh がトークンを読もうとして解錠を要求すると、画面の無い機械では
+/// gnome-keyring-daemon が要求のたびに記述子を 1 個失い、やがて鍵束を開けなくなるため(Issue #823)。
+/// 状態を確かめられない周期は gh を呼ぶ。Secret Service の無い機械では gh が鍵束を使わないため。
+/// One cycle of the review thread, returning the lines for stderr. A cycle with a locked keyring
+/// neither calls gh nor touches reviews.json: gh reading its token would request an unlock, and
+/// without a display each request costs gnome-keyring-daemon one descriptor until it can no longer
+/// open the keyring (Issue #823). A cycle with an unknown state still calls gh, since gh does not
+/// use a keyring on a machine without a Secret Service.
+///
+/// last は最後に更新する。途中で panic した周期の行は、次の周期が書く。
+/// last is updated at the end, so the line of a cycle that panicked is written by the next one.
+fn review_cycle(
+  keyring: &dyn Keyring,
+  github: &dyn GitHub,
+  ctx_dir: &Path,
+  last: &mut KeyringState,
+  now: DateTime<Utc>,
+) -> Vec<String> {
+  let current = keyring.state();
+  let mut lines: Vec<String> = keyring_notice(*last, current)
+    .map(str::to_string)
+    .into_iter()
+    .collect();
+  if current != KeyringState::Locked {
+    if let Err(reason) = refresh_reviews(github, ctx_dir, now) {
+      lines.push(format!("レビュー依頼を更新できない: {reason}"));
+    }
+  }
+  *last = current;
+  lines
+}
+
+/// レビュー依頼のスレッドを立てる。本体は review_cycle を呼んで眠るだけの殻である。失敗は stderr に
 /// 1 行書いて次の周期へ進み、万一の panic も周期の中で受け止める。スレッドが黙って死ぬと、reviews.json が
 /// 古いまま誰も気づけないため。起動できなくても、agent の一覧と通知は続ける。
-/// Starts the review thread, a thin shell that calls refresh_reviews and sleeps. Failures become
+/// Starts the review thread, a thin shell that calls review_cycle and sleeps. Failures become
 /// one stderr line and the next cycle follows; even an unexpected panic is caught per cycle, since
 /// a silently dead thread would leave reviews.json stale with nobody noticing. If the thread cannot
 /// start, the agent list and notices carry on.
-fn spawn_reviews(github: impl GitHub + Send + 'static, ctx_dir: PathBuf, interval: Duration) {
+fn spawn_reviews(
+  keyring: impl Keyring + Send + 'static,
+  github: impl GitHub + Send + 'static,
+  ctx_dir: PathBuf,
+  interval: Duration,
+) {
   let spawned = thread::Builder::new()
     .name("reviews".to_string())
-    .spawn(move || loop {
-      let cycle = panic::catch_unwind(AssertUnwindSafe(|| {
-        refresh_reviews(&github, &ctx_dir, Utc::now())
-      }));
-      match cycle {
-        Ok(Ok(())) => {}
-        Ok(Err(reason)) => eprintln!("herdr-ctx: レビュー依頼を更新できない: {reason}"),
-        Err(_) => eprintln!("herdr-ctx: レビュー依頼の周期が panic した。次の周期で続ける"),
+    .spawn(move || {
+      let mut last = KeyringState::Unknown;
+      loop {
+        let cycle = panic::catch_unwind(AssertUnwindSafe(|| {
+          review_cycle(&keyring, &github, &ctx_dir, &mut last, Utc::now())
+        }));
+        match cycle {
+          Ok(lines) => lines.iter().for_each(|line| eprintln!("herdr-ctx: {line}")),
+          Err(_) => eprintln!("herdr-ctx: レビュー依頼の周期が panic した。次の周期で続ける"),
+        }
+        thread::sleep(interval);
       }
-      thread::sleep(interval);
     });
   if let Err(e) = spawned {
     eprintln!("herdr-ctx: レビュー依頼のスレッドを起動できない: {e}");
@@ -371,11 +427,17 @@ fn spawn_reviews(github: impl GitHub + Send + 'static, ctx_dir: PathBuf, interva
 
 pub fn run(
   herdr: &dyn Herdr,
+  keyring: impl Keyring + Send + 'static,
   github: impl GitHub + Send + 'static,
   ctx_dir: &Path,
   options: &WatchOptions,
 ) -> ! {
-  spawn_reviews(github, ctx_dir.to_path_buf(), options.reviews_interval);
+  spawn_reviews(
+    keyring,
+    github,
+    ctx_dir.to_path_buf(),
+    options.reviews_interval,
+  );
   let mut state = WatchState::load(ctx_dir);
   loop {
     tick(herdr, ctx_dir, &options.thresholds, &mut state, Utc::now());
@@ -387,8 +449,8 @@ pub fn run(
 mod tests {
   use super::*;
   use crate::testutil::{
-    temp_dir, FakeGitHub, FakeHerdr, AGENT_LIST_JSON, NOTIFY_NOT_SHOWN_JSON, NOTIFY_SHOWN_JSON,
-    SEARCH_EMPTY_JSON, SEARCH_JSON,
+    temp_dir, FakeGitHub, FakeHerdr, FakeKeyring, AGENT_LIST_JSON, NOTIFY_NOT_SHOWN_JSON,
+    NOTIFY_SHOWN_JSON, SEARCH_EMPTY_JSON, SEARCH_JSON,
   };
 
   const THRESHOLDS: [u32; 3] = [50, 60, 80];
@@ -874,6 +936,139 @@ mod tests {
     assert!(refresh_reviews(&FakeGitHub::failing("gh: boom"), &dir, now()).is_err());
 
     assert!(!dir.join(REVIEWS_FILE).exists());
+  }
+
+  /// 鍵束の状態の列を 1 周期ずつ流して、周期ごとの行を返す。
+  /// Feeds a sequence of keyring states, one per cycle, and returns the lines per cycle.
+  fn cycle_lines(github: &FakeGitHub, dir: &Path, states: &[KeyringState]) -> Vec<Vec<String>> {
+    let mut last = KeyringState::Unknown;
+    states
+      .iter()
+      .map(|state| review_cycle(&FakeKeyring(*state), github, dir, &mut last, now()))
+      .collect()
+  }
+
+  #[test]
+  fn a_locked_keyring_skips_gh_and_keeps_the_previous_file() {
+    let dir = temp_dir("keyring-locked");
+    fs::write(dir.join(REVIEWS_FILE), PREVIOUS_REVIEWS).unwrap();
+    let github = FakeGitHub::answering(SEARCH_JSON);
+
+    cycle_lines(&github, &dir, &[KeyringState::Locked, KeyringState::Locked]);
+
+    assert_eq!(github.calls.get(), 0);
+    assert_eq!(
+      fs::read_to_string(dir.join(REVIEWS_FILE)).unwrap(),
+      PREVIOUS_REVIEWS
+    );
+  }
+
+  #[test]
+  fn a_locked_keyring_creates_no_file() {
+    let dir = temp_dir("keyring-locked-none");
+
+    cycle_lines(
+      &FakeGitHub::answering(SEARCH_JSON),
+      &dir,
+      &[KeyringState::Locked],
+    );
+
+    assert!(!dir.join(REVIEWS_FILE).exists());
+  }
+
+  #[test]
+  fn an_unlocked_or_unknown_keyring_still_calls_gh() {
+    for state in [KeyringState::Unlocked, KeyringState::Unknown] {
+      let dir = temp_dir(&format!("keyring-{state:?}"));
+      fs::write(dir.join(REVIEWS_FILE), PREVIOUS_REVIEWS).unwrap();
+      let github = FakeGitHub::answering(SEARCH_JSON);
+
+      let lines = cycle_lines(&github, &dir, &[state]);
+
+      assert_eq!(github.calls.get(), 1, "{state:?}");
+      assert_eq!(read_reviews(&dir)["total_count"], 152, "{state:?}");
+      assert!(lines[0].is_empty(), "{state:?}: {lines:?}");
+    }
+  }
+
+  #[test]
+  fn fetching_resumes_once_the_keyring_is_unlocked() {
+    let dir = temp_dir("keyring-resume");
+    let github = FakeGitHub::answering(SEARCH_JSON);
+
+    cycle_lines(
+      &github,
+      &dir,
+      &[KeyringState::Locked, KeyringState::Unlocked],
+    );
+
+    assert_eq!(github.calls.get(), 1);
+    assert_eq!(read_reviews(&dir)["total_count"], 152);
+  }
+
+  #[test]
+  fn lines_appear_only_when_skipping_starts_and_when_it_ends() {
+    use KeyringState::{Locked, Unlocked};
+    let dir = temp_dir("keyring-lines");
+
+    let lines = cycle_lines(
+      &FakeGitHub::answering(SEARCH_JSON),
+      &dir,
+      &[
+        Locked, Locked, Locked, Unlocked, Unlocked, Locked, Locked, Unlocked,
+      ],
+    );
+
+    let skipped = ["鍵束がロックされているので、レビュー依頼の取得を見送る".to_string()];
+    let resumed = ["鍵束が解錠されたので、レビュー依頼の取得を再開する".to_string()];
+    let none: [String; 0] = [];
+    assert_eq!(lines[0], skipped);
+    assert_eq!(lines[1], none);
+    assert_eq!(lines[2], none);
+    assert_eq!(lines[3], resumed);
+    assert_eq!(lines[4], none);
+    assert_eq!(lines[5], skipped);
+    assert_eq!(lines[6], none);
+    assert_eq!(lines[7], resumed);
+  }
+
+  #[test]
+  fn losing_track_of_a_locked_keyring_says_once_that_fetching_resumes() {
+    use KeyringState::{Locked, Unknown, Unlocked};
+    let dir = temp_dir("keyring-lost");
+
+    let lines = cycle_lines(
+      &FakeGitHub::answering(SEARCH_JSON),
+      &dir,
+      &[Locked, Unknown, Unknown, Unlocked, Unknown],
+    );
+
+    assert_eq!(
+      lines[1],
+      ["鍵束の状態を確かめられないので、レビュー依頼の取得を再開する"]
+    );
+    assert!(lines[2..].iter().all(Vec::is_empty), "{lines:?}");
+  }
+
+  #[test]
+  fn a_failed_fetch_is_still_reported_every_cycle() {
+    let dir = temp_dir("keyring-fail");
+
+    let lines = cycle_lines(
+      &FakeGitHub::failing("gh: boom"),
+      &dir,
+      &[
+        KeyringState::Locked,
+        KeyringState::Unlocked,
+        KeyringState::Unlocked,
+      ],
+    );
+
+    let failed = "レビュー依頼を更新できない: gh: boom";
+    assert_eq!(lines[0].len(), 1, "{lines:?}");
+    assert_eq!(lines[1].len(), 2, "{lines:?}");
+    assert_eq!(lines[1][1], failed);
+    assert_eq!(lines[2], [failed]);
   }
 
   fn mode_of(path: &Path) -> u32 {

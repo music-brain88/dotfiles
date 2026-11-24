@@ -20,6 +20,7 @@
 
 mod github;
 mod herdr;
+mod keyring;
 mod process;
 mod report;
 mod sidecar;
@@ -28,6 +29,7 @@ mod watch;
 use chrono::{Local, Utc};
 use github::GhCli;
 use herdr::HerdrCli;
+use keyring::BusctlKeyring;
 use std::env;
 use std::io::{IsTerminal, Read, Write};
 use std::path::PathBuf;
@@ -46,8 +48,14 @@ const WATCH_TIMEOUT_SECS: u64 = 10;
 /// thread does the waiting, so this deadline never delays the agent cycle.
 const GH_TIMEOUT_SECS: u64 = 15;
 
-/// 上の期限(herdr と gh の両方)を上書きする環境変数。統合テストが期限を短くするために使う。
-/// Overrides the deadlines above, for both herdr and gh; integration tests use it to shorten them.
+/// busctl の応答を待つ上限。鍵束の daemon の自動起動を待つ時間を含む。gh と同じく専用のスレッドが待つ。
+/// How long to wait for busctl, which includes auto-starting the keyring daemon. As with gh, the
+/// dedicated thread does the waiting.
+const BUSCTL_TIMEOUT_SECS: u64 = 10;
+
+/// 上の期限(herdr と gh と busctl のすべて)を上書きする環境変数。統合テストが期限を短くするために使う。
+/// Overrides all the deadlines above (herdr, gh and busctl); integration tests use it to shorten
+/// them.
 const TIMEOUT_ENV: &str = "HERDR_CTX_TIMEOUT_SECS";
 
 const USAGE: &str = "\
@@ -140,6 +148,10 @@ fn herdr_cli(default_secs: u64) -> HerdrCli {
 
 fn gh_cli() -> GhCli {
   GhCli::new(deadline(GH_TIMEOUT_SECS))
+}
+
+fn busctl_keyring() -> BusctlKeyring {
+  BusctlKeyring::new(deadline(BUSCTL_TIMEOUT_SECS))
 }
 
 fn ctx_dir() -> Option<PathBuf> {
@@ -238,7 +250,13 @@ fn main() -> ExitCode {
     Cmd::SelfReport => run_self(),
     Cmd::Reviews => run_reviews(),
     Cmd::Watch(options) => match ctx_dir() {
-      Some(dir) => watch::run(&herdr_cli(WATCH_TIMEOUT_SECS), gh_cli(), &dir, &options),
+      Some(dir) => watch::run(
+        &herdr_cli(WATCH_TIMEOUT_SECS),
+        busctl_keyring(),
+        gh_cli(),
+        &dir,
+        &options,
+      ),
       None => fail("HOME が無い"),
     },
     Cmd::Help => {
@@ -325,7 +343,8 @@ mod tests {
 pub mod testutil {
   use crate::github::GitHub;
   use crate::herdr::Herdr;
-  use std::cell::RefCell;
+  use crate::keyring::{Keyring, KeyringState};
+  use std::cell::{Cell, RefCell};
   use std::fs;
   use std::path::PathBuf;
 
@@ -390,27 +409,41 @@ pub mod testutil {
 
   pub const SEARCH_EMPTY_JSON: &str = r#"{"total_count":0,"incomplete_results":false,"items":[]}"#;
 
+  /// calls は呼ばれた回数を数える。gh を呼ばなかったことを確かめるために使う。
+  /// calls counts the invocations, to check that gh was not called.
   pub struct FakeGitHub {
     pub search: Result<String, String>,
+    pub calls: Cell<usize>,
   }
 
   impl FakeGitHub {
     pub fn answering(raw: &str) -> Self {
       Self {
         search: Ok(raw.to_string()),
+        calls: Cell::new(0),
       }
     }
 
     pub fn failing(reason: &str) -> Self {
       Self {
         search: Err(reason.to_string()),
+        calls: Cell::new(0),
       }
     }
   }
 
   impl GitHub for FakeGitHub {
     fn search_review_requests(&self) -> Result<String, String> {
+      self.calls.set(self.calls.get() + 1);
       self.search.clone()
+    }
+  }
+
+  pub struct FakeKeyring(pub KeyringState);
+
+  impl Keyring for FakeKeyring {
+    fn state(&self) -> KeyringState {
+      self.0
     }
   }
 

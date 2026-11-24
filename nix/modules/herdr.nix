@@ -21,21 +21,32 @@
   # native と wsl の両方に届くから。生の unit ファイルは機械ごとの enable が要り、mount も native だけ。
   # herdr CLI は既定のソケットを見るので、ソケットの env は要らない。
   # PATH の gh はレビュー依頼の取得に使う。認証は gh が keyring から読む。native 機では user service から
-  # keyring を読めることを確かめてある。wsl 機は未確認で、読めなければ reviews.json が更新されないだけで、
-  # agent の一覧と通知は動き続ける。
+  # keyring を読めることを確かめてある。
+  # PATH の busctl(systemd)は、keyring がロックされているかを読むのに使う。linger が有効な機械では、この
+  # service がログインの前から動く。keyring がロックされたまま gh を呼び続けると、gnome-keyring-daemon が
+  # 解錠のダイアログの起動に失敗するたびに記述子を 1 個失い、上限に達すると keyring を開けなくなる。
+  # そのため、ロックされている周期は gh を呼ばずに取得を見送る (Issue #823)。
+  # keyring の状態を確かめられない機械(Secret Service が無い wsl 機など)では、今までどおり gh を呼ぶ。
+  # wsl 機で gh が認証を読めるかは未確認である。どの場合も、agent の一覧と通知は動き続ける。
   # Resident herdr-ctx watch: writes ~/.herdr/ctx/agents.json and notifies on crossings (Issue #784).
   # Another thread writes review requests to ~/.herdr/ctx/reviews.json every 5 minutes (Issue #805).
   # A home-manager service starts on switch through the systemd.user.startServices default and
   # reaches both native and wsl; a raw unit file needs a per-machine enable and mounts on native only.
   # The herdr CLI finds its default socket by itself, so no socket env is needed.
   # gh on PATH fetches the review requests and reads its token from the keyring. A user service can
-  # read the keyring on the native machine; wsl is unverified, and failing there only leaves
-  # reviews.json stale while the agent list and notices keep running.
+  # read the keyring on the native machine.
+  # busctl (systemd) on PATH reads whether the keyring is locked. With linger enabled this service
+  # runs before login. Calling gh over and over against a locked keyring costs gnome-keyring-daemon
+  # one descriptor per failed unlock dialog, and at the limit it can no longer open the keyring.
+  # So a cycle with a locked keyring skips gh (Issue #823).
+  # Where the keyring's state cannot be checked (e.g. wsl without a Secret Service), gh is called as
+  # before. Whether gh can read its token on wsl is unverified. In every case the agent list and
+  # notices keep running.
   systemd.user.services.herdr-ctx-watch = {
     Unit.Description = "herdr-ctx watch: 各 agent の context 使用率を記録して知らせ、レビュー依頼を集める";
     Service = {
       ExecStart = "${pkgs.herdr-ctx}/bin/herdr-ctx watch";
-      Environment = [ "PATH=${lib.makeBinPath [ pkgs.herdr pkgs.gh ]}" ];
+      Environment = [ "PATH=${lib.makeBinPath [ pkgs.herdr pkgs.gh pkgs.systemd ]}" ];
       Restart = "on-failure";
       RestartSec = 10;
     };
