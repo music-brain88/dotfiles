@@ -164,5 +164,11 @@ hl.config({
     follow_mouse = 1,
 
     sensitivity = 0, -- -1.0〜1.0、0 は変更なし / -1.0 to 1.0, 0 means no modification
+
+    -- タッチパッドだけに効く。マウスのホイールの向きは変わらない
+    -- Applies to touchpads only; mouse wheel direction is unchanged
+    touchpad = {
+      natural_scroll = true, -- 指を動かした向きに中身が動く / content follows the fingers
+    },
   },
 })
