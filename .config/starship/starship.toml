@@ -189,12 +189,15 @@ fish_style_pwd_dir_length = 3
 format = "([[](bg:#ff3322 fg:#464347)$read_only[](bg:#464347 fg:#ff3322)]($read_only_style))[[](bg:#6F6A70 fg:#464347)$path[](bg:#464347 fg:#6F6A70)]($style)"
 
 [directory.substitutions]
-"~/Documents" = ""
-"~/Music" = ""
-"~/Movies" = ""
-"~/Pictures" = ""
+# Icons are Nerd Fonts v3 Material Design glyphs (md-file_document / md-music / md-movie /
+# md-image / md-home). The v2 range U+F500-U+FD46 no longer exists in v3 fonts.
+# アイコンは Nerd Fonts v3 の Material Design の番地を使う。v2 の U+F500〜U+FD46 は v3 で廃止された。
+"~/Documents" = "󰈙"
+"~/Music" = "󰝚"
+"~/Movies" = "󰎁"
+"~/Pictures" = "󰋩"
 "~/Sources" = ""
-"~" = " "
+"~" = "󰋜 "
 "/" = "  "
 
 [docker_context]
