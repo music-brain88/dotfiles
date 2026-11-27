@@ -289,6 +289,18 @@ Hyprlandのキーバインドは `.config/hypr/keybinds.lua` で定義されて�
 | `Super + 左ドラッグ` | Move window (mouse) | マウスでウィンドウを移動 |
 | `Super + 右ドラッグ` | Resize window (mouse) | マウスでウィンドウをリサイズ |
 
+### Monitor Navigation
+
+ワークスペースの住所は、モニターが何枚でも通し番号で言います。モニターは役割を持ち、27 インチが作業台(ws1〜3)、24 インチが詰め所(ws4〜6)、ノート PC の内蔵画面が予備(ws7〜9)です。27 インチをつないでいないときは内蔵画面が作業台になり、ws1 から始まります。つなぐと ws1〜3 は中のウィンドウごと 27 インチへ移り、外すと内蔵画面へ戻ります。各モニターのバーにはそのモニターの番号が常に出ているので、別のモニターへウィンドウを送るときは、送り先のバーに見えている番号を `Super + Shift + 番号` で押します。割り当ては `.config/hypr/monitors.lua` にあります。
+
+下の表は、番号ではなく向きで動かすキーです。向きはモニターの配置に従います。その向きにモニターが無ければ何も起きません。
+
+| Keybind | Description | 説明 |
+|---------|-------------|------|
+| `Super + Ctrl + ←/→/↑/↓` | Focus the monitor in that direction | その向きのモニターにフォーカスを移す |
+| `Super + Ctrl + Shift + ←/→/↑/↓` | Move the active window to the monitor in that direction | アクティブウィンドウをその向きのモニターへ送る |
+| `Super + Alt + ←/→/↑/↓` | Move the current workspace to the monitor in that direction | 今のワークスペースをその向きのモニターへ移す |
+
 ### Window Resize Mode
 
 `Super + R` でリサイズモードに入ります。
@@ -308,6 +320,8 @@ Hyprlandのキーバインドは `.config/hypr/keybinds.lua` で定義されて�
 | `Super + 1-9, 0` | Switch to workspace 1-10 (press the same number again to go back) | ワークスペース1-10に移動（同じ番号を再度押すと直前のワークスペースに戻る） |
 | `Super + Shift + 1-9, 0` | Move window to workspace 1-10 | ウィンドウをワークスペース1-10に移動 |
 | `Super + Tab` | Toggle previous workspace | 直前のワークスペースとトグル |
+| `Super + Grave` (バッククォート) | Toggle the workspace overview (hyprtasking) on the monitor under the cursor | カーソルのあるモニターでワークスペースの俯瞰(hyprtasking)を開閉 |
+| `Super + Shift + Grave` | Toggle the workspace overview on all monitors | 全部のモニターでワークスペースの俯瞰を開閉 |
 | `Super + S` | Toggle special workspace | スクラッチパッドの表示/非表示 |
 | `Super + Alt + S` | Move window to special workspace | ウィンドウをスクラッチパッドへ送る |
 | `Super + O` | Toggle Obsidian drawer (special workspace) | Obsidian引き出しの表示/非表示 |
@@ -316,6 +330,18 @@ Hyprlandのキーバインドは `.config/hypr/keybinds.lua` で定義されて�
 | `Super + Shift + A` | Send active window back to Claude Desktop drawer | アクティブウィンドウをClaude Desktop引き出しへ送り返す |
 | `Super + Y` | Bring: pick a window (wofi) and pull it into the current workspace | Bring: wofiでウィンドウを選び、現在のワークスペースへ引き込む |
 | `Super + Shift + Y` | Go: pick a window (wofi) and jump to where it lives | Go: wofiでウィンドウを選び、そのウィンドウの場所へ飛ぶ |
+
+### Touchpad Gestures
+
+タッチパッドのある機械だけで働きます。3 本指は MacBook の割り当てに合わせています。
+
+| Gesture | Description | 説明 |
+|---------|-------------|------|
+| 3 本指で左右にスワイプ | Switch workspaces on the monitor under the cursor | カーソルのあるモニターのワークスペースを切り替える |
+| 3 本指で上にスワイプ | Open the workspace overview (hyprtasking): a strip of workspaces along the top edge | ワークスペースの俯瞰(hyprtasking)を開く。画面の上端にワークスペースの帯が出る |
+| 3 本指で下にスワイプ | Close the workspace overview | ワークスペースの俯瞰を閉じる |
+| 4 本指で上 / 下にスワイプ | Open / close the workspace overview on all monitors | 全部のモニターでワークスペースの俯瞰を開く / 閉じる |
+| 2 本指でクリック / タップ | Right click | 右クリック |
 
 ### Screenshot
 
@@ -406,6 +432,8 @@ Neovimのキーバインドは量が多いため、別ドキュメントにま�
 | `.tmux.conf` | Tmux 設定 |
 | `.config/hypr/keybinds.lua` | Hyprland キーバインド定義 |
 | `.config/hypr/hyprland.lua` | Hyprland メイン設定(エントリ。ほかのファイルを `require` で読む) |
+| `.config/hypr/monitors.lua` | Hyprland モニターの配置と、フタに合わせた内蔵画面の有効・無効 |
+| `.config/hypr/plugins.lua` | Hyprland プラグイン(hyprtasking)の設定。俯瞰のジェスチャーもここ |
 
 キーバインドを追加・変更したい場合は [customize-keybindings.md](../how-to/customize-keybindings.md) を参照してください。
 

@@ -26,13 +26,9 @@ require("plugins")
 ---- MONITORS ----
 ------------------
 
--- See https://wiki.hypr.land/configuring/core/monitors/
-hl.monitor({
-  output   = "",
-  mode     = "preferred",
-  position = "auto",
-  scale    = "auto",
-})
+-- モニターの配置と、フタに合わせた内蔵画面の有効・無効は monitors.lua に分けた(#836)
+-- Monitor layout and the lid-driven internal panel handling live in monitors.lua (#836)
+require("monitors")
 
 
 -------------------------------
@@ -164,5 +160,63 @@ hl.config({
     follow_mouse = 1,
 
     sensitivity = 0, -- -1.0〜1.0、0 は変更なし / -1.0 to 1.0, 0 means no modification
+
+    -- タッチパッドを MacBook に近い操作にする(#836)。タッチパッドの無い機械では何も起こさない。
+    -- この節はタッチパッドだけに効き、マウスのスクロールの向きは変えない。
+    -- Make the touchpad behave like a MacBook's (#836); a no-op on machines without one.
+    -- This section applies to touchpads only, so the mouse keeps its scroll direction.
+    touchpad = {
+      -- 指を動かした向きに中身が動く(ナチュラルスクロール) / content follows the fingers
+      natural_scroll = true,
+      -- 押し込んだ指の本数でボタンを決める: 1 本 = 左、2 本 = 右、3 本 = 中。パッドの右下を押す方式は無効になる
+      -- Buttons by finger count: 1 = left, 2 = right, 3 = middle; disables the bottom-right click area
+      clickfinger_behavior = true,
+      -- 次の 3 つは初期値と同じだが、MacBook 化の前提なので明示する
+      -- The next three equal the defaults; spelled out because the MacBook-like setup relies on them
+      tap_to_click         = true, -- タップでクリック(2 本指タップ = 右クリック) / tap to click (two-finger tap = right click)
+      tap_and_drag         = true, -- タップしてすぐ押さえたまま動かすとドラッグ / tap, then hold and move to drag
+      disable_while_typing = true, -- 入力中の誤タッチを無視する / ignore accidental touches while typing
+    },
   },
 })
+
+
+------------------
+---- GESTURES ----
+------------------
+
+-- 3 本指の左右スワイプでワークスペースを切り替える(MacBook の「フルスクリーンアプリケーション間をスワイプ」に当たる)。
+-- 対象はカーソルのあるモニターのワークスペースで、指の動きに 1:1 で追従する。
+-- 3 本指の上下スワイプ(俯瞰の開閉)は hyprtasking が自前で処理するので、plugins.lua の gestures で設定している。
+-- Three-finger horizontal swipe switches workspaces (macOS "swipe between full-screen apps").
+-- It acts on the monitor under the cursor and follows the fingers 1:1.
+-- Three-finger vertical swipe (open/close the overview) is handled by hyprtasking itself; see gestures in plugins.lua.
+-- See https://wiki.hypr.land/configuring/core/binds/gestures/
+hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
+
+-- 4 本指の上下スワイプで、つないでいる全部のモニターの俯瞰(hyprtasking)を開閉する(#836)。
+-- キーの Super + Shift + grave と同じ動きで、3 本指(カーソルのあるモニターだけ)と向きをそろえて、上で開き、下で閉じる。
+-- hyprtasking は自前で 3 本指(開閉)を受け取る。4 本指をここへ届かせるために、plugins.lua で
+-- hyprtasking のグリッド移動の本数(move_fingers)を 4 以外にしてある。
+-- 5 本指にしないのは、このノート PC のタッチパッドが 4 本指までしか数えられないため(実機で確認)。
+-- 3 本指と違って指には追従せず、スワイプを認識した時点で 1 回だけ切り替わる。プラグインが無いときは何もしない。
+-- Four-finger vertical swipe opens/closes the overview (hyprtasking) on every connected monitor (#836).
+-- Same as the Super + Shift + grave key; directions match the three-finger gesture (cursor monitor only):
+-- up opens, down closes. hyprtasking itself takes three fingers (open/close); to let four fingers reach
+-- here, plugins.lua moves hyprtasking's grid-move count (move_fingers) off four.
+-- Not five fingers: this laptop's touchpad tracks at most four (checked on the device).
+-- Unlike three fingers it does not follow the fingers: it switches once when the swipe is recognised.
+-- Does nothing when the plugin is absent.
+local plugins = require("plugins")
+
+local function overview_all(open)
+  return function ()
+    local hyprtasking = plugins.loaded("hyprtasking")
+    if hyprtasking ~= nil and hyprtasking.is_active() ~= open then
+      hyprtasking.toggle("all")
+    end
+  end
+end
+
+hl.gesture({ fingers = 4, direction = "up", action = overview_all(true) })
+hl.gesture({ fingers = 4, direction = "down", action = overview_all(false) })

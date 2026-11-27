@@ -48,12 +48,12 @@ window#waybar.hidden {
     min-width: 20px;
 }
 
-/* 作業台(persistent-workspacesで常時表示される ws1〜3) */
+/* そのモニターの担当(Hyprland のルールで常時表示される 3 つ。Dell なら作業台 ws1〜3)(#836) */
 #workspaces button.persistent {
     color: #a6adc8;
 }
 
-/* 未使用の作業台スロット(persistentかつ空) */
+/* 未使用の担当スロット(persistentかつ空) */
 #workspaces button.empty {
     color: #6c7086;
 }
