@@ -102,14 +102,19 @@ end
 -- 同じ番号のルールをもう一度宣言すると、Hyprland は項目を上書きし、ワークスペースをその場で動かす。
 -- Assigns three workspaces starting at first to monitor; the first one is what that monitor shows first.
 -- Declaring a rule for the same number again overwrites its fields, and Hyprland moves the workspace at once.
-local function assign_workspaces(first, monitor, persistent)
+-- enabled が false のときは、宣言したルールを無効にする。モニターの割り当ては空文字で上書きしても外れないので、
+-- 「どのモニターにも割り当てない」は無効化で表す。無効のルールは Hyprland も hyprtasking も無いものとして扱う。
+-- With enabled = false the declared rules are disabled. An empty monitor string does not clear an assignment,
+-- so "assigned to no monitor" is expressed by disabling; Hyprland and hyprtasking both ignore disabled rules.
+local function assign_workspaces(first, monitor, enabled)
   for id = first, first + 2 do
-    hl.workspace_rule({
+    local rule = hl.workspace_rule({
       workspace  = tostring(id),
       monitor    = monitor,
-      default    = persistent and id == first,
-      persistent = persistent,
+      default    = id == first,
+      persistent = true,
     })
+    rule:set_enabled(enabled)
   end
 end
 
@@ -127,8 +132,12 @@ local function sync_workspace_roles(removed)
   local docked = monitor_connected(DELL, removed)
   assign_workspaces(1, docked and DELL or INTERNAL, true)
   assign_workspaces(4, BENQ, true)
-  -- Dell が無い間、ws7〜9 は常時表示にしない(内蔵画面は作業台なので、バーには 1 2 3 を出す)
-  -- Without the Dell ws7-9 are not persistent (the panel is the workbench, so its bar shows 1 2 3)
+  -- Dell が無い間、予備(ws7〜9)は内蔵画面に割り当てない(内蔵画面は作業台なので、バーには 1 2 3 を出す)。
+  -- 割り当てたままだと、hyprtasking が俯瞰のマスを ws7〜9 のために先に確保し、同じ画面にいる
+  -- ws4〜6(詰め所)がマスからあふれて俯瞰に出なくなる。
+  -- Without the Dell the spares (ws7-9) are not assigned to the panel (it is the workbench; its bar shows 1 2 3).
+  -- Left assigned, hyprtasking would reserve overview slots for ws7-9 first, pushing ws4-6 (the depot),
+  -- which then live on the same screen, out of the overview.
   assign_workspaces(7, INTERNAL, docked)
 
   -- 俯瞰(hyprtasking)のマスの数を、モニター 1 枚あたりのワークスペースの数に合わせる。

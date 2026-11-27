@@ -338,9 +338,9 @@ Hyprlandのキーバインドは `.config/hypr/keybinds.lua` で定義されて�
 | Gesture | Description | 説明 |
 |---------|-------------|------|
 | 3 本指で左右にスワイプ | Switch workspaces on the monitor under the cursor | カーソルのあるモニターのワークスペースを切り替える |
-| 3 本指で上にスワイプ | Open the workspace overview (hyprtasking) | ワークスペースの俯瞰(hyprtasking)を開く |
+| 3 本指で上にスワイプ | Open the workspace overview (hyprtasking): a strip of workspaces along the top edge | ワークスペースの俯瞰(hyprtasking)を開く。画面の上端にワークスペースの帯が出る |
 | 3 本指で下にスワイプ | Close the workspace overview | ワークスペースの俯瞰を閉じる |
-| 4 本指でスワイプ | Move across the hyprtasking workspace grid | hyprtasking のグリッド上でワークスペースを移動する |
+| 4 本指で上 / 下にスワイプ | Open / close the workspace overview on all monitors | 全部のモニターでワークスペースの俯瞰を開く / 閉じる |
 | 2 本指でクリック / タップ | Right click | 右クリック |
 
 ### Screenshot
