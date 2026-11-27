@@ -103,4 +103,28 @@ if M.loaded("hyprtasking") ~= nil then
   })
 end
 
+-- 俯瞰のグリッドの大きさを変える。モニターの構成に合わせて monitors.lua から呼ぶ(#836)。
+-- hyprtasking は、そのモニターに割り当てたワークスペースを先にマスへ並べ、余ったマスには
+-- 割り当ての無い番号(ws10 以降)を作って埋める。マスの数を担当の数に合わせると、俯瞰に余計な番号が出ない。
+-- プラグインが無いときは何もしない。
+-- Resizes the overview grid; called from monitors.lua to match the monitor setup (#836).
+-- hyprtasking fills the slots with the monitor's assigned workspaces first and invents unassigned numbers
+-- (ws10 and up) for the rest, so matching the slot count to the assigned count keeps stray numbers out.
+-- Does nothing when the plugin is absent.
+function M.set_overview_grid(rows, cols)
+  if M.loaded("hyprtasking") == nil then
+    return
+  end
+  hl.config({
+    plugin = {
+      hyprtasking = {
+        grid = {
+          rows = rows,
+          cols = cols,
+        },
+      },
+    },
+  })
+end
+
 return M

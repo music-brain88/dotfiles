@@ -9,6 +9,8 @@
 
 -- ─── ワークスペース割り当て ───────────────────────────
 -- 3層構造の設計思想 / Three-layer workspace design:
+--   (モニターを複数つなぐ機械では、作業台と詰め所がそれぞれ別のモニターに乗る。割り当ては monitors.lua)
+--   (On multi-monitor setups the workbench and the depot each sit on their own monitor; see monitors.lua)
 --   作業台 (ws1〜3) / Workbench: タスクごとに自由に構成する場所。参照用ブラウザやエディタを
 --   意図せず連れ去らないよう、固定の windowrule を意図的に置いていない。
 --     Freely arranged per task. No fixed windowrule is placed here on purpose, so opening

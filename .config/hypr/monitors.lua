@@ -1,12 +1,14 @@
 ------------------
 ---- MONITORS ----
 ------------------
--- モニターの配置、ワークスペースの割り当て、ノート PC のフタに合わせた内蔵画面の有効・無効(#836)。
+-- モニターの配置、モニターの構成に合わせたワークスペースの割り当て、ノート PC のフタに合わせた内蔵画面の有効・無効(#836)。
 -- Monitor layout, workspace assignment, and enabling/disabling the laptop's internal panel with its lid (#836).
 -- See https://wiki.hypr.land/configuring/core/monitors/
 
 -- 既定のルール: 下に個別のルールが無い出力は、推奨の解像度で自動配置する。
 -- Default rule: outputs without a rule of their own below use the preferred mode and automatic placement.
+local plugins = require("plugins")
+
 local DEFAULT_RULE = {
   mode     = "preferred",
   position = "auto",
@@ -56,28 +58,93 @@ end
 ------------------------------------------------
 ---- ワークスペースの割り当て / workspaces ----
 ------------------------------------------------
--- 作業台(ws1〜3)をメインの Dell に、詰め所(ws4〜6)を BenQ に、予備(ws7〜9)を内蔵画面に置く。
--- 各モニターの先頭(1 / 4 / 7)を、そのモニターが最初に表示するワークスペースにする。
--- 割り当て先のモニターをつないでいない機械では、そのモニター向けのルールは一致する出力が無い。
--- The workbench (ws1-3) goes on the main Dell, the depot (ws4-6) on the BenQ, spares (ws7-9) on the panel.
--- The first of each range (1 / 4 / 7) is the workspace that monitor shows first.
--- On machines without the target monitor, the rules for that monitor have no output to match.
+-- ワークスペースの住所は、モニターが何枚でも通し番号(ws1〜9)で言う。モニターは役割を持つ:
+--   作業台 ws1〜3: Dell をつないでいれば Dell、いなければノート PC の内蔵画面
+--   詰め所 ws4〜6: BenQ
+--   予備   ws7〜9: Dell をつないでいる間の内蔵画面
+-- 作業台は「いま一番広い作業用の画面」に付いて回る。ノート PC を単体で使うときは内蔵画面が作業台で、
+-- ws1 から始まる。Dell をつなぐと ws1〜3 は中のウィンドウごと Dell へ移り、内蔵画面は予備(ws7〜9)に変わる。
+-- Dell を外すと ws1〜3 は内蔵画面へ戻る。番号は変わらないので、つなぐ前後で「何番に何があるか」は同じになる。
+-- persistent を付けた担当の 3 つは空でも存在し続ける。waybar はこのルールを読んで、各モニターのバーに
+-- そのモニターの番号を常時出す。バーに見えている番号が、そのモニターへ飛ぶ(Super + 番号)、
+-- ウィンドウを送る(Super + Shift + 番号)ときに押す番号になる。
+-- つないでいないモニター向けのルールは何も作らず、番号の割り当ても無いものとして扱われる。
+-- このため、下の 3 機種のどれも無い機械(デスクトップ)では、この節は何も起こさない。
+-- Workspaces are addressed by one global number (ws1-9) however many monitors there are; monitors carry roles:
+--   workbench ws1-3: the Dell when connected, otherwise the laptop's internal panel
+--   depot     ws4-6: the BenQ
+--   spares    ws7-9: the internal panel while the Dell is connected
+-- The workbench follows "the largest working screen". A laptop on its own has the workbench on its panel and
+-- starts on ws1. Plugging in the Dell moves ws1-3 there with their windows, and the panel turns into spares
+-- (ws7-9); unplugging it brings ws1-3 back. Numbers never change, so what lives where stays the same.
+-- persistent keeps each monitor's three alive even when empty. waybar reads these rules and always shows
+-- a monitor's numbers on its own bar, so the number you see is the number to press to go there
+-- (Super + number) or to send a window there (Super + Shift + number).
+-- Rules for a monitor that is not connected create nothing, and its numbers count as unassigned,
+-- so on machines with none of the three models (desktops) this section does nothing.
 -- See https://wiki.hypr.land/configuring/core/rules/workspace-rules/
-local WORKSPACE_MONITORS = {
-  { monitor = DELL,     first = 1 },
-  { monitor = BENQ,     first = 4 },
-  { monitor = INTERNAL, first = 7 },
-}
 
-for _, group in ipairs(WORKSPACE_MONITORS) do
-  for id = group.first, group.first + 2 do
+-- 有効なモニターのうち、機種名が prefix(desc: 付き)で始まるものがあるか。
+-- removed には、いま抜かれたモニターの名前を渡す(monitor.removed の時点でまだ一覧に残っていても数えない)。
+-- Whether an enabled monitor's description starts with prefix (given with desc:).
+-- removed names a monitor being unplugged, so it is not counted even if still listed at monitor.removed.
+local function monitor_connected(prefix, removed)
+  local description = prefix:gsub("^desc:", "")
+  for _, monitor in ipairs(hl.get_monitors()) do
+    if monitor.name ~= removed and monitor.description:sub(1, #description) == description then
+      return true
+    end
+  end
+  return false
+end
+
+-- first から 3 つのワークスペースを monitor に割り当てる。先頭をそのモニターが最初に表示するワークスペースにする。
+-- 同じ番号のルールをもう一度宣言すると、Hyprland は項目を上書きし、ワークスペースをその場で動かす。
+-- Assigns three workspaces starting at first to monitor; the first one is what that monitor shows first.
+-- Declaring a rule for the same number again overwrites its fields, and Hyprland moves the workspace at once.
+local function assign_workspaces(first, monitor, persistent)
+  for id = first, first + 2 do
     hl.workspace_rule({
-      workspace = tostring(id),
-      monitor   = group.monitor,
-      default   = id == group.first,
+      workspace  = tostring(id),
+      monitor    = monitor,
+      default    = persistent and id == first,
+      persistent = persistent,
     })
   end
 end
+
+-- 役割を、いまつないでいるモニターに合わせて割り当て直す。設定の読み込み時とモニターの抜き差しのたびに呼ぶ。
+-- 起動直後の最初の読み込みではモニターがまだ 1 枚も無いので、Dell 無し(ノート PC 単体)の割り当てから始まり、
+-- Dell が現れた時点で下の monitor.added から割り当て直す。
+-- 順序に意味がある: 作業台を先に動かすと、Dell が仮に表示していたワークスペースが予備へ移ったあと、
+-- Dell には作業台(ws1〜3)だけが残り、そのどれかが表示される。
+-- Re-assigns the roles to the monitors connected right now; called on config load and on every hotplug.
+-- On the very first load there are no monitors yet, so it starts from the no-Dell (laptop alone) assignment
+-- and re-assigns from monitor.added below once the Dell shows up.
+-- Order matters: with the workbench moved first, once the Dell's temporary workspace leaves for the spares,
+-- only the workbench (ws1-3) remains on the Dell and one of them is shown.
+local function sync_workspace_roles(removed)
+  local docked = monitor_connected(DELL, removed)
+  assign_workspaces(1, docked and DELL or INTERNAL, true)
+  assign_workspaces(4, BENQ, true)
+  -- Dell が無い間、ws7〜9 は常時表示にしない(内蔵画面は作業台なので、バーには 1 2 3 を出す)
+  -- Without the Dell ws7-9 are not persistent (the panel is the workbench, so its bar shows 1 2 3)
+  assign_workspaces(7, INTERNAL, docked)
+
+  -- 俯瞰(hyprtasking)のマスの数を、モニター 1 枚あたりのワークスペースの数に合わせる。
+  -- Dell をつないでいる間は各モニターが 3 つずつ持つので 1 行 3 列、ノート PC 単体のときは
+  -- 作業台 ws1〜3 と詰め所 ws4〜6 が同じ画面に乗るので、plugins.lua の既定と同じ 3 行 2 列にする。
+  -- Match the overview (hyprtasking) slot count to the workspaces per monitor: 1 row x 3 columns while the
+  -- Dell is connected (three per monitor), and the plugins.lua default of 3 rows x 2 columns on a lone laptop,
+  -- where the workbench ws1-3 and the depot ws4-6 share one screen.
+  if docked then
+    plugins.set_overview_grid(1, 3)
+  else
+    plugins.set_overview_grid(3, 2)
+  end
+end
+
+sync_workspace_roles()
 
 
 -------------------------------------
@@ -173,8 +240,17 @@ hl.bind("switch:off:Lid Switch", function () sync_internal_panel(false) end, { l
 
 -- フタを閉じたまま外部モニターを抜いたら内蔵画面を戻し、閉じたままつないだら無効にする。
 -- Unplugging the last external monitor with the lid closed re-enables the panel; plugging one in disables it.
-hl.on("monitor.added", function () sync_internal_panel() end)
-hl.on("monitor.removed", function (monitor) sync_internal_panel(nil, monitor and monitor.name) end)
+-- 同じイベントで、ワークスペースの役割も割り当て直す(上の sync_workspace_roles)。
+-- The same events also re-assign the workspace roles (sync_workspace_roles above).
+hl.on("monitor.added", function ()
+  sync_internal_panel()
+  sync_workspace_roles()
+end)
+hl.on("monitor.removed", function (monitor)
+  local removed = monitor and monitor.name
+  sync_internal_panel(nil, removed)
+  sync_workspace_roles(removed)
+end)
 
 -- 設定を読み直すと上の既定のルールで内蔵画面が有効に戻るので、フタが閉じていればここで無効にし直す。
 -- A config reload re-enables the panel through the default rule above, so disable it again here if the lid is closed.
