@@ -25,6 +25,7 @@ mise tasks
 
 - `checks.herdr-claude-hook-entries`: herdr の Claude Code 用フックを呼ぶ hooks のエントリが、herdr のインストーラの生成物とずれていないかを見る（[nix-modules.md の「Claude Code の pane の復元」](./nix-modules.md#claude-code-の-pane-の復元)、[#755](https://github.com/music-brain88/dotfiles/issues/755)）。
 - `checks.herdr-ctx`: `tools/herdr-ctx` をビルドし、`package.nix` の `doCheck = true` で動く `cargo test` を Nix のサンドボックスの中で走らせる。`packages` に置いただけでは `nix flake check` が評価しかしないので、手元ではテストが走らなかった（[#807](https://github.com/music-brain88/dotfiles/issues/807)）。`herdr-ctx` のソースを変えた後の最初の 1 回だけ、Rust のビルドの分だけ遅くなる。
+- `checks.claudia-memory`: `tools/claudia-memory` をビルドし、同じく `doCheck = true` の `cargo test` を Nix のサンドボックスの中で走らせる。テストは一時フォルダに小さな AgentMemory を作るので、本物の vault は読まない。
 
 CI の `check` ジョブは `nix flake check --no-build` なのでこれらの検査を実行しないが、`verify-docker` ジョブが同じ検査をビルドして実行する。手元でこのタスクを実行すると、PR を出す前にずれやテストの失敗に気づける。
 

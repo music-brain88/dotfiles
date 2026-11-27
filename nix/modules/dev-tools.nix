@@ -65,6 +65,10 @@ in
     # standalone-report-writing skill の点検手順から呼ぶ。--with-yomiyasu は python3 で yomiyasu の lint を呼ぶ
     # In-repo Rust checker used by the standalone-report-writing skill; --with-yomiyasu shells out to python3
     standalone-check
+    # claudia-memory: AgentMemory を MCP (stdio) で読ませる関所 (tools/claudia-memory、Rust、flake overlay で定義)。
+    # Claude デスクトップ版などの MCP クライアントが起動する。設定の書き方は tools/claudia-memory/README.md
+    # In-repo Rust MCP server that serves the AgentMemory vault; spawned by MCP clients such as Claude desktop
+    claudia-memory
     go # Go language
     ruby # Ruby
     php # PHP

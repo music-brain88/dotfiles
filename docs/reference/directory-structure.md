@@ -45,6 +45,7 @@ dotfiles/
 |---|---|
 | `tools/standalone-check/` | 配布文書の自立可読性チェッカー(Rust)。`standalone-report-writing` skill の点検手順から呼ぶ。`flake.nix` の overlay で `pkgs.standalone-check` として定義し、`nix/modules/dev-tools.nix` の `home.packages` で配る。単体ビルドは `nix build .#standalone-check`、開発は `cargo test`(Issue #639) |
 | `tools/herdr-ctx/` | 司令塔と決定者が見る盤面の値を集める CLI(Rust)。herdr の各 agent の context 使用率を pane の幅に依存せず読むために、Claude Code の statusline が書く sidecar を `herdr agent list` と結合する。決定者に割り当てられた open のレビュー依頼も `gh api` で集める(Issue #805)。`flake.nix` の overlay で `pkgs.herdr-ctx` として定義し、`nix/modules/herdr.nix` の `home.packages` で配る。`watch` は同じモジュールの systemd の user service で常駐する。単体ビルドは `nix build .#herdr-ctx`、開発は `cargo test`(Issue #784)。`flake.nix` の `checks.herdr-ctx` が、`mise run nix:check` でこの道具のテストを Nix のサンドボックスの中で走らせる(Issue #807) |
+| `tools/claudia-memory/` | AgentMemory(vault の中のエージェントの記憶)を MCP で読ませる関所(Rust、stdio)。Claude デスクトップ版のように、Claude Code の記憶の配線を持たないクライアントが、同じ記憶を読むために起動する。ツールは `claudia_memory_recall` の 1 つで、AgentMemory のルートの下の Markdown だけを返す。`flake.nix` の overlay で `pkgs.claudia-memory` として定義し、`nix/modules/dev-tools.nix` の `home.packages` で配る。単体ビルドは `nix build .#claudia-memory`、開発は `cargo test`。`flake.nix` の `checks.claudia-memory` がテストを Nix のサンドボックスの中で走らせる |
 
 `tools/` の下に道具を足すときは、`packages` と overlay に加えて、`flake.nix` の `checks.${system}` にも同じ形で足す。`packages` だけでは `nix flake check` が評価しかしないので、`package.nix` の `doCheck` のテストが手元の `mise run nix:check` で走らないからである。`tools/standalone-check/` は、まだ `checks` に入っていない。
 
@@ -179,7 +180,7 @@ profile 分割の設計意図は [architecture.md の Per-Host Profiles](../expl
 
 ## 📁 nix/checks/ - Flake Checks
 
-`nix/checks/` には、`flake.nix` の `checks` 出力が呼ぶ検査スクリプトを置く。`mise run nix:check` (`nix flake check`) がこれらを実行する。`checks` には、スクリプトを呼ぶ検査のほかに、`tools/` の下の道具のビルドとテスト (`checks.herdr-ctx`) も入っている。CI の `check` ジョブは `nix flake check --no-build` なので、評価だけして実行しない。
+`nix/checks/` には、`flake.nix` の `checks` 出力が呼ぶ検査スクリプトを置く。`mise run nix:check` (`nix flake check`) がこれらを実行する。`checks` には、スクリプトを呼ぶ検査のほかに、`tools/` の下の道具のビルドとテスト (`checks.herdr-ctx`、`checks.claudia-memory`) も入っている。CI の `check` ジョブは `nix flake check --no-build` なので、評価だけして実行しない。
 
 | File | Description |
 |------|-------------|
