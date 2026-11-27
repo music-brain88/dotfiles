@@ -98,6 +98,22 @@ hl.bind(mainMod .. " + SHIFT + right", hl.dsp.window.move({ direction = "right" 
 hl.bind(mainMod .. " + SHIFT + up", hl.dsp.window.move({ direction = "up" }))
 hl.bind(mainMod .. " + SHIFT + down", hl.dsp.window.move({ direction = "down" }))
 
+---- モニター間の移動 (#836) ----
+-- 上の矢印キーの bind はウィンドウ単位で動き、端まで行くと隣のモニターへ渡る。
+-- こちらはモニター単位で動く: CTRL を足すとフォーカス、CTRL + SHIFT でウィンドウ、ALT でワークスペースを隣のモニターへ移す。
+-- 向きはモニターの配置(hl.monitor の position)に従う。その向きにモニターが無ければ何も起きない。
+-- The arrow binds above work per window and cross to the next monitor at the edge.
+-- These work per monitor: add CTRL to move focus, CTRL + SHIFT to move the window, ALT to move the workspace.
+-- Directions follow the monitor layout (position in hl.monitor); nothing happens when no monitor lies that way.
+for _, dir in ipairs({ "left", "right", "up", "down" }) do
+  -- 隣のモニターへフォーカスを移す / focus the monitor in that direction
+  hl.bind(mainMod .. " + CTRL + " .. dir, hl.dsp.focus({ monitor = dir }))
+  -- アクティブウィンドウを隣のモニターへ送る(フォーカスも付いていく) / send the active window there (focus follows)
+  hl.bind(mainMod .. " + CTRL + SHIFT + " .. dir, hl.dsp.window.move({ monitor = dir }))
+  -- 今のワークスペースを丸ごと隣のモニターへ移す / move the whole current workspace there
+  hl.bind(mainMod .. " + ALT + " .. dir, hl.dsp.workspace.move({ monitor = dir }))
+end
+
 ---- マウス操作 ----
 -- Super+左ドラッグでウィンドウ移動、Super+右ドラッグでリサイズ
 -- Super + left drag moves a window, Super + right drag resizes it
@@ -111,6 +127,9 @@ hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 -- Toggle the hyprtasking overview (#549); Tab/Space suggested upstream are already taken.
 -- If the plugin is not loaded, pressing the key only shows a notification (the check lives in plugins.lua)
 hl.bind(mainMod .. " + grave", plugins.action("hyprtasking", function (ht) ht.toggle("cursor") end))
+-- SHIFT を足すと、つないでいる全部のモニターを同時に俯瞰にする(#836)。"cursor" はカーソルのあるモニターだけ。
+-- With SHIFT the overview opens on every connected monitor at once (#836); "cursor" is the monitor under the cursor only.
+hl.bind(mainMod .. " + SHIFT + grave", plugins.action("hyprtasking", function (ht) ht.toggle("all") end))
 
 -- ワークスペースへの移動
 hl.bind(mainMod .. " + 1", hl.dsp.focus({ workspace = 1 }))

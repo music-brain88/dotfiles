@@ -75,6 +75,24 @@ if M.loaded("hyprtasking") ~= nil then
         gap_size = 10,
         border_size = 6,
 
+        -- タッチパッドのジェスチャーを MacBook の割り当てに合わせる(#836)。
+        -- hyprtasking の初期値は「3 本指 = グリッド上の移動、4 本指の上下 = 俯瞰の開閉」。
+        -- MacBook は 3 本指の上スワイプが Mission Control なので、開閉を 3 本指に、グリッド上の移動を 4 本指に入れ替える。
+        -- 開閉と移動を同じ本数にすると開閉だけが働く(プラグインは開閉の本数を先に判定する)ので、必ず別の本数にする。
+        -- 3 本指の左右スワイプは hyprtasking が処理しないので、hyprland.lua の hl.gesture(ワークスペース切り替え)に渡る。
+        -- Match the touchpad gestures to a MacBook's (#836).
+        -- hyprtasking defaults to "3 fingers = move across the grid, 4 fingers up/down = open/close the overview".
+        -- macOS opens Mission Control with a three-finger swipe up, so swap them: open/close on 3, grid move on 4.
+        -- The two must differ: with the same count only open/close works (the plugin checks open_fingers first).
+        -- hyprtasking ignores three-finger horizontal swipes, so they reach hl.gesture (workspace switch) in hyprland.lua.
+        gestures = {
+          enabled       = true,
+          open_fingers  = 3,
+          move_fingers  = 4,
+          -- true: 上スワイプで開き、下スワイプで閉じる / true: swipe up opens, swipe down closes
+          open_positive = true,
+        },
+
         jump = {
           -- 俯瞰中にラベルキーで一発でワープできる
           -- jump to a workspace with a single label key while in the overview
