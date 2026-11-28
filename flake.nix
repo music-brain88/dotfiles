@@ -43,6 +43,11 @@
             # In-repo tool: herdr-ctx (Rust). Source in tools/herdr-ctx/,
             # shipped via home.packages in nix/modules/herdr.nix.
             herdr-ctx = final.callPackage ./tools/herdr-ctx/package.nix { };
+            # 自作の壁紙: mocha-arch-wallpaper (SVG を resvg で PNG にする、Issue #840)。
+            # 元絵は tools/wallpaper/、配置は nix/modules/desktop.nix の home.file (native profile のみ)。
+            # In-repo wallpaper: mocha-arch-wallpaper (SVG rendered to PNG by resvg, Issue #840).
+            # Source in tools/wallpaper/, placed via home.file in nix/modules/desktop.nix (native profile only).
+            mocha-arch-wallpaper = final.callPackage ./tools/wallpaper/package.nix { };
           })
           # Bump github-copilot-cli to latest release (nixpkgs lags behind npm)
           (final: prev: {
@@ -304,6 +309,9 @@
         # herdr の Claude Code 用フックを `nix build .#herdr-claude-hook` で単体ビルドして確かめられるように出す
         # Expose the generated herdr hook so `nix build .#herdr-claude-hook` can inspect it on its own
         herdr-claude-hook = pkgs.herdr-claude-hook;
+        # 壁紙を `nix build .#mocha-arch-wallpaper` で単体ビルドして、画像を目で確かめられるように出す
+        # Expose the wallpaper so `nix build .#mocha-arch-wallpaper` renders it on its own for a visual check
+        mocha-arch-wallpaper = pkgs.mocha-arch-wallpaper;
       };
 
       # `nix flake check` (`mise run nix:check`) で走る検査。CI の check ジョブは
@@ -330,6 +338,9 @@
         # `nix flake check` only evaluates `packages`, so `mise run nix:check` never ran the tests locally (Issue #807).
         # When adding a tool under tools/, add it here in the same shape.
         herdr-ctx = pkgs.herdr-ctx;
+        # 壁紙を描けること (フォントのファイルが見つかり、resvg が通ること) を `mise run nix:check` でも確かめる。
+        # Make `mise run nix:check` render the wallpaper too (font files resolve and resvg succeeds).
+        mocha-arch-wallpaper = pkgs.mocha-arch-wallpaper;
       };
 
       # shellcheck の入口: CI と mise の lint:shellcheck の両方がこれを呼ぶ (#665)。

@@ -19,7 +19,7 @@ dotfiles/
 │   └── explanation/         # 理解向け
 ├── llm/                     # LLM コンテキストファイル
 ├── nix/                     # Nix モジュールと flake の検査
-├── tools/                   # 自作ツールのソース (Rust、flake の overlay でパッケージ化)
+├── tools/                   # 自作ツールと壁紙のソース (flake の overlay でパッケージ化)
 ├── .mise.toml               # タスクランナー設定
 ├── flake.nix                # Nix Flake エントリーポイント
 ├── home.nix                 # Home Manager メイン設定
@@ -45,6 +45,7 @@ dotfiles/
 |---|---|
 | `tools/standalone-check/` | 配布文書の自立可読性チェッカー(Rust)。`standalone-report-writing` skill の点検手順から呼ぶ。`flake.nix` の overlay で `pkgs.standalone-check` として定義し、`nix/modules/dev-tools.nix` の `home.packages` で配る。単体ビルドは `nix build .#standalone-check`、開発は `cargo test`(Issue #639) |
 | `tools/herdr-ctx/` | 司令塔と決定者が見る盤面の値を集める CLI(Rust)。herdr の各 agent の context 使用率を pane の幅に依存せず読むために、Claude Code の statusline が書く sidecar を `herdr agent list` と結合する。決定者に割り当てられた open のレビュー依頼も `gh api` で集める(Issue #805)。`flake.nix` の overlay で `pkgs.herdr-ctx` として定義し、`nix/modules/herdr.nix` の `home.packages` で配る。`watch` は同じモジュールの systemd の user service で常駐する。単体ビルドは `nix build .#herdr-ctx`、開発は `cargo test`(Issue #784)。`flake.nix` の `checks.herdr-ctx` が、`mise run nix:check` でこの道具のテストを Nix のサンドボックスの中で走らせる(Issue #807) |
+| `tools/wallpaper/` | Hyprland の壁紙の元絵 `mocha_arch.svg` と、それを PNG にする `package.nix`。元絵は Catppuccin Mocha の地に、Nerd Font の Arch グリフ (U+F303) と `I use Arch btw` を中央に置く。`package.nix` は resvg で SVG を 3840x2400 の PNG にし、フォントは名前ではなく `nerd-fonts.jetbrains-mono` のパッケージの中の ttf を直接渡す。`flake.nix` の overlay で `pkgs.mocha-arch-wallpaper` として定義し、`nix/modules/desktop.nix` が `~/.local/share/wallpapers/mocha_arch.png` に置く (native profile のみ)。生成した画像は git に入れない。単体ビルドは `nix build .#mocha-arch-wallpaper` で、`checks.mocha-arch-wallpaper` が `mise run nix:check` でも描けることを確かめる (Issue #840) |
 
 `tools/` の下に道具を足すときは、`packages` と overlay に加えて、`flake.nix` の `checks.${system}` にも同じ形で足す。`packages` だけでは `nix flake check` が評価しかしないので、`package.nix` の `doCheck` のテストが手元の `mise run nix:check` で走らないからである。`tools/standalone-check/` は、まだ `checks` に入っていない。
 
@@ -88,7 +89,7 @@ dotfiles/
 
 | Directory | Description |
 |-----------|-------------|
-| `hypr/` | Hyprland 設定 (Wayland) |
+| `hypr/` | Hyprland 設定 (Wayland)。`hyprpaper.conf` は、Nix が置いた `~/.local/share/wallpapers/mocha_arch.png` を全モニターに `cover` で貼る (Issue #840) |
 
 ### Notifications & Session
 
@@ -169,7 +170,7 @@ Home Manager の設定は、`nix/modules/` の下でモジュールに分けて�
 | `neovim.nix` | Neovim + LSP + formatters |
 | `dev-tools.nix` | 開発ツール (Docker, AWS CLI, kubectl, etc.) |
 | `fonts.nix` | フォント |
-| `desktop.nix` | GUI 設定群 (hypr, waybar, wezterm, alacritty, wofi, mako, mpd, ncmpcpp, fontconfig) — native profile のみ |
+| `desktop.nix` | GUI 設定群 (hypr, waybar, wezterm, alacritty, wofi, mako, mpd, ncmpcpp, fontconfig) と、`tools/wallpaper/` から描いた壁紙の配置 — native profile のみ |
 | `terminal-browser.nix` | terminal-browser (device-auth の承認ページを herdr の pane で開くブラウザ) と、その既定の挙動を止める設定 — native profile のみ |
 | `wsl.nix` | WSL 固有: Obsidian vault symlink と Windows 側 WezTerm/Alacritty 設定の配布 — wsl profile のみ |
 

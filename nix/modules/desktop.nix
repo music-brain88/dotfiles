@@ -65,5 +65,11 @@
       source = ../../.config/fontconfig;
       recursive = true;
     };
+
+    # 壁紙 (Issue #840)。tools/wallpaper/ の SVG から Nix が描いた PNG を固定パスに置く。
+    # .config/hypr/hyprpaper.conf はストアのパスではなくこの固定パスを指す。
+    # Wallpaper (Issue #840): the PNG Nix renders from tools/wallpaper/ is placed at a fixed path,
+    # which .config/hypr/hyprpaper.conf points to instead of a store path.
+    ".local/share/wallpapers/mocha_arch.png".source = "${pkgs.mocha-arch-wallpaper}/mocha_arch.png";
   };
 }
