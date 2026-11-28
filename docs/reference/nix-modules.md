@@ -122,6 +122,15 @@ native profile では、デスクトップの設定が名前で指名する次�
 - Waybar, Wofi, Mako
 - WezTerm (メインターミナル), Alacritty (併存期間中のフォールバック)
 - MPD, ncmpcpp, fontconfig
+- 壁紙 `~/.local/share/wallpapers/mocha_arch.png` (Issue #840)
+
+#### 壁紙の生成と置き場
+
+`desktop.nix` は、`tools/wallpaper/` の SVG から Nix が描いた PNG を `~/.local/share/wallpapers/mocha_arch.png` に置きます (`home.file`)。描くのは `tools/wallpaper/package.nix` で、resvg が `mocha_arch.svg` を 3840x2400 の PNG にします。Nix のサンドボックスには fontconfig の設定が無いので、`package.nix` はフォントを名前で探させず、`nerd-fonts.jetbrains-mono` のパッケージの中の ttf を `--use-font-file` で直接渡します。生成した画像は Nix ストアにだけあり、git には入れません。
+
+`.config/hypr/hyprpaper.conf` は、Nix ストアのパスではなくこの固定パスを `~/.local/share/wallpapers/mocha_arch.png` と書いて指します。hyprpaper 0.8 系は `path` の先頭の `~` を `$HOME` に展開します。`monitor` を空にした `wallpaper` ブロックは、個別の指定が無いすべてのモニターに貼るフォールバックになり、`fit_mode = cover` は縦横比を保ったまま画面を覆ってはみ出た部分を切り取ります。そのため元絵は、グリフと文字を中央の約 1000x740 の範囲に収め、2.4:1 から 4:3 までのどの比率で切り取られても欠けないようにしています。
+
+配色やフォントを変えたときは、`mocha_arch.svg` の色と `package.nix` のフォントのファイルを直し、`mise run nix:switch` で作り直します。画像だけを確かめるときは `nix build .#mocha-arch-wallpaper` で単体ビルドします。
 
 ### terminal-browser.nix
 

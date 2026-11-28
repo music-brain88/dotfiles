@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Hyprland の壁紙の元絵: Catppuccin Mocha の地に、Nerd Font の Arch グリフと「I use Arch btw」を中央に置く。
+  tools/wallpaper/package.nix が resvg でこの SVG を PNG にする。色は .config/hypr/themes/mocha.lua と同じ値を使う。
+  Source of the Hyprland wallpaper: the Nerd Font Arch glyph and "I use Arch btw" centered on Catppuccin Mocha.
+  tools/wallpaper/package.nix renders it to PNG with resvg. Colors match .config/hypr/themes/mocha.lua.
+
+  画面を覆う貼り方 (hyprpaper の fit_mode = cover) で 2.4:1 から 4:3 までの画面に切り取られても欠けないように、
+  絵柄は中央の約 1000x740 の範囲に収める。
+  The motif stays inside a ~1000x740 central box so cover-cropping to anything from 2.4:1 to 4:3 keeps it whole.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2400" viewBox="0 0 3840 2400">
+  <!-- 地は Mocha の base / background: Mocha base -->
+  <rect width="3840" height="2400" fill="#1E1E2E"/>
+
+  <!--
+    Arch のグリフ (nf-linux-archlinux, U+F303) は文字参照で書き、PUA のバイトをファイルに入れない。
+    このグリフは送り幅より右にはみ出して描かれるので、x を中央から 98px 左にずらして見た目の中心を合わせる。
+    The Arch glyph is written as a character reference so no PUA bytes live in the file.
+    It overhangs its advance width to the right, so x is shifted 98px left to center it visually.
+  -->
+  <text x="1822" y="1300" text-anchor="middle" font-family="JetBrainsMono Nerd Font" font-size="560" fill="#89B4FA">&#xF303;</text>
+
+  <!-- 文字は Mocha の text / caption in Mocha text -->
+  <text x="1920" y="1562" text-anchor="middle" font-family="JetBrainsMono Nerd Font" font-weight="bold" font-size="120" fill="#CDD6F4">I use Arch btw</text>
+</svg>
