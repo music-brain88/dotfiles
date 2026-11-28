@@ -38,6 +38,16 @@ Managed by Nix in `nix/modules/fonts.nix`:
 - **source-han-serif** - Document font (serif)
 - **noto-fonts-color-emoji** - Color emoji fallback (terminal/desktop)
 
+Native profile only (requested by name in the desktop configs) / native profile のみ (デスクトップの設定が名前で指名するフォント):
+
+- **noto-fonts** - Default sans-serif / serif in `fonts.conf` (Noto Sans, Noto Serif)
+- **noto-fonts-cjk-sans** - Japanese UI text in Waybar, Wofi, hyprlock and `fonts.conf` (Noto Sans CJK JP)
+- **noto-fonts-cjk-serif** - Japanese serif fallback (Noto Serif CJK JP)
+- **nerd-fonts.jetbrains-mono** - UI text and icon glyphs in Waybar, Wofi and Mako (JetBrainsMono Nerd Font)
+
+A family that is requested but not installed is replaced silently by fontconfig. Check with `fc-match "<family>" family`.
+指名したフォントが入っていないと、fontconfig は警告を出さずに代役を選びます。`fc-match "<family>" family` で確かめられます。
+
 ---
 
 ## 🔗 Related Documentation

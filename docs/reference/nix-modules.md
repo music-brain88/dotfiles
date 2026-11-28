@@ -110,6 +110,11 @@ herdr の版が上がったときのずれは、`checks.herdr-claude-hook-entrie
 - source-han-sans, source-han-serif (システムUI用)
 - noto-fonts-color-emoji (絵文字フォールバック用)
 
+native profile では、デスクトップの設定が名前で指名する次のフォントも入れます (WSL profile では入れません)。
+- noto-fonts (fontconfig の sans-serif・serif の標準)
+- noto-fonts-cjk-sans, noto-fonts-cjk-serif (Waybar・Wofi・hyprlock・fontconfig の日本語)
+- nerd-fonts.jetbrains-mono (Waybar・Wofi・Mako の文字とアイコン)
+
 ### desktop.nix
 
 `desktop.nix` は、ネイティブArch (Hyprland) 専用のGUI設定群を定義します (WSL profileではimportされません)。
